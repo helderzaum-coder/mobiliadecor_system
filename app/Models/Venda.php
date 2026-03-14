@@ -12,14 +12,21 @@ class Venda extends Model
     protected $primaryKey = 'id_venda';
 
     protected $fillable = [
+        'bling_id',
+        'bling_account',
         'numero_pedido_canal',
         'numero_nota_fiscal',
         'valor_total_venda',
         'valor_frete_cliente',
+        'valor_frete_transportadora',
         'id_canal',
         'id_cnpj',
         'data_venda',
+        'cliente_nome',
+        'cliente_documento',
         'frete_pago',
+        'observacoes',
+        'bling_situacao_id',
         'margem_frete',
         'margem_produto',
         'margem_venda_total',
@@ -29,6 +36,7 @@ class Venda extends Model
     protected $casts = [
         'valor_total_venda' => 'decimal:2',
         'valor_frete_cliente' => 'decimal:2',
+        'valor_frete_transportadora' => 'decimal:2',
         'data_venda' => 'date',
         'frete_pago' => 'boolean',
         'margem_frete' => 'decimal:2',

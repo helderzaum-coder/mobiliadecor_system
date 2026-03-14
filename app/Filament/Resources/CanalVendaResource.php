@@ -21,23 +21,70 @@ class CanalVendaResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\TextInput::make('nome_canal')
-                ->label('Nome do Canal')
-                ->required()
-                ->maxLength(100),
-            Forms\Components\TextInput::make('percentual_comissao')
-                ->label('Comissão (%)')
-                ->required()
-                ->numeric()
-                ->suffix('%'),
-            Forms\Components\TextInput::make('percentual_imposto')
-                ->label('Imposto (%)')
-                ->required()
-                ->numeric()
-                ->suffix('%'),
-            Forms\Components\Toggle::make('ativo')
-                ->label('Ativo')
-                ->default(true),
+            Forms\Components\Section::make('Dados do Canal')->schema([
+                Forms\Components\TextInput::make('nome_canal')
+                    ->label('Nome do Canal')
+                    ->required()
+                    ->maxLength(100),
+                Forms\Components\Select::make('tipo_nota')
+                    ->label('Tipo de Nota Fiscal')
+                    ->options([
+                        'cheia' => 'Nota Cheia (total do pedido)',
+                        'produto' => 'Somente Produto (sem frete)',
+                        'meia_nota' => 'Meia Nota (metade do produto)',
+                    ])
+                    ->required()
+                    ->default('cheia'),
+                Forms\Components\Toggle::make('ativo')
+                    ->label('Ativo')
+                    ->default(true),
+            ])->columns(2),
+
+            Forms\Components\Section::make('Regras de Comissão')->schema([
+                Forms\Components\Repeater::make('regrasComissao')
+                    ->relationship()
+                    ->label('')
+                    ->schema([
+                        Forms\Components\TextInput::make('nome_regra')
+                            ->label('Nome da Regra')
+                            ->required()
+                            ->maxLength(191),
+                        Forms\Components\Textarea::make('descricao')
+                            ->label('Descrição')
+                            ->rows(2),
+                        Forms\Components\TextInput::make('percentual')
+                            ->label('Comissão (%)')
+                            ->numeric()
+                            ->suffix('%')
+                            ->required(),
+                        Forms\Components\TextInput::make('valor_fixo')
+                            ->label('Valor Fixo')
+                            ->numeric()
+                            ->prefix('R$')
+                            ->default(0),
+                        Forms\Components\TextInput::make('faixa_valor_min')
+                            ->label('Valor Mínimo (faixa)')
+                            ->numeric()
+                            ->prefix('R$'),
+                        Forms\Components\TextInput::make('faixa_valor_max')
+                            ->label('Valor Máximo (faixa)')
+                            ->numeric()
+                            ->prefix('R$'),
+                        Forms\Components\TextInput::make('subsidio_pix')
+                            ->label('Subsídio Pix (%)')
+                            ->numeric()
+                            ->suffix('%')
+                            ->default(0),
+                        Forms\Components\Toggle::make('ativo')
+                            ->label('Ativa')
+                            ->default(true),
+                    ])
+                    ->columns(3)
+                    ->defaultItems(0)
+                    ->addActionLabel('Adicionar Regra')
+                    ->collapsible()
+                    ->itemLabel(fn (array $state): ?string => $state['nome_regra'] ?? null),
+            ]),
         ]);
     }
 
@@ -46,8 +93,16 @@ class CanalVendaResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('nome_canal')->label('Canal')->searchable(),
-                Tables\Columns\TextColumn::make('percentual_comissao')->label('Comissão (%)')->suffix('%'),
-                Tables\Columns\TextColumn::make('percentual_imposto')->label('Imposto (%)')->suffix('%'),
+                Tables\Columns\TextColumn::make('tipo_nota')->label('Tipo Nota')
+                    ->formatStateUsing(fn (string $state) => match ($state) {
+                        'cheia' => 'Nota Cheia',
+                        'produto' => 'Só Produto',
+                        'meia_nota' => 'Meia Nota',
+                        default => $state,
+                    })->badge(),
+                Tables\Columns\TextColumn::make('regras_comissao_count')
+                    ->label('Regras')
+                    ->counts('regrasComissao'),
                 Tables\Columns\IconColumn::make('ativo')->boolean(),
             ])
             ->filters([

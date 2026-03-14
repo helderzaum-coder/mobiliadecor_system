@@ -12,19 +12,21 @@ class CanalVenda extends Model
 
     protected $fillable = [
         'nome_canal',
-        'percentual_comissao',
-        'percentual_imposto',
+        'tipo_nota',
         'ativo',
     ];
 
     protected $casts = [
-        'percentual_comissao' => 'decimal:2',
-        'percentual_imposto' => 'decimal:2',
         'ativo' => 'boolean',
     ];
 
     public function vendas(): HasMany
     {
         return $this->hasMany(Venda::class, 'id_canal', 'id_canal');
+    }
+
+    public function regrasComissao(): HasMany
+    {
+        return $this->hasMany(RegraComissao::class, 'id_canal', 'id_canal');
     }
 }
