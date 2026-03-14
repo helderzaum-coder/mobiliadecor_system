@@ -6,11 +6,13 @@ return [
             'name' => 'Mobilia Decor',
             'client_id' => env('BLING_PRIMARY_CLIENT_ID'),
             'client_secret' => env('BLING_PRIMARY_CLIENT_SECRET'),
+            'cnpj_id' => env('BLING_PRIMARY_CNPJ_ID', 1),
         ],
         'secondary' => [
             'name' => 'HES Móveis',
             'client_id' => env('BLING_SECONDARY_CLIENT_ID'),
             'client_secret' => env('BLING_SECONDARY_CLIENT_SECRET'),
+            'cnpj_id' => env('BLING_SECONDARY_CNPJ_ID', 2),
         ],
     ],
 

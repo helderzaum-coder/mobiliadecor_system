@@ -38,6 +38,7 @@ class PedidoBlingStaging extends Model
         'parcelas',
         'dados_originais',
         'status',
+        'planilha_shopee',
     ];
 
     protected $casts = [
@@ -52,6 +53,7 @@ class PedidoBlingStaging extends Model
         'percentual_imposto' => 'decimal:2',
         'valor_imposto' => 'decimal:2',
         'nfe_valor' => 'decimal:2',
+        'planilha_shopee' => 'boolean',
         'itens' => 'array',
         'parcelas' => 'array',
         'dados_originais' => 'array',

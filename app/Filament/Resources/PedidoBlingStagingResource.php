@@ -5,6 +5,8 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\PedidoBlingStagingResource\Pages;
 use App\Models\PedidoBlingStaging;
 use App\Services\Bling\BlingImportService;
+use App\Services\AprovacaoVendaService;
+use App\Services\CteService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -115,8 +117,9 @@ class PedidoBlingStagingResource extends Resource
                         Forms\Components\TextInput::make('descricao')->label('Descrição')->disabled(),
                         Forms\Components\TextInput::make('quantidade')->label('Qtd')->numeric(),
                         Forms\Components\TextInput::make('valor')->label('Valor')->numeric()->prefix('R$'),
+                        Forms\Components\TextInput::make('custo')->label('Custo')->numeric()->prefix('R$'),
                     ])
-                    ->columns(4)
+                    ->columns(5)
                     ->addable(false)
                     ->deletable(false)
                     ->reorderable(false),
@@ -147,6 +150,15 @@ class PedidoBlingStagingResource extends Resource
                         'rejeitado' => 'danger',
                         default => 'gray',
                     }),
+                Tables\Columns\IconColumn::make('planilha_shopee')
+                    ->label('Planilha')
+                    ->boolean()
+                    ->visible(fn () => true)
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-clock')
+                    ->trueColor('success')
+                    ->falseColor('warning')
+                    ->getStateUsing(fn (PedidoBlingStaging $record) => self::isShopee($record) ? $record->planilha_shopee : null),
             ])
             ->defaultSort('data_pedido', 'desc')
             ->filters([
@@ -182,12 +194,33 @@ class PedidoBlingStagingResource extends Resource
                         }
                     })
                     ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente' && empty($record->nfe_chave_acesso)),
+                Tables\Actions\Action::make('buscar_cte')
+                    ->label('CT-e')
+                    ->icon('heroicon-o-truck')
+                    ->color('info')
+                    ->requiresConfirmation()
+                    ->action(function (PedidoBlingStaging $record) {
+                        $result = CteService::processarCte($record);
+                        if ($result['success']) {
+                            Notification::make()->title($result['msg'])->success()->send();
+                        } else {
+                            Notification::make()->title($result['msg'])->warning()->send();
+                        }
+                    })
+                    ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente' && !empty($record->nfe_chave_acesso) && (float) $record->custo_frete == 0),
                 Tables\Actions\Action::make('aprovar')
                     ->label('Aprovar')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->action(fn (PedidoBlingStaging $record) => $record->update(['status' => 'aprovado']))
+                    ->action(function (PedidoBlingStaging $record) {
+                        if (self::isShopee($record) && !$record->planilha_shopee) {
+                            Notification::make()->title('Processe a planilha Shopee antes de aprovar.')->danger()->send();
+                            return;
+                        }
+                        AprovacaoVendaService::aprovar($record);
+                        Notification::make()->title('Pedido aprovado e venda criada.')->success()->send();
+                    })
                     ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente'),
                 Tables\Actions\Action::make('rejeitar')
                     ->label('Rejeitar')
@@ -203,7 +236,24 @@ class PedidoBlingStagingResource extends Resource
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->action(fn ($records) => $records->each->update(['status' => 'aprovado'])),
+                    ->action(function ($records) {
+                        $bloqueados = 0;
+                        $aprovados = 0;
+                        foreach ($records as $record) {
+                            if (self::isShopee($record) && !$record->planilha_shopee) {
+                                $bloqueados++;
+                                continue;
+                            }
+                            AprovacaoVendaService::aprovar($record);
+                            $aprovados++;
+                        }
+                        if ($aprovados > 0) {
+                            Notification::make()->title("{$aprovados} pedido(s) aprovados e vendas criadas.")->success()->send();
+                        }
+                        if ($bloqueados > 0) {
+                            Notification::make()->title("{$bloqueados} pedido(s) Shopee aguardando planilha.")->warning()->send();
+                        }
+                    }),
             ]);
     }
 
@@ -218,5 +268,10 @@ class PedidoBlingStagingResource extends Resource
     public static function canAccess(): bool
     {
         return auth()->user()?->hasRole('admin') ?? false;
+    }
+
+    public static function isShopee(PedidoBlingStaging $record): bool
+    {
+        return stripos($record->canal ?? '', 'shopee') !== false;
     }
 }

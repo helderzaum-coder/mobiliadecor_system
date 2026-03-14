@@ -23,59 +23,56 @@ class VendaResource extends Resource
         return $form->schema([
             Forms\Components\Section::make('Dados da Venda')->schema([
                 Forms\Components\TextInput::make('numero_pedido_canal')
-                    ->label('Nº Pedido Canal')
-                    ->required()
-                    ->maxLength(50),
+                    ->label('Nº Pedido Canal')->required()->maxLength(50),
                 Forms\Components\TextInput::make('numero_nota_fiscal')
-                    ->label('Nº Nota Fiscal')
-                    ->required()
-                    ->maxLength(50),
+                    ->label('NF')->maxLength(50),
                 Forms\Components\Select::make('id_canal')
-                    ->label('Canal de Venda')
-                    ->relationship('canal', 'nome_canal')
-                    ->required()
-                    ->searchable()
-                    ->preload(),
+                    ->label('Canal')->relationship('canal', 'nome_canal')
+                    ->required()->searchable()->preload(),
                 Forms\Components\Select::make('id_cnpj')
-                    ->label('CNPJ')
-                    ->relationship('cnpj', 'razao_social')
-                    ->required()
-                    ->searchable()
-                    ->preload(),
+                    ->label('CNPJ')->relationship('cnpj', 'razao_social')
+                    ->required()->searchable()->preload(),
                 Forms\Components\DatePicker::make('data_venda')
-                    ->label('Data da Venda')
-                    ->required(),
+                    ->label('Data')->required(),
+                Forms\Components\TextInput::make('cliente_nome')
+                    ->label('Cliente')->disabled(),
+            ])->columns(3),
+
+            Forms\Components\Section::make('Valores')->schema([
+                Forms\Components\TextInput::make('total_produtos')
+                    ->label('Subtotal Produtos')->numeric()->prefix('R$'),
+                Forms\Components\TextInput::make('custo_produtos')
+                    ->label('Custo Produtos')->numeric()->prefix('R$'),
                 Forms\Components\TextInput::make('valor_total_venda')
-                    ->label('Valor Total')
-                    ->required()
-                    ->numeric()
-                    ->prefix('R$'),
+                    ->label('Total Pedido')->numeric()->prefix('R$')->required(),
                 Forms\Components\TextInput::make('valor_frete_cliente')
-                    ->label('Frete Cliente')
-                    ->required()
-                    ->numeric()
-                    ->prefix('R$'),
-                Forms\Components\Toggle::make('frete_pago')
-                    ->label('Frete Pago'),
-            ])->columns(2),
+                    ->label('Frete')->numeric()->prefix('R$'),
+                Forms\Components\TextInput::make('valor_frete_transportadora')
+                    ->label('Frete Pago (Transp.)')->numeric()->prefix('R$'),
+                Forms\Components\Toggle::make('frete_pago')->label('Frete Pago'),
+            ])->columns(3),
+
+            Forms\Components\Section::make('Comissão e Impostos')->schema([
+                Forms\Components\TextInput::make('comissao')
+                    ->label('Comissão')->numeric()->prefix('R$'),
+                Forms\Components\TextInput::make('subsidio_pix')
+                    ->label('Subsídio Pix')->numeric()->prefix('R$'),
+                Forms\Components\TextInput::make('percentual_imposto')
+                    ->label('Imposto (%)')->numeric()->suffix('%'),
+                Forms\Components\TextInput::make('valor_imposto')
+                    ->label('Valor Imposto')->numeric()->prefix('R$'),
+            ])->columns(4),
+
             Forms\Components\Section::make('Margens')->schema([
                 Forms\Components\TextInput::make('margem_frete')
-                    ->label('Margem Frete')
-                    ->numeric()
-                    ->prefix('R$'),
+                    ->label('Margem Frete')->numeric()->prefix('R$'),
                 Forms\Components\TextInput::make('margem_produto')
-                    ->label('Margem Produto')
-                    ->numeric()
-                    ->prefix('R$'),
+                    ->label('Margem Produto')->numeric()->prefix('R$'),
                 Forms\Components\TextInput::make('margem_venda_total')
-                    ->label('Margem Venda Total')
-                    ->numeric()
-                    ->prefix('R$'),
+                    ->label('Lucro Final')->numeric()->prefix('R$'),
                 Forms\Components\TextInput::make('margem_contribuicao')
-                    ->label('Margem Contribuição')
-                    ->numeric()
-                    ->prefix('R$'),
-            ])->columns(2)->collapsible(),
+                    ->label('Lucro Final (%)')->numeric()->suffix('%'),
+            ])->columns(4),
         ]);
     }
 
@@ -83,16 +80,62 @@ class VendaResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('numero_pedido_canal')->label('Pedido')->searchable(),
-                Tables\Columns\TextColumn::make('numero_nota_fiscal')->label('NF')->searchable(),
-                Tables\Columns\TextColumn::make('canal.nome_canal')->label('Canal'),
-                Tables\Columns\TextColumn::make('cnpj.razao_social')->label('CNPJ'),
-                Tables\Columns\TextColumn::make('data_venda')->label('Data')->date('d/m/Y')->sortable(),
-                Tables\Columns\TextColumn::make('valor_total_venda')->label('Valor Total')->money('BRL'),
-                Tables\Columns\IconColumn::make('frete_pago')->label('Frete Pago')->boolean(),
+                Tables\Columns\TextColumn::make('numero_pedido_canal')
+                    ->label('Pedido')->searchable(),
+                Tables\Columns\TextColumn::make('numero_nota_fiscal')
+                    ->label('NF')->searchable(),
+                Tables\Columns\TextColumn::make('canal.nome_canal')
+                    ->label('Canal'),
+                Tables\Columns\TextColumn::make('cnpj.razao_social')
+                    ->label('CNPJ')->limit(20),
+                Tables\Columns\TextColumn::make('data_venda')
+                    ->label('Data')->date('d/m/Y')->sortable(),
+                Tables\Columns\TextColumn::make('total_produtos')
+                    ->label('Subtotal')->money('BRL'),
+                Tables\Columns\TextColumn::make('custo_produtos')
+                    ->label('Custo Prod.')->money('BRL'),
+                Tables\Columns\TextColumn::make('valor_frete_cliente')
+                    ->label('Frete')->money('BRL'),
+                Tables\Columns\TextColumn::make('valor_frete_transportadora')
+                    ->label('Frete Pago')->money('BRL'),
+                Tables\Columns\TextColumn::make('margem_frete')
+                    ->label('Margem Frete')->money('BRL')
+                    ->color(fn ($state) => $state >= 0 ? 'success' : 'danger'),
+                Tables\Columns\TextColumn::make('margem_frete_pct')
+                    ->label('Margem Frete %')
+                    ->getStateUsing(fn (Venda $r) => $r->valor_frete_cliente > 0
+                        ? round(($r->margem_frete / $r->valor_frete_cliente) * 100, 1) . '%'
+                        : '-'),
+                Tables\Columns\TextColumn::make('comissao')
+                    ->label('Comissão')->money('BRL'),
+                Tables\Columns\TextColumn::make('valor_imposto')
+                    ->label('Imposto')->money('BRL'),
+                Tables\Columns\TextColumn::make('margem_produto')
+                    ->label('Margem Produto')->money('BRL')
+                    ->color(fn ($state) => $state >= 0 ? 'success' : 'danger'),
+                Tables\Columns\TextColumn::make('margem_produto_pct')
+                    ->label('Margem Prod. %')
+                    ->getStateUsing(fn (Venda $r) => $r->total_produtos > 0
+                        ? round(($r->margem_produto / $r->total_produtos) * 100, 1) . '%'
+                        : '-'),
+                Tables\Columns\TextColumn::make('margem_venda_total')
+                    ->label('Lucro Final')->money('BRL')
+                    ->color(fn ($state) => $state >= 0 ? 'success' : 'danger'),
+                Tables\Columns\TextColumn::make('margem_contribuicao')
+                    ->label('Lucro %')->suffix('%')
+                    ->color(fn ($state) => $state >= 0 ? 'success' : 'danger'),
+                Tables\Columns\IconColumn::make('frete_pago')
+                    ->label('Frete Pago')->boolean(),
             ])
             ->defaultSort('data_venda', 'desc')
-            ->filters([])
+            ->filters([
+                Tables\Filters\SelectFilter::make('id_canal')
+                    ->label('Canal')
+                    ->relationship('canal', 'nome_canal'),
+                Tables\Filters\SelectFilter::make('id_cnpj')
+                    ->label('CNPJ')
+                    ->relationship('cnpj', 'razao_social'),
+            ])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),

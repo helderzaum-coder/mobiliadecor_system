@@ -112,11 +112,21 @@ class BlingImportService
         // Extrair itens simplificados
         $itens = [];
         foreach ($pedido['itens'] ?? [] as $item) {
+            $sku = $item['codigo'] ?? '';
+            $custo = 0;
+
+            // Buscar custo do produto na API
+            if ($sku) {
+                $produto = $this->client->getProductBySku($sku);
+                $custo = (float) ($produto['precoCusto'] ?? 0);
+            }
+
             $itens[] = [
-                'codigo' => $item['codigo'] ?? '',
+                'codigo' => $sku,
                 'descricao' => $item['descricao'] ?? '',
                 'quantidade' => $item['quantidade'] ?? 1,
                 'valor' => $item['valor'] ?? 0,
+                'custo' => $custo,
             ];
         }
 
@@ -224,18 +234,40 @@ class BlingImportService
     }
 
     /**
+     * Busca custo dos produtos nos itens de um pedido do staging via API Bling.
+     */
+    public static function buscarCustosProdutos(PedidoBlingStaging $staging): int
+    {
+        $client = new BlingClient($staging->bling_account);
+        $itens = $staging->itens ?? [];
+        $atualizados = 0;
+
+        foreach ($itens as &$item) {
+            $sku = $item['codigo'] ?? '';
+            if (empty($sku)) {
+                continue;
+            }
+
+            $produto = $client->getProductBySku($sku);
+            if ($produto && isset($produto['precoCusto'])) {
+                $item['custo'] = (float) $produto['precoCusto'];
+                $atualizados++;
+            }
+        }
+
+        $staging->update(['itens' => $itens]);
+
+        return $atualizados;
+    }
+
+    /**
      * Busca o percentual de imposto do mês para a conta do pedido.
      * Se não existir para o mês do pedido, usa o último mês cadastrado (estimativa).
      */
     private static function buscarPercentualImposto(PedidoBlingStaging $staging): float
     {
-        $cnpjMap = [
-            'primary' => 'Mobilia Decor',
-            'secondary' => 'HES Móveis',
-        ];
-
-        $razaoSocial = $cnpjMap[$staging->bling_account] ?? '';
-        $cnpj = \App\Models\Cnpj::where('razao_social', $razaoSocial)->first();
+        $cnpjId = config("bling.accounts.{$staging->bling_account}.cnpj_id");
+        $cnpj = \App\Models\Cnpj::find($cnpjId);
 
         if (!$cnpj) {
             return 0;
@@ -269,13 +301,8 @@ class BlingImportService
      */
     public static function reprocessarImpostos(string $blingAccount, int $mes, int $ano): array
     {
-        $cnpjMap = [
-            'primary' => 'Mobilia Decor',
-            'secondary' => 'HES Móveis',
-        ];
-
-        $razaoSocial = $cnpjMap[$blingAccount] ?? '';
-        $cnpj = \App\Models\Cnpj::where('razao_social', $razaoSocial)->first();
+        $cnpjId = config("bling.accounts.{$blingAccount}.cnpj_id");
+        $cnpj = \App\Models\Cnpj::find($cnpjId);
 
         if (!$cnpj) {
             return ['atualizados' => 0, 'erro' => 'CNPJ não encontrado'];
@@ -354,12 +381,8 @@ class BlingImportService
         $ano = (int) date('Y', strtotime($data));
 
         // Determinar CNPJ pela conta
-        $cnpjMap = [
-            'primary' => 'Mobilia Decor',
-            'secondary' => 'HES Móveis',
-        ];
-        $razaoSocial = $cnpjMap[$this->accountKey] ?? '';
-        $cnpj = \App\Models\Cnpj::where('razao_social', $razaoSocial)->first();
+        $cnpjId = config("bling.accounts.{$this->accountKey}.cnpj_id");
+        $cnpj = \App\Models\Cnpj::find($cnpjId);
 
         $percentual = 0;
         if ($cnpj) {

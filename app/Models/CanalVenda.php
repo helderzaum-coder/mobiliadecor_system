@@ -13,11 +13,15 @@ class CanalVenda extends Model
     protected $fillable = [
         'nome_canal',
         'tipo_nota',
+        'comissao_sobre_frete',
+        'imposto_sobre_frete',
         'ativo',
     ];
 
     protected $casts = [
         'ativo' => 'boolean',
+        'comissao_sobre_frete' => 'boolean',
+        'imposto_sobre_frete' => 'boolean',
     ];
 
     public function vendas(): HasMany
