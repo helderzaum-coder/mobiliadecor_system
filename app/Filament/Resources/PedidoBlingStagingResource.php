@@ -4,8 +4,10 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PedidoBlingStagingResource\Pages;
 use App\Models\PedidoBlingStaging;
+use App\Services\Bling\BlingImportService;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -64,6 +66,15 @@ class PedidoBlingStagingResource extends Resource
                     ->prefix('R$'),
                 Forms\Components\TextInput::make('nota_fiscal')
                     ->label('Nota Fiscal'),
+                Forms\Components\TextInput::make('nfe_chave_acesso')
+                    ->label('Chave de Acesso NF-e')
+                    ->disabled()
+                    ->columnSpanFull(),
+                Forms\Components\TextInput::make('nfe_valor')
+                    ->label('Valor NF-e')
+                    ->numeric()
+                    ->prefix('R$')
+                    ->disabled(),
             ])->columns(2),
 
             Forms\Components\Section::make('Observações')->schema([
@@ -126,6 +137,7 @@ class PedidoBlingStagingResource extends Resource
                 Tables\Columns\TextColumn::make('data_pedido')->label('Data')->date('d/m/Y')->sortable(),
                 Tables\Columns\TextColumn::make('total_pedido')->label('Total')->money('BRL'),
                 Tables\Columns\TextColumn::make('frete')->label('Frete')->money('BRL'),
+                Tables\Columns\TextColumn::make('nota_fiscal')->label('NF')->searchable(),
                 Tables\Columns\TextColumn::make('comissao_calculada')->label('Comissão')->money('BRL'),
                 Tables\Columns\TextColumn::make('valor_imposto')->label('Imposto')->money('BRL'),
                 Tables\Columns\TextColumn::make('status')->label('Status')->badge()
@@ -154,6 +166,22 @@ class PedidoBlingStagingResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make()->label('Revisar'),
+                Tables\Actions\Action::make('buscar_nfe')
+                    ->label('Buscar NF-e')
+                    ->icon('heroicon-o-document-magnifying-glass')
+                    ->color('info')
+                    ->requiresConfirmation()
+                    ->modalHeading('Buscar NF-e no Bling')
+                    ->modalDescription('Isso vai buscar a NF-e vinculada a este pedido na API do Bling. Pode demorar alguns segundos.')
+                    ->action(function (PedidoBlingStaging $record) {
+                        $found = BlingImportService::buscarNfePorPedido($record);
+                        if ($found) {
+                            Notification::make()->title('NF-e encontrada e vinculada.')->success()->send();
+                        } else {
+                            Notification::make()->title('NF-e não encontrada para este pedido.')->warning()->send();
+                        }
+                    })
+                    ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente' && empty($record->nfe_chave_acesso)),
                 Tables\Actions\Action::make('aprovar')
                     ->label('Aprovar')
                     ->icon('heroicon-o-check-circle')

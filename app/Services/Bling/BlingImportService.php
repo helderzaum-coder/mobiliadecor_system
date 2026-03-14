@@ -59,12 +59,20 @@ class BlingImportService
                     continue;
                 }
 
-                // Já existe no staging ou já foi importado como venda?
-                if (PedidoBlingStaging::where('bling_id', $blingId)->exists()
-                    || Venda::where('bling_id', $blingId)->exists()) {
+                // Já existe no staging (pendente/aprovado) ou já foi importado como venda?
+                $existente = PedidoBlingStaging::where('bling_id', $blingId)
+                    ->whereIn('status', ['pendente', 'aprovado'])
+                    ->exists();
+
+                if ($existente || Venda::where('bling_id', $blingId)->exists()) {
                     $resultado['ignorados']++;
                     continue;
                 }
+
+                // Se existia como rejeitado, apagar para reimportar limpo
+                PedidoBlingStaging::where('bling_id', $blingId)
+                    ->where('status', 'rejeitado')
+                    ->delete();
 
                 // Buscar detalhes completos
                 $detalhe = $this->client->getPedido($blingId);
@@ -99,10 +107,7 @@ class BlingImportService
     private function salvarNoStaging(array $pedido): void
     {
         $canal = $this->identificarCanal($pedido);
-        $nf = '';
-        if (!empty($pedido['notaFiscal']['id']) && $pedido['notaFiscal']['id'] > 0) {
-            $nf = (string) $pedido['notaFiscal']['id'];
-        }
+        $nfId = $pedido['notaFiscal']['id'] ?? 0; // ID da NF-e no Bling (usado para busca direta /nfe/{id})
 
         // Extrair itens simplificados
         $itens = [];
@@ -134,7 +139,7 @@ class BlingImportService
             $pedido['data'] ?? now()->toDateString()
         );
 
-        PedidoBlingStaging::create([
+        $staging = PedidoBlingStaging::create([
             'bling_id' => $pedido['id'],
             'bling_account' => $this->accountKey,
             'numero_pedido' => $pedido['numero'] ?? 0,
@@ -152,7 +157,7 @@ class BlingImportService
             'percentual_imposto' => $impostoData['percentual'],
             'valor_imposto' => $impostoData['valor_imposto'],
             'canal' => $canal,
-            'nota_fiscal' => $nf,
+            'nota_fiscal' => $nfId ?: '',
             'situacao_id' => $pedido['situacao']['id'] ?? null,
             'observacoes' => $pedido['observacoes'] ?? '',
             'itens' => $itens,
@@ -160,18 +165,169 @@ class BlingImportService
             'dados_originais' => $pedido,
             'status' => 'pendente',
         ]);
+
     }
+
+    /**
+     * Busca NF-e vinculada a um pedido do staging (chamado pelo botão na UI)
+     * Usa o ID da NF-e salvo em nota_fiscal para busca direta /nfe/{id}
+     */
+    public static function buscarNfePorPedido(PedidoBlingStaging $staging): bool
+    {
+        // Tentar pegar o ID da NF-e do campo nota_fiscal ou dos dados_originais
+        $nfeId = $staging->nota_fiscal;
+
+        if (!$nfeId || $nfeId == '0') {
+            $nfeId = $staging->dados_originais['notaFiscal']['id'] ?? 0;
+        }
+
+        if (!$nfeId || $nfeId == 0) {
+            return false;
+        }
+
+        $client = new BlingClient($staging->bling_account);
+
+        try {
+            $response = $client->getNfe((int) $nfeId);
+
+            if ($response['success']) {
+                $nfe = $response['body']['data'] ?? null;
+
+                if ($nfe) {
+                    $valorNota = (float) ($nfe['valorNota'] ?? 0);
+
+                    // Recalcular imposto: base = valor da NF-e, percentual do mês
+                    $percentual = self::buscarPercentualImposto($staging);
+                    $valorImposto = round($valorNota * ($percentual / 100), 2);
+
+                    $staging->update([
+                        'nota_fiscal' => $nfe['numero'] ?? $staging->nota_fiscal,
+                        'nfe_numero' => $nfe['numero'] ?? '',
+                        'nfe_chave_acesso' => $nfe['chaveAcesso'] ?? '',
+                        'nfe_valor' => $valorNota,
+                        'nfe_xml_url' => $nfe['xml'] ?? '',
+                        'nfe_pdf_url' => $nfe['linkPDF'] ?? '',
+                        'base_imposto' => $valorNota,
+                        'percentual_imposto' => $percentual,
+                        'valor_imposto' => $valorImposto,
+                    ]);
+                    return true;
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning("Bling: Erro ao buscar NF-e {$nfeId} para pedido {$staging->bling_id}", [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return false;
+    }
+
+    /**
+     * Busca o percentual de imposto do mês para a conta do pedido.
+     * Se não existir para o mês do pedido, usa o último mês cadastrado (estimativa).
+     */
+    private static function buscarPercentualImposto(PedidoBlingStaging $staging): float
+    {
+        $cnpjMap = [
+            'primary' => 'Mobilia Decor',
+            'secondary' => 'HES Móveis',
+        ];
+
+        $razaoSocial = $cnpjMap[$staging->bling_account] ?? '';
+        $cnpj = \App\Models\Cnpj::where('razao_social', $razaoSocial)->first();
+
+        if (!$cnpj) {
+            return 0;
+        }
+
+        $data = $staging->data_pedido;
+        $mes = (int) $data->format('m');
+        $ano = (int) $data->format('Y');
+
+        // Buscar percentual do mês exato
+        $imposto = \App\Models\ImpostoMensal::where('id_cnpj', $cnpj->id_cnpj)
+            ->where('mes_referencia', $mes)
+            ->where('ano_referencia', $ano)
+            ->first();
+
+        if ($imposto) {
+            return (float) $imposto->percentual_imposto;
+        }
+
+        // Fallback: último mês cadastrado (estimativa até o escritório fechar)
+        $ultimo = \App\Models\ImpostoMensal::where('id_cnpj', $cnpj->id_cnpj)
+            ->orderByRaw('ano_referencia DESC, mes_referencia DESC')
+            ->first();
+
+        return (float) ($ultimo->percentual_imposto ?? 0);
+    }
+
+    /**
+     * Reprocessa impostos de todos os pedidos pendentes de um mês/ano/conta
+     * Chamado quando o escritório cadastra o percentual real do mês
+     */
+    public static function reprocessarImpostos(string $blingAccount, int $mes, int $ano): array
+    {
+        $cnpjMap = [
+            'primary' => 'Mobilia Decor',
+            'secondary' => 'HES Móveis',
+        ];
+
+        $razaoSocial = $cnpjMap[$blingAccount] ?? '';
+        $cnpj = \App\Models\Cnpj::where('razao_social', $razaoSocial)->first();
+
+        if (!$cnpj) {
+            return ['atualizados' => 0, 'erro' => 'CNPJ não encontrado'];
+        }
+
+        $imposto = \App\Models\ImpostoMensal::where('id_cnpj', $cnpj->id_cnpj)
+            ->where('mes_referencia', $mes)
+            ->where('ano_referencia', $ano)
+            ->first();
+
+        if (!$imposto) {
+            return ['atualizados' => 0, 'erro' => 'Percentual não cadastrado para este mês'];
+        }
+
+        $percentual = (float) $imposto->percentual_imposto;
+
+        // Buscar pedidos do mês/conta que tenham NF-e vinculada
+        $pedidos = PedidoBlingStaging::where('bling_account', $blingAccount)
+            ->whereMonth('data_pedido', $mes)
+            ->whereYear('data_pedido', $ano)
+            ->where('status', 'pendente')
+            ->get();
+
+        $atualizados = 0;
+        foreach ($pedidos as $pedido) {
+            $base = (float) $pedido->nfe_valor ?: (float) $pedido->total_pedido;
+            $valorImposto = round($base * ($percentual / 100), 2);
+
+            $pedido->update([
+                'base_imposto' => $base,
+                'percentual_imposto' => $percentual,
+                'valor_imposto' => $valorImposto,
+            ]);
+            $atualizados++;
+        }
+
+        return ['atualizados' => $atualizados, 'percentual' => $percentual];
+    }
+
 
     private function identificarCanal(array $pedido): string
     {
+        // Prioridade 1: Extrair canal real das observações (Hub Commerceplus)
+        $obs = $pedido['observacoes'] ?? '';
+        if (preg_match('/Via Hub Commerceplus:\s*(\w+)/i', $obs, $matches)) {
+            return ucfirst(strtolower($matches[1]));
+        }
+
+        // Prioridade 2: Intermediador (fallback)
         $intermediador = $pedido['intermediador']['nomeUsuario'] ?? '';
         if (!empty($intermediador)) {
             return ucfirst($intermediador);
-        }
-
-        $obs = $pedido['observacoes'] ?? '';
-        if (preg_match('/Via Hub Commerceplus:\s*(\w+)/i', $obs, $matches)) {
-            return $matches[1];
         }
 
         return 'Direto';

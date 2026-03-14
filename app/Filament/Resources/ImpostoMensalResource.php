@@ -43,9 +43,6 @@ class ImpostoMensalResource extends Resource
                 ->required()
                 ->numeric()
                 ->suffix('%'),
-            Forms\Components\DatePicker::make('data_atualizacao')
-                ->label('Data Atualização')
-                ->required(),
         ]);
     }
 
@@ -57,7 +54,6 @@ class ImpostoMensalResource extends Resource
                 Tables\Columns\TextColumn::make('mes_referencia')->label('Mês'),
                 Tables\Columns\TextColumn::make('ano_referencia')->label('Ano')->sortable(),
                 Tables\Columns\TextColumn::make('percentual_imposto')->label('Imposto (%)')->suffix('%'),
-                Tables\Columns\TextColumn::make('data_atualizacao')->label('Atualização')->date('d/m/Y'),
             ])
             ->defaultSort('ano_referencia', 'desc')
             ->actions([

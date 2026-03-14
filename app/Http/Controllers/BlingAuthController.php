@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BlingToken;
 use App\Services\Bling\BlingOAuthService;
 use Illuminate\Http\Request;
 
@@ -9,6 +10,7 @@ class BlingAuthController extends Controller
 {
     /**
      * Redireciona para autorização OAuth do Bling
+     * Apaga token existente para forçar emissão de novo token com scopes atualizados
      */
     public function authorize(Request $request, string $account)
     {
@@ -17,6 +19,9 @@ class BlingAuthController extends Controller
         if (!in_array($account, $validAccounts)) {
             abort(404, 'Conta não encontrada');
         }
+
+        // Apagar token antigo para forçar reautorização com novos scopes
+        BlingToken::where('account_key', $account)->delete();
 
         $oauth = new BlingOAuthService($account);
 

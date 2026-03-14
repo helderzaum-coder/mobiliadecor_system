@@ -113,4 +113,55 @@ class BlingClient
     {
         return $this->oauth->isAuthorized();
     }
+
+    /**
+     * Busca NF-e pelo ID
+     */
+    public function getNfe(int $id): array
+    {
+        return $this->get("/nfe/{$id}");
+    }
+
+    /**
+     * Busca NF-es com paginação
+     */
+    public function getNfes(array $params = []): array
+    {
+        return $this->get('/nfe', $params);
+    }
+
+    /**
+     * Busca NF-e vinculada a um pedido pelo numeroPedidoLoja
+     */
+    public function getNfePorPedidoLoja(string $numeroPedidoLoja): ?array
+    {
+        $pagina = 1;
+        $limite = 100;
+
+        do {
+            $response = $this->getNfes(['pagina' => $pagina, 'limite' => $limite]);
+
+            if (!$response['success']) {
+                break;
+            }
+
+            $nfes = $response['body']['data'] ?? [];
+
+            foreach ($nfes as $nfeResumo) {
+                // Buscar detalhe da NF-e para ver o numeroPedidoLoja
+                $detalhe = $this->getNfe($nfeResumo['id']);
+
+                if ($detalhe['success']) {
+                    $nfe = $detalhe['body']['data'] ?? null;
+                    if ($nfe && ($nfe['numeroPedidoLoja'] ?? '') === $numeroPedidoLoja) {
+                        return $nfe;
+                    }
+                }
+            }
+
+            $pagina++;
+        } while (count($nfes) >= $limite);
+
+        return null;
+    }
 }

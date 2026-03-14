@@ -15,12 +15,10 @@ class ImpostoMensal extends Model
         'mes_referencia',
         'ano_referencia',
         'percentual_imposto',
-        'data_atualizacao',
     ];
 
     protected $casts = [
         'percentual_imposto' => 'decimal:2',
-        'data_atualizacao' => 'date',
     ];
 
     public function cnpj(): BelongsTo
