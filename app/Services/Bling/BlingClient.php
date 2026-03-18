@@ -58,12 +58,12 @@ class BlingClient
             default => $request->get($url, $query),
         };
 
-        // Se 401 e não é retry, tenta renovar token
+        // Se 401 e não é retry, força renovação do token e tenta novamente
         if ($response->status() === 401 && !$isRetry) {
-            Log::warning("Bling [{$this->accountKey}]: Token expirado (401), renovando...");
-            $newToken = $this->oauth->getAccessToken();
+            Log::warning("Bling [{$this->accountKey}]: HTTP 401 ao chamar {$path}, forçando refresh do token...");
+            $newToken = $this->oauth->forceRefreshAccessToken();
 
-            if ($newToken && $newToken !== $token) {
+            if ($newToken) {
                 return $this->request($method, $path, $query, $body, true);
             }
         }
@@ -118,6 +118,13 @@ class BlingClient
 
         if ($res['success'] && !empty($res['body']['data'])) {
             return $res['body']['data'];
+        }
+
+        if (($res['http_code'] ?? 0) !== 404) {
+            Log::warning("Bling [{$this->accountKey}]: Falha ao buscar produto por ID {$id}", [
+                'http_code' => $res['http_code'] ?? null,
+                'body' => $res['body'] ?? null,
+            ]);
         }
 
         return null;

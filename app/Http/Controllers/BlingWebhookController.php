@@ -30,23 +30,26 @@ class BlingWebhookController extends Controller
         }
 
         $payload = $request->all();
-        $evento  = $payload['event'] ?? null;
-        $data    = $payload['data']  ?? [];
+        $evento  = strtolower((string) ($payload['event'] ?? $payload['tipo'] ?? $payload['type'] ?? ''));
+        $data    = is_array($payload['data'] ?? null) ? $payload['data'] : $payload;
 
         Log::info("BlingWebhook [{$account}]: evento '{$evento}'", ['data' => $data]);
 
         try {
             // Pedido de venda criado ou atualizado
-            if (in_array($evento, ['order.created', 'order.updated'])) {
+            if ($this->isEventoPedido($evento, $data)) {
                 return $this->handlePedido($account, $data);
             }
 
             // Lançamento de estoque criado ou atualizado
-            if (in_array($evento, ['stock.created', 'stock.updated'])) {
+            if ($this->isEventoEstoque($evento, $data)) {
                 return $this->handleEstoque($account, $data);
             }
 
-            Log::info("BlingWebhook [{$account}]: evento '{$evento}' ignorado");
+            Log::info("BlingWebhook [{$account}]: evento '{$evento}' ignorado", [
+                'payload_keys' => array_keys($payload),
+                'data_keys' => is_array($data) ? array_keys($data) : [],
+            ]);
             return response()->json(['status' => 'ignored', 'event' => $evento]);
 
         } catch (\Throwable $e) {
@@ -78,11 +81,21 @@ class BlingWebhookController extends Controller
 
     private function handleEstoque(string $account, array $data): \Illuminate\Http\JsonResponse
     {
-        $produtoId = $data['produto']['id'] ?? null;
-        $operacao  = $data['operacao']      ?? null;   // E=entrada, S=saída, B=balanço
-        $saldo     = $data['saldoFisicoTotal'] ?? null;
+        $produtoId = $data['produto']['id']
+            ?? $data['produtoId']
+            ?? $data['idProduto']
+            ?? null;
+
+        $operacao = strtoupper((string) ($data['operacao'] ?? $data['tipo'] ?? ''));
+
+        $saldo = $data['saldoFisicoTotal']
+            ?? $data['saldoFisico']
+            ?? $data['saldo']
+            ?? ($data['estoque']['saldoFisicoTotal'] ?? null)
+            ?? null;
 
         if (!$produtoId || $saldo === null) {
+            Log::warning("BlingWebhook [{$account}]: dados de estoque incompletos", ['data' => $data]);
             return response()->json(['error' => 'Dados de estoque incompletos'], 422);
         }
 
@@ -108,21 +121,52 @@ class BlingWebhookController extends Controller
 
     private function validarAssinatura(Request $request, string $account): bool
     {
-        $signature = $request->header('X-Bling-Signature-256');
+        $signature = $request->header('X-Bling-Signature-256')
+            ?? $request->header('X-Bling-Signature')
+            ?? $request->header('X-Hub-Signature-256');
 
         // Se não veio assinatura, aceita (ambiente local / testes)
         if (!$signature) {
             return true;
         }
 
-        $clientSecret = $account === 'primary'
-            ? config('bling.primary.client_secret')
-            : config('bling.secondary.client_secret');
+        $clientSecret = config("bling.accounts.{$account}.client_secret");
 
         if (!$clientSecret) return true;
 
-        $expected = 'sha256=' . hash_hmac('sha256', $request->getContent(), $clientSecret);
+        $hash = hash_hmac('sha256', $request->getContent(), $clientSecret);
+        $expected = 'sha256=' . $hash;
 
-        return hash_equals($expected, $signature);
+        return hash_equals($expected, $signature) || hash_equals($hash, $signature);
+    }
+
+    private function isEventoPedido(string $evento, array $data): bool
+    {
+        if (in_array($evento, ['order.created', 'order.updated', 'pedido.created', 'pedido.updated'])) {
+            return true;
+        }
+
+        return isset($data['itens']) || isset($data['pedido']) || isset($data['numeroPedidoLoja']);
+    }
+
+    private function isEventoEstoque(string $evento, array $data): bool
+    {
+        if (in_array($evento, [
+            'stock.created',
+            'stock.updated',
+            'estoque.created',
+            'estoque.updated',
+            'virtual_stock.created',
+            'virtual_stock.updated',
+        ])) {
+            return true;
+        }
+
+        return isset($data['saldoFisicoTotal'])
+            || isset($data['saldoFisico'])
+            || isset($data['saldo'])
+            || isset($data['produtoId'])
+            || isset($data['idProduto'])
+            || isset($data['produto']['id']);
     }
 }

@@ -85,6 +85,21 @@ class BlingOAuthService
         return null;
     }
 
+    /**
+     * Força renovação do token atual usando refresh_token.
+     * Útil quando a API retorna 401 mesmo com token ainda não expirado localmente.
+     */
+    public function forceRefreshAccessToken(): ?string
+    {
+        $token = BlingToken::where('account_key', $this->accountKey)->first();
+
+        if (!$token || !$token->refresh_token) {
+            return null;
+        }
+
+        return $this->refreshAccessToken($token);
+    }
+
     private function refreshAccessToken(BlingToken $token): ?string
     {
         $response = Http::withBasicAuth(

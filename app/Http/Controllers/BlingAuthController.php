@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BlingToken;
 use App\Services\Bling\BlingOAuthService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 class BlingAuthController extends Controller
 {
@@ -35,9 +36,12 @@ class BlingAuthController extends Controller
     {
         $code = $request->get('code');
         $accountKey = $request->get('state');
+        $dashboardRoute = Route::has('filament.helder.pages.dashboard')
+            ? route('filament.helder.pages.dashboard')
+            : url('/');
 
         if (!$code || !$accountKey) {
-            return redirect()->route('filament.helder.pages.dashboard')
+            return redirect($dashboardRoute)
                 ->with('error', 'Autorização cancelada ou inválida.');
         }
 
@@ -45,11 +49,11 @@ class BlingAuthController extends Controller
         $token = $oauth->exchangeCodeForToken($code);
 
         if ($token) {
-            return redirect()->route('filament.helder.pages.dashboard')
+            return redirect($dashboardRoute)
                 ->with('success', "Conta Bling '{$oauth->getAccountName()}' autorizada com sucesso!");
         }
 
-        return redirect()->route('filament.helder.pages.dashboard')
+        return redirect($dashboardRoute)
             ->with('error', 'Erro ao autorizar conta Bling. Verifique os logs.');
     }
 
