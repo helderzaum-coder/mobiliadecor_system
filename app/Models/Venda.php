@@ -38,6 +38,15 @@ class Venda extends Model
         'margem_produto',
         'margem_venda_total',
         'margem_contribuicao',
+        'ml_tipo_anuncio',
+        'ml_tipo_frete',
+        'ml_tem_rebate',
+        'ml_valor_rebate',
+        'ml_sale_fee',
+        'ml_frete_custo',
+        'ml_frete_receita',
+        'ml_order_id',
+        'ml_shipping_id',
     ];
 
     protected $casts = [
@@ -57,6 +66,11 @@ class Venda extends Model
         'margem_produto' => 'decimal:2',
         'margem_venda_total' => 'decimal:2',
         'margem_contribuicao' => 'decimal:2',
+        'ml_tem_rebate' => 'boolean',
+        'ml_valor_rebate' => 'decimal:2',
+        'ml_sale_fee' => 'decimal:2',
+        'ml_frete_custo' => 'decimal:2',
+        'ml_frete_receita' => 'decimal:2',
     ];
 
     public function canal(): BelongsTo

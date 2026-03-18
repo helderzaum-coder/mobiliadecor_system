@@ -4,6 +4,7 @@ namespace App\Services\Bling;
 
 use App\Models\PedidoBlingStaging;
 use App\Models\Venda;
+use App\Services\MercadoLivre\MercadoLivreOrderService;
 use Illuminate\Support\Facades\Log;
 
 class BlingImportService
@@ -109,16 +110,42 @@ class BlingImportService
         $canal = $this->identificarCanal($pedido);
         $nfId = $pedido['notaFiscal']['id'] ?? 0; // ID da NF-e no Bling (usado para busca direta /nfe/{id})
 
-        // Extrair itens simplificados
+        // Extrair dados de envio do transporte.etiqueta
+        $etiqueta = $pedido['transporte']['etiqueta'] ?? [];
+        $destCep = $etiqueta['cep'] ?? null;
+        $destCidade = $etiqueta['municipio'] ?? null;
+        $destUf = $etiqueta['uf'] ?? null;
+        $pesoBruto = (float) ($pedido['transporte']['pesoBruto'] ?? 0);
+
+        // Extrair itens simplificados + buscar dimensões do produto
         $itens = [];
+        $maiorLargura = 0;
+        $maiorAltura = 0;
+        $maiorComprimento = 0;
+
         foreach ($pedido['itens'] ?? [] as $item) {
             $sku = $item['codigo'] ?? '';
             $custo = 0;
 
-            // Buscar custo do produto na API
+            // Buscar custo do produto na API (lista)
             if ($sku) {
                 $produto = $this->client->getProductBySku($sku);
                 $custo = (float) ($produto['precoCusto'] ?? 0);
+
+                // Buscar dimensões via /produtos/{id} (detalhe completo)
+                $produtoId = $produto['id'] ?? null;
+                if ($produtoId) {
+                    $produtoDetalhe = $this->client->getProductById((int) $produtoId);
+                    $dimensoes = $produtoDetalhe['dimensoes'] ?? [];
+                    $largura = (float) ($dimensoes['largura'] ?? 0);
+                    $altura = (float) ($dimensoes['altura'] ?? 0);
+                    $comprimento = (float) ($dimensoes['profundidade'] ?? 0);
+
+                    // Usar a maior dimensão entre todos os itens
+                    $maiorLargura = max($maiorLargura, $largura);
+                    $maiorAltura = max($maiorAltura, $altura);
+                    $maiorComprimento = max($maiorComprimento, $comprimento);
+                }
             }
 
             $itens[] = [
@@ -140,8 +167,11 @@ class BlingImportService
             ];
         }
 
-        // Pré-calcular comissão e imposto
-        $comissaoData = $this->preCalcularComissao($canal, $itens);
+        // Pré-buscar dados do Mercado Livre (tipo anúncio, frete, rebate)
+        $mlDados = $this->buscarDadosMLPreCalculo($canal, $pedido['numeroLoja'] ?? null, $pedido['numero'] ?? null);
+
+        // Pré-calcular comissão e imposto (com dados ML se disponíveis)
+        $comissaoData = $this->preCalcularComissao($canal, $itens, $mlDados['ml_tipo_anuncio'] ?? null, $mlDados['ml_tipo_frete'] ?? null);
         $impostoData = $this->preCalcularImposto(
             $canal,
             (float) ($pedido['total'] ?? 0),
@@ -167,6 +197,22 @@ class BlingImportService
             'percentual_imposto' => $impostoData['percentual'],
             'valor_imposto' => $impostoData['valor_imposto'],
             'canal' => $canal,
+            'ml_tipo_anuncio' => $mlDados['ml_tipo_anuncio'] ?? null,
+            'ml_tipo_frete' => $mlDados['ml_tipo_frete'] ?? null,
+            'ml_tem_rebate' => $mlDados['ml_tem_rebate'] ?? false,
+            'ml_valor_rebate' => $mlDados['ml_valor_rebate'] ?? 0,
+            'ml_sale_fee' => $mlDados['ml_sale_fee'] ?? 0,
+            'ml_frete_custo' => $mlDados['ml_frete_custo'] ?? 0,
+            'ml_frete_receita' => $mlDados['ml_frete_receita'] ?? 0,
+            'ml_order_id' => $mlDados['ml_order_id'] ?? null,
+            'ml_shipping_id' => $mlDados['ml_shipping_id'] ?? null,
+            'dest_cep' => $destCep,
+            'dest_cidade' => $destCidade,
+            'dest_uf' => $destUf,
+            'peso_bruto' => $pesoBruto > 0 ? $pesoBruto : null,
+            'embalagem_largura' => $maiorLargura > 0 ? $maiorLargura : null,
+            'embalagem_altura' => $maiorAltura > 0 ? $maiorAltura : null,
+            'embalagem_comprimento' => $maiorComprimento > 0 ? $maiorComprimento : null,
             'nota_fiscal' => $nfId ?: '',
             'situacao_id' => $pedido['situacao']['id'] ?? null,
             'observacoes' => $pedido['observacoes'] ?? '',
@@ -175,7 +221,63 @@ class BlingImportService
             'dados_originais' => $pedido,
             'status' => 'pendente',
         ]);
+    }
 
+    /**
+     * Busca dados do ML antes do cálculo de comissão
+     */
+    private function buscarDadosMLPreCalculo(string $canal, ?string $numeroLoja, ?string $numeroPedido): array
+    {
+        $vazio = [
+            'ml_tipo_anuncio' => null,
+            'ml_tipo_frete' => null,
+            'ml_tem_rebate' => false,
+            'ml_valor_rebate' => 0,
+            'ml_sale_fee' => 0,
+            'ml_frete_custo' => 0,
+            'ml_frete_receita' => 0,
+            'ml_order_id' => null,
+            'ml_shipping_id' => null,
+        ];
+
+        if (!str_contains(strtolower($canal), 'mercado') && !str_contains(strtolower($canal), 'meli') && $this->accountKey !== 'secondary') {
+            return $vazio;
+        }
+
+        $orderId = $numeroLoja ?? $numeroPedido;
+        if (!$orderId) {
+            return $vazio;
+        }
+
+        try {
+            $mlAccount = match ($this->accountKey) {
+                'primary' => 'primary',
+                'secondary' => 'secondary',
+                default => 'primary',
+            };
+
+            $mlService = new MercadoLivreOrderService($mlAccount);
+            $dados = $mlService->buscarDadosPedido((string) $orderId);
+
+            if ($dados) {
+                Log::info("ML: Dados pré-cálculo para pedido {$orderId}", $dados);
+                return [
+                    'ml_tipo_anuncio' => $dados['tipo_anuncio'],
+                    'ml_tipo_frete' => $dados['tipo_frete'],
+                    'ml_tem_rebate' => $dados['tem_rebate'],
+                    'ml_valor_rebate' => $dados['valor_rebate'],
+                    'ml_sale_fee' => $dados['sale_fee'],
+                    'ml_frete_custo' => $dados['frete_ml_custo'],
+                    'ml_frete_receita' => $dados['frete_ml_receita'],
+                    'ml_order_id' => $dados['order_id'],
+                    'ml_shipping_id' => $dados['shipping_id'],
+                ];
+            }
+        } catch (\Exception $e) {
+            Log::warning("ML: Erro ao buscar dados pré-cálculo para pedido {$orderId}: " . $e->getMessage());
+        }
+
+        return $vazio;
     }
 
     /**
@@ -360,7 +462,7 @@ class BlingImportService
         return 'Direto';
     }
 
-    private function preCalcularComissao(string $canalNome, array $itens): array
+    private function preCalcularComissao(string $canalNome, array $itens, ?string $mlTipoAnuncio = null, ?string $mlTipoFrete = null): array
     {
         $canal = \App\Models\CanalVenda::where('nome_canal', $canalNome)->first();
 
@@ -368,7 +470,7 @@ class BlingImportService
             return ['comissao_total' => 0, 'subsidio_pix_total' => 0];
         }
 
-        return \App\Services\CalculoComissaoService::calcular($canal->id_canal, $itens);
+        return \App\Services\CalculoComissaoService::calcular($canal->id_canal, $itens, $mlTipoAnuncio, $mlTipoFrete);
     }
 
     private function preCalcularImposto(string $canalNome, float $total, float $frete, string $data): array

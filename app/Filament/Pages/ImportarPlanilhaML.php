@@ -2,45 +2,57 @@
 
 namespace App\Filament\Pages;
 
-use App\Services\ShopeePlanilhaService;
+use App\Services\MercadoLivrePlanilhaService;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
-class ImportarPlanilhaShopee extends Page implements HasForms
+class ImportarPlanilhaML extends Page implements HasForms
 {
     use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-arrow-up';
     protected static ?string $navigationGroup = 'Integrações';
-    protected static ?string $navigationLabel = 'Planilha Shopee';
-    protected static ?string $title = 'Importar Planilha Shopee';
-    protected static string $view = 'filament.pages.importar-planilha-shopee';
+    protected static ?string $navigationLabel = 'Planilha Mercado Livre';
+    protected static ?string $title = 'Importar Planilha Mercado Livre';
+    protected static string $view = 'filament.pages.importar-planilha-ml';
 
     public ?array $data = [];
 
     public function mount(): void
     {
-        $this->form->fill();
+        $this->form->fill(['bling_account' => 'primary']);
     }
 
     public function form(Form $form): Form
     {
         return $form->schema([
+            Forms\Components\Select::make('bling_account')
+                ->label('Conta Mercado Livre')
+                ->options([
+                    'primary'   => 'Mobilia Decor',
+                    'secondary' => 'HES Móveis',
+                ])
+                ->required()
+                ->default('primary'),
             Forms\Components\FileUpload::make('arquivo')
-                ->label('Planilha Shopee (.xlsx, .xls, .csv)')
+                ->label('Planilha ML (.xlsx, .xls, .csv)')
                 ->acceptedFileTypes([
                     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                     'application/vnd.ms-excel',
                     'text/csv',
+                    'application/octet-stream',
+                    '.xlsx',
+                    '.xls',
+                    '.csv',
                 ])
                 ->required()
-                ->directory('shopee-planilhas')
-                ->preserveFilenames(),
+                ->directory('ml-planilhas')
+                ->preserveFilenames()
+                ->openable(),
         ])->statePath('data');
     }
 
@@ -56,6 +68,7 @@ class ImportarPlanilhaShopee extends Page implements HasForms
         }
 
         $arquivo = $data['arquivo'] ?? null;
+        $blingAccount = $data['bling_account'] ?? 'primary';
 
         if (!$arquivo) {
             Notification::make()->title('Selecione um arquivo.')->danger()->send();
@@ -65,7 +78,6 @@ class ImportarPlanilhaShopee extends Page implements HasForms
         $filePath = storage_path('app/public/' . $arquivo);
 
         if (!file_exists($filePath)) {
-            // Tentar caminho alternativo do Livewire
             $filePath = storage_path('app/' . $arquivo);
         }
 
@@ -74,9 +86,12 @@ class ImportarPlanilhaShopee extends Page implements HasForms
             return;
         }
 
-        $resultado = ShopeePlanilhaService::processar($filePath);
+        $resultado = MercadoLivrePlanilhaService::processar($filePath, $blingAccount);
 
-        $msg = "Processados: {$resultado['processados']}";
+        $msg = "Com rebate: {$resultado['processados']}";
+        if ($resultado['sem_rebate'] > 0) {
+            $msg .= " | Sem rebate: {$resultado['sem_rebate']}";
+        }
         if ($resultado['nao_encontrados'] > 0) {
             $msg .= " | Não encontrados: {$resultado['nao_encontrados']}";
         }
@@ -84,13 +99,14 @@ class ImportarPlanilhaShopee extends Page implements HasForms
             $msg .= " | Erros: {$resultado['erros']}";
         }
 
-        if ($resultado['processados'] > 0) {
+        if ($resultado['processados'] > 0 || $resultado['sem_rebate'] > 0) {
             Notification::make()->title($msg)->success()->send();
         } else {
             Notification::make()->title($msg)->warning()->send();
         }
 
-        $this->form->fill();
+        $this->data = [];
+        $this->form->fill(['bling_account' => 'primary', 'arquivo' => null]);
     }
 
     public static function canAccess(): bool

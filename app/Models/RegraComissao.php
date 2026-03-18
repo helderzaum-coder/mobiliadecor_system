@@ -12,6 +12,8 @@ class RegraComissao extends Model
     protected $fillable = [
         'id_canal',
         'nome_regra',
+        'ml_tipo_anuncio',
+        'ml_tipo_frete',
         'descricao',
         'percentual',
         'valor_fixo',

@@ -12,14 +12,38 @@ class CalculoComissaoService
      *
      * @param int $canalId ID do canal de venda
      * @param array $itens Array de itens [['valor' => 100, 'quantidade' => 1], ...]
+     * @param string|null $mlTipoAnuncio Tipo de anúncio ML (Clássico/Premium)
+     * @param string|null $mlTipoFrete Tipo de frete ML (ME1/ME2/FULL)
      * @return array ['comissao_total', 'subsidio_pix_total', 'detalhes' => [...]]
      */
-    public static function calcular(int $canalId, array $itens): array
+    public static function calcular(int $canalId, array $itens, ?string $mlTipoAnuncio = null, ?string $mlTipoFrete = null): array
     {
-        $regras = RegraComissao::where('id_canal', $canalId)
+        $query = RegraComissao::where('id_canal', $canalId)
             ->where('ativo', true)
-            ->orderBy('faixa_valor_min', 'asc')
-            ->get();
+            ->orderBy('faixa_valor_min', 'asc');
+
+        // Filtrar por tipo de anúncio ML se informado
+        if ($mlTipoAnuncio) {
+            $query->where(function ($q) use ($mlTipoAnuncio) {
+                $q->where('ml_tipo_anuncio', $mlTipoAnuncio)
+                  ->orWhereNull('ml_tipo_anuncio');
+            });
+        }
+
+        // Filtrar por tipo de frete ML se informado
+        if ($mlTipoFrete) {
+            $query->where(function ($q) use ($mlTipoFrete) {
+                $q->where('ml_tipo_frete', $mlTipoFrete)
+                  ->orWhereNull('ml_tipo_frete');
+            });
+        }
+
+        $regras = $query->get();
+
+        // Priorizar regras mais específicas (com ml_tipo_anuncio e ml_tipo_frete preenchidos)
+        $regras = $regras->sortByDesc(function ($regra) {
+            return (int) !is_null($regra->ml_tipo_anuncio) + (int) !is_null($regra->ml_tipo_frete);
+        });
 
         $comissaoTotal = 0;
         $subsidioPixTotal = 0;

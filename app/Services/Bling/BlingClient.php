@@ -109,6 +109,20 @@ class BlingClient
         return null;
     }
 
+    /**
+     * Busca produto pelo ID (retorna dimensões completas)
+     */
+    public function getProductById(int $id): ?array
+    {
+        $res = $this->get("/produtos/{$id}");
+
+        if ($res['success'] && !empty($res['body']['data'])) {
+            return $res['body']['data'];
+        }
+
+        return null;
+    }
+
     public function isAuthorized(): bool
     {
         return $this->oauth->isAuthorized();

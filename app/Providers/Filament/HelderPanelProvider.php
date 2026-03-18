@@ -30,6 +30,15 @@ class HelderPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
+            ->renderHook(
+                'panels::head.end',
+                fn () => '<style>'
+                    /* Scroll horizontal + vertical apenas na tabela, não no container de filtros */
+                    . '.fi-ta-table-wrapper { overflow-x: auto; max-height: calc(100vh - 320px); overflow-y: auto; }'
+                    /* Thead sticky dentro do scroll */
+                    . '.fi-ta-table-wrapper thead { position: sticky; top: 0; z-index: 10; background: rgb(var(--gray-900)); }'
+                    . '</style>'
+            )
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([

@@ -94,18 +94,6 @@ class VendaResource extends Resource
                     ->label('Subtotal')->money('BRL'),
                 Tables\Columns\TextColumn::make('custo_produtos')
                     ->label('Custo Prod.')->money('BRL'),
-                Tables\Columns\TextColumn::make('valor_frete_cliente')
-                    ->label('Frete')->money('BRL'),
-                Tables\Columns\TextColumn::make('valor_frete_transportadora')
-                    ->label('Frete Pago')->money('BRL'),
-                Tables\Columns\TextColumn::make('margem_frete')
-                    ->label('Margem Frete')->money('BRL')
-                    ->color(fn ($state) => $state >= 0 ? 'success' : 'danger'),
-                Tables\Columns\TextColumn::make('margem_frete_pct')
-                    ->label('Margem Frete %')
-                    ->getStateUsing(fn (Venda $r) => $r->valor_frete_cliente > 0
-                        ? round(($r->margem_frete / $r->valor_frete_cliente) * 100, 1) . '%'
-                        : '-'),
                 Tables\Columns\TextColumn::make('comissao')
                     ->label('Comissão')->money('BRL'),
                 Tables\Columns\TextColumn::make('valor_imposto')
@@ -118,14 +106,26 @@ class VendaResource extends Resource
                     ->getStateUsing(fn (Venda $r) => $r->total_produtos > 0
                         ? round(($r->margem_produto / $r->total_produtos) * 100, 1) . '%'
                         : '-'),
+                Tables\Columns\TextColumn::make('valor_frete_cliente')
+                    ->label('Frete')->money('BRL'),
+                Tables\Columns\TextColumn::make('valor_frete_transportadora')
+                    ->label('Frete Pago')->money('BRL'),
+                Tables\Columns\TextColumn::make('margem_frete')
+                    ->label('Margem Frete')->money('BRL')
+                    ->color(fn ($state) => $state >= 0 ? 'success' : 'danger'),
+                Tables\Columns\TextColumn::make('margem_frete_pct')
+                    ->label('Margem Frete %')
+                    ->getStateUsing(fn (Venda $r) => $r->valor_frete_cliente > 0
+                        ? round(($r->margem_frete / $r->valor_frete_cliente) * 100, 1) . '%'
+                        : '-'),
+                Tables\Columns\TextColumn::make('valor_total_venda')
+                    ->label('Total')->money('BRL'),
                 Tables\Columns\TextColumn::make('margem_venda_total')
                     ->label('Lucro Final')->money('BRL')
                     ->color(fn ($state) => $state >= 0 ? 'success' : 'danger'),
                 Tables\Columns\TextColumn::make('margem_contribuicao')
                     ->label('Lucro %')->suffix('%')
                     ->color(fn ($state) => $state >= 0 ? 'success' : 'danger'),
-                Tables\Columns\IconColumn::make('frete_pago')
-                    ->label('Frete Pago')->boolean(),
             ])
             ->defaultSort('data_venda', 'desc')
             ->filters([

@@ -6,6 +6,8 @@ use App\Filament\Resources\PedidoBlingStagingResource\Pages;
 use App\Models\PedidoBlingStaging;
 use App\Services\Bling\BlingImportService;
 use App\Services\AprovacaoVendaService;
+use App\Services\CotacaoFreteService;
+use App\Services\CotacaoWhatsappService;
 use App\Services\CteService;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -13,6 +15,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 
 class PedidoBlingStagingResource extends Resource
 {
@@ -109,6 +112,73 @@ class PedidoBlingStagingResource extends Resource
                     ->prefix('R$'),
             ])->columns(3),
 
+            Forms\Components\Section::make('Mercado Livre')->schema([
+                Forms\Components\TextInput::make('ml_tipo_anuncio')
+                    ->label('Tipo Anúncio')
+                    ->disabled(),
+                Forms\Components\TextInput::make('ml_tipo_frete')
+                    ->label('Tipo Frete')
+                    ->disabled(),
+                Forms\Components\TextInput::make('ml_sale_fee')
+                    ->label('Comissão ML (sale_fee)')
+                    ->numeric()
+                    ->prefix('R$')
+                    ->disabled()
+                    ->helperText('Comissão real cobrada pelo ML'),
+                Forms\Components\TextInput::make('ml_frete_custo')
+                    ->label('Frete ML Custo')
+                    ->numeric()
+                    ->prefix('R$')
+                    ->disabled()
+                    ->helperText('Tarifa de envio cobrada pelo ML (list_cost)'),
+                Forms\Components\TextInput::make('ml_frete_receita')
+                    ->label('Frete ML Receita')
+                    ->numeric()
+                    ->prefix('R$')
+                    ->disabled()
+                    ->helperText('Valor pago pelo comprador (cost)'),
+                Forms\Components\Toggle::make('ml_tem_rebate')
+                    ->label('Tem Rebate'),
+                Forms\Components\TextInput::make('ml_valor_rebate')
+                    ->label('Valor Rebate')
+                    ->numeric()
+                    ->prefix('R$')
+                    ->helperText('Informe o valor do rebate/desconto do ML'),
+            ])->columns(3)
+            ->visible(fn ($record) => $record && str_contains(strtolower($record->canal ?? ''), 'mercado')),
+
+            Forms\Components\Section::make('Dados de Envio')->schema([
+                Forms\Components\TextInput::make('dest_cep')
+                    ->label('CEP Destino')
+                    ->disabled(),
+                Forms\Components\TextInput::make('dest_cidade')
+                    ->label('Cidade')
+                    ->disabled(),
+                Forms\Components\TextInput::make('dest_uf')
+                    ->label('UF')
+                    ->disabled(),
+                Forms\Components\TextInput::make('peso_bruto')
+                    ->label('Peso Bruto (kg)')
+                    ->numeric()
+                    ->suffix('kg')
+                    ->disabled(),
+                Forms\Components\TextInput::make('embalagem_largura')
+                    ->label('Largura (cm)')
+                    ->numeric()
+                    ->suffix('cm')
+                    ->disabled(),
+                Forms\Components\TextInput::make('embalagem_altura')
+                    ->label('Altura (cm)')
+                    ->numeric()
+                    ->suffix('cm')
+                    ->disabled(),
+                Forms\Components\TextInput::make('embalagem_comprimento')
+                    ->label('Comprimento (cm)')
+                    ->numeric()
+                    ->suffix('cm')
+                    ->disabled(),
+            ])->columns(4),
+
             Forms\Components\Section::make('Itens do Pedido')->schema([
                 Forms\Components\Repeater::make('itens')
                     ->label('')
@@ -136,6 +206,22 @@ class PedidoBlingStagingResource extends Resource
                 Tables\Columns\TextColumn::make('numero_pedido')->label('Pedido')->searchable(),
                 Tables\Columns\TextColumn::make('numero_loja')->label('Pedido Canal')->searchable(),
                 Tables\Columns\TextColumn::make('canal')->label('Canal'),
+                Tables\Columns\TextColumn::make('ml_tipo_anuncio')->label('Tipo Anúncio')
+                    ->placeholder('-'),
+                Tables\Columns\TextColumn::make('ml_tipo_frete')->label('Frete ML')
+                    ->placeholder('-'),
+                Tables\Columns\IconColumn::make('ml_tem_rebate')->label('Rebate')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-minus-circle')
+                    ->trueColor('success')
+                    ->falseColor('gray')
+                    ->visible(fn () => true),
+                Tables\Columns\TextColumn::make('ml_valor_rebate')->label('Vl. Rebate')
+                    ->money('BRL')
+                    ->placeholder('-')
+                    ->visible(fn () => true)
+                    ->color(fn ($state) => $state > 0 ? 'success' : 'gray'),
                 Tables\Columns\TextColumn::make('cliente_nome')->label('Cliente')->limit(30)->searchable(),
                 Tables\Columns\TextColumn::make('data_pedido')->label('Data')->date('d/m/Y')->sortable(),
                 Tables\Columns\TextColumn::make('total_pedido')->label('Total')->money('BRL'),
@@ -175,7 +261,95 @@ class PedidoBlingStagingResource extends Resource
                         'primary' => 'Mobilia Decor',
                         'secondary' => 'HES Móveis',
                     ]),
+                Tables\Filters\SelectFilter::make('canal')
+                    ->label('Canal')
+                    ->options(fn () => \App\Models\PedidoBlingStaging::distinct()
+                        ->orderBy('canal')
+                        ->pluck('canal', 'canal')
+                        ->toArray()
+                    )
+                    ->searchable(),
+                Tables\Filters\Filter::make('periodo')
+                    ->form([
+                        Forms\Components\Select::make('periodo_rapido')
+                            ->label('Período')
+                            ->options([
+                                'hoje'             => 'Hoje',
+                                'esta_semana'      => 'Esta semana',
+                                'semana_passada'   => 'Semana passada',
+                                'este_mes'         => 'Este mês',
+                                'mes_passado'      => 'Mês passado',
+                                'selecionar_mes'   => 'Selecionar mês',
+                                'customizado'      => 'Período customizado',
+                            ])
+                            ->reactive()
+                            ->placeholder('Selecione um período'),
+                        Forms\Components\Select::make('mes_selecionado')
+                            ->label('Mês')
+                            ->options(function () {
+                                $options = [];
+                                for ($i = 0; $i < 12; $i++) {
+                                    $d = now()->subMonths($i)->startOfMonth();
+                                    $options[$d->format('Y-m')] = ucfirst($d->locale('pt_BR')->isoFormat('MMMM [de] YYYY'));
+                                }
+                                return $options;
+                            })
+                            ->visible(fn ($get) => $get('periodo_rapido') === 'selecionar_mes'),
+                        Forms\Components\DatePicker::make('data_inicio')
+                            ->label('De')
+                            ->displayFormat('d/m/Y')
+                            ->visible(fn ($get) => $get('periodo_rapido') === 'customizado'),
+                        Forms\Components\DatePicker::make('data_fim')
+                            ->label('Até')
+                            ->displayFormat('d/m/Y')
+                            ->visible(fn ($get) => $get('periodo_rapido') === 'customizado'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        $periodo = $data['periodo_rapido'] ?? null;
+                        if (!$periodo) return $query;
+
+                        return match ($periodo) {
+                            'hoje' => $query->whereDate('data_pedido', today()),
+                            'esta_semana' => $query->whereBetween('data_pedido', [
+                                now()->startOfWeek(), now()->endOfWeek(),
+                            ]),
+                            'semana_passada' => $query->whereBetween('data_pedido', [
+                                now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek(),
+                            ]),
+                            'este_mes' => $query->whereBetween('data_pedido', [
+                                now()->startOfMonth(), now()->endOfMonth(),
+                            ]),
+                            'mes_passado' => $query->whereBetween('data_pedido', [
+                                now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth(),
+                            ]),
+                            'selecionar_mes' => $data['mes_selecionado']
+                                ? $query->whereBetween('data_pedido', [
+                                    now()->createFromFormat('Y-m', $data['mes_selecionado'])->startOfMonth(),
+                                    now()->createFromFormat('Y-m', $data['mes_selecionado'])->endOfMonth(),
+                                ])
+                                : $query,
+                            'customizado' => $query
+                                ->when($data['data_inicio'], fn ($q) => $q->whereDate('data_pedido', '>=', $data['data_inicio']))
+                                ->when($data['data_fim'],    fn ($q) => $q->whereDate('data_pedido', '<=', $data['data_fim'])),
+                            default => $query,
+                        };
+                    })
+                    ->indicateUsing(function (array $data) {
+                        $periodo = $data['periodo_rapido'] ?? null;
+                        if (!$periodo) return null;
+                        return match ($periodo) {
+                            'hoje'           => 'Hoje',
+                            'esta_semana'    => 'Esta semana',
+                            'semana_passada' => 'Semana passada',
+                            'este_mes'       => 'Este mês',
+                            'mes_passado'    => 'Mês passado',
+                            'selecionar_mes' => $data['mes_selecionado'] ? 'Mês: ' . $data['mes_selecionado'] : 'Mês selecionado',
+                            'customizado'    => trim(($data['data_inicio'] ?? '') . ' → ' . ($data['data_fim'] ?? '')),
+                            default          => null,
+                        };
+                    }),
             ])
+            ->filtersFormColumns(3)
             ->actions([
                 Tables\Actions\EditAction::make()->label('Revisar'),
                 Tables\Actions\Action::make('buscar_nfe')
@@ -208,6 +382,113 @@ class PedidoBlingStagingResource extends Resource
                         }
                     })
                     ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente' && !empty($record->nfe_chave_acesso) && (float) $record->custo_frete == 0),
+                Tables\Actions\Action::make('cotar_frete')
+                    ->label('Cotar Frete')
+                    ->icon('heroicon-o-calculator')
+                    ->color('warning')
+                    ->modalHeading('Cotação de Frete')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fechar')
+                    ->modalContent(function (PedidoBlingStaging $record) {
+                        if (!$record->dest_uf || !$record->dest_cep || !$record->peso_bruto) {
+                            return new HtmlString('<p class="text-sm text-danger-500">Dados de envio incompletos (UF, CEP ou peso). Reimporte o pedido.</p>');
+                        }
+
+                        $valorNf = (float) ($record->nfe_valor ?: $record->total_pedido);
+                        $cotacoes = CotacaoFreteService::cotar(
+                            $record->dest_uf,
+                            $record->dest_cep,
+                            (float) $record->peso_bruto,
+                            $valorNf,
+                            $record->dest_cidade
+                        );
+
+                        if (empty($cotacoes)) {
+                            return new HtmlString('<p class="text-sm text-warning-500">Nenhuma transportadora encontrada para este destino/peso.</p>');
+                        }
+
+                        $html = '<div class="text-xs text-gray-400 mb-3">'
+                            . "Destino: {$record->dest_cidade}/{$record->dest_uf} - CEP {$record->dest_cep} | "
+                            . "Peso: {$record->peso_bruto}kg | NF: R$ " . number_format($valorNf, 2, ',', '.')
+                            . '</div>';
+
+                        $html .= '<table class="w-full text-sm border-collapse">';
+                        $html .= '<thead><tr class="border-b border-gray-600">'
+                            . '<th class="text-left p-2">Transportadora</th>'
+                            . '<th class="text-left p-2">Região</th>'
+                            . '<th class="text-right p-2">Frete</th>'
+                            . '<th class="text-right p-2">Despacho</th>'
+                            . '<th class="text-right p-2">Pedágio</th>'
+                            . '<th class="text-right p-2">ADV</th>'
+                            . '<th class="text-right p-2">GRIS</th>'
+                            . '<th class="text-right p-2">Taxas</th>'
+                            . '<th class="text-right p-2 font-bold">Total</th>'
+                            . '</tr></thead><tbody>';
+
+                        foreach ($cotacoes as $c) {
+                            $taxasInfo = '';
+                            foreach ($c['taxas_especiais'] as $t) {
+                                $taxasInfo .= $t['tipo'] . ': R$ ' . number_format($t['valor'], 2, ',', '.') . ' ';
+                            }
+
+                            $html .= '<tr class="border-b border-gray-700 hover:bg-gray-800">'
+                                . '<td class="p-2">' . e($c['nome']) . '</td>'
+                                . '<td class="p-2">' . e($c['regiao']) . ' / ' . e($c['uf_faixa']) . '</td>'
+                                . '<td class="text-right p-2">R$ ' . number_format($c['frete_peso'], 2, ',', '.') . '</td>'
+                                . '<td class="text-right p-2">R$ ' . number_format($c['despacho'], 2, ',', '.') . '</td>'
+                                . '<td class="text-right p-2">R$ ' . number_format($c['pedagio'], 2, ',', '.') . '</td>'
+                                . '<td class="text-right p-2">R$ ' . number_format($c['advalorem'], 2, ',', '.') . '</td>'
+                                . '<td class="text-right p-2">R$ ' . number_format($c['gris'], 2, ',', '.') . '</td>'
+                                . '<td class="text-right p-2" title="' . e($taxasInfo) . '">R$ ' . number_format($c['taxas_especiais_total'], 2, ',', '.') . '</td>'
+                                . '<td class="text-right p-2 font-bold">R$ ' . number_format($c['total'], 2, ',', '.') . '</td>'
+                                . '</tr>';
+                        }
+
+                        $html .= '</tbody></table>';
+                        $html .= '<p class="text-xs text-gray-500 mt-3">Selecione uma cotação usando o botão "Aplicar" na ação individual do pedido, ou edite o custo de frete manualmente.</p>';
+
+                        return new HtmlString($html);
+                    })
+                    ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente' && $record->dest_uf && $record->dest_cep && $record->peso_bruto),
+                Tables\Actions\Action::make('aplicar_cotacao')
+                    ->label('Aplicar Frete')
+                    ->icon('heroicon-o-check')
+                    ->color('warning')
+                    ->form([
+                        Forms\Components\Select::make('id_transportadora')
+                            ->label('Transportadora')
+                            ->options(function (PedidoBlingStaging $record) {
+                                if (!$record->dest_uf || !$record->dest_cep || !$record->peso_bruto) {
+                                    return [];
+                                }
+                                $valorNf = (float) ($record->nfe_valor ?: $record->total_pedido);
+                                $cotacoes = CotacaoFreteService::cotar(
+                                    $record->dest_uf, $record->dest_cep,
+                                    (float) $record->peso_bruto, $valorNf, $record->dest_cidade
+                                );
+                                $options = [];
+                                foreach ($cotacoes as $c) {
+                                    $options[$c['id_transportadora']] = $c['nome'] . ' - R$ ' . number_format($c['total'], 2, ',', '.') . ' (' . $c['uf_faixa'] . ' ' . $c['regiao'] . ')';
+                                }
+                                return $options;
+                            })
+                            ->required(),
+                    ])
+                    ->action(function (PedidoBlingStaging $record, array $data) {
+                        $valorNf = (float) ($record->nfe_valor ?: $record->total_pedido);
+                        $cotacoes = CotacaoFreteService::cotar(
+                            $record->dest_uf, $record->dest_cep,
+                            (float) $record->peso_bruto, $valorNf, $record->dest_cidade
+                        );
+                        $selecionada = collect($cotacoes)->firstWhere('id_transportadora', (int) $data['id_transportadora']);
+                        if ($selecionada) {
+                            $record->update(['custo_frete' => $selecionada['total']]);
+                            Notification::make()
+                                ->title("Frete aplicado: {$selecionada['nome']} - R$ " . number_format($selecionada['total'], 2, ',', '.'))
+                                ->success()->send();
+                        }
+                    })
+                    ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente' && $record->dest_uf && $record->dest_cep && $record->peso_bruto),
                 Tables\Actions\Action::make('aprovar')
                     ->label('Aprovar')
                     ->icon('heroicon-o-check-circle')
@@ -229,6 +510,64 @@ class PedidoBlingStagingResource extends Resource
                     ->requiresConfirmation()
                     ->action(fn (PedidoBlingStaging $record) => $record->update(['status' => 'rejeitado']))
                     ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente'),
+
+                Tables\Actions\Action::make('cotacao_whatsapp')
+                    ->label('Cotação WA')
+                    ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                    ->color('success')
+                    ->modalHeading('Cotação para WhatsApp')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fechar')
+                    ->modalContent(function (PedidoBlingStaging $record) {
+                        $resultado = CotacaoWhatsappService::gerar($record);
+
+                        if ($resultado['erro']) {
+                            return new HtmlString('<p class="text-sm text-danger-500">' . e($resultado['erro']) . '</p>');
+                        }
+
+                        $tipoBadge = match($resultado['tipo_produto']) {
+                            'kit'    => '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Kit</span>',
+                            'misto'  => '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Misto</span>',
+                            default  => '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">Simples</span>',
+                        };
+
+                        // Detalhes dos itens
+                        $itensHtml = '<table class="w-full text-xs mt-3 mb-4 border-collapse">';
+                        $itensHtml .= '<thead><tr class="border-b border-gray-600 text-gray-400">'
+                            . '<th class="text-left p-1">SKU</th>'
+                            . '<th class="text-left p-1">Descrição</th>'
+                            . '<th class="text-center p-1">Tipo</th>'
+                            . '<th class="text-center p-1">Qtd</th>'
+                            . '<th class="text-center p-1">Vol/un</th>'
+                            . '<th class="text-center p-1">Total Vol</th>'
+                            . '</tr></thead><tbody>';
+                        foreach ($resultado['itens_detalhes'] as $item) {
+                            $aviso = isset($item['aviso']) ? ' <span class="text-warning-400">⚠ ' . e($item['aviso']) . '</span>' : '';
+                            $itensHtml .= '<tr class="border-b border-gray-700">'
+                                . '<td class="p-1 font-mono">' . e($item['sku']) . '</td>'
+                                . '<td class="p-1">' . e($item['descricao']) . $aviso . '</td>'
+                                . '<td class="p-1 text-center capitalize">' . e($item['tipo']) . '</td>'
+                                . '<td class="p-1 text-center">' . $item['quantidade'] . '</td>'
+                                . '<td class="p-1 text-center">' . $item['volumes_unitario'] . '</td>'
+                                . '<td class="p-1 text-center font-medium">' . ($item['volumes_unitario'] * $item['quantidade']) . '</td>'
+                                . '</tr>';
+                        }
+                        $itensHtml .= '</tbody></table>';
+
+                        $texto = e($resultado['texto']);
+                        $html  = '<div class="flex items-center gap-2 mb-3">';
+                        $html .= '<span class="text-sm text-gray-400">Tipo:</span> ' . $tipoBadge;
+                        $html .= '<span class="text-sm text-gray-400 ml-4">Volumes totais:</span> <span class="font-bold text-white">' . $resultado['volumes'] . '</span>';
+                        $html .= '</div>';
+                        $html .= $itensHtml;
+                        $html .= '<div class="relative">';
+                        $html .= '<pre id="cotacao-texto" class="bg-gray-900 border border-gray-600 rounded-lg p-4 text-sm text-white whitespace-pre-wrap font-mono leading-relaxed">' . $texto . '</pre>';
+                        $html .= '<button onclick="navigator.clipboard.writeText(document.getElementById(\'cotacao-texto\').innerText).then(()=>{this.innerText=\'Copiado!\';setTimeout(()=>this.innerText=\'Copiar\',2000)})" '
+                            . 'class="absolute top-2 right-2 px-3 py-1 text-xs bg-primary-600 hover:bg-primary-500 text-white rounded-md transition">Copiar</button>';
+                        $html .= '</div>';
+
+                        return new HtmlString($html);
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkAction::make('aprovar_selecionados')
@@ -252,6 +591,23 @@ class PedidoBlingStagingResource extends Resource
                         }
                         if ($bloqueados > 0) {
                             Notification::make()->title("{$bloqueados} pedido(s) Shopee aguardando planilha.")->warning()->send();
+                        }
+                    }),
+                Tables\Actions\BulkAction::make('rejeitar_selecionados')
+                    ->label('Rejeitar Selecionados')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->action(function ($records) {
+                        $rejeitados = 0;
+                        foreach ($records as $record) {
+                            if ($record->status === 'pendente') {
+                                $record->update(['status' => 'rejeitado']);
+                                $rejeitados++;
+                            }
+                        }
+                        if ($rejeitados > 0) {
+                            Notification::make()->title("{$rejeitados} pedido(s) rejeitados.")->success()->send();
                         }
                     }),
             ]);

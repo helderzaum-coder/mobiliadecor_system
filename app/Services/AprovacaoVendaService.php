@@ -25,6 +25,7 @@ class AprovacaoVendaService
         $subsidioPix = (float) $staging->subsidio_pix;
         $valorImposto = (float) $staging->valor_imposto;
         $totalPedido = (float) $staging->total_pedido;
+        $valorRebate = (float) ($staging->ml_valor_rebate ?? 0);
 
         // Custo total dos produtos (soma dos custos dos itens)
         $custoProdutos = 0;
@@ -32,11 +33,17 @@ class AprovacaoVendaService
             $custoProdutos += ((float) ($item['custo'] ?? 0)) * ((int) ($item['quantidade'] ?? 1));
         }
 
+        // Para pedidos ML ME2, usar o custo de frete do ML (list_cost - cost = custo líquido)
+        $isML = str_contains(strtolower($staging->canal ?? ''), 'mercado');
+        if ($isML && (float) ($staging->ml_frete_custo ?? 0) > 0) {
+            $custoFrete = (float) $staging->ml_frete_custo - (float) $staging->ml_frete_receita;
+        }
+
         // Margem Frete = Frete cobrado - Custo frete
         $margemFrete = $frete - $custoFrete;
 
-        // Margem Produto = Subtotal - Custo Produtos - Comissão - Imposto
-        $margemProduto = $totalProdutos - $custoProdutos - $comissao - $valorImposto;
+        // Margem Produto = Subtotal - Custo Produtos - Comissão - Imposto + Rebate
+        $margemProduto = $totalProdutos - $custoProdutos - $comissao - $valorImposto + $valorRebate;
 
         // Margem Venda Total (Lucro Final) = Margem Produto + Margem Frete + Subsídio Pix
         $margemVendaTotal = $margemProduto + $margemFrete + $subsidioPix;
@@ -73,6 +80,15 @@ class AprovacaoVendaService
             'margem_produto' => round($margemProduto, 2),
             'margem_venda_total' => round($margemVendaTotal, 2),
             'margem_contribuicao' => round($margemContribuicao, 2),
+            'ml_tipo_anuncio' => $staging->ml_tipo_anuncio,
+            'ml_tipo_frete' => $staging->ml_tipo_frete,
+            'ml_tem_rebate' => $staging->ml_tem_rebate ?? false,
+            'ml_valor_rebate' => $staging->ml_valor_rebate ?? 0,
+            'ml_sale_fee' => $staging->ml_sale_fee ?? 0,
+            'ml_frete_custo' => $staging->ml_frete_custo ?? 0,
+            'ml_frete_receita' => $staging->ml_frete_receita ?? 0,
+            'ml_order_id' => $staging->ml_order_id,
+            'ml_shipping_id' => $staging->ml_shipping_id,
         ]);
 
         $staging->update(['status' => 'aprovado']);

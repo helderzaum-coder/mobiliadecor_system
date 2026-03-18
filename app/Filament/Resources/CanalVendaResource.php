@@ -57,6 +57,23 @@ class CanalVendaResource extends Resource
                             ->label('Nome da Regra')
                             ->required()
                             ->maxLength(191),
+                        Forms\Components\Select::make('ml_tipo_anuncio')
+                            ->label('Tipo Anúncio ML')
+                            ->options([
+                                'Clássico' => 'Clássico',
+                                'Premium' => 'Premium',
+                            ])
+                            ->placeholder('Todos')
+                            ->helperText('Só para canal Mercadolivre'),
+                        Forms\Components\Select::make('ml_tipo_frete')
+                            ->label('Tipo Frete ML')
+                            ->options([
+                                'ME1' => 'ME1 (Coleta)',
+                                'ME2' => 'ME2 (Drop-off)',
+                                'FULL' => 'FULL (Fulfillment)',
+                            ])
+                            ->placeholder('Todos')
+                            ->helperText('Só para canal Mercadolivre'),
                         Forms\Components\Textarea::make('descricao')
                             ->label('Descrição')
                             ->rows(2),
