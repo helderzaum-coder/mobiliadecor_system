@@ -20,29 +20,23 @@ return new class extends Migration
         throw_if(empty($tableNames), 'Error: config/permission.php not loaded. Run [php artisan config:clear] and try again.');
         throw_if($teams && empty($columnNames['team_foreign_key'] ?? null), 'Error: team_foreign_key on config/permission.php not loaded. Run [php artisan config:clear] and try again.');
 
-        /**
-         * See `docs/prerequisites.md` for suggested lengths on 'name' and 'guard_name' if "1071 Specified key was too long" errors are encountered.
-         */
         Schema::create($tableNames['permissions'], static function (Blueprint $table) {
             $table->id(); // permission id
-            $table->string('name', 125);
-            $table->string('guard_name', 125);
+            $table->string('name', 100);
+            $table->string('guard_name', 100);
             $table->timestamps();
 
             $table->unique(['name', 'guard_name']);
         });
 
-        /**
-         * See `docs/prerequisites.md` for suggested lengths on 'name' and 'guard_name' if "1071 Specified key was too long" errors are encountered.
-         */
         Schema::create($tableNames['roles'], static function (Blueprint $table) use ($teams, $columnNames) {
             $table->id(); // role id
             if ($teams || config('permission.testing')) { // permission.testing is a fix for sqlite testing
                 $table->unsignedBigInteger($columnNames['team_foreign_key'])->nullable();
                 $table->index($columnNames['team_foreign_key'], 'roles_team_foreign_key_index');
             }
-            $table->string('name', 125);
-            $table->string('guard_name', 125);
+            $table->string('name', 100);
+            $table->string('guard_name', 100);
             $table->timestamps();
             if ($teams || config('permission.testing')) {
                 $table->unique([$columnNames['team_foreign_key'], 'name', 'guard_name']);
@@ -54,7 +48,7 @@ return new class extends Migration
         Schema::create($tableNames['model_has_permissions'], static function (Blueprint $table) use ($tableNames, $columnNames, $pivotPermission, $teams) {
             $table->unsignedBigInteger($pivotPermission);
 
-            $table->string('model_type');
+            $table->string('model_type', 100);
             $table->unsignedBigInteger($columnNames['model_morph_key']);
             $table->index([$columnNames['model_morph_key'], 'model_type'], 'model_has_permissions_model_id_model_type_index');
 
@@ -77,7 +71,7 @@ return new class extends Migration
         Schema::create($tableNames['model_has_roles'], static function (Blueprint $table) use ($tableNames, $columnNames, $pivotRole, $teams) {
             $table->unsignedBigInteger($pivotRole);
 
-            $table->string('model_type');
+            $table->string('model_type', 100);
             $table->unsignedBigInteger($columnNames['model_morph_key']);
             $table->index([$columnNames['model_morph_key'], 'model_type'], 'model_has_roles_model_id_model_type_index');
 

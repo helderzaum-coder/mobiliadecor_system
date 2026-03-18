@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BlingAuthController;
+use App\Http\Controllers\BlingWebhookController;
 use App\Http\Controllers\MercadoLivreAuthController;
 use Illuminate\Support\Facades\Route;
 
@@ -14,6 +15,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/bling/callback', [BlingAuthController::class, 'callback'])->name('bling.callback');
     Route::get('/bling/status', [BlingAuthController::class, 'status'])->name('bling.status');
 });
+
+// Bling Webhooks (sem auth, sem CSRF — chamada externa do Bling)
+Route::post('/webhook/bling/{account}', [BlingWebhookController::class, 'handle'])
+    ->name('webhook.bling')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
 // Mercado Livre OAuth
 Route::middleware('auth')->group(function () {
