@@ -14,6 +14,7 @@ class Transportadora extends Model
         'nome_transportadora',
         'cnpj',
         'ativo',
+        'aplica_icms',
         'taxa_despacho',
         'pedagio_fracao_kg',
         'pedagio_valor',
@@ -28,6 +29,7 @@ class Transportadora extends Model
 
     protected $casts = [
         'ativo' => 'boolean',
+        'aplica_icms' => 'boolean',
         'taxa_despacho' => 'decimal:2',
         'pedagio_fracao_kg' => 'decimal:2',
         'pedagio_valor' => 'decimal:2',

@@ -10,6 +10,14 @@ use Illuminate\Support\Collection;
 class CotacaoFreteService
 {
     /**
+     * Alíquotas ICMS interestadual saindo do PR.
+     * MG, RJ, SP, RS, SC = 12%, demais (incluindo ES e PR) = 7%
+     */
+    private const ICMS_POR_UF = [
+        'MG' => 12, 'RJ' => 12, 'SP' => 12, 'RS' => 12, 'SC' => 12,
+    ];
+    private const ICMS_PADRAO = 7;
+    /**
      * Cota frete para todas as transportadoras ativas que atendem a UF.
      *
      * @return array Lista de cotações ordenadas por valor total
@@ -32,15 +40,46 @@ class CotacaoFreteService
             })
             ->get();
 
+        $somenteConsulta = [];
+
         foreach ($transportadoras as $transp) {
             $cotacao = self::calcularCotacao($transp, $destUf, $cepNumerico, $pesoBruto, $valorNf, $destCidade);
             if ($cotacao) {
                 $cotacoes[] = $cotacao;
+            } else {
+                // Transportadora atende a UF mas não tem faixa de frete — exibir como "consultar"
+                $atendeUf = $transp->ufsAtendidas()->where('uf', $destUf)->exists();
+                if ($atendeUf) {
+                    $taxasEspeciais = self::calcularTaxasEspeciais($transp->id_transportadora, $destUf, $cepNumerico, $destCidade, 0);
+                    $somenteConsulta[] = [
+                        'id_transportadora' => $transp->id_transportadora,
+                        'nome' => $transp->nome_transportadora,
+                        'uf_faixa' => $destUf,
+                        'regiao' => '-',
+                        'frete_peso' => 0,
+                        'despacho' => 0,
+                        'pedagio' => 0,
+                        'advalorem' => 0,
+                        'gris' => 0,
+                        'tas' => 0,
+                        'taxas_especiais' => $taxasEspeciais['detalhes'],
+                        'taxas_especiais_total' => round($taxasEspeciais['total'], 2),
+                        'icms_percentual' => 0,
+                        'icms_valor' => 0,
+                        'total' => 0,
+                        'somente_consulta' => true,
+                    ];
+                }
             }
         }
 
         // Ordenar por valor total
         usort($cotacoes, fn ($a, $b) => $a['total'] <=> $b['total']);
+
+        // Adicionar transportadoras "somente consulta" ao final
+        foreach ($somenteConsulta as $sc) {
+            $cotacoes[] = $sc;
+        }
 
         return $cotacoes;
     }
@@ -111,11 +150,27 @@ class CotacaoFreteService
             }
         }
 
-        // 7. Taxas especiais (TDA, TRT, TAS) por CEP/cidade
+        // 7. TAS fixo (transportadora)
+        $tas = (float) ($transp->tas_valor ?? 0);
+
+        // 8. Taxas especiais (TDA, TRT, TAS) por CEP/cidade
         $taxasEspeciais = self::calcularTaxasEspeciais($transp->id_transportadora, $uf, $cep, $cidade, $valorFrete);
 
-        // Total
-        $total = $valorFrete + $despacho + $pedagio + $advalorem + $gris + $taxasEspeciais['total'];
+        // Subtotal antes do ICMS
+        $subtotal = $valorFrete + $despacho + $pedagio + $advalorem + $gris + $tas + $taxasEspeciais['total'];
+
+        // 9. ICMS por dentro (se transportadora aplica)
+        $icmsPerc = 0;
+        $icmsValor = 0;
+        $total = $subtotal;
+
+        if ($transp->aplica_icms) {
+            $icmsPerc = self::ICMS_POR_UF[strtoupper($uf)] ?? self::ICMS_PADRAO;
+            if ($icmsPerc > 0) {
+                $total = round($subtotal / (1 - $icmsPerc / 100), 2);
+                $icmsValor = round($total - $subtotal, 2);
+            }
+        }
 
         return [
             'id_transportadora' => $transp->id_transportadora,
@@ -127,14 +182,19 @@ class CotacaoFreteService
             'pedagio' => round($pedagio, 2),
             'advalorem' => round($advalorem, 2),
             'gris' => round($gris, 2),
+            'tas' => round($tas, 2),
             'taxas_especiais' => $taxasEspeciais['detalhes'],
             'taxas_especiais_total' => round($taxasEspeciais['total'], 2),
+            'icms_percentual' => $icmsPerc,
+            'icms_valor' => $icmsValor,
             'total' => round($total, 2),
         ];
     }
 
     private static function encontrarFaixa(int $idTransportadora, string $uf, string $cep, float $peso): ?TransportadoraTabelaFrete
     {
+        $cepInt = (int) $cep;
+
         // Buscar faixa mais específica: UF + CEP + peso
         $query = TransportadoraTabelaFrete::where('id_transportadora', $idTransportadora)
             ->where('peso_min', '<=', $peso)
@@ -145,15 +205,12 @@ class CotacaoFreteService
             ->where('uf', $uf)
             ->whereNotNull('cep_inicio')
             ->whereNotNull('cep_fim')
-            ->where(function ($q) use ($cep) {
-                // Suportar faixas onde cep_inicio > cep_fim (cadastro invertido)
-                $q->where(function ($q2) use ($cep) {
-                    $q2->where('cep_inicio', '<=', $cep)->where('cep_fim', '>=', $cep);
-                })->orWhere(function ($q2) use ($cep) {
-                    $q2->where('cep_fim', '<=', $cep)->where('cep_inicio', '>=', $cep);
-                });
-            })
-            ->first();
+            ->get()
+            ->first(function ($f) use ($cepInt) {
+                $min = min((int) $f->cep_inicio, (int) $f->cep_fim);
+                $max = max((int) $f->cep_inicio, (int) $f->cep_fim);
+                return $cepInt >= $min && $cepInt <= $max;
+            });
 
         if ($faixa) return $faixa;
 
@@ -170,14 +227,12 @@ class CotacaoFreteService
             ->whereNull('uf')
             ->whereNotNull('cep_inicio')
             ->whereNotNull('cep_fim')
-            ->where(function ($q) use ($cep) {
-                $q->where(function ($q2) use ($cep) {
-                    $q2->where('cep_inicio', '<=', $cep)->where('cep_fim', '>=', $cep);
-                })->orWhere(function ($q2) use ($cep) {
-                    $q2->where('cep_fim', '<=', $cep)->where('cep_inicio', '>=', $cep);
-                });
-            })
-            ->first();
+            ->get()
+            ->first(function ($f) use ($cepInt) {
+                $min = min((int) $f->cep_inicio, (int) $f->cep_fim);
+                $max = max((int) $f->cep_inicio, (int) $f->cep_fim);
+                return $cepInt >= $min && $cepInt <= $max;
+            });
 
         if ($faixa) return $faixa;
 
@@ -192,6 +247,7 @@ class CotacaoFreteService
     {
         $detalhes = [];
         $total = 0;
+        $cepInt = (int) $cep;
 
         $taxas = TransportadoraTaxa::where('id_transportadora', $idTransportadora)
             ->where(function ($q) use ($uf) {
@@ -200,22 +256,16 @@ class CotacaoFreteService
             ->get();
 
         foreach ($taxas as $taxa) {
-            // Verificar se a taxa se aplica ao CEP
+            // Verificar se a taxa se aplica ao CEP (comparação numérica para evitar problemas com zeros à esquerda)
             if ($taxa->cep_inicio && $taxa->cep_fim) {
-                $min = min($taxa->cep_inicio, $taxa->cep_fim);
-                $max = max($taxa->cep_inicio, $taxa->cep_fim);
-                if ($cep < $min || $cep > $max) {
+                $min = min((int) $taxa->cep_inicio, (int) $taxa->cep_fim);
+                $max = max((int) $taxa->cep_inicio, (int) $taxa->cep_fim);
+                if ($cepInt < $min || $cepInt > $max) {
                     continue;
                 }
-            }
-
-            // Verificar cidade
-            if ($taxa->cidade && $cidade) {
-                if (mb_strtolower($taxa->cidade) !== mb_strtolower($cidade)) {
-                    continue;
-                }
-            } elseif ($taxa->cidade && !$cidade) {
-                continue; // Taxa é por cidade mas não temos a cidade do pedido
+            } elseif ($taxa->cep_inicio || $taxa->cep_fim) {
+                // CEP incompleto (só inicio ou só fim) — ignorar
+                continue;
             }
 
             $valor = 0;

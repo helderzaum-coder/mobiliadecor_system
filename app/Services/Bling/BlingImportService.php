@@ -117,6 +117,17 @@ class BlingImportService
         $destUf = $etiqueta['uf'] ?? null;
         $pesoBruto = (float) ($pedido['transporte']['pesoBruto'] ?? 0);
 
+        // Fallback: buscar endereço do contato se etiqueta estiver vazia
+        if (empty($destCep) && !empty($pedido['contato']['id'])) {
+            $contatoRes = $this->client->get("/contatos/{$pedido['contato']['id']}");
+            if ($contatoRes['success']) {
+                $endGeral = $contatoRes['body']['data']['endereco']['geral'] ?? [];
+                $destCep    = $endGeral['cep'] ?? null;
+                $destCidade = $endGeral['municipio'] ?? null;
+                $destUf     = $endGeral['uf'] ?? null;
+            }
+        }
+
         // Extrair itens simplificados + buscar dimensões do produto
         $itens = [];
         $maiorLargura = 0;

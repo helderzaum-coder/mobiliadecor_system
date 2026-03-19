@@ -40,7 +40,11 @@ class TransportadoraResource extends Resource
                 Forms\Components\Toggle::make('ativo')
                     ->label('Ativo')
                     ->default(true),
-            ])->columns(3),
+                Forms\Components\Toggle::make('aplica_icms')
+                    ->label('Aplica ICMS')
+                    ->default(false)
+                    ->helperText('Calcula ICMS por dentro sobre o total do frete'),
+            ])->columns(4),
 
             Forms\Components\Section::make('UFs Atendidas')->schema([
                 Forms\Components\CheckboxList::make('ufs_selecionadas')
@@ -95,6 +99,12 @@ class TransportadoraResource extends Resource
                     ->numeric()
                     ->prefix('R$')
                     ->default(0),
+                Forms\Components\TextInput::make('tas_valor')
+                    ->label('TAS (valor fixo)')
+                    ->numeric()
+                    ->prefix('R$')
+                    ->default(0)
+                    ->helperText('Taxa de Administração do Seguro'),
             ])->columns(4),
 
             Forms\Components\Section::make('Tabela de Frete')->schema([
