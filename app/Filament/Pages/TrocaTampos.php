@@ -116,10 +116,11 @@ class TrocaTampos extends Page implements HasForms
 
     private function resetFrom(string $field, $set): void
     {
-        $fields = ['cor', 'tipo_tampo', 'fonte_tampo', 'caixa_aberta_id'];
+        $fields = ['grupo', 'cor', 'tipo_tampo', 'fonte_tampo', 'caixa_aberta_id'];
         $start = array_search($field, $fields);
         if ($start !== false) {
-            for ($i = $start; $i < count($fields); $i++) {
+            // Reseta tudo DEPOIS do campo alterado
+            for ($i = $start + 1; $i < count($fields); $i++) {
                 $set($fields[$i], null);
             }
         }
