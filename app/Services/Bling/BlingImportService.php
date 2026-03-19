@@ -78,6 +78,7 @@ class BlingImportService
                     ->delete();
 
                 // Buscar detalhes completos
+                sleep(1); // Rate limit Bling: 3 req/s
                 $detalhe = $this->client->getPedido($blingId);
                 if (!$detalhe['success']) {
                     $resultado['erros']++;
@@ -178,6 +179,7 @@ class BlingImportService
 
             // Buscar custo do produto na API (lista)
             if ($sku) {
+                sleep(1); // Rate limit Bling
                 $produto = $this->client->getProductBySku($sku);
                 $custo = (float) ($produto['precoCusto'] ?? 0);
 
