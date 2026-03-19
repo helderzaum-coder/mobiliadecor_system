@@ -19,7 +19,7 @@ class TrocaTampoService
     }
 
     /**
-     * Retorna os grupos disponíveis (Alana, Evelyn, Fran, etc.)
+     * Retorna os grupos disponíveis (Alana, Elisa, Jade, etc.)
      */
     public static function getGrupos(): array
     {
@@ -39,191 +39,271 @@ class TrocaTampoService
     }
 
     /**
-     * Retorna os produtos (tipo_tampo) disponíveis para um grupo+cor.
+     * Retorna os tipos de tampo disponíveis para um grupo+cor.
      */
-    public static function getProdutos(string $grupo, string $cor): array
+    public static function getTiposTampo(string $grupo, string $cor): array
     {
         return TrocaTampoConfig::where('grupo', $grupo)
             ->where('cor', $cor)
-            ->get()
-            ->mapWithKeys(fn ($c) => [$c->id => $c->nome_produto . ' (' . $c->tipo_tampo . ')'])
+            ->pluck('tipo_tampo', 'tipo_tampo')
+            ->mapWithKeys(fn ($v, $k) => [$k => match($k) {
+                '4bocas' => '4 Bocas (Cooktop)',
+                '5bocas' => '5 Bocas (Cooktop)',
+                'liso' => 'Liso (sem recorte)',
+                default => $k,
+            }])
             ->toArray();
     }
 
     /**
-     * Retorna os destinos possíveis para o tampo que sobra.
-     * Pode ir para estoque avulso ou para outra caixa compatível.
+     * Retorna as fontes possíveis para o tampo necessário.
+     * Pode ser estoque avulso ou outra caixa (mesma familia_tampo, mesmo tipo_tampo).
+     * Para 4bocas/5bocas: qualquer cor (universal). Para liso: mesma cor_tampo.
      */
-    public static function getDestinosTampo(int $configOrigemId): array
+    public static function getFontesTampo(string $grupo, string $cor, string $tipoTampo): array
     {
-        $origem = TrocaTampoConfig::find($configOrigemId);
-        if (!$origem) return [];
+        $produtoVendido = TrocaTampoConfig::where('grupo', $grupo)
+            ->where('cor', $cor)
+            ->where('tipo_tampo', $tipoTampo)
+            ->first();
 
-        $destinos = [];
+        if (!$produtoVendido) return [];
 
-        // Opção 1: Tampo volta pro estoque avulso
-        $destinos["estoque_{$configOrigemId}"] = "Estoque avulso: {$origem->nome_tampo} ({$origem->sku_tampo})";
+        $fontes = [];
 
-        // Opção 2: Tampo vai pra outra caixa (mesma familia_tampo, mesma cor_tampo, mesmo tipo_tampo)
-        $compativeis = TrocaTampoConfig::where('cor_tampo', $origem->cor_tampo)
-            ->where('tipo_tampo', $origem->tipo_tampo)
-            ->where('familia_tampo', $origem->familia_tampo)
-            ->where('id', '!=', $configOrigemId)
-            ->get();
+        // Opção 1: Tampo vem do estoque avulso
+        $fontes["estoque"] = "📦 Estoque avulso: {$produtoVendido->nome_tampo} ({$produtoVendido->sku_tampo})";
 
-        foreach ($compativeis as $comp) {
-            $destinos["caixa_{$comp->id}"] = "Montar: {$comp->nome_produto} ({$comp->sku_produto})";
+        // Opção 2: Tampo vem de outra caixa (mesma familia_tampo, mesmo tipo_tampo)
+        $query = TrocaTampoConfig::where('familia_tampo', $produtoVendido->familia_tampo)
+            ->where('tipo_tampo', $tipoTampo)
+            ->where('id', '!=', $produtoVendido->id);
+
+        // 4bocas e 5bocas são universais (qualquer cor_tampo), liso depende da cor
+        if ($tipoTampo === 'liso') {
+            $query->where('cor_tampo', $produtoVendido->cor_tampo);
         }
 
-        return $destinos;
+        $compativeis = $query->get();
+
+        foreach ($compativeis as $comp) {
+            $fontes["caixa_{$comp->id}"] = "📦 Abrir: {$comp->nome_produto} ({$comp->sku_produto})";
+        }
+
+        return $fontes;
+    }
+
+    /**
+     * Retorna a config do produto vendido.
+     */
+    public static function getProdutoVendido(string $grupo, string $cor, string $tipoTampo): ?TrocaTampoConfig
+    {
+        return TrocaTampoConfig::where('grupo', $grupo)
+            ->where('cor', $cor)
+            ->where('tipo_tampo', $tipoTampo)
+            ->first();
+    }
+
+    /**
+     * Quando a fonte é outra caixa, precisamos saber:
+     * - Qual caixa abrir para fornecer a carcaça (mesmo grupo+cor do produto vendido, tipo_tampo diferente)
+     * O tampo da caixa aberta vai pra carcaça da fonte, montando um novo produto.
+     *
+     * Retorna as opções de caixa a abrir para fornecer a carcaça.
+     */
+    public static function getCaixasParaCarcaca(string $grupo, string $cor, string $tipoTampoVendido): array
+    {
+        // Caixas do mesmo grupo+cor, mas com tipo_tampo diferente do vendido
+        $caixas = TrocaTampoConfig::where('grupo', $grupo)
+            ->where('cor', $cor)
+            ->where('tipo_tampo', '!=', $tipoTampoVendido)
+            ->get();
+
+        return $caixas->mapWithKeys(fn ($c) => [
+            $c->id => "{$c->nome_produto} ({$c->sku_produto}) — tampo {$c->tipo_tampo}"
+        ])->toArray();
     }
 
     /**
      * Executa a troca de tampo.
      *
-     * @param int $caixaAbertaId  Config ID do produto cuja caixa será aberta
-     * @param int $tampoUsadoId   Config ID do produto que será montado (tampo que entra)
-     * @param string $destinoTampo "estoque_{id}" ou "caixa_{id}"
-     * @return array Resultado com movimentações
+     * Cenário A (fonte = estoque avulso):
+     *   - SAÍDA: caixa aberta (grupo+cor, tipo_tampo diferente) -1
+     *   - SAÍDA: tampo avulso do estoque -1
+     *   - ENTRADA: produto vendido (grupo+cor+tipoTampo) +1
+     *   - ENTRADA: tampo que sobrou da caixa aberta vai pro estoque +1
+     *
+     * Cenário B (fonte = outra caixa):
+     *   - SAÍDA: caixa aberta para carcaça (mesmo grupo+cor, tipo diferente) -1
+     *   - SAÍDA: caixa fonte do tampo (outra familia/cor, mesmo tipo_tampo) -1
+     *   - ENTRADA: produto vendido (grupo+cor+tipoTampo) +1
+     *     → tampo veio da fonte, carcaça veio da caixa aberta
+     *   - ENTRADA: produto montado com carcaça da fonte + tampo da caixa aberta +1
+     *     → carcaça da fonte recebe o tampo que sobrou da caixa aberta
      */
-    public function executarTroca(int $caixaAbertaId, int $tampoUsadoId, string $destinoTampo): array
-    {
+    public function executarTroca(
+        int $produtoVendidoId,
+        int $caixaAbertaId,
+        string $fonteTampo
+    ): array {
+        $produtoVendido = TrocaTampoConfig::find($produtoVendidoId);
         $caixaAberta = TrocaTampoConfig::find($caixaAbertaId);
-        $tampoUsado = TrocaTampoConfig::find($tampoUsadoId);
 
-        if (!$caixaAberta || !$tampoUsado) {
-            return ['success' => false, 'erro' => 'Configuração não encontrada.'];
-        }
-
-        // Validar que são do mesmo grupo e cor (mesma caixa física)
-        if ($caixaAberta->grupo !== $tampoUsado->grupo || $caixaAberta->cor !== $tampoUsado->cor) {
-            return ['success' => false, 'erro' => 'Caixa aberta e produto montado devem ser do mesmo grupo e cor.'];
+        if (!$produtoVendido || !$caixaAberta) {
+            return ['success' => false, 'erro' => 'Configuração não encontrada.', 'movimentacoes' => [], 'erros' => ['Configuração não encontrada.']];
         }
 
         $movimentacoes = [];
         $erros = [];
 
-        // 1. Dar baixa na caixa aberta (produto original): -1
-        $res = $this->movimentarEstoque($caixaAberta->sku_produto, -1, "Troca tampo: caixa aberta para montar {$tampoUsado->nome_produto}");
-        $movimentacoes[] = [
-            'acao' => 'SAÍDA',
-            'sku' => $caixaAberta->sku_produto,
-            'nome' => $caixaAberta->nome_produto,
-            'qtd' => -1,
-            'ok' => $res['success'],
-        ];
-        if (!$res['success']) $erros[] = "Falha ao dar baixa em {$caixaAberta->sku_produto}: " . ($res['erro'] ?? 'erro desconhecido');
-
-        sleep(1); // Rate limit Bling: 3 req/s
-
-        // 2. Dar baixa no tampo usado (que vai pra montagem): -1
-        $res = $this->movimentarEstoque($tampoUsado->sku_tampo, -1, "Troca tampo: usado para montar {$tampoUsado->nome_produto}");
-        $movimentacoes[] = [
-            'acao' => 'SAÍDA',
-            'sku' => $tampoUsado->sku_tampo,
-            'nome' => $tampoUsado->nome_tampo,
-            'qtd' => -1,
-            'ok' => $res['success'],
-        ];
-        if (!$res['success']) $erros[] = "Falha ao dar baixa em {$tampoUsado->sku_tampo}: " . ($res['erro'] ?? 'erro desconhecido');
-
-        sleep(1);
-
-        // 3. Dar entrada no produto montado: +1
-        $res = $this->movimentarEstoque($tampoUsado->sku_produto, 1, "Troca tampo: montado a partir de {$caixaAberta->nome_produto}");
-        $movimentacoes[] = [
-            'acao' => 'ENTRADA',
-            'sku' => $tampoUsado->sku_produto,
-            'nome' => $tampoUsado->nome_produto,
-            'qtd' => 1,
-            'ok' => $res['success'],
-        ];
-        if (!$res['success']) $erros[] = "Falha ao dar entrada em {$tampoUsado->sku_produto}: " . ($res['erro'] ?? 'erro desconhecido');
-
-        sleep(1);
-
-        // 4. Destino do tampo que sobrou da caixa aberta
-        if (str_starts_with($destinoTampo, 'estoque_')) {
-            // Tampo volta pro estoque avulso: +1
-            $res = $this->movimentarEstoque($caixaAberta->sku_tampo, 1, "Troca tampo: tampo devolvido ao estoque");
-            $movimentacoes[] = [
-                'acao' => 'ENTRADA',
-                'sku' => $caixaAberta->sku_tampo,
-                'nome' => $caixaAberta->nome_tampo,
-                'qtd' => 1,
-                'ok' => $res['success'],
-            ];
-            if (!$res['success']) $erros[] = "Falha ao dar entrada em {$caixaAberta->sku_tampo}: " . ($res['erro'] ?? 'erro desconhecido');
-        } elseif (str_starts_with($destinoTampo, 'caixa_')) {
-            // Tampo vai montar outra caixa
-            $destinoConfigId = (int) str_replace('caixa_', '', $destinoTampo);
-            $destinoConfig = TrocaTampoConfig::find($destinoConfigId);
-
-            if ($destinoConfig) {
-                // Precisa de outra caixa aberta para receber este tampo
-                // Dar baixa na caixa destino (será aberta): -1
-                // Na verdade, se o tampo vai pra outra caixa, significa que já existe
-                // uma caixa aberta esperando esse tampo. Então:
-                // +1 no produto destino montado
-                $res = $this->movimentarEstoque($destinoConfig->sku_produto, 1, "Troca tampo: montado com tampo de {$caixaAberta->nome_produto}");
-                $movimentacoes[] = [
-                    'acao' => 'ENTRADA',
-                    'sku' => $destinoConfig->sku_produto,
-                    'nome' => $destinoConfig->nome_produto,
-                    'qtd' => 1,
-                    'ok' => $res['success'],
-                ];
-                if (!$res['success']) $erros[] = "Falha ao dar entrada em {$destinoConfig->sku_produto}: " . ($res['erro'] ?? 'erro desconhecido');
-            }
+        if ($fonteTampo === 'estoque') {
+            // CENÁRIO A: tampo vem do estoque avulso
+            return $this->executarTrocaEstoque($produtoVendido, $caixaAberta);
         }
 
+        // CENÁRIO B: tampo vem de outra caixa
+        if (str_starts_with($fonteTampo, 'caixa_')) {
+            $fonteId = (int) str_replace('caixa_', '', $fonteTampo);
+            $fonteCaixa = TrocaTampoConfig::find($fonteId);
+
+            if (!$fonteCaixa) {
+                return ['success' => false, 'movimentacoes' => [], 'erros' => ['Caixa fonte não encontrada.']];
+            }
+
+            return $this->executarTrocaCaixa($produtoVendido, $caixaAberta, $fonteCaixa);
+        }
+
+        return ['success' => false, 'movimentacoes' => [], 'erros' => ['Fonte de tampo inválida.']];
+    }
+
+    /**
+     * Cenário A: tampo vem do estoque avulso.
+     * - SAÍDA: caixa aberta (ex: Elisa 5 Bocas Branco) -1
+     * - SAÍDA: tampo avulso (ex: Tampo 4 Bocas) -1
+     * - ENTRADA: produto vendido (ex: Elisa 4 Bocas Branco) +1
+     * - ENTRADA: tampo que sobrou da caixa aberta (ex: Tampo 5 Bocas) +1
+     */
+    private function executarTrocaEstoque(TrocaTampoConfig $produtoVendido, TrocaTampoConfig $caixaAberta): array
+    {
+        $movimentacoes = [];
+        $erros = [];
+
+        // 1. SAÍDA: caixa aberta
+        $res = $this->movimentarEstoque($caixaAberta->sku_produto, -1, "Troca tampo: caixa aberta para montar {$produtoVendido->nome_produto}");
+        $movimentacoes[] = ['acao' => 'SAÍDA', 'sku' => $caixaAberta->sku_produto, 'nome' => $caixaAberta->nome_produto, 'qtd' => -1, 'ok' => $res['success']];
+        if (!$res['success']) $erros[] = "Falha saída {$caixaAberta->sku_produto}: " . ($res['erro'] ?? '?');
+
+        sleep(1);
+
+        // 2. SAÍDA: tampo avulso do estoque
+        $res = $this->movimentarEstoque($produtoVendido->sku_tampo, -1, "Troca tampo: tampo retirado do estoque para montar {$produtoVendido->nome_produto}");
+        $movimentacoes[] = ['acao' => 'SAÍDA', 'sku' => $produtoVendido->sku_tampo, 'nome' => $produtoVendido->nome_tampo, 'qtd' => -1, 'ok' => $res['success']];
+        if (!$res['success']) $erros[] = "Falha saída {$produtoVendido->sku_tampo}: " . ($res['erro'] ?? '?');
+
+        sleep(1);
+
+        // 3. ENTRADA: produto vendido montado
+        $res = $this->movimentarEstoque($produtoVendido->sku_produto, 1, "Troca tampo: montado com carcaça de {$caixaAberta->nome_produto} + tampo do estoque");
+        $movimentacoes[] = ['acao' => 'ENTRADA', 'sku' => $produtoVendido->sku_produto, 'nome' => $produtoVendido->nome_produto, 'qtd' => 1, 'ok' => $res['success']];
+        if (!$res['success']) $erros[] = "Falha entrada {$produtoVendido->sku_produto}: " . ($res['erro'] ?? '?');
+
+        sleep(1);
+
+        // 4. ENTRADA: tampo que sobrou da caixa aberta volta pro estoque
+        $res = $this->movimentarEstoque($caixaAberta->sku_tampo, 1, "Troca tampo: tampo devolvido ao estoque de {$caixaAberta->nome_produto}");
+        $movimentacoes[] = ['acao' => 'ENTRADA', 'sku' => $caixaAberta->sku_tampo, 'nome' => $caixaAberta->nome_tampo, 'qtd' => 1, 'ok' => $res['success']];
+        if (!$res['success']) $erros[] = "Falha entrada {$caixaAberta->sku_tampo}: " . ($res['erro'] ?? '?');
+
         $success = empty($erros);
+        Log::info("TrocaTampo [{$this->account}]: Estoque " . ($success ? 'OK' : 'COM ERROS'), compact('movimentacoes', 'erros'));
 
-        Log::info("TrocaTampo [{$this->account}]: " . ($success ? 'OK' : 'COM ERROS'), [
-            'caixa_aberta' => $caixaAberta->sku_produto,
-            'produto_montado' => $tampoUsado->sku_produto,
-            'destino_tampo' => $destinoTampo,
-            'movimentacoes' => $movimentacoes,
-            'erros' => $erros,
-        ]);
+        return ['success' => $success, 'movimentacoes' => $movimentacoes, 'erros' => $erros];
+    }
 
-        return [
-            'success' => $success,
-            'movimentacoes' => $movimentacoes,
-            'erros' => $erros,
-        ];
+    /**
+     * Cenário B: tampo vem de outra caixa.
+     * Ex: Vendi Elisa 4 Bocas Branco. Abro Elisa 5 Bocas Branco (carcaça) e Jade 4 Bocas Sav/Preto (fonte tampo).
+     * - SAÍDA: caixa aberta (Elisa 5 Bocas Branco) -1
+     * - SAÍDA: caixa fonte (Jade 4 Bocas Sav/Preto) -1
+     * - ENTRADA: produto vendido (Elisa 4 Bocas Branco) +1
+     *   → carcaça do Elisa 5B + tampo 4B do Jade
+     * - ENTRADA: produto montado na carcaça da fonte (Jade 5 Bocas Sav/Preto) +1
+     *   → carcaça do Jade 4B + tampo 5B do Elisa
+     */
+    private function executarTrocaCaixa(TrocaTampoConfig $produtoVendido, TrocaTampoConfig $caixaAberta, TrocaTampoConfig $fonteCaixa): array
+    {
+        $movimentacoes = [];
+        $erros = [];
+
+        // Determinar o produto que será montado com a carcaça da fonte + tampo da caixa aberta
+        // A carcaça da fonte (ex: Jade) recebe o tampo da caixa aberta (ex: 5 bocas)
+        // Então procuramos: mesmo grupo+cor da fonte, tipo_tampo da caixa aberta
+        $produtoDestino = TrocaTampoConfig::where('grupo', $fonteCaixa->grupo)
+            ->where('cor', $fonteCaixa->cor)
+            ->where('tipo_tampo', $caixaAberta->tipo_tampo)
+            ->first();
+
+        if (!$produtoDestino) {
+            return [
+                'success' => false,
+                'movimentacoes' => [],
+                'erros' => ["Não existe configuração para {$fonteCaixa->grupo} {$fonteCaixa->cor} {$caixaAberta->tipo_tampo}"],
+            ];
+        }
+
+        // 1. SAÍDA: caixa aberta (fornece carcaça pro produto vendido)
+        $res = $this->movimentarEstoque($caixaAberta->sku_produto, -1, "Troca tampo: caixa aberta para fornecer carcaça para {$produtoVendido->nome_produto}");
+        $movimentacoes[] = ['acao' => 'SAÍDA', 'sku' => $caixaAberta->sku_produto, 'nome' => $caixaAberta->nome_produto, 'qtd' => -1, 'ok' => $res['success']];
+        if (!$res['success']) $erros[] = "Falha saída {$caixaAberta->sku_produto}: " . ($res['erro'] ?? '?');
+
+        sleep(1);
+
+        // 2. SAÍDA: caixa fonte (fornece tampo pro produto vendido)
+        $res = $this->movimentarEstoque($fonteCaixa->sku_produto, -1, "Troca tampo: caixa aberta para fornecer tampo para {$produtoVendido->nome_produto}");
+        $movimentacoes[] = ['acao' => 'SAÍDA', 'sku' => $fonteCaixa->sku_produto, 'nome' => $fonteCaixa->nome_produto, 'qtd' => -1, 'ok' => $res['success']];
+        if (!$res['success']) $erros[] = "Falha saída {$fonteCaixa->sku_produto}: " . ($res['erro'] ?? '?');
+
+        sleep(1);
+
+        // 3. ENTRADA: produto vendido (carcaça da caixa aberta + tampo da fonte)
+        $res = $this->movimentarEstoque($produtoVendido->sku_produto, 1, "Troca tampo: montado com carcaça de {$caixaAberta->nome_produto} + tampo de {$fonteCaixa->nome_produto}");
+        $movimentacoes[] = ['acao' => 'ENTRADA', 'sku' => $produtoVendido->sku_produto, 'nome' => $produtoVendido->nome_produto, 'qtd' => 1, 'ok' => $res['success']];
+        if (!$res['success']) $erros[] = "Falha entrada {$produtoVendido->sku_produto}: " . ($res['erro'] ?? '?');
+
+        sleep(1);
+
+        // 4. ENTRADA: produto destino (carcaça da fonte + tampo da caixa aberta)
+        $res = $this->movimentarEstoque($produtoDestino->sku_produto, 1, "Troca tampo: montado com carcaça de {$fonteCaixa->nome_produto} + tampo de {$caixaAberta->nome_produto}");
+        $movimentacoes[] = ['acao' => 'ENTRADA', 'sku' => $produtoDestino->sku_produto, 'nome' => $produtoDestino->nome_produto, 'qtd' => 1, 'ok' => $res['success']];
+        if (!$res['success']) $erros[] = "Falha entrada {$produtoDestino->sku_produto}: " . ($res['erro'] ?? '?');
+
+        $success = empty($erros);
+        Log::info("TrocaTampo [{$this->account}]: Caixa " . ($success ? 'OK' : 'COM ERROS'), compact('movimentacoes', 'erros'));
+
+        return ['success' => $success, 'movimentacoes' => $movimentacoes, 'erros' => $erros];
     }
 
     /**
      * Movimenta estoque no Bling.
-     * $qtd positivo = entrada (E), negativo = saída (B)
+     * $qtd positivo = entrada (E), negativo = saída (S)
      */
     private function movimentarEstoque(string $sku, int $qtd, string $obs): array
     {
         Log::info("TrocaTampo: Buscando SKU '{$sku}' na conta {$this->account}...");
 
-        $busca = $this->buscarProduto($sku);
-        $produto = $busca['produto'] ?? null;
+        $produto = $this->client->getProductBySku($sku);
 
-        // Retry se falhou (pode ser rate limit)
-        if (!$produto && empty($busca['erro'])) {
-            Log::warning("TrocaTampo: SKU '{$sku}' não encontrado na 1ª tentativa, aguardando 2s...");
+        if (!$produto) {
             sleep(2);
-            $busca = $this->buscarProduto($sku);
-            $produto = $busca['produto'] ?? null;
+            $produto = $this->client->getProductBySku($sku);
+        }
+
+        if (!$produto && ctype_digit($sku) && (float) $sku >= 10000000000) {
+            $produto = $this->client->getProductById((int) $sku);
         }
 
         if (!$produto) {
-            if (!empty($busca['erro'])) {
-                Log::error("TrocaTampo: Falha ao buscar SKU '{$sku}' no Bling ({$this->account})", [
-                    'erro' => $busca['erro'],
-                    'http_code' => $busca['http_code'] ?? null,
-                ]);
-
-                return ['success' => false, 'erro' => $busca['erro']];
-            }
-
-            Log::error("TrocaTampo: SKU '{$sku}' não encontrado no Bling ({$this->account}) após 2 tentativas");
+            Log::error("TrocaTampo: SKU '{$sku}' não encontrado no Bling ({$this->account})");
             return ['success' => false, 'erro' => "Produto SKU {$sku} não encontrado no Bling"];
         }
 
@@ -233,33 +313,23 @@ class TrocaTampoService
         $operacao = $qtd > 0 ? 'E' : 'S';
         $quantidade = abs($qtd);
 
-        // Buscar depósito padrão (o primeiro retornado, que geralmente é o principal)
         $depositos = $this->client->get('/depositos', ['limite' => 100]);
         $depositoId = null;
-        $depositoNome = '';
 
-        // Tentar encontrar o depósito padrão/principal
         foreach ($depositos['body']['data'] ?? [] as $dep) {
             if (($dep['padrao'] ?? false) === true || ($dep['situacao'] ?? '') === 'A') {
                 $depositoId = $dep['id'];
-                $depositoNome = $dep['descricao'] ?? 'N/A';
                 break;
             }
         }
-
-        // Fallback: primeiro depósito
         if (!$depositoId && !empty($depositos['body']['data'])) {
             $depositoId = $depositos['body']['data'][0]['id'];
-            $depositoNome = $depositos['body']['data'][0]['descricao'] ?? 'N/A';
         }
 
         if (!$depositoId) {
             return ['success' => false, 'erro' => 'Depósito não encontrado'];
         }
 
-        Log::info("TrocaTampo: Usando depósito ID {$depositoId} ({$depositoNome}) para SKU {$sku}");
-
-        // Anti-loop: marcar para o webhook de estoque ignorar
         $cacheKey = "bling_sync_loop_{$this->account}_{$produtoId}";
         Cache::put($cacheKey, true, 60);
 
@@ -273,17 +343,15 @@ class TrocaTampoService
             'observacoes' => $obs,
         ]);
 
-        Log::info("TrocaTampo: POST /estoques SKU {$sku} — operacao={$operacao} qtd={$quantidade} deposito={$depositoId}", [
+        Log::info("TrocaTampo: POST /estoques SKU {$sku} — op={$operacao} qtd={$quantidade} dep={$depositoId}", [
             'success' => $res['success'],
             'http_code' => $res['http_code'] ?? null,
-            'body' => $res['body'] ?? null,
         ]);
 
         if ($res['success']) {
             return ['success' => true];
         }
 
-        // Rate limit retry
         if ($res['http_code'] === 429) {
             sleep(2);
             $res = $this->client->post('/estoques', [], [
@@ -299,58 +367,5 @@ class TrocaTampoService
         }
 
         return ['success' => false, 'erro' => "HTTP {$res['http_code']}: " . json_encode($res['body'] ?? [])];
-    }
-
-    private function buscarProduto(string $sku): array
-    {
-        $res = $this->client->get('/produtos', ['codigo' => $sku, 'limite' => 100]);
-
-        if (($res['http_code'] ?? null) === 401) {
-            return [
-                'produto' => null,
-                'erro' => "Conta Bling '{$this->account}' não autorizada. Refaça a autorização OAuth.",
-                'http_code' => 401,
-            ];
-        }
-
-        if (!$res['success']) {
-            return [
-                'produto' => null,
-                'erro' => "Falha ao consultar produtos no Bling (HTTP {$res['http_code']}).",
-                'http_code' => $res['http_code'] ?? null,
-            ];
-        }
-
-        foreach ($res['body']['data'] ?? [] as $produto) {
-            if ((string) ($produto['codigo'] ?? '') === (string) $sku) {
-                return ['produto' => $produto, 'erro' => null, 'http_code' => $res['http_code'] ?? 200];
-            }
-        }
-
-        if (!empty($res['body']['data'][0])) {
-            return ['produto' => $res['body']['data'][0], 'erro' => null, 'http_code' => $res['http_code'] ?? 200];
-        }
-
-        if (ctype_digit($sku)) {
-            $resById = $this->client->get("/produtos/{$sku}");
-
-            if (($resById['http_code'] ?? null) === 401) {
-                return [
-                    'produto' => null,
-                    'erro' => "Conta Bling '{$this->account}' não autorizada. Refaça a autorização OAuth.",
-                    'http_code' => 401,
-                ];
-            }
-
-            if ($resById['success'] && !empty($resById['body']['data'])) {
-                return [
-                    'produto' => $resById['body']['data'],
-                    'erro' => null,
-                    'http_code' => $resById['http_code'] ?? 200,
-                ];
-            }
-        }
-
-        return ['produto' => null, 'erro' => null, 'http_code' => $res['http_code'] ?? 200];
     }
 }
