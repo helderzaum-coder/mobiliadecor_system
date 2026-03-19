@@ -40,7 +40,16 @@ class TrocaTampoConfigResource extends Resource
                         '5bocas' => '5 Bocas (Cooktop)',
                         'liso' => 'Liso (sem recorte)',
                     ])
-                    ->required(),
+                    ->required()
+                    ->validationMessages(['unique' => 'Já existe uma configuração para este grupo/cor/tipo de tampo.'])
+                    ->unique(
+                        table: 'troca_tampos_config',
+                        column: 'tipo_tampo',
+                        modifyRuleUsing: fn ($rule, $get) => $rule
+                            ->where('grupo', $get('grupo'))
+                            ->where('cor', $get('cor')),
+                        ignoreRecord: true,
+                    ),
                 Forms\Components\TextInput::make('sku_produto')
                     ->label('SKU do Produto Montado')
                     ->required()

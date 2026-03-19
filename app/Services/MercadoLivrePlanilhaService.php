@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\PedidoBlingStaging;
+use App\Models\PlanilhaMlDado;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -62,16 +63,6 @@ class MercadoLivrePlanilhaService
             $numeroPedido = trim((string) $sheet->getCell("A{$i}")->getValue());
             if (empty($numeroPedido)) continue;
 
-            $staging = PedidoBlingStaging::where('numero_loja', $numeroPedido)
-                ->where('bling_account', $blingAccount)
-                ->where('status', 'pendente')
-                ->first();
-
-            if (!$staging) {
-                $resultado['nao_encontrados']++;
-                continue;
-            }
-
             try {
                 $receitaProdutos = self::parseDecimal($sheet->getCell("H{$i}")->getValue());
                 $tarifaVenda     = self::parseDecimal($sheet->getCell("K{$i}")->getValue());
@@ -79,10 +70,35 @@ class MercadoLivrePlanilhaService
                 $tarifasEnvio    = self::parseDecimal($sheet->getCell("M{$i}")->getValue());
                 $total           = self::parseDecimal($sheet->getCell("Q{$i}")->getValue());
 
-                // Rebate = Total - Receita Produtos - Tarifa Venda - Receita Envio - Tarifas Envio
                 $rebate = round($total - $receitaProdutos - $tarifaVenda - $receitaEnvio - $tarifasEnvio, 2);
+                $temRebate = $rebate > 0.01;
 
-                if ($rebate > 0.01) {
+                // Salvar/atualizar no banco para reprocessamento futuro
+                PlanilhaMlDado::updateOrCreate(
+                    ['numero_venda' => $numeroPedido, 'bling_account' => $blingAccount],
+                    [
+                        'receita_produtos' => $receitaProdutos,
+                        'tarifa_venda' => $tarifaVenda,
+                        'receita_envio' => $receitaEnvio,
+                        'tarifas_envio' => $tarifasEnvio,
+                        'total' => $total,
+                        'rebate' => $temRebate ? $rebate : 0,
+                        'tem_rebate' => $temRebate,
+                    ]
+                );
+
+                // Aplicar no staging se existir
+                $staging = PedidoBlingStaging::where('numero_loja', $numeroPedido)
+                    ->where('bling_account', $blingAccount)
+                    ->where('status', 'pendente')
+                    ->first();
+
+                if (!$staging) {
+                    $resultado['nao_encontrados']++;
+                    continue;
+                }
+
+                if ($temRebate) {
                     $staging->update(['ml_tem_rebate' => true, 'ml_valor_rebate' => $rebate]);
                     $resultado['processados']++;
                 } else {
@@ -113,5 +129,29 @@ class MercadoLivrePlanilhaService
         $value = preg_replace('/[^0-9.\-]/', '', $value);
 
         return (float) $value;
+    }
+
+    /**
+     * Tenta aplicar dados de planilha já armazenados a um pedido do staging.
+     * Chamado automaticamente quando um pedido novo é importado.
+     * Retorna true se encontrou e aplicou dados.
+     */
+    public static function reprocessarPedido(PedidoBlingStaging $staging): bool
+    {
+        if (!$staging->numero_loja) return false;
+
+        $dado = PlanilhaMlDado::where('numero_venda', $staging->numero_loja)
+            ->where('bling_account', $staging->bling_account)
+            ->first();
+
+        if (!$dado) return false;
+
+        $staging->update([
+            'ml_tem_rebate' => $dado->tem_rebate,
+            'ml_valor_rebate' => $dado->tem_rebate ? $dado->rebate : 0,
+        ]);
+
+        Log::info("ML planilha reprocessada automaticamente para pedido {$staging->numero_loja}");
+        return true;
     }
 }

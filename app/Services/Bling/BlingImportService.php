@@ -5,6 +5,8 @@ namespace App\Services\Bling;
 use App\Models\PedidoBlingStaging;
 use App\Models\Venda;
 use App\Services\MercadoLivre\MercadoLivreOrderService;
+use App\Services\MercadoLivrePlanilhaService;
+use App\Services\ShopeePlanilhaService;
 use Illuminate\Support\Facades\Log;
 
 class BlingImportService
@@ -268,6 +270,13 @@ class BlingImportService
             'dados_originais' => $pedido,
             'status' => 'pendente',
         ]);
+
+        // Reprocessar planilhas armazenadas (ML rebate / Shopee dados)
+        if (str_contains(strtolower($canal), 'mercado') || str_contains(strtolower($canal), 'meli')) {
+            MercadoLivrePlanilhaService::reprocessarPedido($staging);
+        } elseif (str_contains(strtolower($canal), 'shopee')) {
+            ShopeePlanilhaService::reprocessarPedido($staging);
+        }
     }
 
     /**

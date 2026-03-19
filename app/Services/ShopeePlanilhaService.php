@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\PedidoBlingStaging;
+use App\Models\PlanilhaShopeeDado;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -49,17 +50,30 @@ class ShopeePlanilhaService
 
         // Processar cada pedido agrupado
         foreach ($pedidosAgrupados as $pedidoId => $linhas) {
-            $staging = PedidoBlingStaging::where('numero_loja', $pedidoId)
-                ->where('status', 'pendente')
-                ->first();
-
-            if (!$staging) {
-                $resultado['nao_encontrados']++;
-                continue;
-            }
-
             try {
                 $dados = self::calcularPedido($linhas);
+
+                // Salvar/atualizar no banco para reprocessamento futuro
+                PlanilhaShopeeDado::updateOrCreate(
+                    ['numero_pedido' => $pedidoId],
+                    [
+                        'taxa_comissao' => $dados['comissao'],
+                        'taxa_servico' => 0,
+                        'taxa_envio' => $dados['frete'],
+                        'total_taxas' => $dados['comissao'] + $dados['subsidio_pix'],
+                        'dados_originais' => $dados,
+                    ]
+                );
+
+                // Aplicar no staging se existir
+                $staging = PedidoBlingStaging::where('numero_loja', $pedidoId)
+                    ->where('status', 'pendente')
+                    ->first();
+
+                if (!$staging) {
+                    $resultado['nao_encontrados']++;
+                    continue;
+                }
 
                 $updateData = [
                     'total_produtos' => $dados['total_produtos'],
@@ -70,13 +84,11 @@ class ShopeePlanilhaService
                     'planilha_shopee' => true,
                 ];
 
-                // Só atualizar itens se a planilha trouxe dados válidos (SKU ou descrição)
                 if (!empty($dados['itens']) && !empty($dados['itens'][0]['descricao'])) {
                     $updateData['itens'] = $dados['itens'];
                 }
 
                 $staging->update($updateData);
-
                 $resultado['processados']++;
             } catch (\Exception $e) {
                 $resultado['erros']++;
@@ -170,5 +182,39 @@ class ShopeePlanilhaService
         $value = preg_replace('/[^0-9.\-]/', '', $value);
 
         return (float) $value;
+    }
+
+    /**
+     * Tenta aplicar dados de planilha já armazenados a um pedido do staging.
+     * Chamado automaticamente quando um pedido novo é importado.
+     * Retorna true se encontrou e aplicou dados.
+     */
+    public static function reprocessarPedido(PedidoBlingStaging $staging): bool
+    {
+        if (!$staging->numero_loja) return false;
+
+        $dado = PlanilhaShopeeDado::where('numero_pedido', $staging->numero_loja)->first();
+
+        if (!$dado || !$dado->dados_originais) return false;
+
+        $dados = $dado->dados_originais;
+
+        $updateData = [
+            'total_produtos' => $dados['total_produtos'] ?? $staging->total_produtos,
+            'total_pedido' => $dados['total_pedido'] ?? $staging->total_pedido,
+            'frete' => $dados['frete'] ?? $staging->frete,
+            'comissao_calculada' => $dados['comissao'] ?? $staging->comissao_calculada,
+            'subsidio_pix' => $dados['subsidio_pix'] ?? $staging->subsidio_pix,
+            'planilha_shopee' => true,
+        ];
+
+        if (!empty($dados['itens']) && !empty($dados['itens'][0]['descricao'])) {
+            $updateData['itens'] = $dados['itens'];
+        }
+
+        $staging->update($updateData);
+
+        Log::info("Shopee planilha reprocessada automaticamente para pedido {$staging->numero_loja}");
+        return true;
     }
 }

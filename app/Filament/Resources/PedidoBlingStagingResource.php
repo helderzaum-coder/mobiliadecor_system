@@ -206,22 +206,6 @@ class PedidoBlingStagingResource extends Resource
                 Tables\Columns\TextColumn::make('numero_pedido')->label('Pedido')->searchable(),
                 Tables\Columns\TextColumn::make('numero_loja')->label('Pedido Canal')->searchable(),
                 Tables\Columns\TextColumn::make('canal')->label('Canal'),
-                Tables\Columns\TextColumn::make('ml_tipo_anuncio')->label('Tipo Anúncio')
-                    ->placeholder('-'),
-                Tables\Columns\TextColumn::make('ml_tipo_frete')->label('Frete ML')
-                    ->placeholder('-'),
-                Tables\Columns\IconColumn::make('ml_tem_rebate')->label('Rebate')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-minus-circle')
-                    ->trueColor('success')
-                    ->falseColor('gray')
-                    ->visible(fn () => true),
-                Tables\Columns\TextColumn::make('ml_valor_rebate')->label('Vl. Rebate')
-                    ->money('BRL')
-                    ->placeholder('-')
-                    ->visible(fn () => true)
-                    ->color(fn ($state) => $state > 0 ? 'success' : 'gray'),
                 Tables\Columns\TextColumn::make('cliente_nome')->label('Cliente')->limit(30)->searchable(),
                 Tables\Columns\TextColumn::make('data_pedido')->label('Data')->date('d/m/Y')->sortable(),
                 Tables\Columns\TextColumn::make('total_pedido')->label('Total')->money('BRL'),
