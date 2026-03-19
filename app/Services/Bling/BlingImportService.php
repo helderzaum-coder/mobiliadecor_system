@@ -274,7 +274,13 @@ class BlingImportService
         ]);
 
         // Reprocessar planilhas armazenadas (ML rebate / Shopee dados)
-        if (str_contains(strtolower($canal), 'mercado') || str_contains(strtolower($canal), 'meli')) {
+        $isMl = str_contains(strtolower($canal), 'mercado')
+            || str_contains(strtolower($canal), 'meli')
+            || str_starts_with((string) ($pedido['numeroLoja'] ?? ''), '2000')
+            || str_contains(strtolower($pedido['intermediador']['nomeUsuario'] ?? ''), 'meli')
+            || str_contains(strtolower($pedido['intermediador']['descricao'] ?? ''), 'mercado');
+
+        if ($isMl) {
             MercadoLivrePlanilhaService::reprocessarPedido($staging);
         } elseif (str_contains(strtolower($canal), 'shopee')) {
             ShopeePlanilhaService::reprocessarPedido($staging);
@@ -298,7 +304,10 @@ class BlingImportService
             'ml_shipping_id' => null,
         ];
 
-        if (!str_contains(strtolower($canal), 'mercado') && !str_contains(strtolower($canal), 'meli') && $this->accountKey !== 'secondary') {
+        if (!str_contains(strtolower($canal), 'mercado')
+            && !str_contains(strtolower($canal), 'meli')
+            && !str_starts_with((string) ($numeroLoja ?? ''), '2000')
+            && $this->accountKey !== 'secondary') {
             return $vazio;
         }
 
