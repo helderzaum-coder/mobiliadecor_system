@@ -230,7 +230,7 @@ class TrocaTampoService
         Log::info("TrocaTampo: SKU '{$sku}' encontrado — ID: {$produto['id']}, codigo: " . ($produto['codigo'] ?? 'N/A'));
 
         $produtoId = $produto['id'];
-        $operacao = $qtd > 0 ? 'E' : 'B';
+        $operacao = $qtd > 0 ? 'E' : 'S';
         $quantidade = abs($qtd);
 
         // Buscar depósito padrão (o primeiro retornado, que geralmente é o principal)
