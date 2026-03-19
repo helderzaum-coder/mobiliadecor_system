@@ -202,22 +202,27 @@ class TrocaTampoService
     {
         Log::info("TrocaTampo: Buscando SKU '{$sku}' na conta {$this->account}...");
 
-        // Sempre buscar por código (SKU) primeiro
-        $produto = $this->client->getProductBySku($sku);
+        $busca = $this->buscarProduto($sku);
+        $produto = $busca['produto'] ?? null;
 
         // Retry se falhou (pode ser rate limit)
-        if (!$produto) {
+        if (!$produto && empty($busca['erro'])) {
             Log::warning("TrocaTampo: SKU '{$sku}' não encontrado na 1ª tentativa, aguardando 2s...");
             sleep(2);
-            $produto = $this->client->getProductBySku($sku);
-        }
-
-        // Fallback: se SKU parece ser um ID do Bling (número muito grande, >= 10 bilhões)
-        if (!$produto && ctype_digit($sku) && (float) $sku >= 10000000000) {
-            $produto = $this->client->getProductById((int) $sku);
+            $busca = $this->buscarProduto($sku);
+            $produto = $busca['produto'] ?? null;
         }
 
         if (!$produto) {
+            if (!empty($busca['erro'])) {
+                Log::error("TrocaTampo: Falha ao buscar SKU '{$sku}' no Bling ({$this->account})", [
+                    'erro' => $busca['erro'],
+                    'http_code' => $busca['http_code'] ?? null,
+                ]);
+
+                return ['success' => false, 'erro' => $busca['erro']];
+            }
+
             Log::error("TrocaTampo: SKU '{$sku}' não encontrado no Bling ({$this->account}) após 2 tentativas");
             return ['success' => false, 'erro' => "Produto SKU {$sku} não encontrado no Bling"];
         }
@@ -228,13 +233,31 @@ class TrocaTampoService
         $operacao = $qtd > 0 ? 'E' : 'B';
         $quantidade = abs($qtd);
 
-        // Buscar depósito
-        $depositos = $this->client->get('/depositos', ['limite' => 1]);
-        $depositoId = $depositos['body']['data'][0]['id'] ?? null;
+        // Buscar depósito padrão (o primeiro retornado, que geralmente é o principal)
+        $depositos = $this->client->get('/depositos', ['limite' => 100]);
+        $depositoId = null;
+        $depositoNome = '';
+
+        // Tentar encontrar o depósito padrão/principal
+        foreach ($depositos['body']['data'] ?? [] as $dep) {
+            if (($dep['padrao'] ?? false) === true || ($dep['situacao'] ?? '') === 'A') {
+                $depositoId = $dep['id'];
+                $depositoNome = $dep['descricao'] ?? 'N/A';
+                break;
+            }
+        }
+
+        // Fallback: primeiro depósito
+        if (!$depositoId && !empty($depositos['body']['data'])) {
+            $depositoId = $depositos['body']['data'][0]['id'];
+            $depositoNome = $depositos['body']['data'][0]['descricao'] ?? 'N/A';
+        }
 
         if (!$depositoId) {
             return ['success' => false, 'erro' => 'Depósito não encontrado'];
         }
+
+        Log::info("TrocaTampo: Usando depósito ID {$depositoId} ({$depositoNome}) para SKU {$sku}");
 
         // Anti-loop: marcar para o webhook de estoque ignorar
         $cacheKey = "bling_sync_loop_{$this->account}_{$produtoId}";
@@ -248,6 +271,12 @@ class TrocaTampoService
             'custo'       => 0,
             'quantidade'  => $quantidade,
             'observacoes' => $obs,
+        ]);
+
+        Log::info("TrocaTampo: POST /estoques SKU {$sku} — operacao={$operacao} qtd={$quantidade} deposito={$depositoId}", [
+            'success' => $res['success'],
+            'http_code' => $res['http_code'] ?? null,
+            'body' => $res['body'] ?? null,
         ]);
 
         if ($res['success']) {
@@ -270,5 +299,58 @@ class TrocaTampoService
         }
 
         return ['success' => false, 'erro' => "HTTP {$res['http_code']}: " . json_encode($res['body'] ?? [])];
+    }
+
+    private function buscarProduto(string $sku): array
+    {
+        $res = $this->client->get('/produtos', ['codigo' => $sku, 'limite' => 100]);
+
+        if (($res['http_code'] ?? null) === 401) {
+            return [
+                'produto' => null,
+                'erro' => "Conta Bling '{$this->account}' não autorizada. Refaça a autorização OAuth.",
+                'http_code' => 401,
+            ];
+        }
+
+        if (!$res['success']) {
+            return [
+                'produto' => null,
+                'erro' => "Falha ao consultar produtos no Bling (HTTP {$res['http_code']}).",
+                'http_code' => $res['http_code'] ?? null,
+            ];
+        }
+
+        foreach ($res['body']['data'] ?? [] as $produto) {
+            if ((string) ($produto['codigo'] ?? '') === (string) $sku) {
+                return ['produto' => $produto, 'erro' => null, 'http_code' => $res['http_code'] ?? 200];
+            }
+        }
+
+        if (!empty($res['body']['data'][0])) {
+            return ['produto' => $res['body']['data'][0], 'erro' => null, 'http_code' => $res['http_code'] ?? 200];
+        }
+
+        if (ctype_digit($sku)) {
+            $resById = $this->client->get("/produtos/{$sku}");
+
+            if (($resById['http_code'] ?? null) === 401) {
+                return [
+                    'produto' => null,
+                    'erro' => "Conta Bling '{$this->account}' não autorizada. Refaça a autorização OAuth.",
+                    'http_code' => 401,
+                ];
+            }
+
+            if ($resById['success'] && !empty($resById['body']['data'])) {
+                return [
+                    'produto' => $resById['body']['data'],
+                    'erro' => null,
+                    'http_code' => $resById['http_code'] ?? 200,
+                ];
+            }
+        }
+
+        return ['produto' => null, 'erro' => null, 'http_code' => $res['http_code'] ?? 200];
     }
 }
