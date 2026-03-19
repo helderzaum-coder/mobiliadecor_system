@@ -105,6 +105,42 @@ class BlingImportService
         return $resultado;
     }
 
+    /**
+     * Importa um único pedido pelo ID do Bling para o staging.
+     * Usado pelo webhook e por importações avulsas.
+     * Retorna true se importou, false se ignorou (já existe).
+     */
+    public function importarPedidoPorId(int $blingId): array
+    {
+        // Já existe no staging (pendente/aprovado) ou já foi importado como venda?
+        $existente = PedidoBlingStaging::where('bling_id', $blingId)
+            ->whereIn('status', ['pendente', 'aprovado'])
+            ->exists();
+
+        if ($existente || Venda::where('bling_id', $blingId)->exists()) {
+            return ['status' => 'ignorado', 'motivo' => 'ja_existe'];
+        }
+
+        // Se existia como rejeitado, apagar para reimportar limpo
+        PedidoBlingStaging::where('bling_id', $blingId)
+            ->where('status', 'rejeitado')
+            ->delete();
+
+        // Buscar detalhes completos
+        $detalhe = $this->client->getPedido($blingId);
+        if (!$detalhe['success']) {
+            return ['status' => 'erro', 'motivo' => 'api_erro_' . ($detalhe['http_code'] ?? 'unknown')];
+        }
+
+        $pedido = $detalhe['body']['data'] ?? null;
+        if (!$pedido) {
+            return ['status' => 'erro', 'motivo' => 'dados_vazios'];
+        }
+
+        $this->salvarNoStaging($pedido);
+        return ['status' => 'importado', 'numero' => $pedido['numero'] ?? $blingId];
+    }
+
     private function salvarNoStaging(array $pedido): void
     {
         $canal = $this->identificarCanal($pedido);

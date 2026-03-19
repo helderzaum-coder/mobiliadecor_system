@@ -47,7 +47,12 @@ class CotacaoFreteService
             if ($cotacao) {
                 $cotacoes[] = $cotacao;
             } else {
-                // Transportadora atende a UF mas não tem faixa de frete — exibir como "consultar"
+                // Transportadora atende a UF mas não tem faixa de frete
+                // Se cobertura_completa = true, significa que não atende este destino específico
+                if ($transp->cobertura_completa) {
+                    continue;
+                }
+                // Senão, exibir como "consultar"
                 $atendeUf = $transp->ufsAtendidas()->where('uf', $destUf)->exists();
                 if ($atendeUf) {
                     $taxasEspeciais = self::calcularTaxasEspeciais($transp->id_transportadora, $destUf, $cepNumerico, $destCidade, 0);

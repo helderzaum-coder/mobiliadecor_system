@@ -44,6 +44,10 @@ class TransportadoraResource extends Resource
                     ->label('Aplica ICMS')
                     ->default(false)
                     ->helperText('Calcula ICMS por dentro sobre o total do frete'),
+                Forms\Components\Toggle::make('cobertura_completa')
+                    ->label('Cobertura Completa')
+                    ->default(false)
+                    ->helperText('Marque se a tabela de frete já cobre todos os destinos. Desmarcado = mostra "consultar" quando não encontrar faixa.'),
             ])->columns(4),
 
             Forms\Components\Section::make('UFs Atendidas')->schema([

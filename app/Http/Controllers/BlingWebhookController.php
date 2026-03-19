@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Bling\BlingImportService;
 use App\Services\Bling\BlingSyncEstoqueService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -71,12 +72,29 @@ class BlingWebhookController extends Controller
             return response()->json(['error' => 'ID do pedido não encontrado'], 422);
         }
 
+        $logResult = [];
+
+        // 1. Sincronizar estoque na conta oposta
         $service   = new BlingSyncEstoqueService($account);
         $resultado = $service->processarPedido((int) $pedidoId);
+        $logResult['estoque'] = $resultado['log'];
 
-        Log::info("BlingWebhook [{$account}]: pedido #{$pedidoId} processado", $resultado['log']);
+        // 2. Importar pedido para o staging automaticamente
+        try {
+            $importService = new BlingImportService($account);
+            $importResult = $importService->importarPedidoPorId((int) $pedidoId);
+            $logResult['staging'] = $importResult;
+            Log::info("BlingWebhook [{$account}]: pedido #{$pedidoId} staging: {$importResult['status']}");
+        } catch (\Throwable $e) {
+            $logResult['staging'] = ['status' => 'erro', 'motivo' => $e->getMessage()];
+            Log::warning("BlingWebhook [{$account}]: erro ao importar pedido #{$pedidoId} para staging", [
+                'error' => $e->getMessage(),
+            ]);
+        }
 
-        return response()->json(['status' => 'ok', 'pedido' => $pedidoId, 'log' => $resultado['log']]);
+        Log::info("BlingWebhook [{$account}]: pedido #{$pedidoId} processado", $logResult);
+
+        return response()->json(['status' => 'ok', 'pedido' => $pedidoId, 'log' => $logResult]);
     }
 
     private function handleEstoque(string $account, array $data): \Illuminate\Http\JsonResponse
