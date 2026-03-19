@@ -129,6 +129,19 @@ class BlingWebhookController extends Controller
             return response()->json(['status' => 'ignored', 'reason' => 'loop_prevention']);
         }
 
+        // Debounce: evitar processar o mesmo produto várias vezes em sequência (5s)
+        $debounceKey = "bling_webhook_debounce_{$account}_{$produtoId}";
+        if (Cache::has($debounceKey)) {
+            return response()->json(['status' => 'ignored', 'reason' => 'debounce']);
+        }
+        Cache::put($debounceKey, true, 5);
+
+        // Ignorar virtual_stock.updated — só processar estoque físico real
+        $evento = strtolower((string) ($data['event'] ?? request()->input('event') ?? request()->input('tipo') ?? ''));
+        if (str_contains($evento, 'virtual_stock')) {
+            return response()->json(['status' => 'ignored', 'reason' => 'virtual_stock']);
+        }
+
         $service   = new BlingSyncEstoqueService($account);
         $resultado = $service->espelharEstoque((int) $produtoId, (float) $saldo);
 
@@ -169,13 +182,16 @@ class BlingWebhookController extends Controller
 
     private function isEventoEstoque(string $evento, array $data): bool
     {
+        // Ignorar virtual_stock — só processar estoque físico
+        if (str_contains($evento, 'virtual_stock')) {
+            return false;
+        }
+
         if (in_array($evento, [
             'stock.created',
             'stock.updated',
             'estoque.created',
             'estoque.updated',
-            'virtual_stock.created',
-            'virtual_stock.updated',
         ])) {
             return true;
         }

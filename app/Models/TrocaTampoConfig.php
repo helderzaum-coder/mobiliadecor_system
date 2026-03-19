@@ -17,5 +17,6 @@ class TrocaTampoConfig extends Model
         'nome_produto',
         'nome_tampo',
         'cor_tampo',
+        'familia_tampo',
     ];
 }

@@ -64,10 +64,10 @@ class TrocaTampoService
         // Opção 1: Tampo volta pro estoque avulso
         $destinos["estoque_{$configOrigemId}"] = "Estoque avulso: {$origem->nome_tampo} ({$origem->sku_tampo})";
 
-        // Opção 2: Tampo vai pra outra caixa aberta (mesmo grupo, mesma cor_tampo compatível, tipo_tampo = liso se tampo é liso, etc.)
-        // Buscar produtos que usam o mesmo tampo (mesma cor_tampo e mesmo tipo_tampo)
+        // Opção 2: Tampo vai pra outra caixa (mesma familia_tampo, mesma cor_tampo, mesmo tipo_tampo)
         $compativeis = TrocaTampoConfig::where('cor_tampo', $origem->cor_tampo)
             ->where('tipo_tampo', $origem->tipo_tampo)
+            ->where('familia_tampo', $origem->familia_tampo)
             ->where('id', '!=', $configOrigemId)
             ->get();
 
@@ -114,6 +114,8 @@ class TrocaTampoService
         ];
         if (!$res['success']) $erros[] = "Falha ao dar baixa em {$caixaAberta->sku_produto}: " . ($res['erro'] ?? 'erro desconhecido');
 
+        sleep(1); // Rate limit Bling: 3 req/s
+
         // 2. Dar baixa no tampo usado (que vai pra montagem): -1
         $res = $this->movimentarEstoque($tampoUsado->sku_tampo, -1, "Troca tampo: usado para montar {$tampoUsado->nome_produto}");
         $movimentacoes[] = [
@@ -125,6 +127,8 @@ class TrocaTampoService
         ];
         if (!$res['success']) $erros[] = "Falha ao dar baixa em {$tampoUsado->sku_tampo}: " . ($res['erro'] ?? 'erro desconhecido');
 
+        sleep(1);
+
         // 3. Dar entrada no produto montado: +1
         $res = $this->movimentarEstoque($tampoUsado->sku_produto, 1, "Troca tampo: montado a partir de {$caixaAberta->nome_produto}");
         $movimentacoes[] = [
@@ -135,6 +139,8 @@ class TrocaTampoService
             'ok' => $res['success'],
         ];
         if (!$res['success']) $erros[] = "Falha ao dar entrada em {$tampoUsado->sku_produto}: " . ($res['erro'] ?? 'erro desconhecido');
+
+        sleep(1);
 
         // 4. Destino do tampo que sobrou da caixa aberta
         if (str_starts_with($destinoTampo, 'estoque_')) {
@@ -194,10 +200,29 @@ class TrocaTampoService
      */
     private function movimentarEstoque(string $sku, int $qtd, string $obs): array
     {
+        Log::info("TrocaTampo: Buscando SKU '{$sku}' na conta {$this->account}...");
+
+        // Sempre buscar por código (SKU) primeiro
         $produto = $this->client->getProductBySku($sku);
+
+        // Retry se falhou (pode ser rate limit)
         if (!$produto) {
-            return ['success' => false, 'erro' => "Produto {$sku} não encontrado no Bling"];
+            Log::warning("TrocaTampo: SKU '{$sku}' não encontrado na 1ª tentativa, aguardando 2s...");
+            sleep(2);
+            $produto = $this->client->getProductBySku($sku);
         }
+
+        // Fallback: se SKU parece ser um ID do Bling (número muito grande, >= 10 bilhões)
+        if (!$produto && ctype_digit($sku) && (float) $sku >= 10000000000) {
+            $produto = $this->client->getProductById((int) $sku);
+        }
+
+        if (!$produto) {
+            Log::error("TrocaTampo: SKU '{$sku}' não encontrado no Bling ({$this->account}) após 2 tentativas");
+            return ['success' => false, 'erro' => "Produto SKU {$sku} não encontrado no Bling"];
+        }
+
+        Log::info("TrocaTampo: SKU '{$sku}' encontrado — ID: {$produto['id']}, codigo: " . ($produto['codigo'] ?? 'N/A'));
 
         $produtoId = $produto['id'];
         $operacao = $qtd > 0 ? 'E' : 'B';

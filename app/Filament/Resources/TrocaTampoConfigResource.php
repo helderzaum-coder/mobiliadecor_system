@@ -74,6 +74,11 @@ class TrocaTampoConfigResource extends Resource
                     ->required()
                     ->helperText('Ex: branco, savana — usado para compatibilidade entre produtos')
                     ->maxLength(50),
+                Forms\Components\TextInput::make('familia_tampo')
+                    ->label('Família de Tampo')
+                    ->required()
+                    ->helperText('Grupos que compartilham tampos. Ex: alana, elisa_jade')
+                    ->maxLength(50),
             ])->columns(3),
         ]);
     }
@@ -97,6 +102,7 @@ class TrocaTampoConfigResource extends Resource
                 Tables\Columns\TextColumn::make('sku_tampo')->label('SKU Tampo')->searchable(),
                 Tables\Columns\TextColumn::make('nome_tampo')->label('Tampo'),
                 Tables\Columns\TextColumn::make('cor_tampo')->label('Cor Tampo'),
+                Tables\Columns\TextColumn::make('familia_tampo')->label('Família')->badge(),
             ])
             ->defaultSort('grupo')
             ->filters([])

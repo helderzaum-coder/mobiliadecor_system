@@ -99,6 +99,7 @@
                                 <th class="text-left p-1">SKU Tampo</th>
                                 <th class="text-left p-1">Tampo</th>
                                 <th class="text-left p-1">Cor Tampo</th>
+                                <th class="text-left p-1">Família</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -119,6 +120,7 @@
                                     <td class="p-1 font-mono text-gray-300">{{ $c->sku_tampo }}</td>
                                     <td class="p-1 text-gray-200">{{ $c->nome_tampo }}</td>
                                     <td class="p-1 text-gray-300">{{ $c->cor_tampo }}</td>
+                                    <td class="p-1"><span class="text-xs bg-indigo-900/40 text-indigo-300 px-1.5 py-0.5 rounded">{{ $c->familia_tampo }}</span></td>
                                 </tr>
                             @endforeach
                         </tbody>

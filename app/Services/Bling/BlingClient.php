@@ -100,11 +100,19 @@ class BlingClient
 
         if ($res['success'] && !empty($res['body']['data'])) {
             foreach ($res['body']['data'] as $produto) {
-                if (($produto['codigo'] ?? '') === $sku) {
+                if ((string) ($produto['codigo'] ?? '') === (string) $sku) {
                     return $produto;
                 }
             }
+            // API retornou resultados mas nenhum match exato — usar primeiro
+            return $res['body']['data'][0];
         }
+
+        // Se falhou ou veio vazio, logar para debug
+        Log::warning("Bling [{$this->accountKey}]: getProductBySku '{$sku}' — nenhum resultado", [
+            'http_code' => $res['http_code'] ?? null,
+            'data_count' => count($res['body']['data'] ?? []),
+        ]);
 
         return null;
     }

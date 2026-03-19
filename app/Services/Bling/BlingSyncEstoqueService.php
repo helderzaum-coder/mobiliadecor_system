@@ -54,6 +54,9 @@ class BlingSyncEstoqueService
 
         $log[] = "Espelhando estoque SKU {$sku}: saldo {$saldo} ({$this->origemKey} → {$this->destinoKey})";
 
+        // Rate limit: aguardar antes de buscar no destino
+        sleep(1);
+
         // Buscar produto na conta destino
         $prodDestino = $this->buscarProdutoCompleto($this->destino, $sku);
 
