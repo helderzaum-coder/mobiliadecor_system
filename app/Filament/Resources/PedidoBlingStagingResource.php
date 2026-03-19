@@ -145,7 +145,7 @@ class PedidoBlingStagingResource extends Resource
                     ->prefix('R$')
                     ->helperText('Informe o valor do rebate/desconto do ML'),
             ])->columns(3)
-            ->visible(fn ($record) => $record && str_contains(strtolower($record->canal ?? ''), 'mercado')),
+            ->visible(fn ($record) => $record && self::isML($record)),
 
             Forms\Components\Section::make('Dados de Envio')->schema([
                 Forms\Components\TextInput::make('dest_cep')
@@ -679,5 +679,11 @@ class PedidoBlingStagingResource extends Resource
     public static function isShopee(PedidoBlingStaging $record): bool
     {
         return stripos($record->canal ?? '', 'shopee') !== false;
+    }
+
+    public static function isML(PedidoBlingStaging $record): bool
+    {
+        return str_contains(strtolower($record->canal ?? ''), 'mercado')
+            || str_starts_with($record->numero_loja ?? '', '2000');
     }
 }

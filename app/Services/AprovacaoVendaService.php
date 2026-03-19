@@ -34,7 +34,8 @@ class AprovacaoVendaService
         }
 
         // Para pedidos ML ME2, usar o custo de frete do ML (list_cost - cost = custo líquido)
-        $isML = str_contains(strtolower($staging->canal ?? ''), 'mercado');
+        $isML = str_contains(strtolower($staging->canal ?? ''), 'mercado')
+            || str_starts_with($staging->numero_loja ?? '', '2000');
         if ($isML && (float) ($staging->ml_frete_custo ?? 0) > 0) {
             $custoFrete = (float) $staging->ml_frete_custo - (float) $staging->ml_frete_receita;
         }
