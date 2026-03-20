@@ -53,6 +53,8 @@ class AprovacaoVendaService
                 // Se temos sale_fee real da API, usar como comissão + taxa frete
                 if ($mlSaleFee > 0) {
                     $comissao = $mlSaleFee + $taxaFreteML;
+                    // sale_fee da API já tem rebate descontado, não somar rebate de novo
+                    $valorRebate = 0;
                 }
                 $frete = 0;
                 $custoFrete = 0;
@@ -67,6 +69,7 @@ class AprovacaoVendaService
                 // Se temos sale_fee real da API, usar como comissão
                 if ($mlSaleFee > 0) {
                     $comissao = $mlSaleFee;
+                    $valorRebate = 0; // já descontado no sale_fee
                 }
             }
         }

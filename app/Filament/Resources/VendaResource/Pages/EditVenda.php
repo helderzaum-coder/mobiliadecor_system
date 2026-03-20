@@ -53,13 +53,17 @@ class EditVenda extends EditRecord
                             $taxaFreteML = $mlFreteCusto > 0 ? ($mlFreteCusto - $mlFreteReceita) : 0;
                             if ($mlSaleFee > 0) {
                                 $comissao = $mlSaleFee + $taxaFreteML;
+                                $valorRebate = 0; // sale_fee da API já tem rebate descontado
                             }
                             $frete = 0;
                             $custoFrete = 0;
                         } else {
                             if ($mlFreteReceita > 0) $frete = $mlFreteReceita;
                             if ($mlFreteCusto > 0) $custoFrete = $mlFreteCusto;
-                            if ($mlSaleFee > 0) $comissao = $mlSaleFee;
+                            if ($mlSaleFee > 0) {
+                                $comissao = $mlSaleFee;
+                                $valorRebate = 0;
+                            }
                         }
                     }
 
