@@ -36,11 +36,19 @@ class AprovacaoVendaService
             $custoProdutos += ((float) ($item['custo'] ?? 0)) * ((int) ($item['quantidade'] ?? 1));
         }
 
-        // Para pedidos ML ME2, usar o custo de frete do ML (list_cost - cost = custo líquido)
+        // Para pedidos ML, ajustar custo de frete conforme tipo
         $isML = str_contains(strtolower($staging->canal ?? ''), 'mercado')
             || str_starts_with($staging->numero_loja ?? '', '2000');
-        if ($isML && (float) ($staging->ml_frete_custo ?? 0) > 0) {
-            $custoFrete = (float) $staging->ml_frete_custo - (float) $staging->ml_frete_receita;
+        if ($isML) {
+            $tipoFrete = $staging->ml_tipo_frete ?? null;
+            // ME2 = ML paga o frete, vendedor não tem custo
+            if ($tipoFrete === 'ME2' || $tipoFrete === 'FULL') {
+                $custoFrete = 0;
+                $frete = 0; // vendedor não cobra frete do cliente no ME2
+            } elseif ((float) ($staging->ml_frete_custo ?? 0) > 0) {
+                // ME1 = ML cobra do vendedor
+                $custoFrete = (float) $staging->ml_frete_custo;
+            }
         }
 
         // Comissão sobre frete (se canal cobra)

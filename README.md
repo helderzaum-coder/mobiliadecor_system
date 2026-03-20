@@ -57,3 +57,40 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Deploy via GitHub Actions (SSH)
+
+Este projeto possui workflow de deploy automatico em `.github/workflows/deploy.yml`.
+
+### 1) Secrets necessarios no GitHub
+
+No repositorio, acesse Settings > Secrets and variables > Actions e crie:
+
+- `DEPLOY_HOST`: host do servidor (ex: 123.123.123.123)
+- `DEPLOY_USER`: usuario SSH de deploy
+- `DEPLOY_PORT`: porta SSH (normalmente 22)
+- `DEPLOY_SSH_KEY`: chave privada SSH do usuario de deploy
+- `DEPLOY_PATH`: caminho absoluto da aplicacao no servidor (ex: /var/www/mobiliadecor_system)
+
+### 2) Preparacao unica no servidor
+
+1. Instale PHP 8.2+ com extensoes necessarias, Composer e Node/NPM.
+2. Faça clone do repositorio em `DEPLOY_PATH`.
+3. Configure o `.env` de producao.
+4. Gere chave da app:
+	- `php artisan key:generate`
+5. Ajuste permissoes de escrita para `storage` e `bootstrap/cache`.
+
+### 3) Como disparar deploy
+
+- Automatico: a cada push na branch `main`.
+- Manual: aba Actions > workflow Deploy Laravel > Run workflow.
+
+### 4) O que o workflow executa
+
+- Atualiza codigo com `git fetch` + `git reset --hard origin/main`
+- Instala dependencias PHP sem dev
+- Build de assets com NPM (quando disponivel no servidor)
+- Executa migrations (`php artisan migrate --force`)
+- Limpa e recompila caches (`optimize:clear` e `optimize`)
+- Reinicia filas (`queue:restart`), quando disponivel

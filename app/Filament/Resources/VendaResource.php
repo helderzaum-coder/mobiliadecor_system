@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\VendaResource\Pages;
+use App\Models\CanalVenda;
 use App\Models\Venda;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -63,6 +64,23 @@ class VendaResource extends Resource
                     ->label('Valor Imposto')->numeric()->prefix('R$'),
             ])->columns(4),
 
+            Forms\Components\Section::make('Mercado Livre')
+                ->schema([
+                    Forms\Components\TextInput::make('ml_tipo_anuncio')
+                        ->label('Tipo Anúncio'),
+                    Forms\Components\TextInput::make('ml_tipo_frete')
+                        ->label('Tipo Frete (ME1/ME2)'),
+                    Forms\Components\TextInput::make('ml_sale_fee')
+                        ->label('Sale Fee (Comissão ML)')->numeric()->prefix('R$'),
+                    Forms\Components\TextInput::make('ml_valor_rebate')
+                        ->label('Rebate')->numeric()->prefix('R$'),
+                    Forms\Components\TextInput::make('ml_frete_custo')
+                        ->label('Frete ML Custo')->numeric()->prefix('R$'),
+                    Forms\Components\TextInput::make('ml_frete_receita')
+                        ->label('Frete ML Receita')->numeric()->prefix('R$'),
+                ])->columns(3)
+                ->visible(fn ($record) => $record && self::isMLVenda($record)),
+
             Forms\Components\Section::make('Margens')->schema([
                 Forms\Components\TextInput::make('margem_frete')
                     ->label('Margem Frete')->numeric()->prefix('R$'),
@@ -76,6 +94,13 @@ class VendaResource extends Resource
         ]);
     }
 
+    public static function isMLVenda(Venda $venda): bool
+    {
+        $canal = $venda->canal?->nome_canal ?? '';
+        return str_contains(strtolower($canal), 'mercado')
+            || str_starts_with($venda->numero_pedido_canal ?? '', '2000');
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -86,6 +111,19 @@ class VendaResource extends Resource
                     ->label('NF')->searchable(),
                 Tables\Columns\TextColumn::make('canal.nome_canal')
                     ->label('Canal'),
+                Tables\Columns\TextColumn::make('ml_tipo_anuncio')
+                    ->label('Anúncio')
+                    ->badge()
+                    ->color(fn ($state) => match ($state) {
+                        'Premium' => 'warning',
+                        'Clássico' => 'info',
+                        default => 'gray',
+                    })
+                    ->visible(fn () => true),
+                Tables\Columns\TextColumn::make('ml_tipo_frete')
+                    ->label('Frete ML')
+                    ->badge()
+                    ->visible(fn () => true),
                 Tables\Columns\TextColumn::make('cnpj.razao_social')
                     ->label('CNPJ')->limit(20),
                 Tables\Columns\TextColumn::make('data_venda')
@@ -98,6 +136,11 @@ class VendaResource extends Resource
                     ->label('Comissão')->money('BRL'),
                 Tables\Columns\TextColumn::make('valor_imposto')
                     ->label('Imposto')->money('BRL'),
+                Tables\Columns\TextColumn::make('ml_valor_rebate')
+                    ->label('Rebate')->money('BRL')
+                    ->visible(fn () => true)
+                    ->color('info')
+                    ->default(0),
                 Tables\Columns\TextColumn::make('margem_produto')
                     ->label('Margem Produto')->money('BRL')
                     ->color(fn ($state) => $state >= 0 ? 'success' : 'danger'),

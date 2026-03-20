@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\MercadoLivre\MercadoLivreOAuthService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class MercadoLivreAuthController extends Controller
 {
@@ -24,6 +25,25 @@ class MercadoLivreAuthController extends Controller
     {
         $code = $request->get('code');
         $accountKey = $request->get('state');
+        $oauthError = $request->get('error');
+        $oauthErrorDescription = $request->get('error_description');
+
+        if ($oauthError) {
+            Log::warning('ML OAuth: callback retornou erro', [
+                'error' => $oauthError,
+                'error_description' => $oauthErrorDescription,
+                'state' => $accountKey,
+                'full_query' => $request->query(),
+            ]);
+
+            $message = 'Mercado Livre retornou erro na autorização.';
+            if ($oauthErrorDescription) {
+                $message .= ' ' . $oauthErrorDescription;
+            }
+
+            return redirect()->route('filament.helder.pages.mercado-livre-integration')
+                ->with('error', $message);
+        }
 
         if (!$code || !$accountKey) {
             return redirect()->route('filament.helder.pages.mercado-livre-integration')
