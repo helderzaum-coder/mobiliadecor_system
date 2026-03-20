@@ -352,6 +352,22 @@ class PedidoBlingStagingResource extends Resource
                         }
                     })
                     ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente' && empty($record->nfe_chave_acesso)),
+                Tables\Actions\Action::make('buscar_dados_envio')
+                    ->label('Buscar Envio')
+                    ->icon('heroicon-o-map-pin')
+                    ->color('info')
+                    ->requiresConfirmation()
+                    ->modalHeading('Buscar Dados de Envio')
+                    ->modalDescription('Vai buscar CEP, cidade, UF e dimensões do pedido no Bling.')
+                    ->action(function (PedidoBlingStaging $record) {
+                        $found = BlingImportService::buscarDadosEnvio($record);
+                        if ($found) {
+                            Notification::make()->title('Dados de envio atualizados.')->success()->send();
+                        } else {
+                            Notification::make()->title('Não foi possível obter dados de envio.')->warning()->send();
+                        }
+                    })
+                    ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente' && (empty($record->dest_cep) || empty($record->dest_uf))),
                 Tables\Actions\Action::make('buscar_cte')
                     ->label('CT-e')
                     ->icon('heroicon-o-truck')

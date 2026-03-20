@@ -403,6 +403,100 @@ class BlingImportService
     }
 
     /**
+     * Busca dados de envio (CEP, cidade, UF, dimensões) para um pedido no staging.
+     * Tenta: 1) dados_originais salvos, 2) re-fetch do pedido via API, 3) contato via API.
+     */
+    public static function buscarDadosEnvio(PedidoBlingStaging $staging): bool
+    {
+        $client = new BlingClient($staging->bling_account);
+        $updates = [];
+
+        // 1) Tentar dos dados_originais salvos
+        $pedido = $staging->dados_originais ?? [];
+        $etiqueta = $pedido['transporte']['etiqueta'] ?? [];
+        $destCep = $etiqueta['cep'] ?? null;
+        $destCidade = $etiqueta['municipio'] ?? null;
+        $destUf = $etiqueta['uf'] ?? null;
+
+        // 2) Se não tem na etiqueta, re-fetch do pedido via API
+        if (empty($destCep) && $staging->bling_id) {
+            sleep(1);
+            $res = $client->getPedido((int) $staging->bling_id);
+            if ($res['success']) {
+                $pedido = $res['body']['data'] ?? [];
+                $etiqueta = $pedido['transporte']['etiqueta'] ?? [];
+                $destCep = $etiqueta['cep'] ?? null;
+                $destCidade = $etiqueta['municipio'] ?? null;
+                $destUf = $etiqueta['uf'] ?? null;
+            }
+        }
+
+        // 3) Fallback: buscar endereço do contato
+        if (empty($destCep)) {
+            $contatoId = $pedido['contato']['id'] ?? null;
+            if ($contatoId) {
+                sleep(1);
+                $contatoRes = $client->get("/contatos/{$contatoId}");
+                if ($contatoRes['success']) {
+                    $endGeral = $contatoRes['body']['data']['endereco']['geral'] ?? [];
+                    $destCep    = $endGeral['cep'] ?? null;
+                    $destCidade = $endGeral['municipio'] ?? null;
+                    $destUf     = $endGeral['uf'] ?? null;
+                }
+            }
+        }
+
+        if ($destCep) {
+            $updates['dest_cep'] = $destCep;
+            $updates['dest_cidade'] = $destCidade;
+            $updates['dest_uf'] = $destUf;
+        }
+
+        // Peso bruto
+        $pesoBruto = (float) ($pedido['transporte']['pesoBruto'] ?? 0);
+        if ($pesoBruto > 0 && !$staging->peso_bruto) {
+            $updates['peso_bruto'] = $pesoBruto;
+        }
+
+        // Dimensões: buscar do produto se não tem
+        if (!$staging->embalagem_largura) {
+            $maiorLargura = 0;
+            $maiorAltura = 0;
+            $maiorComprimento = 0;
+
+            foreach ($pedido['itens'] ?? $staging->itens ?? [] as $item) {
+                $sku = $item['codigo'] ?? '';
+                if (!$sku) continue;
+
+                sleep(1);
+                $produto = $client->getProductBySku($sku);
+                $produtoId = $produto['id'] ?? null;
+                if ($produtoId) {
+                    sleep(1);
+                    $detalhe = $client->getProductById((int) $produtoId);
+                    $dim = $detalhe['dimensoes'] ?? [];
+                    $maiorLargura = max($maiorLargura, (float) ($dim['largura'] ?? 0));
+                    $maiorAltura = max($maiorAltura, (float) ($dim['altura'] ?? 0));
+                    $maiorComprimento = max($maiorComprimento, (float) ($dim['profundidade'] ?? 0));
+                }
+            }
+
+            if ($maiorLargura > 0) $updates['embalagem_largura'] = $maiorLargura;
+            if ($maiorAltura > 0) $updates['embalagem_altura'] = $maiorAltura;
+            if ($maiorComprimento > 0) $updates['embalagem_comprimento'] = $maiorComprimento;
+        }
+
+        if (!empty($updates)) {
+            $staging->update($updates);
+            Log::info("BlingImport: Dados de envio atualizados para pedido {$staging->numero_pedido}", $updates);
+            return true;
+        }
+
+        return false;
+    }
+
+
+    /**
      * Busca custo dos produtos nos itens de um pedido do staging via API Bling.
      */
     public static function buscarCustosProdutos(PedidoBlingStaging $staging): int
