@@ -52,9 +52,10 @@ class AprovacaoVendaService
             }
         }
 
-        // Imposto proporcional sobre frete (se nota cheia, o imposto incide sobre tudo incluindo frete)
+        // Imposto proporcional sobre frete (se canal tem flag imposto_sobre_frete)
         $impostoFrete = 0;
-        if ($tipoNota === 'cheia' && $frete > 0 && $totalPedido > 0 && $percentualImposto > 0) {
+        $impostoSobreFrete = (bool) ($canal->imposto_sobre_frete ?? false);
+        if ($impostoSobreFrete && $frete > 0 && $percentualImposto > 0) {
             $impostoFrete = round($frete * $percentualImposto / 100, 2);
         }
 
