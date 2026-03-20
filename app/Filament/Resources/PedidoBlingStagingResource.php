@@ -229,6 +229,20 @@ class PedidoBlingStagingResource extends Resource
                     ->trueColor('success')
                     ->falseColor('warning')
                     ->getStateUsing(fn (PedidoBlingStaging $record) => self::isShopee($record) ? $record->planilha_shopee : null),
+                Tables\Columns\TextColumn::make('pronto_aprovacao')
+                    ->label('Pronto')
+                    ->html()
+                    ->getStateUsing(function (PedidoBlingStaging $record) {
+                        $checks = self::verificarProntoAprovacao($record);
+                        $pendentes = array_filter($checks, fn ($v) => !$v['ok']);
+
+                        if (empty($pendentes)) {
+                            return '<span title="Pronto para aprovar" class="text-success-500">✅</span>';
+                        }
+
+                        $faltam = implode('&#10;', array_map(fn ($v) => '❌ ' . $v['label'], $pendentes));
+                        return '<span title="' . $faltam . '" class="text-danger-500 cursor-help">❌ ' . count($pendentes) . '</span>';
+                    }),
             ])
             ->defaultSort('data_pedido', 'desc')
             ->filters([
@@ -253,6 +267,12 @@ class PedidoBlingStagingResource extends Resource
                         ->toArray()
                     )
                     ->searchable(),
+                Tables\Filters\TernaryFilter::make('pronto')
+                    ->label('Pronto p/ Aprovar')
+                    ->queries(
+                        true: fn ($query) => $query->whereNotNull('nfe_chave_acesso')->where('custo_frete', '>', 0),
+                        false: fn ($query) => $query->where(fn ($q) => $q->whereNull('nfe_chave_acesso')->orWhere('custo_frete', '<=', 0)->orWhereNull('custo_frete')),
+                    ),
                 Tables\Filters\Filter::make('periodo')
                     ->form([
                         Forms\Components\Select::make('periodo_rapido')
@@ -701,5 +721,59 @@ class PedidoBlingStagingResource extends Resource
     {
         return str_contains(strtolower($record->canal ?? ''), 'mercado')
             || str_starts_with($record->numero_loja ?? '', '2000');
+    }
+
+    /**
+     * Verifica se um pedido está pronto para aprovação.
+     * Retorna array de checks com 'ok' e 'label'.
+     */
+    public static function verificarProntoAprovacao(PedidoBlingStaging $record): array
+    {
+        $checks = [];
+        $isML = self::isML($record);
+        $isShopee = self::isShopee($record);
+        $isME2 = $isML && !empty($record->ml_tipo_frete) && str_contains(strtolower($record->ml_tipo_frete), 'fulfillment');
+
+        // NF-e — obrigatório para todos
+        $checks[] = [
+            'ok' => !empty($record->nfe_chave_acesso),
+            'label' => 'NF-e',
+        ];
+
+        // CT-e (custo frete) — obrigatório exceto ME2 (ML cuida do frete)
+        if (!$isML || !$isME2) {
+            $checks[] = [
+                'ok' => (float) ($record->custo_frete ?? 0) > 0,
+                'label' => 'Custo Frete',
+            ];
+        }
+
+        // ML: rebate processado
+        if ($isML) {
+            $checks[] = [
+                'ok' => $record->ml_tem_rebate !== null,
+                'label' => 'Rebate ML',
+            ];
+            $checks[] = [
+                'ok' => !empty($record->ml_tipo_anuncio),
+                'label' => 'Tipo Anúncio ML',
+            ];
+        }
+
+        // Shopee: planilha processada
+        if ($isShopee) {
+            $checks[] = [
+                'ok' => (bool) $record->planilha_shopee,
+                'label' => 'Planilha Shopee',
+            ];
+        }
+
+        return $checks;
+    }
+
+    public static function isProntoAprovacao(PedidoBlingStaging $record): bool
+    {
+        $checks = self::verificarProntoAprovacao($record);
+        return empty(array_filter($checks, fn ($v) => !$v['ok']));
     }
 }
