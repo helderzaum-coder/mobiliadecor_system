@@ -353,18 +353,34 @@ class BlingImportService
      */
     public static function buscarNfePorPedido(PedidoBlingStaging $staging): bool
     {
+        $client = new BlingClient($staging->bling_account);
+
         // Tentar pegar o ID da NF-e do campo nota_fiscal ou dos dados_originais
         $nfeId = $staging->nota_fiscal;
 
-        if (!$nfeId || $nfeId == '0') {
+        if (!$nfeId || $nfeId == '0' || $nfeId == '') {
             $nfeId = $staging->dados_originais['notaFiscal']['id'] ?? 0;
+        }
+
+        // Se ainda não tem NF ID, re-consultar o pedido na API do Bling
+        if (!$nfeId || $nfeId == 0) {
+            try {
+                $response = $client->getPedido((int) $staging->bling_id);
+                if ($response['success']) {
+                    $pedidoAtualizado = $response['body']['data'] ?? null;
+                    if ($pedidoAtualizado) {
+                        $nfeId = $pedidoAtualizado['notaFiscal']['id'] ?? 0;
+                        Log::info("Bling: Re-fetch pedido {$staging->bling_id} -> notaFiscal.id = {$nfeId}");
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::warning("Bling: Erro ao re-fetch pedido {$staging->bling_id}: " . $e->getMessage());
+            }
         }
 
         if (!$nfeId || $nfeId == 0) {
             return false;
         }
-
-        $client = new BlingClient($staging->bling_account);
 
         try {
             $response = $client->getNfe((int) $nfeId);
