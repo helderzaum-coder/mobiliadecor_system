@@ -26,7 +26,7 @@ class MercadoLivreAuthController extends Controller
         $accountKey = $request->get('state');
 
         if (!$code || !$accountKey) {
-            return redirect()->route('filament.helder.pages.dashboard')
+            return redirect()->route('filament.helder.pages.mercado-livre-integration')
                 ->with('error', 'Autorização ML cancelada ou inválida.');
         }
 
@@ -34,11 +34,11 @@ class MercadoLivreAuthController extends Controller
         $token = $oauth->exchangeCodeForToken($code);
 
         if ($token) {
-            return redirect()->route('filament.helder.pages.dashboard')
+            return redirect()->route('filament.helder.pages.mercado-livre-integration')
                 ->with('success', "Conta ML '{$oauth->getAccountName()}' autorizada com sucesso!");
         }
 
-        return redirect()->route('filament.helder.pages.dashboard')
+        return redirect()->route('filament.helder.pages.mercado-livre-integration')
             ->with('error', 'Erro ao autorizar conta ML. Verifique os logs.');
     }
 

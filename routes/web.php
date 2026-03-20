@@ -15,9 +15,7 @@ Route::get('/bling/status', [BlingAuthController::class, 'status'])->name('bling
 
 // Bling Webhooks → registrado em bootstrap/app.php (fora do middleware web)
 
-// Mercado Livre OAuth
-Route::middleware('auth')->group(function () {
-    Route::get('/ml/authorize/{account}', [MercadoLivreAuthController::class, 'authorize'])->name('ml.authorize');
-    Route::get('/ml/callback', [MercadoLivreAuthController::class, 'callback'])->name('ml.callback');
-    Route::get('/ml/status', [MercadoLivreAuthController::class, 'status'])->name('ml.status');
-});
+// Mercado Livre OAuth (sem middleware auth para permitir callback do ML)
+Route::get('/ml/authorize/{account}', [MercadoLivreAuthController::class, 'authorize'])->name('ml.authorize');
+Route::get('/ml/callback', [MercadoLivreAuthController::class, 'callback'])->name('ml.callback');
+Route::get('/ml/status', [MercadoLivreAuthController::class, 'status'])->name('ml.status');
