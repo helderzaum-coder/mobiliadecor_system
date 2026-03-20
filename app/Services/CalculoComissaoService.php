@@ -53,19 +53,18 @@ class CalculoComissaoService
             $valorItem = (float) ($item['valor'] ?? 0);
             $quantidade = (int) ($item['quantidade'] ?? 1);
 
-            // Encontrar a regra que se aplica a este valor
-            $regraAplicavel = null;
+            // Coletar todas as regras aplicáveis (faixas progressivas)
+            $regrasAplicaveis = [];
             foreach ($regras as $regra) {
                 $min = (float) ($regra->faixa_valor_min ?? 0);
                 $max = (float) ($regra->faixa_valor_max ?? PHP_FLOAT_MAX);
 
-                if ($valorItem >= $min && $valorItem <= $max) {
-                    $regraAplicavel = $regra;
-                    break;
+                if ($valorItem > $min) {
+                    $regrasAplicaveis[] = $regra;
                 }
             }
 
-            if (!$regraAplicavel) {
+            if (empty($regrasAplicaveis)) {
                 $detalhes[] = [
                     'item' => $item['descricao'] ?? $item['codigo'] ?? '?',
                     'valor' => $valorItem,
@@ -79,12 +78,37 @@ class CalculoComissaoService
                 continue;
             }
 
-            // Comissão = (percentual% do valor) + valor_fixo
-            $comissaoUnit = ($valorItem * $regraAplicavel->percentual / 100)
-                          + (float) $regraAplicavel->valor_fixo;
+            // Se só tem 1 regra ou a regra não tem faixa_valor_max, aplicar direto
+            // Se tem múltiplas faixas, aplicar progressivamente
+            $comissaoUnit = 0;
+            $subsidioPixUnit = 0;
+            $nomeRegra = '';
 
-            // Subsídio pix = percentual sobre o valor do item
-            $subsidioPixUnit = $valorItem * (float) $regraAplicavel->subsidio_pix / 100;
+            if (count($regrasAplicaveis) === 1 && empty($regrasAplicaveis[0]->faixa_valor_max)) {
+                // Regra única sem faixa — aplicar direto
+                $regra = $regrasAplicaveis[0];
+                $comissaoUnit = ($valorItem * $regra->percentual / 100) + (float) $regra->valor_fixo;
+                $subsidioPixUnit = $valorItem * (float) $regra->subsidio_pix / 100;
+                $nomeRegra = $regra->nome_regra;
+            } else {
+                // Faixas progressivas: cada faixa aplica % sobre a porção do valor dentro dela
+                $valorFixoTotal = 0;
+                $nomes = [];
+                foreach ($regrasAplicaveis as $regra) {
+                    $min = (float) ($regra->faixa_valor_min ?? 0);
+                    $max = (float) ($regra->faixa_valor_max ?? PHP_FLOAT_MAX);
+
+                    $baseNaFaixa = min($valorItem, $max) - $min;
+                    if ($baseNaFaixa <= 0) continue;
+
+                    $comissaoUnit += $baseNaFaixa * $regra->percentual / 100;
+                    $subsidioPixUnit += $baseNaFaixa * (float) $regra->subsidio_pix / 100;
+                    $valorFixoTotal += (float) $regra->valor_fixo;
+                    $nomes[] = $regra->nome_regra;
+                }
+                $comissaoUnit += $valorFixoTotal;
+                $nomeRegra = implode(' + ', $nomes);
+            }
 
             $comissaoItem = $comissaoUnit * $quantidade;
             $subsidioPixItem = $subsidioPixUnit * $quantidade;
@@ -96,7 +120,7 @@ class CalculoComissaoService
                 'item' => $item['descricao'] ?? $item['codigo'] ?? '?',
                 'valor' => $valorItem,
                 'quantidade' => $quantidade,
-                'regra' => $regraAplicavel->nome_regra,
+                'regra' => $nomeRegra,
                 'comissao_unitaria' => round($comissaoUnit, 2),
                 'subsidio_pix_unitario' => round($subsidioPixUnit, 2),
                 'comissao_total' => round($comissaoItem, 2),
