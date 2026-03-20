@@ -732,7 +732,6 @@ class PedidoBlingStagingResource extends Resource
         $checks = [];
         $isML = self::isML($record);
         $isShopee = self::isShopee($record);
-        $isME2 = $isML && !empty($record->ml_tipo_frete) && str_contains(strtolower($record->ml_tipo_frete), 'fulfillment');
 
         // NF-e — obrigatório para todos
         $checks[] = [
@@ -740,23 +739,19 @@ class PedidoBlingStagingResource extends Resource
             'label' => 'NF-e',
         ];
 
-        // CT-e (custo frete) — obrigatório exceto ME2 (ML cuida do frete)
-        if (!$isML || !$isME2) {
+        // Custo frete — obrigatório exceto ML (ML cuida do frete)
+        if (!$isML) {
             $checks[] = [
                 'ok' => (float) ($record->custo_frete ?? 0) > 0,
                 'label' => 'Custo Frete',
             ];
         }
 
-        // ML: rebate processado
+        // ML: rebate processado (planilha ML importada)
         if ($isML) {
             $checks[] = [
                 'ok' => $record->ml_tem_rebate !== null,
-                'label' => 'Rebate ML',
-            ];
-            $checks[] = [
-                'ok' => !empty($record->ml_tipo_anuncio),
-                'label' => 'Tipo Anúncio ML',
+                'label' => 'Planilha ML (Rebate)',
             ];
         }
 
