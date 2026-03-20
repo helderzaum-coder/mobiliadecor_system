@@ -212,6 +212,9 @@ class PedidoBlingStagingResource extends Resource
                 Tables\Columns\TextColumn::make('frete')->label('Frete')->money('BRL'),
                 Tables\Columns\TextColumn::make('nota_fiscal')->label('NF')->searchable(),
                 Tables\Columns\TextColumn::make('comissao_calculada')->label('Comissão')->money('BRL'),
+                Tables\Columns\TextColumn::make('subsidio_pix')->label('Subsídio Pix')->money('BRL')
+                    ->color('info')
+                    ->default(0),
                 Tables\Columns\TextColumn::make('valor_imposto')->label('Imposto')->money('BRL'),
                 Tables\Columns\TextColumn::make('status')->label('Status')->badge()
                     ->color(fn (string $state) => match ($state) {

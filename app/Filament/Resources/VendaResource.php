@@ -134,6 +134,10 @@ class VendaResource extends Resource
                     ->label('Custo Prod.')->money('BRL'),
                 Tables\Columns\TextColumn::make('comissao')
                     ->label('Comissão')->money('BRL'),
+                Tables\Columns\TextColumn::make('subsidio_pix')
+                    ->label('Subsídio Pix')->money('BRL')
+                    ->color('info')
+                    ->default(0),
                 Tables\Columns\TextColumn::make('valor_imposto')
                     ->label('Imposto')->money('BRL'),
                 Tables\Columns\TextColumn::make('ml_valor_rebate')
