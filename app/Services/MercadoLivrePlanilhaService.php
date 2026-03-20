@@ -25,6 +25,8 @@ class MercadoLivrePlanilhaService
      */
     public static function processar(string $filePath, string $blingAccount = 'primary'): array
     {
+        Log::info("ML Planilha: Iniciando processamento", ['arquivo' => basename($filePath), 'conta' => $blingAccount]);
+
         $resultado = [
             'processados' => 0,
             'nao_encontrados' => 0,
@@ -40,17 +42,19 @@ class MercadoLivrePlanilhaService
             $spreadsheet = $reader->load($filePath);
             $sheet = $spreadsheet->getActiveSheet();
         } catch (\Exception $e) {
+            Log::error("ML Planilha: Erro ao ler arquivo", ['error' => $e->getMessage()]);
             return ['processados' => 0, 'nao_encontrados' => 0, 'sem_rebate' => 0, 'erros' => 1, 'detalhes' => ["Erro ao ler arquivo: {$e->getMessage()}"]];
         }
 
         $highestRow = $sheet->getHighestRow();
+        Log::info("ML Planilha: Arquivo lido, {$highestRow} linhas");
 
-        // Detectar linha do cabeçalho real (contém "N.º de venda" ou "N.o de venda" na coluna A)
+        // Detectar linha do cabeçalho real
         $linhaInicio = null;
         for ($i = 1; $i <= min(20, $highestRow); $i++) {
             $valA = (string) $sheet->getCell("A{$i}")->getValue();
             if (stripos($valA, 'venda') !== false && stripos($valA, 'N') !== false) {
-                $linhaInicio = $i + 1; // dados começam na linha seguinte ao cabeçalho
+                $linhaInicio = $i + 1;
                 break;
             }
         }
@@ -58,6 +62,15 @@ class MercadoLivrePlanilhaService
         if (!$linhaInicio) {
             return ['processados' => 0, 'nao_encontrados' => 0, 'sem_rebate' => 0, 'erros' => 1, 'detalhes' => ['Cabeçalho não encontrado. Verifique se é uma planilha de vendas do ML.']];
         }
+
+        // Pré-carregar pedidos pendentes do staging para evitar N+1 queries
+        $stagingMap = PedidoBlingStaging::where('bling_account', $blingAccount)
+            ->where('status', 'pendente')
+            ->whereNotNull('numero_loja')
+            ->pluck('id', 'numero_loja')
+            ->toArray();
+
+        Log::info("ML Planilha: {$linhaInicio} até {$highestRow}, staging pendentes: " . count($stagingMap));
 
         for ($i = $linhaInicio; $i <= $highestRow; $i++) {
             $numeroPedido = trim((string) $sheet->getCell("A{$i}")->getValue());
@@ -87,22 +100,18 @@ class MercadoLivrePlanilhaService
                     ]
                 );
 
-                // Aplicar no staging se existir
-                $staging = PedidoBlingStaging::where('numero_loja', $numeroPedido)
-                    ->where('bling_account', $blingAccount)
-                    ->where('status', 'pendente')
-                    ->first();
-
-                if (!$staging) {
+                // Aplicar no staging se existir (usando mapa pré-carregado)
+                $stagingId = $stagingMap[$numeroPedido] ?? null;
+                if (!$stagingId) {
                     $resultado['nao_encontrados']++;
                     continue;
                 }
 
                 if ($temRebate) {
-                    $staging->update(['ml_tem_rebate' => true, 'ml_valor_rebate' => $rebate]);
+                    PedidoBlingStaging::where('id', $stagingId)->update(['ml_tem_rebate' => true, 'ml_valor_rebate' => $rebate]);
                     $resultado['processados']++;
                 } else {
-                    $staging->update(['ml_tem_rebate' => false, 'ml_valor_rebate' => 0]);
+                    PedidoBlingStaging::where('id', $stagingId)->update(['ml_tem_rebate' => false, 'ml_valor_rebate' => 0]);
                     $resultado['sem_rebate']++;
                 }
             } catch (\Exception $e) {
@@ -114,6 +123,8 @@ class MercadoLivrePlanilhaService
 
         $spreadsheet->disconnectWorksheets();
         unset($spreadsheet, $sheet);
+
+        Log::info("ML Planilha: Concluído", $resultado);
 
         return $resultado;
     }
