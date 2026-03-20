@@ -35,7 +35,7 @@ class UploadCte extends Page implements HasForms
         return $form->schema([
             Forms\Components\FileUpload::make('arquivos')
                 ->label('XMLs de CT-e')
-                ->acceptedFileTypes(['text/xml', 'application/xml', '.xml'])
+                ->acceptedFileTypes(['text/xml', 'application/xml', 'application/octet-stream', '.xml'])
                 ->multiple()
                 ->required()
                 ->directory('cte-uploads')
