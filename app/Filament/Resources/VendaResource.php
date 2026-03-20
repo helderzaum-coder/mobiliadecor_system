@@ -120,6 +120,14 @@ class VendaResource extends Resource
                         : '-'),
                 Tables\Columns\TextColumn::make('valor_total_venda')
                     ->label('Total')->money('BRL'),
+                Tables\Columns\TextColumn::make('repasse_estimado')
+                    ->label('Repasse Est.')
+                    ->money('BRL')
+                    ->getStateUsing(fn (Venda $r) => round(
+                        (float) $r->valor_total_venda - (float) $r->comissao - (float) $r->subsidio_pix,
+                        2
+                    ))
+                    ->color('info'),
                 Tables\Columns\TextColumn::make('margem_venda_total')
                     ->label('Lucro Final')->money('BRL')
                     ->color(fn ($state) => $state >= 0 ? 'success' : 'danger'),
