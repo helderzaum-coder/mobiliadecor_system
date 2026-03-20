@@ -15,6 +15,8 @@ class ShopeePlanilhaService
      */
     public static function processar(string $filePath): array
     {
+        Log::info("Shopee Planilha: Iniciando processamento", ['arquivo' => basename($filePath)]);
+
         $resultado = [
             'processados' => 0,
             'nao_encontrados' => 0,
@@ -27,7 +29,8 @@ class ShopeePlanilhaService
             $sheet = $spreadsheet->getActiveSheet();
             $rows = $sheet->toArray(null, true, true, true);
         } catch (\Exception $e) {
-            return ['erros' => 1, 'detalhes' => ["Erro ao ler arquivo: {$e->getMessage()}"]];
+            Log::error("Shopee Planilha: Erro ao ler arquivo", ['error' => $e->getMessage()]);
+            return ['processados' => 0, 'nao_encontrados' => 0, 'erros' => 1, 'detalhes' => ["Erro ao ler arquivo: {$e->getMessage()}"]];
         }
 
         // Agrupar linhas por ID do pedido (coluna A)
@@ -48,6 +51,14 @@ class ShopeePlanilhaService
             $pedidosAgrupados[$pedidoId][] = $row;
         }
 
+        Log::info("Shopee Planilha: " . count($pedidosAgrupados) . " pedidos encontrados na planilha");
+
+        // Pré-carregar pedidos pendentes do staging
+        $stagingMap = PedidoBlingStaging::where('status', 'pendente')
+            ->whereNotNull('numero_loja')
+            ->pluck('id', 'numero_loja')
+            ->toArray();
+
         // Processar cada pedido agrupado
         foreach ($pedidosAgrupados as $pedidoId => $linhas) {
             try {
@@ -65,12 +76,9 @@ class ShopeePlanilhaService
                     ]
                 );
 
-                // Aplicar no staging se existir
-                $staging = PedidoBlingStaging::where('numero_loja', $pedidoId)
-                    ->where('status', 'pendente')
-                    ->first();
-
-                if (!$staging) {
+                // Aplicar no staging se existir (usando mapa pré-carregado)
+                $stagingId = $stagingMap[$pedidoId] ?? null;
+                if (!$stagingId) {
                     $resultado['nao_encontrados']++;
                     continue;
                 }
@@ -88,7 +96,7 @@ class ShopeePlanilhaService
                     $updateData['itens'] = $dados['itens'];
                 }
 
-                $staging->update($updateData);
+                PedidoBlingStaging::where('id', $stagingId)->update($updateData);
                 $resultado['processados']++;
             } catch (\Exception $e) {
                 $resultado['erros']++;
@@ -96,6 +104,8 @@ class ShopeePlanilhaService
                 Log::error("Shopee planilha erro", ['pedido' => $pedidoId, 'error' => $e->getMessage()]);
             }
         }
+
+        Log::info("Shopee Planilha: Concluído", $resultado);
 
         return $resultado;
     }
