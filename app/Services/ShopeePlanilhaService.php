@@ -146,6 +146,9 @@ class ShopeePlanilhaService
             // Cupom Shopee (coluna AE)
             $subsidio += abs(self::parseDecimal($row['AE'] ?? 0));
 
+            // Ajuste por participação em ação comercial (coluna Y) = subsídio pix
+            $subsidio += abs(self::parseDecimal($row['Y'] ?? 0));
+
             // Total global (coluna AU)
             $totalGlobal += self::parseDecimal($row['AU'] ?? 0);
 
