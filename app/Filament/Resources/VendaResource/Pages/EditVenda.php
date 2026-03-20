@@ -21,10 +21,11 @@ class EditVenda extends EditRecord
                 ->color('warning')
                 ->requiresConfirmation()
                 ->modalHeading('Recalcular Margens')
-                ->modalDescription('Isso vai recalcular todas as margens com base nos valores atuais do formulário.')
+                ->modalDescription('Recalcula margens com base nos valores atuais. Para ML, usa dados reais da API (sale_fee + taxa frete).')
                 ->action(function () {
                     $venda = $this->record;
                     $canal = CanalVenda::find($venda->id_canal);
+                    $nomeCanal = $canal->nome_canal ?? '';
 
                     $totalProdutos = (float) $venda->total_produtos;
                     $frete = (float) $venda->valor_frete_cliente;
@@ -38,6 +39,29 @@ class EditVenda extends EditRecord
                     $custoProdutos = (float) $venda->custo_produtos;
                     $comissaoSobreFrete = (bool) ($canal->comissao_sobre_frete ?? false);
                     $impostoSobreFrete = (bool) ($canal->imposto_sobre_frete ?? false);
+
+                    // ML: usar dados reais da API
+                    $isML = str_contains(strtolower($nomeCanal), 'mercado')
+                        || str_starts_with($venda->numero_pedido_canal ?? '', '2000');
+                    $mlSaleFee = (float) ($venda->ml_sale_fee ?? 0);
+                    $mlFreteCusto = (float) ($venda->ml_frete_custo ?? 0);
+                    $mlFreteReceita = (float) ($venda->ml_frete_receita ?? 0);
+                    $tipoFrete = $venda->ml_tipo_frete ?? null;
+
+                    if ($isML) {
+                        if ($tipoFrete === 'ME2' || $tipoFrete === 'FULL') {
+                            $taxaFreteML = $mlFreteCusto > 0 ? ($mlFreteCusto - $mlFreteReceita) : 0;
+                            if ($mlSaleFee > 0) {
+                                $comissao = $mlSaleFee + $taxaFreteML;
+                            }
+                            $frete = 0;
+                            $custoFrete = 0;
+                        } else {
+                            if ($mlFreteReceita > 0) $frete = $mlFreteReceita;
+                            if ($mlFreteCusto > 0) $custoFrete = $mlFreteCusto;
+                            if ($mlSaleFee > 0) $comissao = $mlSaleFee;
+                        }
+                    }
 
                     // Comissão sobre frete
                     $comissaoFrete = 0;
@@ -60,18 +84,23 @@ class EditVenda extends EditRecord
                     $margemProduto = $totalProdutos - $custoProdutos - $comissaoProduto - $impostoProduto + $valorRebate;
                     $margemVendaTotal = $margemProduto + $margemFrete + $subsidioPix;
                     $margemContribuicao = $totalPedido > 0
-                        ? round(($margemVendaTotal / $totalPedido) * 100, 2)
-                        : 0;
+                        ? round(($margemVendaTotal / $totalPedido) * 100, 2) : 0;
 
-                    $venda->update([
+                    $updateData = [
+                        'comissao' => round($comissao, 2),
+                        'valor_frete_cliente' => round($frete, 2),
+                        'valor_frete_transportadora' => round($custoFrete, 2),
                         'margem_frete' => round($margemFrete, 2),
                         'margem_produto' => round($margemProduto, 2),
                         'margem_venda_total' => round($margemVendaTotal, 2),
                         'margem_contribuicao' => round($margemContribuicao, 2),
-                    ]);
+                    ];
+
+                    $venda->update($updateData);
 
                     Notification::make()
                         ->title('Margens recalculadas')
+                        ->body("Comissão: R$ " . number_format($comissao, 2, ',', '.') . " | Lucro: R$ " . number_format($margemVendaTotal, 2, ',', '.'))
                         ->success()
                         ->send();
 

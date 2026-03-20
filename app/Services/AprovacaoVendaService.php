@@ -36,18 +36,38 @@ class AprovacaoVendaService
             $custoProdutos += ((float) ($item['custo'] ?? 0)) * ((int) ($item['quantidade'] ?? 1));
         }
 
-        // Para pedidos ML, ajustar custo de frete conforme tipo
+        // Para pedidos ML, ajustar comissão e frete conforme tipo
         $isML = str_contains(strtolower($staging->canal ?? ''), 'mercado')
             || str_starts_with($staging->numero_loja ?? '', '2000');
+        $mlSaleFee = (float) ($staging->ml_sale_fee ?? 0);
+        $mlFreteCusto = (float) ($staging->ml_frete_custo ?? 0);
+        $mlFreteReceita = (float) ($staging->ml_frete_receita ?? 0);
+
         if ($isML) {
             $tipoFrete = $staging->ml_tipo_frete ?? null;
-            // ME2 = ML paga o frete, vendedor não tem custo
+
             if ($tipoFrete === 'ME2' || $tipoFrete === 'FULL') {
+                // ME2/FULL: vendedor não lida com frete
+                // Taxa frete ML (custo - receita) entra como parte da comissão
+                $taxaFreteML = $mlFreteCusto > 0 ? ($mlFreteCusto - $mlFreteReceita) : 0;
+                // Se temos sale_fee real da API, usar como comissão + taxa frete
+                if ($mlSaleFee > 0) {
+                    $comissao = $mlSaleFee + $taxaFreteML;
+                }
+                $frete = 0;
                 $custoFrete = 0;
-                $frete = 0; // vendedor não cobra frete do cliente no ME2
-            } elseif ((float) ($staging->ml_frete_custo ?? 0) > 0) {
-                // ME1 = ML cobra do vendedor
-                $custoFrete = (float) $staging->ml_frete_custo;
+            } else {
+                // ME1: frete é cobrado do cliente e repassado ao vendedor
+                if ($mlFreteReceita > 0) {
+                    $frete = $mlFreteReceita; // valor pago pelo comprador
+                }
+                if ($mlFreteCusto > 0) {
+                    $custoFrete = $mlFreteCusto; // custo cobrado pelo ML
+                }
+                // Se temos sale_fee real da API, usar como comissão
+                if ($mlSaleFee > 0) {
+                    $comissao = $mlSaleFee;
+                }
             }
         }
 
