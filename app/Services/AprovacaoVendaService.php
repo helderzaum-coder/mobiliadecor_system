@@ -26,6 +26,9 @@ class AprovacaoVendaService
         $valorImposto = (float) $staging->valor_imposto;
         $totalPedido = (float) $staging->total_pedido;
         $valorRebate = (float) ($staging->ml_valor_rebate ?? 0);
+        $percentualImposto = (float) $staging->percentual_imposto;
+        $tipoNota = $canal->tipo_nota ?? 'cheia';
+        $comissaoSobreFrete = (bool) ($canal->comissao_sobre_frete ?? false);
 
         // Custo total dos produtos (soma dos custos dos itens)
         $custoProdutos = 0;
@@ -40,11 +43,32 @@ class AprovacaoVendaService
             $custoFrete = (float) $staging->ml_frete_custo - (float) $staging->ml_frete_receita;
         }
 
-        // Margem Frete = Frete cobrado - Custo frete
-        $margemFrete = $frete - $custoFrete;
+        // Comissão sobre frete (se canal cobra)
+        $comissaoFrete = 0;
+        if ($comissaoSobreFrete && $frete > 0 && $canal) {
+            $regra = $canal->regrasComissao()->where('ativo', true)->first();
+            if ($regra) {
+                $comissaoFrete = round($frete * (float) $regra->percentual / 100, 2);
+            }
+        }
 
-        // Margem Produto = Subtotal - Custo Produtos - Comissão - Imposto + Rebate
-        $margemProduto = $totalProdutos - $custoProdutos - $comissao - $valorImposto + $valorRebate;
+        // Imposto proporcional sobre frete (se nota cheia, o imposto incide sobre tudo incluindo frete)
+        $impostoFrete = 0;
+        if ($tipoNota === 'cheia' && $frete > 0 && $totalPedido > 0 && $percentualImposto > 0) {
+            $impostoFrete = round($frete * $percentualImposto / 100, 2);
+        }
+
+        // Imposto sobre produto = imposto total - imposto frete
+        $impostoProduto = $valorImposto - $impostoFrete;
+
+        // Margem Frete = Frete cobrado - Custo frete - Comissão frete - Imposto frete
+        $margemFrete = $frete - $custoFrete - $comissaoFrete - $impostoFrete;
+
+        // Comissão sobre produtos = comissão total - comissão frete
+        $comissaoProduto = $comissao - $comissaoFrete;
+
+        // Margem Produto = Subtotal - Custo Produtos - Comissão Produto - Imposto Produto + Rebate
+        $margemProduto = $totalProdutos - $custoProdutos - $comissaoProduto - $impostoProduto + $valorRebate;
 
         // Margem Venda Total (Lucro Final) = Margem Produto + Margem Frete + Subsídio Pix
         $margemVendaTotal = $margemProduto + $margemFrete + $subsidioPix;

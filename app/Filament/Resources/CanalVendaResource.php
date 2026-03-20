@@ -42,10 +42,6 @@ class CanalVendaResource extends Resource
                     ->label('Comissão sobre Frete')
                     ->helperText('Cobra comissão do canal sobre o valor do frete')
                     ->default(false),
-                Forms\Components\Toggle::make('imposto_sobre_frete')
-                    ->label('Imposto sobre Frete')
-                    ->helperText('Incide imposto sobre o valor do frete')
-                    ->default(false),
             ])->columns(2),
 
             Forms\Components\Section::make('Regras de Comissão')->schema([
