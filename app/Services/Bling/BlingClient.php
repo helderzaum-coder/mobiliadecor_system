@@ -49,7 +49,7 @@ class BlingClient
 
         $request = Http::withToken($token)
             ->withOptions(['verify' => false])
-            ->timeout(30);
+            ->timeout(60); // Aumentado de 30s para 60s para requisições mais longas
 
         $response = match (strtoupper($method)) {
             'GET' => $request->get($url, $query),

@@ -92,10 +92,6 @@ class ShopeePlanilhaService
                     'planilha_shopee' => true,
                 ];
 
-                if (!empty($dados['itens']) && !empty($dados['itens'][0]['descricao'])) {
-                    $updateData['itens'] = $dados['itens'];
-                }
-
                 PedidoBlingStaging::where('id', $stagingId)->update($updateData);
                 $resultado['processados']++;
             } catch (\Exception $e) {
@@ -220,10 +216,6 @@ class ShopeePlanilhaService
             'subsidio_pix' => $dados['subsidio_pix'] ?? $staging->subsidio_pix,
             'planilha_shopee' => true,
         ];
-
-        if (!empty($dados['itens']) && !empty($dados['itens'][0]['descricao'])) {
-            $updateData['itens'] = $dados['itens'];
-        }
 
         $staging->update($updateData);
 

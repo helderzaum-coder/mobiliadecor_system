@@ -2,7 +2,7 @@
 
 namespace App\Filament\Pages;
 
-use App\Services\Bling\BlingImportService;
+use App\Jobs\ImportarPedidosBlingJob;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Form;
@@ -44,22 +44,18 @@ class ImportarPedidos extends Page
     public function importar(): void
     {
         $data = $this->form->getState();
-        $service = new BlingImportService($data['account']);
 
-        $this->resultado = $service->importarParaStaging(
+        // Disparar job em background em vez de processar sincronamente
+        ImportarPedidosBlingJob::dispatch(
+            $data['account'],
             $data['data_inicio'],
             $data['data_fim']
         );
 
-        $msg = "{$this->resultado['importados']} pedidos para revisão";
-        if ($this->resultado['ignorados'] > 0) {
-            $msg .= ", {$this->resultado['ignorados']} já existentes";
-        }
-
         Notification::make()
-            ->title('Importação concluída')
-            ->body($msg)
-            ->success()
+            ->title('Importação iniciada')
+            ->body('A importação foi enfileirada e será processada em background. Você receberá uma notificação quando terminar.')
+            ->info()
             ->send();
     }
 
