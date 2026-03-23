@@ -7,11 +7,32 @@ use App\Models\PedidoBlingStaging;
 use App\Models\Venda;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║  ATENÇÃO: CÓDIGO ESTÁVEL E FUNCIONAL — NÃO SOBRESCREVER           ║
+ * ║                                                                    ║
+ * ║  Serviço de aprovação de pedidos: staging → vendas.                ║
+ * ║  Calcula margens (produto, frete, total) com regras específicas:   ║
+ * ║  - ML ME2/FULL: frete=0, taxa frete ML entra como comissão         ║
+ * ║  - ML ME1: frete = receita (comprador), custoFrete = custo (ML)    ║
+ * ║  - ML sale_fee da API já tem rebate descontado (valorRebate = 0)   ║
+ * ║  - Shopee Xpress: frete = 0, sem custo frete                      ║
+ * ║  - Comissão sobre frete e imposto sobre frete por canal            ║
+ * ║                                                                    ║
+ * ║  Referência funcional: commit de 23/03/2026                        ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
+ */
 class AprovacaoVendaService
 {
     /**
      * Aprova um pedido do staging e cria o registro na tabela vendas
      * com cálculo de margens.
+     *
+     * ⚠️ NÃO ALTERAR SEM TESTAR COM PEDIDOS REAIS (ML ME1, ME2, Shopee, Direto).
+     * Lógica ML:
+     *  - ME2/FULL: frete=0, comissão = sale_fee + (frete_custo - frete_receita)
+     *  - ME1: frete = ml_frete_receita, custoFrete = ml_frete_custo, comissão = sale_fee
+     *  - sale_fee da API já tem rebate descontado → valorRebate = 0
      */
     public static function aprovar(PedidoBlingStaging $staging): Venda
     {

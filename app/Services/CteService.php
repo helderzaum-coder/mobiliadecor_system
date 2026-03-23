@@ -6,6 +6,21 @@ use App\Models\PedidoBlingStaging;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║  ATENÇÃO: CÓDIGO ESTÁVEL E FUNCIONAL — NÃO SOBRESCREVER           ║
+ * ║                                                                    ║
+ * ║  Este serviço busca CT-e (XML) vinculado a um pedido pela chave    ║
+ * ║  da NF-e. Fluxo:                                                   ║
+ * ║  1. Lê XMLs da pasta storage/app/ctes/pendentes/                   ║
+ * ║  2. Compara chave NF-e do XML com a do pedido                      ║
+ * ║  3. Extrai valor do frete (vTPrest) e número do CT-e (nCT)         ║
+ * ║  4. Atualiza custo_frete no staging                                ║
+ * ║  5. Move XML para ctes/processados/                                ║
+ * ║                                                                    ║
+ * ║  Referência funcional: commit de 23/03/2026                        ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
+ */
 class CteService
 {
     private static string $pastaPendentes = 'ctes/pendentes';

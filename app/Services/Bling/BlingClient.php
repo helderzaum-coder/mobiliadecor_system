@@ -5,6 +5,18 @@ namespace App\Services\Bling;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║  ATENÇÃO: CÓDIGO ESTÁVEL E FUNCIONAL — NÃO SOBRESCREVER           ║
+ * ║                                                                    ║
+ * ║  Cliente HTTP para API Bling v3. Gerencia:                         ║
+ * ║  - Autenticação OAuth (token + refresh automático em 401)          ║
+ * ║  - Busca de pedidos, produtos, NF-e                                ║
+ * ║  - Rate limit: respeitar sleep(1) entre chamadas                   ║
+ * ║                                                                    ║
+ * ║  Referência funcional: commit de 23/03/2026                        ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
+ */
 class BlingClient
 {
     private string $apiBase;

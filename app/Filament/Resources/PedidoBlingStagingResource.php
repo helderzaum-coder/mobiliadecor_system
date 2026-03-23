@@ -729,6 +729,12 @@ class PedidoBlingStagingResource extends Resource
     /**
      * Verifica se um pedido está pronto para aprovação.
      * Retorna array de checks com 'ok' e 'label'.
+     *
+     * ⚠️ NÃO ALTERAR: Regras de aprovação por canal:
+     *  - NF-e obrigatória para todos
+     *  - Custo frete obrigatório EXCETO: ML (qualquer tipo) e Shopee Xpress (frete=0)
+     *  - ML: requer planilha ML processada (rebate)
+     *  - Shopee: requer planilha Shopee processada
      */
     public static function verificarProntoAprovacao(PedidoBlingStaging $record): array
     {

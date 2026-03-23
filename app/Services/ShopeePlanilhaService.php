@@ -7,11 +7,32 @@ use App\Models\PlanilhaShopeeDado;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
+/**
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║  ATENÇÃO: CÓDIGO ESTÁVEL E FUNCIONAL — NÃO SOBRESCREVER           ║
+ * ║                                                                    ║
+ * ║  Este serviço processa a planilha da Shopee e atualiza APENAS      ║
+ * ║  dados financeiros no staging:                                     ║
+ * ║  - Comissão (colunas AQ + AS)                                      ║
+ * ║  - Subsídio Pix (colunas AE + Y)                                   ║
+ * ║  - Frete (coluna AM/AN, com lógica Xpress = 0)                    ║
+ * ║  - Total produtos (coluna R × S)                                   ║
+ * ║  - Total pedido (coluna AU)                                        ║
+ * ║                                                                    ║
+ * ║  IMPORTANTE: A planilha NÃO sobrescreve itens do Bling.            ║
+ * ║  Os itens (SKU, descrição, custo) vêm da importação Bling.         ║
+ * ║                                                                    ║
+ * ║  Referência funcional: commit de 23/03/2026                        ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
+ */
 class ShopeePlanilhaService
 {
     /**
      * Processa planilha da Shopee e atualiza pedidos no staging.
      * Agrupa linhas por pedido (um pedido pode ter vários itens/linhas).
+     *
+     * ⚠️ NÃO ALTERAR: Atualiza SOMENTE dados financeiros no staging.
+     * Nunca sobrescrever itens (SKU, descrição, custo) — esses vêm do Bling.
      */
     public static function processar(string $filePath): array
     {
@@ -108,6 +129,14 @@ class ShopeePlanilhaService
 
     /**
      * Calcula valores consolidados de um pedido a partir de suas linhas.
+     *
+     * ⚠️ NÃO ALTERAR COLUNAS SEM VERIFICAR PLANILHA REAL:
+     *  - R = Preço acordado, S = Quantidade
+     *  - AQ = Taxa de comissão, AS = Taxa de serviço
+     *  - AE = Cupom Shopee (subsídio), Y = Ajuste ação comercial (subsídio pix)
+     *  - AU = Total global do pedido
+     *  - G = Opção de envio (Xpress → frete = 0)
+     *  - AM = Taxa envio comprador, AN = Desconto frete
      */
     private static function calcularPedido(array $linhas): array
     {
@@ -197,6 +226,8 @@ class ShopeePlanilhaService
      * Tenta aplicar dados de planilha já armazenados a um pedido do staging.
      * Chamado automaticamente quando um pedido novo é importado.
      * Retorna true se encontrou e aplicou dados.
+     *
+     * ⚠️ NÃO ALTERAR: Atualiza SOMENTE dados financeiros — nunca itens.
      */
     public static function reprocessarPedido(PedidoBlingStaging $staging): bool
     {

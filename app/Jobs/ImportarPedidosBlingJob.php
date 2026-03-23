@@ -10,6 +10,17 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║  ATENÇÃO: CÓDIGO ESTÁVEL E FUNCIONAL — NÃO SOBRESCREVER           ║
+ * ║                                                                    ║
+ * ║  Job de importação de pedidos do Bling executado em background      ║
+ * ║  via Supervisor (laravel-worker). Timeout: 30 minutos.             ║
+ * ║  Disparado pela página Filament "Importar Pedidos".                ║
+ * ║                                                                    ║
+ * ║  Referência funcional: commit de 23/03/2026                        ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
+ */
 class ImportarPedidosBlingJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;

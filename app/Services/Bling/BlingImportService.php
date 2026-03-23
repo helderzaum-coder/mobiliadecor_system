@@ -9,6 +9,27 @@ use App\Services\MercadoLivrePlanilhaService;
 use App\Services\ShopeePlanilhaService;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║  ATENÇÃO: CÓDIGO ESTÁVEL E FUNCIONAL — NÃO SOBRESCREVER           ║
+ * ║                                                                    ║
+ * ║  Este serviço é responsável por:                                   ║
+ * ║  1. Importação de pedidos do Bling para o staging                  ║
+ * ║  2. Busca de NF-e vinculada ao pedido                              ║
+ * ║  3. Busca de dados de envio (CEP, dimensões)                       ║
+ * ║  4. Busca de custo dos produtos via API Bling                      ║
+ * ║  5. Pré-cálculo de comissão e imposto                              ║
+ * ║  6. Integração com ML (dados pré-cálculo: rebate, frete, sale_fee)║
+ * ║  7. Reprocessamento automático de planilhas (ML e Shopee)          ║
+ * ║                                                                    ║
+ * ║  Qualquer alteração deve ser testada com pedidos reais de:         ║
+ * ║  - Shopee (com e sem planilha)                                     ║
+ * ║  - Mercado Livre (ME1 e ME2)                                       ║
+ * ║  - Vendas diretas                                                  ║
+ * ║                                                                    ║
+ * ║  Referência funcional: commit de 23/03/2026                        ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
+ */
 class BlingImportService
 {
     private BlingClient $client;
@@ -21,7 +42,12 @@ class BlingImportService
     }
 
     /**
-     * Busca pedidos do Bling e joga no staging
+     * Busca pedidos do Bling e joga no staging.
+     *
+     * ⚠️ NÃO ALTERAR: Fluxo de paginação e rate limit (sleep 1s) estável.
+     * Cada pedido é buscado individualmente (getPedido) para obter detalhes completos.
+     * Pedidos já existentes (pendente/aprovado) ou já em vendas são ignorados.
+     * Pedidos rejeitados são apagados e reimportados limpos.
      */
     public function importarParaStaging(string $dataInicio, string $dataFim): array
     {
@@ -149,6 +175,8 @@ class BlingImportService
      * Importa um único pedido pelo ID do Bling para o staging.
      * Usado pelo webhook e por importações avulsas.
      * Retorna true se importou, false se ignorou (já existe).
+     *
+     * ⚠️ NÃO ALTERAR: Usado pelo BlingWebhookController para importação automática.
      */
     public function importarPedidoPorId(int $blingId): array
     {
@@ -181,6 +209,21 @@ class BlingImportService
         return ['status' => 'importado', 'numero' => $pedido['numero'] ?? $blingId];
     }
 
+    /**
+     * Salva pedido no staging com todos os dados necessários.
+     *
+     * ⚠️ NÃO ALTERAR ESTA FUNÇÃO SEM TESTAR COM PEDIDOS REAIS.
+     * Fluxo crítico:
+     *  1. Identifica canal (Hub Commerceplus → intermediador → Direto)
+     *  2. Extrai endereço de envio (etiqueta → contato fallback)
+     *  3. Busca custo e dimensões de cada item via API Bling (com rate limit)
+     *  4. Busca dados ML pré-cálculo (tipo anúncio, frete, rebate, sale_fee)
+     *  5. Pré-calcula comissão e imposto
+     *  6. Cria registro no staging
+     *  7. Reprocessa planilhas armazenadas (ML rebate / Shopee dados financeiros)
+     *
+     * IMPORTANTE: A planilha Shopee NÃO sobrescreve itens do Bling — só dados financeiros.
+     */
     private function salvarNoStaging(array $pedido): void
     {
         $canal = $this->identificarCanal($pedido);
@@ -325,7 +368,13 @@ class BlingImportService
     }
 
     /**
-     * Busca dados do ML antes do cálculo de comissão
+     * Busca dados do ML antes do cálculo de comissão.
+     *
+     * ⚠️ NÃO ALTERAR: Detecção de canal ML usa múltiplos critérios:
+     *  - nome do canal contém 'mercado' ou 'meli'
+     *  - numeroLoja começa com '2000'
+     *  - conta secondary (HES Móveis = sempre ML)
+     * Retorna dados reais da API ML: tipo_anuncio, tipo_frete, sale_fee, rebate, frete.
      */
     private function buscarDadosMLPreCalculo(string $canal, ?string $numeroLoja, ?string $numeroPedido): array
     {
@@ -385,8 +434,12 @@ class BlingImportService
     }
 
     /**
-     * Busca NF-e vinculada a um pedido do staging (chamado pelo botão na UI)
-     * Usa o ID da NF-e salvo em nota_fiscal para busca direta /nfe/{id}
+     * Busca NF-e vinculada a um pedido do staging (chamado pelo botão na UI).
+     * Usa o ID da NF-e salvo em nota_fiscal para busca direta /nfe/{id}.
+     *
+     * ⚠️ NÃO ALTERAR: Se o ID da NF-e não existe no staging, re-consulta o pedido
+     * na API do Bling para obter o notaFiscal.id atualizado (NF emitida após importação).
+     * Recalcula imposto com base no valor da NF-e.
      */
     public static function buscarNfePorPedido(PedidoBlingStaging $staging): bool
     {
@@ -458,6 +511,9 @@ class BlingImportService
     /**
      * Busca dados de envio (CEP, cidade, UF, dimensões) para um pedido no staging.
      * Tenta: 1) dados_originais salvos, 2) re-fetch do pedido via API, 3) contato via API.
+     *
+     * ⚠️ NÃO ALTERAR: Fallback em 3 níveis garante que o endereço seja encontrado.
+     * Dimensões são buscadas do produto via API (maior dimensão entre todos os itens).
      */
     public static function buscarDadosEnvio(PedidoBlingStaging $staging): bool
     {
@@ -551,6 +607,8 @@ class BlingImportService
 
     /**
      * Busca custo dos produtos nos itens de um pedido do staging via API Bling.
+     *
+     * ⚠️ NÃO ALTERAR: Busca precoCusto pelo SKU e atualiza o array de itens no staging.
      */
     public static function buscarCustosProdutos(PedidoBlingStaging $staging): int
     {

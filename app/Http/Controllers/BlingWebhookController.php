@@ -8,6 +8,21 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║  ATENÇÃO: CÓDIGO ESTÁVEL E FUNCIONAL — NÃO SOBRESCREVER           ║
+ * ║                                                                    ║
+ * ║  Webhook do Bling — recebe eventos em tempo real:                  ║
+ * ║  - order.created/updated → sincroniza estoque + importa staging    ║
+ * ║  - stock.created/updated → espelha saldo entre contas              ║
+ * ║  - virtual_stock.updated → IGNORADO (só estoque físico)            ║
+ * ║                                                                    ║
+ * ║  Anti-loop via Cache (bling_sync_loop_*) e debounce (5s).          ║
+ * ║  Validação HMAC opcional (X-Bling-Signature-256).                  ║
+ * ║                                                                    ║
+ * ║  Referência funcional: commit de 23/03/2026                        ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
+ */
 class BlingWebhookController extends Controller
 {
     /**
