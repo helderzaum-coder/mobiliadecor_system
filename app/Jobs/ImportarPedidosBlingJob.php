@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Models\PedidoBlingStaging;
 use App\Services\Bling\BlingImportService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -25,41 +24,60 @@ class ImportarPedidosBlingJob implements ShouldQueue
         $this->dataInicio = $dataInicio;
         $this->dataFim = $dataFim;
         
-        // Aumentar timeout para importações longas
-        $this->timeout = 600; // 10 minutos
+        // Timeout mais longo para importações - 30 minutos
+        $this->timeout = 1800;
     }
 
     public function handle(): void
     {
-        Log::info("Iniciando importação de pedidos Bling", [
+        Log::warning("=== INICIANDO IMPORTAÇÃO BLING ===", [
             'account' => $this->account,
             'data_inicio' => $this->dataInicio,
             'data_fim' => $this->dataFim,
+            'timestamp' => now()->toDateTimeString(),
         ]);
 
         try {
             $service = new BlingImportService($this->account);
+            $inicio = microtime(true);
+            
             $resultado = $service->importarParaStaging(
                 $this->dataInicio,
                 $this->dataFim
             );
 
-            Log::info("Importação Bling concluída com sucesso", [
-                'resultado' => $resultado,
+            $duracao = round(microtime(true) - $inicio, 2);
+
+            Log::warning("=== IMPORTAÇÃO BLING CONCLUÍDA ===", [
+                'account' => $this->account,
+                'importados' => $resultado['importados'],
+                'ignorados' => $resultado['ignorados'],
+                'erros' => $resultado['erros'],
+                'duracao_segundos' => $duracao,
+                'timestamp' => now()->toDateTimeString(),
             ]);
+
+            if (!empty($resultado['mensagens'])) {
+                Log::warning("Mensagens de importação:", $resultado['mensagens']);
+            }
         } catch (\Exception $e) {
-            Log::error("Erro na importação de pedidos Bling", [
+            Log::error("=== ERRO NA IMPORTAÇÃO BLING ===", [
                 'error' => $e->getMessage(),
                 'account' => $this->account,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'timestamp' => now()->toDateTimeString(),
             ]);
+            throw $e;
         }
     }
 
     public function failed(\Throwable $exception): void
     {
-        Log::error("Job de importação Bling falhou", [
+        Log::error("=== JOB DE IMPORTAÇÃO BLING FALHOU ===", [
             'error' => $exception->getMessage(),
             'account' => $this->account,
+            'timestamp' => now()->toDateTimeString(),
         ]);
     }
 }

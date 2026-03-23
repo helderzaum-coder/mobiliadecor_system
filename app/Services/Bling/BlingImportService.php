@@ -34,8 +34,13 @@ class BlingImportService
 
         $pagina = 1;
         $limite = 100;
+        $totalProcessados = 0;
 
         do {
+            \Illuminate\Support\Facades\Log::warning("Bling Import: Buscando página {$pagina}...", [
+                'account' => $this->accountKey,
+            ]);
+
             $response = $this->client->getPedidos([
                 'dataInicial' => $dataInicio,
                 'dataFinal' => $dataFim,
@@ -46,14 +51,26 @@ class BlingImportService
             if (!$response['success']) {
                 $resultado['erros']++;
                 $resultado['mensagens'][] = "Erro na página {$pagina}: HTTP {$response['http_code']}";
+                \Illuminate\Support\Facades\Log::error("Bling Import: Erro ao buscar página", [
+                    'pagina' => $pagina,
+                    'http_code' => $response['http_code'],
+                    'account' => $this->accountKey,
+                ]);
                 break;
             }
 
             $pedidos = $response['body']['data'] ?? [];
 
             if (empty($pedidos)) {
+                \Illuminate\Support\Facades\Log::warning("Bling Import: Nenhum pedido na página {$pagina}, finalizando.", [
+                    'account' => $this->accountKey,
+                ]);
                 break;
             }
+
+            \Illuminate\Support\Facades\Log::warning("Bling Import: Encontrados {" . count($pedidos) . "} pedidos na página {$pagina}", [
+                'account' => $this->accountKey,
+            ]);
 
             foreach ($pedidos as $pedidoResumo) {
                 $blingId = $pedidoResumo['id'] ?? null;
@@ -69,6 +86,7 @@ class BlingImportService
 
                 if ($existente || Venda::where('bling_id', $blingId)->exists()) {
                     $resultado['ignorados']++;
+                    $totalProcessados++;
                     continue;
                 }
 
@@ -83,27 +101,46 @@ class BlingImportService
                 if (!$detalhe['success']) {
                     $resultado['erros']++;
                     $resultado['mensagens'][] = "Erro ao buscar pedido {$blingId}";
+                    $totalProcessados++;
                     continue;
                 }
 
                 $pedido = $detalhe['body']['data'] ?? null;
                 if (!$pedido) {
                     $resultado['erros']++;
+                    $totalProcessados++;
                     continue;
                 }
 
                 try {
                     $this->salvarNoStaging($pedido);
                     $resultado['importados']++;
+                    $totalProcessados++;
+                    
+                    // Log a cada 10 pedidos
+                    if ($resultado['importados'] % 10 === 0) {
+                        \Illuminate\Support\Facades\Log::warning("Bling Import: Progresso - {" . $resultado['importados'] . "} importados, {" . $resultado['ignorados'] . "} ignorados", [
+                            'account' => $this->accountKey,
+                        ]);
+                    }
                 } catch (\Exception $e) {
                     $resultado['erros']++;
                     $resultado['mensagens'][] = "Erro pedido {$blingId}: {$e->getMessage()}";
-                    Log::error("Bling staging error", ['bling_id' => $blingId, 'error' => $e->getMessage()]);
+                    \Illuminate\Support\Facades\Log::error("Bling staging error", ['bling_id' => $blingId, 'error' => $e->getMessage()]);
+                    $totalProcessados++;
                 }
             }
 
             $pagina++;
         } while (count($pedidos) >= $limite);
+
+        \Illuminate\Support\Facades\Log::warning("Bling Import: Importação finalizada", [
+            'account' => $this->accountKey,
+            'importados' => $resultado['importados'],
+            'ignorados' => $resultado['ignorados'],
+            'erros' => $resultado['erros'],
+            'total_processados' => $totalProcessados,
+        ]);
 
         return $resultado;
     }
