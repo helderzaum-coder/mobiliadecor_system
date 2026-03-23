@@ -742,12 +742,15 @@ class PedidoBlingStagingResource extends Resource
             'label' => 'NF-e',
         ];
 
-        // Custo frete — obrigatório exceto ML (ML cuida do frete)
+        // Custo frete — obrigatório exceto ML e Shopee Xpress (frete = 0 após planilha)
         if (!$isML) {
-            $checks[] = [
-                'ok' => (float) ($record->custo_frete ?? 0) > 0,
-                'label' => 'Custo Frete',
-            ];
+            $shopeeXpress = $isShopee && $record->planilha_shopee && (float) ($record->frete ?? 0) == 0;
+            if (!$shopeeXpress) {
+                $checks[] = [
+                    'ok' => (float) ($record->custo_frete ?? 0) > 0,
+                    'label' => 'Custo Frete',
+                ];
+            }
         }
 
         // ML: rebate processado (planilha ML importada)
