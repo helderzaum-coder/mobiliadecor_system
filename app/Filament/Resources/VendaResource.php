@@ -22,6 +22,30 @@ class VendaResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
+            Forms\Components\Section::make('Resumo Rápido')
+                ->schema([
+                    Forms\Components\Placeholder::make('resumo_pedido')
+                        ->label('Nº Pedido Canal')
+                        ->content(fn ($record) => $record?->numero_pedido_canal ?? '-'),
+                    Forms\Components\Placeholder::make('resumo_canal')
+                        ->label('Canal')
+                        ->content(fn ($record) => $record?->canal?->nome_canal ?? '-'),
+                    Forms\Components\Placeholder::make('resumo_total')
+                        ->label('Total Pedido')
+                        ->content(fn ($record) => $record ? 'R$ ' . number_format((float) $record->valor_total_venda, 2, ',', '.') : '-'),
+                    Forms\Components\Placeholder::make('resumo_repasse')
+                        ->label('Repasse Estimado')
+                        ->content(fn ($record) => $record ? 'R$ ' . number_format(
+                            round((float) $record->valor_total_venda - (float) $record->comissao - (float) $record->subsidio_pix, 2),
+                            2, ',', '.'
+                        ) : '-'),
+                    Forms\Components\Placeholder::make('resumo_lucro')
+                        ->label('Lucro Final')
+                        ->content(fn ($record) => $record ? 'R$ ' . number_format((float) $record->margem_venda_total, 2, ',', '.') . ' (' . $record->margem_contribuicao . '%)' : '-'),
+                ])
+                ->columns(5)
+                ->visible(fn ($record) => $record !== null),
+
             Forms\Components\Section::make('Dados da Venda')->schema([
                 Forms\Components\TextInput::make('numero_pedido_canal')
                     ->label('Nº Pedido Canal')->required()->maxLength(50),
@@ -106,9 +130,9 @@ class VendaResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('numero_pedido_canal')
-                    ->label('Pedido')->searchable(),
+                    ->label('Pedido')->searchable()->copyable()->copyMessage('Copiado!'),
                 Tables\Columns\TextColumn::make('numero_nota_fiscal')
-                    ->label('NF')->searchable(),
+                    ->label('NF')->searchable()->copyable()->copyMessage('Copiado!'),
                 Tables\Columns\TextColumn::make('canal.nome_canal')
                     ->label('Canal'),
                 Tables\Columns\TextColumn::make('ml_tipo_anuncio')
