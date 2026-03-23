@@ -186,11 +186,92 @@ class VendaResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('id_canal')
                     ->label('Canal')
-                    ->relationship('canal', 'nome_canal'),
+                    ->relationship('canal', 'nome_canal')
+                    ->searchable(),
                 Tables\Filters\SelectFilter::make('id_cnpj')
                     ->label('CNPJ')
                     ->relationship('cnpj', 'razao_social'),
+                Tables\Filters\Filter::make('periodo')
+                    ->form([
+                        Forms\Components\Select::make('periodo_rapido')
+                            ->label('Período')
+                            ->options([
+                                'hoje'             => 'Hoje',
+                                'esta_semana'      => 'Esta semana',
+                                'semana_passada'   => 'Semana passada',
+                                'este_mes'         => 'Este mês',
+                                'mes_passado'      => 'Mês passado',
+                                'selecionar_mes'   => 'Selecionar mês',
+                                'customizado'      => 'Período customizado',
+                            ])
+                            ->reactive()
+                            ->placeholder('Selecione um período'),
+                        Forms\Components\Select::make('mes_selecionado')
+                            ->label('Mês')
+                            ->options(function () {
+                                $options = [];
+                                for ($i = 0; $i < 12; $i++) {
+                                    $d = now()->subMonths($i)->startOfMonth();
+                                    $options[$d->format('Y-m')] = ucfirst($d->locale('pt_BR')->isoFormat('MMMM [de] YYYY'));
+                                }
+                                return $options;
+                            })
+                            ->visible(fn ($get) => $get('periodo_rapido') === 'selecionar_mes'),
+                        Forms\Components\DatePicker::make('data_inicio')
+                            ->label('De')
+                            ->displayFormat('d/m/Y')
+                            ->visible(fn ($get) => $get('periodo_rapido') === 'customizado'),
+                        Forms\Components\DatePicker::make('data_fim')
+                            ->label('Até')
+                            ->displayFormat('d/m/Y')
+                            ->visible(fn ($get) => $get('periodo_rapido') === 'customizado'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        $periodo = $data['periodo_rapido'] ?? null;
+                        if (!$periodo) return $query;
+
+                        return match ($periodo) {
+                            'hoje' => $query->whereDate('data_venda', today()),
+                            'esta_semana' => $query->whereBetween('data_venda', [
+                                now()->startOfWeek(), now()->endOfWeek(),
+                            ]),
+                            'semana_passada' => $query->whereBetween('data_venda', [
+                                now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek(),
+                            ]),
+                            'este_mes' => $query->whereBetween('data_venda', [
+                                now()->startOfMonth(), now()->endOfMonth(),
+                            ]),
+                            'mes_passado' => $query->whereBetween('data_venda', [
+                                now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth(),
+                            ]),
+                            'selecionar_mes' => $data['mes_selecionado']
+                                ? $query->whereBetween('data_venda', [
+                                    now()->createFromFormat('Y-m', $data['mes_selecionado'])->startOfMonth(),
+                                    now()->createFromFormat('Y-m', $data['mes_selecionado'])->endOfMonth(),
+                                ])
+                                : $query,
+                            'customizado' => $query
+                                ->when($data['data_inicio'], fn ($q) => $q->whereDate('data_venda', '>=', $data['data_inicio']))
+                                ->when($data['data_fim'],    fn ($q) => $q->whereDate('data_venda', '<=', $data['data_fim'])),
+                            default => $query,
+                        };
+                    })
+                    ->indicateUsing(function (array $data) {
+                        $periodo = $data['periodo_rapido'] ?? null;
+                        if (!$periodo) return null;
+                        return match ($periodo) {
+                            'hoje'           => 'Hoje',
+                            'esta_semana'    => 'Esta semana',
+                            'semana_passada' => 'Semana passada',
+                            'este_mes'       => 'Este mês',
+                            'mes_passado'    => 'Mês passado',
+                            'selecionar_mes' => $data['mes_selecionado'] ? 'Mês: ' . $data['mes_selecionado'] : 'Mês selecionado',
+                            'customizado'    => trim(($data['data_inicio'] ?? '') . ' → ' . ($data['data_fim'] ?? '')),
+                            default          => null,
+                        };
+                    }),
             ])
+            ->filtersFormColumns(3)
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
