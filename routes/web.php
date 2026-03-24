@@ -4,9 +4,7 @@ use App\Http\Controllers\BlingAuthController;
 use App\Http\Controllers\MercadoLivreAuthController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return redirect('/login');
-});
+// Filament cuida da rota '/' (Dashboard) — não definir aqui
 
 // Bling OAuth (sem middleware auth para permitir reautorizacao direta em producao)
 Route::get('/bling/authorize/{account}', [BlingAuthController::class, 'authorize'])->name('bling.authorize');
