@@ -36,7 +36,7 @@ class VendaResource extends Resource
                     Forms\Components\Placeholder::make('resumo_repasse')
                         ->label('Repasse Estimado')
                         ->content(fn ($record) => $record ? 'R$ ' . number_format(
-                            round((float) $record->valor_total_venda - (float) $record->comissao - (float) $record->subsidio_pix, 2),
+                            round((float) $record->total_produtos + (float) $record->valor_frete_cliente - (float) $record->comissao, 2),
                             2, ',', '.'
                         ) : '-'),
                     Forms\Components\Placeholder::make('resumo_lucro')
@@ -195,7 +195,7 @@ class VendaResource extends Resource
                     ->label('Repasse Est.')
                     ->money('BRL')
                     ->getStateUsing(fn (Venda $r) => round(
-                        (float) $r->valor_total_venda - (float) $r->comissao - (float) $r->subsidio_pix,
+                        (float) $r->total_produtos + (float) $r->valor_frete_cliente - (float) $r->comissao,
                         2
                     ))
                     ->color('info'),

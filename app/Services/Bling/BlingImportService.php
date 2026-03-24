@@ -122,7 +122,6 @@ class BlingImportService
                     ->delete();
 
                 // Buscar detalhes completos
-                sleep(1); // Rate limit Bling: 3 req/s
                 $detalhe = $this->client->getPedido($blingId);
                 if (!$detalhe['success']) {
                     $resultado['erros']++;
@@ -259,7 +258,6 @@ class BlingImportService
 
             // Buscar custo do produto na API (lista)
             if ($sku) {
-                sleep(1); // Rate limit Bling
                 $produto = $this->client->getProductBySku($sku);
                 $custo = (float) ($produto['precoCusto'] ?? 0);
 
@@ -529,7 +527,6 @@ class BlingImportService
 
         // 2) Se não tem na etiqueta, re-fetch do pedido via API
         if (empty($destCep) && $staging->bling_id) {
-            sleep(1);
             $res = $client->getPedido((int) $staging->bling_id);
             if ($res['success']) {
                 $pedido = $res['body']['data'] ?? [];
@@ -544,7 +541,6 @@ class BlingImportService
         if (empty($destCep)) {
             $contatoId = $pedido['contato']['id'] ?? null;
             if ($contatoId) {
-                sleep(1);
                 $contatoRes = $client->get("/contatos/{$contatoId}");
                 if ($contatoRes['success']) {
                     $endGeral = $contatoRes['body']['data']['endereco']['geral'] ?? [];
@@ -577,11 +573,9 @@ class BlingImportService
                 $sku = $item['codigo'] ?? '';
                 if (!$sku) continue;
 
-                sleep(1);
                 $produto = $client->getProductBySku($sku);
                 $produtoId = $produto['id'] ?? null;
                 if ($produtoId) {
-                    sleep(1);
                     $detalhe = $client->getProductById((int) $produtoId);
                     $dim = $detalhe['dimensoes'] ?? [];
                     $maiorLargura = max($maiorLargura, (float) ($dim['largura'] ?? 0));

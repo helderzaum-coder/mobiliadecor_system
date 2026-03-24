@@ -435,8 +435,8 @@ class PedidoBlingStagingResource extends Resource
                             . "Peso: {$record->peso_bruto}kg | NF: R$ " . number_format($valorNf, 2, ',', '.')
                             . '</div>';
 
-                        $html .= '<table class="w-full text-sm border-collapse">';
-                        $html .= '<thead><tr class="border-b border-gray-600">'
+                        $html .= '<table class="w-full text-sm border-collapse text-gray-700 dark:text-gray-200">';
+                        $html .= '<thead><tr class="border-b border-gray-300 dark:border-gray-600">'
                             . '<th class="text-left p-2">Transportadora</th>'
                             . '<th class="text-left p-2">Região</th>'
                             . '<th class="text-right p-2">Frete</th>'
@@ -460,17 +460,17 @@ class PedidoBlingStagingResource extends Resource
                             if ($isConsulta) {
                                 $temTaxa = !empty($c['taxas_especiais']);
                                 $taxaBadge = $temTaxa
-                                    ? '<span class="text-xs bg-amber-700 text-amber-100 px-1.5 py-0.5 rounded">TDA: R$ ' . number_format($c['taxas_especiais_total'], 2, ',', '.') . '</span>'
-                                    : '<span class="text-xs bg-green-700 text-green-100 px-1.5 py-0.5 rounded">Sem TDA</span>';
-                                $html .= '<tr class="border-b border-gray-700 bg-gray-800/50">'
-                                    . '<td class="p-2 font-medium">' . e($c['nome']) . ' <span class="text-xs text-blue-400">(consultar)</span></td>'
+                                    ? '<span class="text-xs bg-amber-100 dark:bg-amber-700 text-amber-800 dark:text-amber-100 px-1.5 py-0.5 rounded">TDA: R$ ' . number_format($c['taxas_especiais_total'], 2, ',', '.') . '</span>'
+                                    : '<span class="text-xs bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-100 px-1.5 py-0.5 rounded">Sem TDA</span>';
+                                $html .= '<tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">'
+                                    . '<td class="p-2 font-medium">' . e($c['nome']) . ' <span class="text-xs text-blue-600 dark:text-blue-400">(consultar)</span></td>'
                                     . '<td class="p-2">' . e($c['uf_faixa']) . '</td>'
-                                    . '<td colspan="7" class="p-2 text-center text-gray-400 text-xs">Atende a região — solicitar cotação direta ' . $taxaBadge . '</td>'
+                                    . '<td colspan="7" class="p-2 text-center text-gray-500 dark:text-gray-400 text-xs">Atende a região — solicitar cotação direta ' . $taxaBadge . '</td>'
                                     . '<td class="text-right p-2">-</td>'
-                                    . '<td class="text-right p-2 font-bold text-blue-400">Consultar</td>'
+                                    . '<td class="text-right p-2 font-bold text-blue-600 dark:text-blue-400">Consultar</td>'
                                     . '</tr>';
                             } else {
-                                $html .= '<tr class="border-b border-gray-700 hover:bg-gray-800">'
+                                $html .= '<tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">'
                                     . '<td class="p-2">' . e($c['nome']) . '</td>'
                                     . '<td class="p-2">' . e($c['regiao']) . ' / ' . e($c['uf_faixa']) . '</td>'
                                     . '<td class="text-right p-2">R$ ' . number_format($c['frete_peso'], 2, ',', '.') . '</td>'
@@ -480,7 +480,7 @@ class PedidoBlingStagingResource extends Resource
                                     . '<td class="text-right p-2">R$ ' . number_format($c['gris'], 2, ',', '.') . '</td>'
                                     . '<td class="text-right p-2">R$ ' . number_format($c['tas'] ?? 0, 2, ',', '.') . '</td>'
                                     . '<td class="text-right p-2" title="' . e($taxasInfo) . '">R$ ' . number_format($c['taxas_especiais_total'], 2, ',', '.') . '</td>'
-                                    . '<td class="text-right p-2">' . (($c['icms_percentual'] ?? 0) > 0 ? 'R$ ' . number_format($c['icms_valor'], 2, ',', '.') . ' <span class="text-xs text-gray-400">(' . $c['icms_percentual'] . '%)</span>' : '-') . '</td>'
+                                    . '<td class="text-right p-2">' . (($c['icms_percentual'] ?? 0) > 0 ? 'R$ ' . number_format($c['icms_valor'], 2, ',', '.') . ' <span class="text-xs text-gray-500 dark:text-gray-400">(' . $c['icms_percentual'] . '%)</span>' : '-') . '</td>'
                                     . '<td class="text-right p-2 font-bold">R$ ' . number_format($c['total'], 2, ',', '.') . '</td>'
                                     . '</tr>';
                             }
@@ -521,8 +521,8 @@ class PedidoBlingStagingResource extends Resource
                         foreach ($cotacoes as $i => $c) {
                             $isConsulta = !empty($c['somente_consulta']);
                             $btnClass = $isConsulta
-                                ? 'px-3 py-1.5 text-xs bg-blue-700 hover:bg-blue-600 text-white rounded-md transition'
-                                : 'px-3 py-1.5 text-xs bg-green-700 hover:bg-green-600 text-white rounded-md transition';
+                                ? 'px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded-md transition'
+                                : 'px-3 py-1.5 text-xs bg-green-600 hover:bg-green-500 text-white rounded-md transition';
                             $btnLabel = $isConsulta
                                 ? '📋 ' . e($c['nome']) . ' (consultar)'
                                 : '📋 ' . e($c['nome']);
@@ -712,7 +712,7 @@ class PedidoBlingStagingResource extends Resource
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->hasRole('admin') ?? false;
+        return auth()->user()?->hasAnyRole(['admin', 'operador']) ?? false;
     }
 
     public static function isShopee(PedidoBlingStaging $record): bool

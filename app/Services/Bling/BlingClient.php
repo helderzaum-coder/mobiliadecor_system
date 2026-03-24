@@ -23,6 +23,12 @@ class BlingClient
     private string $accountKey;
     private BlingOAuthService $oauth;
 
+    /**
+     * Timestamp da última requisição (compartilhado entre instâncias).
+     * Garante rate limit de ~3 req/s (intervalo mínimo de 340ms).
+     */
+    private static float $lastRequestTime = 0;
+
     public function __construct(string $accountKey)
     {
         $this->accountKey = $accountKey;
@@ -47,6 +53,14 @@ class BlingClient
 
     private function request(string $method, string $path, array $query = [], ?array $body = null, bool $isRetry = false): array
     {
+        // Rate limit centralizado: mínimo 340ms entre requisições (≈3 req/s)
+        $now = microtime(true);
+        $elapsed = $now - self::$lastRequestTime;
+        if ($elapsed < 0.34) {
+            usleep((int) ((0.34 - $elapsed) * 1_000_000));
+        }
+        self::$lastRequestTime = microtime(true);
+
         $token = $this->oauth->getAccessToken();
 
         if (!$token) {
@@ -78,6 +92,13 @@ class BlingClient
             if ($newToken) {
                 return $this->request($method, $path, $query, $body, true);
             }
+        }
+
+        // Se 429 (rate limit), esperar e tentar novamente
+        if ($response->status() === 429 && !$isRetry) {
+            Log::warning("Bling [{$this->accountKey}]: HTTP 429 (rate limit) ao chamar {$path}, aguardando 2s...");
+            sleep(2);
+            return $this->request($method, $path, $query, $body, true);
         }
 
         return [

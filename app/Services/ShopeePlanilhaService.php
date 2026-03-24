@@ -131,25 +131,35 @@ class ShopeePlanilhaService
      * Calcula valores consolidados de um pedido a partir de suas linhas.
      *
      * ⚠️ NÃO ALTERAR COLUNAS SEM VERIFICAR PLANILHA REAL:
-     *  - R = Preço acordado, S = Quantidade
-     *  - AQ = Taxa de comissão, AS = Taxa de serviço
-     *  - AE = Cupom Shopee (subsídio), Y = Ajuste ação comercial (subsídio pix)
-     *  - AU = Total global do pedido
+     *  - R = Preço acordado (já inclui subsídio pix), S = Quantidade
+     *  - AQ = Taxa de comissão bruta, AS = Taxa de serviço bruta
+     *  - AE = Cupom Shopee (subsídio marketplace)
+     *  - Y = Ajuste por pagamento via PIX (subsídio pix) — embutido no preço R
+     *        e também embutido nas taxas AQ+AS. Deve ser subtraído de ambos.
+     *  - AU = Total global do pedido (renda líquida)
      *  - G = Opção de envio (Xpress → frete = 0)
      *  - AM = Taxa envio comprador, AN = Desconto frete
+     *
+     * Lógica de exibição (conforme tela Shopee):
+     *  - Subtotal Produtos = (R × S) - Y  (preço real sem subsídio pix)
+     *  - Subsídio Pix = Y + AE  (exibido separadamente)
+     *  - Comissão = (AQ + AS) - Y  (comissão líquida, como aparece na Shopee)
+     *  - Repasse = Subtotal + Frete - Comissão = Renda do pedido
      */
     private static function calcularPedido(array $linhas): array
     {
         $totalProdutos = 0;
         $frete = 0;
-        $comissao = 0;
-        $subsidio = 0;
+        $comissaoBruta = 0;
+        $subsidioPix = 0;
+        $cupomShopee = 0;
         $totalGlobal = 0;
         $freteCalculado = false;
         $itens = [];
 
         foreach ($linhas as $row) {
             // Preço acordado (coluna R) × Quantidade (coluna S) = total do item
+            // ATENÇÃO: este valor já inclui o subsídio pix (coluna Y)
             $precoAcordado = self::parseDecimal($row['R'] ?? 0);
             $quantidade = self::parseDecimal($row['S'] ?? 1);
             $totalProdutos += $precoAcordado * $quantidade;
@@ -163,18 +173,19 @@ class ShopeePlanilhaService
             ];
 
             // Taxa de comissão bruta (coluna AQ)
-            $comissao += abs(self::parseDecimal($row['AQ'] ?? 0));
+            $comissaoBruta += abs(self::parseDecimal($row['AQ'] ?? 0));
 
             // Taxa de serviço bruta (coluna AS)
-            $comissao += abs(self::parseDecimal($row['AS'] ?? 0));
+            $comissaoBruta += abs(self::parseDecimal($row['AS'] ?? 0));
 
-            // Cupom Shopee (coluna AE)
-            $subsidio += abs(self::parseDecimal($row['AE'] ?? 0));
+            // Cupom Shopee (coluna AE) — subsídio do marketplace
+            $cupomShopee += abs(self::parseDecimal($row['AE'] ?? 0));
 
-            // Ajuste por participação em ação comercial (coluna Y) = subsídio pix
-            $subsidio += abs(self::parseDecimal($row['Y'] ?? 0));
+            // Ajuste por pagamento via PIX (coluna Y) — subsídio pix
+            // Este valor está embutido no preço acordado (R) e nas taxas (AQ+AS)
+            $subsidioPix += abs(self::parseDecimal($row['Y'] ?? 0));
 
-            // Total global (coluna AU)
+            // Total global (coluna AU) — renda líquida do pedido
             $totalGlobal += self::parseDecimal($row['AU'] ?? 0);
 
             // Frete: calcular apenas uma vez (é por pedido, não por item)
@@ -196,12 +207,21 @@ class ShopeePlanilhaService
             }
         }
 
+        // Subtotal real = preço acordado - subsídio pix (pix está embutido no preço R)
+        $subtotalReal = $totalProdutos - $subsidioPix;
+
+        // Comissão líquida = bruta - subsídio pix (pix está embutido nas taxas AQ+AS)
+        $comissaoLiquida = $comissaoBruta - $subsidioPix;
+
+        // Subsídio total = pix + cupom Shopee (exibido separadamente)
+        $subsidioTotal = $subsidioPix + $cupomShopee;
+
         return [
-            'total_produtos' => round($totalProdutos, 2),
-            'total_pedido' => round(abs($totalGlobal), 2),
+            'total_produtos' => round($subtotalReal, 2),
+            'total_pedido' => round($subtotalReal + $frete, 2),
             'frete' => round($frete, 2),
-            'comissao' => round($comissao, 2),
-            'subsidio_pix' => round($subsidio, 2),
+            'comissao' => round($comissaoLiquida, 2),
+            'subsidio_pix' => round($subsidioTotal, 2),
             'itens' => $itens,
         ];
     }

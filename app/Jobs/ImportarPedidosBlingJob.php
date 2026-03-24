@@ -71,6 +71,18 @@ class ImportarPedidosBlingJob implements ShouldQueue
             if (!empty($resultado['mensagens'])) {
                 Log::warning("Mensagens de importação:", $resultado['mensagens']);
             }
+
+            // Notificar todos os admins via Filament (aparece no sininho)
+            $conta = $this->account === 'primary' ? 'Mobilia' : 'HES';
+            $admins = \App\Models\User::role('admin')->get();
+            foreach ($admins as $admin) {
+                \Filament\Notifications\Notification::make()
+                    ->title("Importação Bling concluída ({$conta})")
+                    ->body("{$resultado['importados']} importados, {$resultado['ignorados']} ignorados, {$resultado['erros']} erros — {$duracao}s")
+                    ->icon($resultado['erros'] > 0 ? 'heroicon-o-exclamation-triangle' : 'heroicon-o-check-circle')
+                    ->iconColor($resultado['erros'] > 0 ? 'warning' : 'success')
+                    ->sendToDatabase($admin);
+            }
         } catch (\Exception $e) {
             Log::error("=== ERRO NA IMPORTAÇÃO BLING ===", [
                 'error' => $e->getMessage(),
@@ -79,6 +91,19 @@ class ImportarPedidosBlingJob implements ShouldQueue
                 'line' => $e->getLine(),
                 'timestamp' => now()->toDateTimeString(),
             ]);
+
+            // Notificar erro
+            $conta = $this->account === 'primary' ? 'Mobilia' : 'HES';
+            $admins = \App\Models\User::role('admin')->get();
+            foreach ($admins as $admin) {
+                \Filament\Notifications\Notification::make()
+                    ->title("Erro na importação Bling ({$conta})")
+                    ->body($e->getMessage())
+                    ->icon('heroicon-o-x-circle')
+                    ->iconColor('danger')
+                    ->sendToDatabase($admin);
+            }
+
             throw $e;
         }
     }
