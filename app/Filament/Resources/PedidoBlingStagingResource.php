@@ -520,16 +520,16 @@ class PedidoBlingStagingResource extends Resource
                         $html .= '<div class="mt-4 flex flex-wrap gap-2">';
                         foreach ($cotacoes as $i => $c) {
                             $isConsulta = !empty($c['somente_consulta']);
-                            $btnClass = $isConsulta
-                                ? 'px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded-md transition'
-                                : 'px-3 py-1.5 text-xs bg-green-600 hover:bg-green-500 text-white rounded-md transition';
+                            $btnStyle = $isConsulta
+                                ? 'background:#2563eb;color:#fff;padding:4px 12px;font-size:12px;border-radius:6px;border:none;cursor:pointer;'
+                                : 'background:#16a34a;color:#fff;padding:4px 12px;font-size:12px;border-radius:6px;border:none;cursor:pointer;';
                             $btnLabel = $isConsulta
                                 ? '📋 ' . e($c['nome']) . ' (consultar)'
                                 : '📋 ' . e($c['nome']);
                             $html .= '<button onclick="navigator.clipboard.writeText(this.dataset.texto).then(()=>{this.innerText=\'Copiado!\';setTimeout(()=>this.innerText=this.dataset.label,2000)})" '
                                 . 'data-texto="' . str_replace('"', '&quot;', $waTextos[$i]) . '" '
                                 . 'data-label="' . $btnLabel . '" '
-                                . 'class="' . $btnClass . '">'
+                                . 'style="' . $btnStyle . '">'
                                 . $btnLabel
                                 . '</button>';
                         }
