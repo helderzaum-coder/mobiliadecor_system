@@ -5,7 +5,7 @@ use App\Http\Controllers\MercadoLivreAuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect('/login');
 });
 
 // Bling OAuth (sem middleware auth para permitir reautorizacao direta em producao)
