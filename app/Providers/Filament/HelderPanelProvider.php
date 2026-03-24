@@ -62,6 +62,7 @@ class HelderPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
+            ->darkMode(true)
             ->databaseNotifications()
             ->databaseNotificationsPolling('15s');
     }
