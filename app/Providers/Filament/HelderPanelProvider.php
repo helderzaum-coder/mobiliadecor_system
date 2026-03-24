@@ -25,7 +25,7 @@ class HelderPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('helder')
-            ->path('helder')
+            ->path('')
             ->login()
             ->colors([
                 'primary' => Color::Amber,
