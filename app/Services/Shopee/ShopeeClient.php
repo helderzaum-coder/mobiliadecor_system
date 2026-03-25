@@ -51,7 +51,7 @@ class ShopeeClient
      */
     public function getAuthUrl(): string
     {
-        $path = '/api/v2/shop/auth/partner/get_authorize_url';
+        $path = '/api/v2/shop/auth_partner';
         $timestamp = time();
         $sign = $this->sign($path, $timestamp);
         
