@@ -87,6 +87,23 @@ class BlingWebhookController extends Controller
             return response()->json(['error' => 'ID do pedido não encontrado'], 422);
         }
 
+        // Debounce: não processar o mesmo pedido mais de uma vez a cada 5 minutos
+        $debounceKey = "bling_pedido_debounce_{$account}_{$pedidoId}";
+        if (Cache::has($debounceKey)) {
+            Log::info("BlingWebhook [{$account}]: pedido #{$pedidoId} já processado recentemente — ignorando estoque");
+            // Ainda tenta importar para staging (pode ter dados novos), mas NÃO sincroniza estoque
+            $logResult = ['estoque' => ['skipped' => 'debounce']];
+            try {
+                $importService = new BlingImportService($account);
+                $importResult = $importService->importarPedidoPorId((int) $pedidoId);
+                $logResult['staging'] = $importResult;
+            } catch (\Throwable $e) {
+                $logResult['staging'] = ['status' => 'erro', 'motivo' => $e->getMessage()];
+            }
+            return response()->json(['status' => 'ok', 'pedido' => $pedidoId, 'log' => $logResult]);
+        }
+        Cache::put($debounceKey, true, now()->addMinutes(5));
+
         $logResult = [];
 
         // 1. Sincronizar estoque na conta oposta
@@ -119,22 +136,9 @@ class BlingWebhookController extends Controller
             ?? $data['idProduto']
             ?? null;
 
-        $operacao = strtoupper((string) ($data['operacao'] ?? $data['tipo'] ?? ''));
-
-        $saldo = $data['saldoFisicoTotal']
-            ?? $data['saldoFisico']
-            ?? $data['saldo']
-            ?? ($data['estoque']['saldoFisicoTotal'] ?? null)
-            ?? null;
-
-        if (!$produtoId || $saldo === null) {
+        if (!$produtoId) {
             Log::warning("BlingWebhook [{$account}]: dados de estoque incompletos", ['data' => $data]);
             return response()->json(['error' => 'Dados de estoque incompletos'], 422);
-        }
-
-        // Ignorar saídas — já tratadas pelo webhook de pedidos
-        if ($operacao === 'S') {
-            return response()->json(['status' => 'ignored', 'reason' => 'saida_tratada_por_pedido']);
         }
 
         // Anti-loop: verificar se foi o nosso sistema que gerou esta atualização
@@ -144,21 +148,15 @@ class BlingWebhookController extends Controller
             return response()->json(['status' => 'ignored', 'reason' => 'loop_prevention']);
         }
 
-        // Debounce: evitar processar o mesmo produto várias vezes em sequência (5s)
+        // Debounce: evitar processar o mesmo produto várias vezes em sequência (30s)
         $debounceKey = "bling_webhook_debounce_{$account}_{$produtoId}";
         if (Cache::has($debounceKey)) {
             return response()->json(['status' => 'ignored', 'reason' => 'debounce']);
         }
-        Cache::put($debounceKey, true, 5);
-
-        // Ignorar virtual_stock.updated — só processar estoque físico real
-        $evento = strtolower((string) ($data['event'] ?? request()->input('event') ?? request()->input('tipo') ?? ''));
-        if (str_contains($evento, 'virtual_stock')) {
-            return response()->json(['status' => 'ignored', 'reason' => 'virtual_stock']);
-        }
+        Cache::put($debounceKey, true, 30);
 
         $service   = new BlingSyncEstoqueService($account);
-        $resultado = $service->espelharEstoque((int) $produtoId, (float) $saldo);
+        $resultado = $service->espelharEstoque((int) $produtoId, 0); // saldo do webhook ignorado, busca real via API
 
         Log::info("BlingWebhook [{$account}]: estoque produto #{$produtoId} espelhado", $resultado['log']);
 

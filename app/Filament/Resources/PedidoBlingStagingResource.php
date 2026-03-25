@@ -418,6 +418,11 @@ class PedidoBlingStagingResource extends Resource
                         }
 
                         $valorNf = (float) ($record->nfe_valor ?: $record->total_pedido);
+
+                        // Buscar volumes via CotacaoWhatsappService
+                        $waData = CotacaoWhatsappService::gerar($record);
+                        $volumes = $waData['volumes'] ?: 1;
+
                         $cotacoes = CotacaoFreteService::cotar(
                             $record->dest_uf,
                             $record->dest_cep,
@@ -501,6 +506,7 @@ class PedidoBlingStagingResource extends Resource
                                 $waTextos[$i] = strtoupper($record->cliente_nome) . "\n"
                                     . $record->dest_cidade . '/' . $record->dest_uf . ' - CEP ' . preg_replace('/(\d{5})(\d{3})/', '$1-$2', $record->dest_cep) . "\n"
                                     . number_format((float)$record->peso_bruto, 2, ',', '.') . 'kg'
+                                    . ' - ' . $volumes . ' vol'
                                     . ' - NF R$ ' . number_format($valorNf, 2, ',', '.') . "\n"
                                     . $c['nome'] . ': SOLICITAR COTAÇÃO'
                                     . ' (' . $tdaTexto . ')';
@@ -511,6 +517,7 @@ class PedidoBlingStagingResource extends Resource
                                 $waTextos[$i] = strtoupper($record->cliente_nome) . "\n"
                                     . $record->dest_cidade . '/' . $record->dest_uf . ' - CEP ' . preg_replace('/(\d{5})(\d{3})/', '$1-$2', $record->dest_cep) . "\n"
                                     . number_format((float)$record->peso_bruto, 2, ',', '.') . 'kg'
+                                    . ' - ' . $volumes . ' vol'
                                     . ' - R$ ' . number_format($valorNf, 2, ',', '.') . "\n"
                                     . $c['nome'] . ': R$ ' . number_format($c['total'], 2, ',', '.')
                                     . ' (' . $tdaTexto . $icmsTexto . ')';
