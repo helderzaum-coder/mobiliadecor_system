@@ -55,7 +55,7 @@ class ShopeeClient
         $timestamp = time();
         $sign = $this->sign($path, $timestamp);
         
-        // Use o callback path como redirect_uri
+        // Use o callback path como redirect_ uri 
         $redirectUri = config('shopee.redirect_uri');
         $redirect = urlencode($redirectUri);
 
