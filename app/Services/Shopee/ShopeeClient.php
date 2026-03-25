@@ -14,8 +14,8 @@ class ShopeeClient
 
     public function __construct()
     {
-        $this->partnerId  = config('shopee.partner_id');
-        $this->partnerKey = config('shopee.partner_key');
+        $this->partnerId  = (int) trim(config('shopee.partner_id'));
+        $this->partnerKey = trim(config('shopee.partner_key'));
         $this->host       = config('shopee.sandbox')
             ? config('shopee.host_sandbox')
             : config('shopee.host_live');
@@ -43,6 +43,9 @@ class ShopeeClient
         if ($shopId) {
             $baseString .= $shopId;
         }
+
+        Log::debug('Shopee Sign Base String', ['base' => $baseString]);
+
         return hash_hmac('sha256', $baseString, $this->partnerKey);
     }
 
