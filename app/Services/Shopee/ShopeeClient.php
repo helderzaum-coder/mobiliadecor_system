@@ -56,15 +56,17 @@ class ShopeeClient
         $sign = $this->sign($path, $timestamp);
         
         $redirectUri = config('shopee.redirect_uri');
-        $redirect = urlencode($redirectUri);
 
-        // Ordem rigorosa dos parâmetros conforme documentação Shopee V2
-        $url = "{$this->host}{$path}?" . http_build_query([
+        // O http_build_query já faz o urlencode necessário. 
+        // Se fizermos manualmente antes, a URL fica "double encoded" e a Shopee rejeita.
+        $params = [
             'partner_id' => (int) $this->partnerId,
             'timestamp'  => $timestamp,
             'sign'       => $sign,
             'redirect'   => $redirectUri,
-        ]);
+        ];
+
+        $url = "{$this->host}{$path}?" . http_build_query($params);
         
         Log::info('Shopee Auth URL', [
             'url' => $url,
