@@ -14,7 +14,7 @@ class ShopeeClient
 
     public function __construct()
     {
-        $this->partnerId  = (int) trim(config('shopee.partner_id'));
+        $this->partnerId  = trim(config('shopee.partner_id'));
         $this->partnerKey = trim(config('shopee.partner_key'));
         $this->host       = config('shopee.sandbox')
             ? config('shopee.host_sandbox')
