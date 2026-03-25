@@ -7,6 +7,6 @@ return [
     'redirect_uri' => env('SHOPEE_REDIRECT_URI'),
 
     // Hosts
-    'host_sandbox' => 'https://openplatform.sandbox.test-stable.shopee.sg',
+    'host_sandbox' => 'https://partner.test-stable.shopeemobile.com',
     'host_live'    => 'https://partner.shopeemobile.com',
 ];

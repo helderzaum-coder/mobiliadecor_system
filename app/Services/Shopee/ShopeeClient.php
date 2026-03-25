@@ -55,18 +55,18 @@ class ShopeeClient
         $timestamp = time();
         $sign = $this->sign($path, $timestamp);
         
-        // Use o callback path como redirect_ uri 
         $redirectUri = config('shopee.redirect_uri');
         $redirect = urlencode($redirectUri);
 
-        $url = "{$this->host}{$path}?partner_id={$this->partnerId}&redirect={$redirect}&timestamp={$timestamp}&sign={$sign}";
+        // Ordem rigorosa dos parâmetros conforme documentação Shopee V2
+        $url = "{$this->host}{$path}?" . http_build_query([
+            'partner_id' => (int) $this->partnerId,
+            'timestamp'  => $timestamp,
+            'sign'       => $sign,
+            'redirect'   => $redirectUri,
+        ]);
         
         Log::info('Shopee Auth URL', [
-            'partner_id' => $this->partnerId,
-            'path' => $path,
-            'timestamp' => $timestamp,
-            'redirect_uri' => $redirectUri,
-            'sign' => $sign,
             'url' => $url,
         ]);
 
