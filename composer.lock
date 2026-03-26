@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "fed61c7a67b4dc4c1185bafeead55c3f",
+    "content-hash": "123710cd3aef1071984d43378fe1598a",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -2239,6 +2239,78 @@
                 "source": "https://github.com/kirschbaum-development/eloquent-power-joins/tree/4.2.11"
             },
             "time": "2025-12-17T00:37:48+00:00"
+        },
+        {
+            "name": "laraditz/shopee",
+            "version": "1.1.7",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/laraditz/shopee.git",
+                "reference": "924a3002693acb3ba49f2e5971a46d6ceadc4f52"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/laraditz/shopee/zipball/924a3002693acb3ba49f2e5971a46d6ceadc4f52",
+                "reference": "924a3002693acb3ba49f2e5971a46d6ceadc4f52",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/database": "^10.0|^11.0|^12.0",
+                "illuminate/support": "^10.0|^11.0|^12.0",
+                "php": "^8.1"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^8.0|^9.0|^10.0",
+                "phpunit/phpunit": "^10.0|^11.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Shopee": "Laraditz\\Shopee\\Facades\\Shopee"
+                    },
+                    "providers": [
+                        "Laraditz\\Shopee\\ShopeeServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Laraditz\\Shopee\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Raditz Farhan",
+                    "email": "raditzfarhan@gmail.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "A simple laravel package for Shopee",
+            "homepage": "https://github.com/laraditz/shopee",
+            "keywords": [
+                "laraditz",
+                "shopee"
+            ],
+            "support": {
+                "issues": "https://github.com/laraditz/shopee/issues",
+                "source": "https://github.com/laraditz/shopee/tree/1.1.7"
+            },
+            "funding": [
+                {
+                    "url": "https://www.buymeacoffee.com/raditzfarhan",
+                    "type": "buy_me_a_coffee"
+                },
+                {
+                    "url": "https://github.com/raditzfarhan",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-03-21T15:22:48+00:00"
         },
         {
             "name": "laravel/framework",

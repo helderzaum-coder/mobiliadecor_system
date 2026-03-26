@@ -2,9 +2,10 @@
 
 namespace App\Filament\Pages;
 
-use App\Services\Shopee\ShopeeClient;
+use App\Services\Shopee\ShopeeService;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Laraditz\Shopee\Facades\Shopee;
 
 class ShopeeIntegration extends Page
 {
@@ -20,30 +21,26 @@ class ShopeeIntegration extends Page
 
     public function mount(): void
     {
-        $client = new ShopeeClient();
-        $this->authorized = $client->isAuthorized();
-        $this->shopId     = $client->getShopId();
+        $this->authorized = ShopeeService::isAuthorized();
+        $this->shopId     = ShopeeService::getShopId();
         $this->sandbox    = config('shopee.sandbox', true);
     }
 
     public function conectar(): void
     {
-        $client = new ShopeeClient();
-        $url = $client->getAuthUrl();
+        $url = Shopee::shop()->generateAuthorizationURL();
         $this->redirect($url);
     }
 
     public function testConnection(): void
     {
-        $client = new ShopeeClient();
-
-        if (!$client->isAuthorized()) {
+        if (!ShopeeService::isAuthorized()) {
             Notification::make()->title('Não autorizado')->danger()->send();
             return;
         }
 
-        $shopId = $client->getShopId();
-        $res = $client->get('/api/v2/shop/get_shop_info', [], $shopId);
+        $shopId = ShopeeService::getShopId();
+        $res = Shopee::make(shop_id: $shopId)->shop()->getShopInfo();
 
         if ($res['success']) {
             $nome = $res['body']['shop_name'] ?? 'N/A';

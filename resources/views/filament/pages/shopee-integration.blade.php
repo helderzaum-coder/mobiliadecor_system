@@ -28,7 +28,7 @@
 
             <div class="flex gap-3">
                 <x-filament::button wire:click="conectar" color="warning" icon="heroicon-o-arrow-top-right-on-square">
-                    {{ $this->authorized ? 'Reconectar' : 'Conectar Shopee' }}
+                    {{ $this->authorized ? 'Reconectar' : 'Conectarr Shopee' }}
                 </x-filament::button>
 
                 @if($this->authorized)

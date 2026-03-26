@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.2",
         "filament/filament": "3.3",
+        "laraditz/shopee": "^1.1",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
         "maatwebsite/excel": "^3.1",

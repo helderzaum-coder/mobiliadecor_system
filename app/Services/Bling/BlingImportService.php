@@ -6,7 +6,7 @@ use App\Models\PedidoBlingStaging;
 use App\Models\Venda;
 use App\Services\MercadoLivre\MercadoLivreOrderService;
 use App\Services\MercadoLivrePlanilhaService;
-use App\Services\ShopeePlanilhaService;
+use App\Services\Shopee\ShopeeService;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -361,7 +361,7 @@ class BlingImportService
         if ($isMl) {
             MercadoLivrePlanilhaService::reprocessarPedido($staging);
         } elseif (str_contains(strtolower($canal), 'shopee')) {
-            ShopeePlanilhaService::reprocessarPedido($staging);
+            ShopeeService::reprocessarPedido($staging);
         }
     }
 

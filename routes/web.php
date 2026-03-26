@@ -18,7 +18,4 @@ Route::get('/ml/authorize/{account}', [MercadoLivreAuthController::class, 'autho
 Route::get('/ml/callback', [MercadoLivreAuthController::class, 'callback'])->name('ml.callback');
 Route::get('/ml/status', [MercadoLivreAuthController::class, 'status'])->name('ml.status');
 
-// Shopee OAuth
-Route::get('/shopee/authorize', [\App\Http\Controllers\ShopeeAuthController::class, 'authorize'])->name('shopee.authorize');
-Route::get('/shopee/callback', [\App\Http\Controllers\ShopeeAuthController::class, 'callback'])->name('shopee.callback');
-Route::get('/shopee/status', [\App\Http\Controllers\ShopeeAuthController::class, 'status'])->name('shopee.status');
+
