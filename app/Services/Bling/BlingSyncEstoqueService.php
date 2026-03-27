@@ -70,9 +70,9 @@ class BlingSyncEstoqueService
 
         $prodDestinoId = (int) ($prodDestino['id'] ?? 0);
 
-        // Marcar cache anti-loop ANTES de atualizar (TTL 10 minutos)
+        // Marcar cache anti-loop ANTES de atualizar (TTL 2 minutos)
         $cacheKey = "bling_sync_loop_{$this->destinoKey}_{$prodDestinoId}";
-        Cache::put($cacheKey, true, now()->addMinutes(10));
+        Cache::put($cacheKey, true, now()->addMinutes(2));
 
         // Salvar saldo sincronizado no cache (TTL 10 minutos)
         $saldoCacheKey = "bling_last_synced_saldo_{$this->destinoKey}_{$prodDestinoId}";
@@ -87,7 +87,7 @@ class BlingSyncEstoqueService
         if ($res['success']) {
             $log[] = "SKU {$sku}: ✓ estoque espelhado = {$saldoReal} em {$this->destinoKey}";
             Log::info("BlingSyncEstoque: SKU {$sku} espelhado saldo={$saldoReal} em {$this->destinoKey}");
-            Cache::put($saldoCacheKey, $saldoReal, now()->addMinutes(10));
+            Cache::put($saldoCacheKey, $saldoReal, now()->addMinutes(2));
         } else {
             $log[] = "SKU {$sku}: ✗ erro HTTP {$res['http_code']} ao espelhar em {$this->destinoKey}";
             Log::error("BlingSyncEstoque: Erro ao espelhar SKU {$sku} em {$this->destinoKey}", $res);
@@ -264,9 +264,9 @@ class BlingSyncEstoqueService
 
         $log[] = "SKU {$sku}: estoque {$estoqueAtual} → {$novoEstoque} (-{$qtdBaixar})";
 
-        // Marcar cache anti-loop ANTES de atualizar (TTL 5 minutos)
+        // Marcar cache anti-loop ANTES de atualizar (TTL 2 minutos)
         $cacheKey = "bling_sync_loop_{$this->destinoKey}_{$prodId}";
-        Cache::put($cacheKey, true, now()->addMinutes(5));
+        Cache::put($cacheKey, true, now()->addMinutes(2));
 
         $res = $this->atualizarEstoque((int) $prodId, $novoEstoque, $prodDestino);
 
