@@ -23,7 +23,7 @@ class ShopeeIntegration extends Page
     {
         $this->authorized = ShopeeService::isAuthorized();
         $this->shopId     = ShopeeService::getShopId();
-        $this->sandbox    = config('shopee.sandbox', true);
+        $this->sandbox    = config('shopee.sandbox.mode', true);
     }
 
     public function conectar(): void

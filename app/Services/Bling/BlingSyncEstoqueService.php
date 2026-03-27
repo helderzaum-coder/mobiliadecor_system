@@ -70,15 +70,24 @@ class BlingSyncEstoqueService
 
         $prodDestinoId = (int) ($prodDestino['id'] ?? 0);
 
-        // Marcar cache anti-loop ANTES de atualizar (TTL 5 minutos)
+        // Marcar cache anti-loop ANTES de atualizar (TTL 10 minutos)
         $cacheKey = "bling_sync_loop_{$this->destinoKey}_{$prodDestinoId}";
-        Cache::put($cacheKey, true, now()->addMinutes(5));
+        Cache::put($cacheKey, true, now()->addMinutes(10));
+
+        // Salvar saldo sincronizado no cache (TTL 10 minutos)
+        $saldoCacheKey = "bling_last_synced_saldo_{$this->destinoKey}_{$prodDestinoId}";
+        $lastSyncedSaldo = Cache::get($saldoCacheKey);
+        if ($lastSyncedSaldo !== null && (int)$lastSyncedSaldo === (int)$saldoReal) {
+            $log[] = "SKU {$sku}: saldo já sincronizado = {$saldoReal} em {$this->destinoKey} — pulando";
+            return ['success' => true, 'log' => $log];
+        }
 
         $res = $this->atualizarEstoque($prodDestinoId, $saldoReal, $prodDestino);
 
         if ($res['success']) {
             $log[] = "SKU {$sku}: ✓ estoque espelhado = {$saldoReal} em {$this->destinoKey}";
             Log::info("BlingSyncEstoque: SKU {$sku} espelhado saldo={$saldoReal} em {$this->destinoKey}");
+            Cache::put($saldoCacheKey, $saldoReal, now()->addMinutes(10));
         } else {
             $log[] = "SKU {$sku}: ✗ erro HTTP {$res['http_code']} ao espelhar em {$this->destinoKey}";
             Log::error("BlingSyncEstoque: Erro ao espelhar SKU {$sku} em {$this->destinoKey}", $res);
@@ -353,22 +362,12 @@ class BlingSyncEstoqueService
             }
         }
 
-        // Fallback: PUT no produto
-        $payload = [
-            'nome'    => $produto['nome'],
-            'codigo'  => $produto['codigo'],
-            'preco'   => $produto['preco'] ?? 0,
-            'tipo'    => $produto['tipo'] ?? 'P',
-            'situacao'=> $produto['situacao'] ?? 'A',
-            'formato' => $produto['formato'] ?? 'S',
-            'unidade' => $produto['unidade'] ?? 'UN',
-            'estoque' => ['saldoVirtualTotal' => $quantidade],
-        ];
+        // Fallback: logar erro — NÃO usar PUT /produtos para evitar alterar medidas/dados do produto
+        Log::error("BlingSyncEstoque: Não foi possível atualizar estoque do produto {$produtoId} via POST /estoques e depósito não encontrado", [
+            'produto_id' => $produtoId,
+            'quantidade'  => $quantidade,
+        ]);
 
-        if (isset($produto['estoque']['tipoEstoque'])) {
-            $payload['estoque']['tipoEstoque'] = $produto['estoque']['tipoEstoque'];
-        }
-
-        return $this->destino->put("/produtos/{$produtoId}", [], $payload);
+        return ['success' => false, 'http_code' => 0, 'body' => ['error' => 'Depósito padrão não encontrado']];
     }
 }

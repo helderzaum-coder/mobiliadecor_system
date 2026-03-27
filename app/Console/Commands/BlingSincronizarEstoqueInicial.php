@@ -62,8 +62,11 @@ class BlingSincronizarEstoqueInicial extends Command
             }
 
             $prodDestinoId = (int) $prodDestino['id'];
-            $saldoDestino  = (int) ($prodDestino['estoque']['saldoFisicoTotal']
+            $saldoDestino  = $this->buscarSaldoDisponivel($clientDestino, $prodDestinoId);
+            if ($saldoDestino === null) {
+                $saldoDestino = (int) ($prodDestino['estoque']['saldoFisicoTotal']
                                 ?? $prodDestino['estoque']['saldoVirtualTotal'] ?? 0);
+            }
 
             // Já está igual
             if ($saldoDestino === $saldoOrigem) {
@@ -140,16 +143,22 @@ class BlingSincronizarEstoqueInicial extends Command
                         $compSku     = $compDetalhe['codigo'] ?? null;
                         if (!$compSku || isset($skus[$compSku])) continue;
 
-                        $saldo = (int) ($compDetalhe['estoque']['saldoFisicoTotal']
-                                    ?? $compDetalhe['estoque']['saldoVirtualTotal'] ?? 0);
+                        $saldo = $this->buscarSaldoDisponivel($client, (int) $compId);
+                        if ($saldo === null) {
+                            $saldo = (int) ($compDetalhe['estoque']['saldoFisicoTotal']
+                                        ?? $compDetalhe['estoque']['saldoVirtualTotal'] ?? 0);
+                        }
                         $skus[$compSku] = $saldo;
                         usleep(200000);
                     }
                 } elseif ($sku && !isset($skus[$sku])) {
                     // Simples ou variação
-                    $detalhe = $client->getProductById((int) $produto['id']);
-                    $saldo   = (int) ($detalhe['estoque']['saldoFisicoTotal']
-                                ?? $detalhe['estoque']['saldoVirtualTotal'] ?? 0);
+                    $saldo = $this->buscarSaldoDisponivel($client, (int) $produto['id']);
+                    if ($saldo === null) {
+                        $detalhe = $client->getProductById((int) $produto['id']);
+                        $saldo   = (int) ($detalhe['estoque']['saldoFisicoTotal']
+                                    ?? $detalhe['estoque']['saldoVirtualTotal'] ?? 0);
+                    }
                     $skus[$sku] = $saldo;
                     usleep(200000);
                 }
