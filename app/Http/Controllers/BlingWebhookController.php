@@ -87,11 +87,16 @@ class BlingWebhookController extends Controller
             return response()->json(['error' => 'ID do pedido não encontrado'], 422);
         }
 
+        // Verificar se o estoque deste pedido já foi sincronizado (persistente no banco)
+        // Isso evita reprocessamento quando o Bling reenvia webhooks de pedidos antigos
+        $estoqueJaSincronizado = \App\Models\PedidoBlingStaging::where('bling_id', $pedidoId)
+            ->whereNotNull('bling_id')
+            ->exists();
+
         // Debounce: não processar o mesmo pedido mais de uma vez a cada 5 minutos
         $debounceKey = "bling_pedido_debounce_{$account}_{$pedidoId}";
         if (Cache::has($debounceKey)) {
             Log::info("BlingWebhook [{$account}]: pedido #{$pedidoId} já processado recentemente — ignorando estoque");
-            // Ainda tenta importar para staging (pode ter dados novos), mas NÃO sincroniza estoque
             $logResult = ['estoque' => ['skipped' => 'debounce']];
             try {
                 $importService = new BlingImportService($account);
@@ -106,12 +111,17 @@ class BlingWebhookController extends Controller
 
         $logResult = [];
 
-        // 1. Sincronizar estoque na conta oposta
-        $service   = new BlingSyncEstoqueService($account);
-        $resultado = $service->processarPedido((int) $pedidoId);
-        $logResult['estoque'] = $resultado['log'];
+        // 1. Sincronizar estoque na conta oposta — SOMENTE se o pedido ainda não existe no staging
+        if ($estoqueJaSincronizado) {
+            Log::info("BlingWebhook [{$account}]: pedido #{$pedidoId} já existe no staging — pulando sincronização de estoque");
+            $logResult['estoque'] = ['skipped' => 'pedido_ja_existe_no_staging'];
+        } else {
+            $service   = new BlingSyncEstoqueService($account);
+            $resultado = $service->processarPedido((int) $pedidoId);
+            $logResult['estoque'] = $resultado['log'];
+        }
 
-        // 2. Importar pedido para o staging automaticamente
+        // 2. Importar pedido para o staging automaticamente (sempre tenta, pode ter dados novos)
         try {
             $importService = new BlingImportService($account);
             $importResult = $importService->importarPedidoPorId((int) $pedidoId);
