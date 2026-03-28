@@ -205,16 +205,13 @@ class BlingWebhookController extends Controller
 
     private function isEventoEstoque(string $evento, array $data): bool
     {
-        // Ignorar virtual_stock — só processar estoque físico
-        if (str_contains($evento, 'virtual_stock')) {
-            return false;
-        }
-
         if (in_array($evento, [
             'stock.created',
             'stock.updated',
             'estoque.created',
             'estoque.updated',
+            'virtual_stock.updated',
+            'virtual_stock.created',
         ])) {
             return true;
         }
