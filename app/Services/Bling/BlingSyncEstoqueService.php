@@ -34,7 +34,7 @@ class BlingSyncEstoqueService
     {
         $log = [];
 
-        // Buscar SKU do produto na origem pelo ID
+        // Buscar detalhes do produto na origem
         $prodOrigem = $this->origem->getProductById($produtoIdOrigem);
 
         if (!$prodOrigem) {
@@ -43,7 +43,8 @@ class BlingSyncEstoqueService
             return ['success' => false, 'log' => [$msg]];
         }
 
-        $sku = $prodOrigem['codigo'] ?? null;
+        $sku     = $prodOrigem['codigo'] ?? null;
+        $formato = strtoupper($prodOrigem['formato'] ?? 'S');
 
         if (!$sku) {
             $msg = "Produto ID {$produtoIdOrigem} sem SKU — pulando";
@@ -51,17 +52,8 @@ class BlingSyncEstoqueService
             return ['success' => false, 'log' => [$msg]];
         }
 
-        // Buscar saldo REAL por depósito via API (não confiar no webhook)
-        $saldoReal = $this->buscarSaldoDisponivel($this->origem, $produtoIdOrigem);
-        if ($saldoReal === null) {
-            $log[] = "SKU {$sku}: não foi possível buscar saldo por depósito — usando saldoVirtualTotal do produto";
-            $saldoReal = (int) ($prodOrigem['estoque']['saldoVirtualTotal'] ?? 0);
-        }
-
-        $log[] = "Espelhando estoque SKU {$sku}: saldo disponível {$saldoReal} ({$this->origemKey} → {$this->destinoKey})";
-
         // Buscar produto na conta destino
-        $prodDestino = $this->buscarProdutoCompleto($this->destino, $sku);
+        $prodDestino = $this->buscarProdutoCompleto($this->destino, $sku, true);
 
         if (!$prodDestino) {
             $log[] = "SKU {$sku}: não encontrado no destino ({$this->destinoKey}) — pulando";
@@ -70,37 +62,60 @@ class BlingSyncEstoqueService
 
         $prodDestinoId = (int) ($prodDestino['id'] ?? 0);
 
-        // Marcar cache anti-loop ANTES de atualizar (TTL 2 minutos)
+        // Anti-loop (TTL 10 minutos para maior segurança)
         $cacheKey = "bling_sync_loop_{$this->destinoKey}_{$prodDestinoId}";
-        Cache::put($cacheKey, true, now()->addMinutes(2));
+        Cache::put($cacheKey, true, now()->addMinutes(10));
 
-        // Salvar saldo sincronizado no cache (TTL 10 minutos)
-        $saldoCacheKey = "bling_last_synced_saldo_{$this->destinoKey}_{$prodDestinoId}";
-        $lastSyncedSaldo = Cache::get($saldoCacheKey);
-        if ($lastSyncedSaldo !== null && (int)$lastSyncedSaldo === (int)$saldoReal) {
-            $log[] = "SKU {$sku}: saldo já sincronizado = {$saldoReal} em {$this->destinoKey} — pulando";
-            return ['success' => true, 'log' => $log];
+        // CASO 1: Kit (Formato E ou C) — Não tem depósitos físicos, usa saldo consolidado
+        if ($formato === 'E' || $formato === 'C') {
+            $saldoTotal = (int) ($prodOrigem['estoque']['saldoVirtualTotal'] ?? 0);
+            $log[] = "SKU {$sku} (Kit): espelhando saldo total {$saldoTotal}";
+            
+            $res = $this->atualizarEstoque($prodDestinoId, $saldoTotal, null);
+            if ($res['success']) {
+                $log[] = "✓ saldo total do Kit espelhado em {$this->destinoKey}";
+            }
+            return ['success' => $res['success'], 'log' => $log];
         }
 
-        $res = $this->atualizarEstoque($prodDestinoId, $saldoReal, $prodDestino);
+        // CASO 2: Produto Simples ou Variação — Sincronização Depósito a Depósito
+        $saldosOrigem = $this->buscarSaldosPorDeposito($this->origem, $produtoIdOrigem);
 
-        if ($res['success']) {
-            $log[] = "SKU {$sku}: ✓ estoque espelhado = {$saldoReal} em {$this->destinoKey}";
-            Log::info("BlingSyncEstoque: SKU {$sku} espelhado saldo={$saldoReal} em {$this->destinoKey}");
-            Cache::put($saldoCacheKey, $saldoReal, now()->addMinutes(2));
-        } else {
-            $log[] = "SKU {$sku}: ✗ erro HTTP {$res['http_code']} ao espelhar em {$this->destinoKey}";
-            Log::error("BlingSyncEstoque: Erro ao espelhar SKU {$sku} em {$this->destinoKey}", $res);
+        if (!$saldosOrigem) {
+            $log[] = "SKU {$sku}: não foi possível segmentar saldos por depósito — usando saldo consolidado";
+            $saldoTotal = (int) ($prodOrigem['estoque']['saldoVirtualTotal'] ?? 0);
+            $res = $this->atualizarEstoque($prodDestinoId, $saldoTotal, null);
+            return ['success' => $res['success'], 'log' => $log];
         }
 
-        return ['success' => $res['success'], 'log' => $log];
+        $success = true;
+        foreach ($saldosOrigem as $nomeDeposito => $quantidade) {
+            $log[] = "Deposit '{$nomeDeposito}': saldo {$quantidade}";
+            
+            // Buscar ID do depósito correspondente no destino pelo nome
+            $depDestinoId = $this->getDepositoIdPorNome($this->destino, $nomeDeposito);
+            
+            if ($depDestinoId) {
+                $res = $this->atualizarEstoque($prodDestinoId, $quantidade, $depDestinoId);
+                if ($res['success']) {
+                    $log[] = "  ✓ atualizado no destino (depósito ID {$depDestinoId})";
+                } else {
+                    $log[] = "  ✗ falha ao atualizar depósito '{$nomeDeposito}'";
+                    $success = false;
+                }
+            } else {
+                $log[] = "  ! depósito '{$nomeDeposito}' não existe no destino — pulando";
+            }
+        }
+
+        return ['success' => $success, 'log' => $log];
     }
 
     /**
-     * Busca saldo disponível para venda de um produto (Geral + Estoque Virtual).
-     * Ignora depósitos Aguardando Retorno e Reserva Garantia.
+     * Busca saldos segmentados por depósito.
+     * Retorna array: ['Nome do Depósito' => saldo, ...]
      */
-    private function buscarSaldoDisponivel(BlingClient $client, int $produtoId): ?int
+    private function buscarSaldosPorDeposito(BlingClient $client, int $produtoId): ?array
     {
         $res = $client->get('/estoques/saldos', ['idsProdutos[]' => $produtoId]);
 
@@ -111,24 +126,52 @@ class BlingSyncEstoqueService
         $dados = $res['body']['data'][0] ?? null;
         if (!$dados) return null;
 
-        // Buscar nomes dos depósitos para filtrar
         $depositosRes = $client->get('/depositos', ['limite' => 100]);
+        if (!$depositosRes['success']) return null;
+
         $depositoNomes = [];
         foreach ($depositosRes['body']['data'] ?? [] as $dep) {
-            $depositoNomes[$dep['id']] = strtolower($dep['descricao'] ?? '');
+            $depositoNomes[$dep['id']] = $dep['descricao'] ?? '';
         }
 
-        $saldo = 0;
+        $saldos = [];
         foreach ($dados['depositos'] ?? [] as $dep) {
-            $nome = $depositoNomes[$dep['id']] ?? '';
-            // Incluir apenas Geral e Estoque Virtual
-            if (str_contains($nome, 'geral') || str_contains($nome, 'virtual')) {
-                $saldo += (int) ($dep['saldoFisico'] ?? 0);
+            $nome = $depositoNomes[$dep['id']] ?? null;
+            if ($nome) {
+                // Filtrar apenas depósitos que o usuário usa para venda (Geral ou Virtual)
+                $nomeLower = strtolower($nome);
+                if (str_contains($nomeLower, 'geral') || str_contains($nomeLower, 'virtual') || str_contains($nomeLower, 'virtal')) {
+                    $saldos[$nome] = (int) ($dep['saldoFisico'] ?? 0);
+                }
             }
-            // Ignorar: Aguardando Retorno, Reserva Garantia, etc.
         }
 
-        return $saldo;
+        return !empty($saldos) ? $saldos : null;
+    }
+
+    /**
+     * Helper para encontrar um depósito pelo nome (case insensitive) em uma conta.
+     */
+    private function getDepositoIdPorNome(BlingClient $client, string $nome): ?int
+    {
+        $cacheKey = "bling_deposito_id_{$nome}_{$client->getHost()}";
+        $id = Cache::get($cacheKey);
+        if ($id) return (int) $id;
+
+        $res = $client->get('/depositos', ['limite' => 100]);
+        if (!$res['success']) return null;
+
+        $nomeTarget = strtolower(trim($nome));
+
+        foreach ($res['body']['data'] ?? [] as $dep) {
+            $nomeAtual = strtolower(trim($dep['descricao'] ?? ''));
+            if ($nomeAtual === $nomeTarget) {
+                Cache::put($cacheKey, $dep['id'], now()->addDays(1));
+                return (int) $dep['id'];
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -264,11 +307,11 @@ class BlingSyncEstoqueService
 
         $log[] = "SKU {$sku}: estoque {$estoqueAtual} → {$novoEstoque} (-{$qtdBaixar})";
 
-        // Marcar cache anti-loop ANTES de atualizar (TTL 2 minutos)
+        // Marcar cache anti-loop (10 minutos)
         $cacheKey = "bling_sync_loop_{$this->destinoKey}_{$prodId}";
-        Cache::put($cacheKey, true, now()->addMinutes(2));
+        Cache::put($cacheKey, true, now()->addMinutes(10));
 
-        $res = $this->atualizarEstoque((int) $prodId, $novoEstoque, $prodDestino);
+        $res = $this->atualizarEstoque((int) $prodId, $novoEstoque, null);
 
         if ($res['success']) {
             $log[] = "SKU {$sku}: ✓ atualizado no destino ({$this->destinoKey})";
@@ -313,21 +356,16 @@ class BlingSyncEstoqueService
      * Atualiza estoque via endpoint /estoques (balanço).
      * Fallback: PUT no produto.
      */
-    private function atualizarEstoque(int $produtoId, int $quantidade, array $produto): array
+    /**
+     * Atualiza estoque via endpoint /estoques (balanço).
+     */
+    private function atualizarEstoque(int $produtoId, int $quantidade, ?int $depositoId = null): array
     {
-        // Buscar o depósito PADRÃO (Geral) — nunca usar o primeiro da lista
-        $depositos = $this->destino->get('/depositos', ['limite' => 100]);
-        $depositoId = null;
-        foreach ($depositos['body']['data'] ?? [] as $dep) {
-            if (!empty($dep['padrao'])) {
-                $depositoId = $dep['id'];
-                break;
-            }
-        }
-        // Fallback: se nenhum marcado como padrão, buscar pelo nome "Geral"
+        // Se depósito não informado, tenta encontrar o PADRÃO ou "Geral"
         if (!$depositoId) {
+            $depositos = $this->destino->get('/depositos', ['limite' => 100]);
             foreach ($depositos['body']['data'] ?? [] as $dep) {
-                if (str_contains(strtolower($dep['descricao'] ?? ''), 'geral')) {
+                if (!empty($dep['padrao']) || str_contains(strtolower($dep['descricao'] ?? ''), 'geral')) {
                     $depositoId = $dep['id'];
                     break;
                 }
@@ -362,12 +400,6 @@ class BlingSyncEstoqueService
             }
         }
 
-        // Fallback: logar erro — NÃO usar PUT /produtos para evitar alterar medidas/dados do produto
-        Log::error("BlingSyncEstoque: Não foi possível atualizar estoque do produto {$produtoId} via POST /estoques e depósito não encontrado", [
-            'produto_id' => $produtoId,
-            'quantidade'  => $quantidade,
-        ]);
-
-        return ['success' => false, 'http_code' => 0, 'body' => ['error' => 'Depósito padrão não encontrado']];
+        return ['success' => false, 'http_code' => 0, 'body' => ['error' => 'Depósito não encontrado']];
     }
 }
