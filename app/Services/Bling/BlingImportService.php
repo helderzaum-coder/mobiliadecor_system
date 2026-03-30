@@ -2,6 +2,7 @@
 
 namespace App\Services\Bling;
 
+use App\Jobs\SyncEstoquePedidoJob;
 use App\Models\PedidoBlingStaging;
 use App\Models\Venda;
 use App\Services\MercadoLivre\MercadoLivreOrderService;
@@ -161,11 +162,17 @@ class BlingImportService
             return ['status' => 'erro', 'motivo' => 'dados_vazios'];
         }
 
-        $this->salvarNoStaging($pedido);
+        $staging = $this->salvarNoStaging($pedido);
+
+        // Disparar sincronização de estoque em background
+        if ($staging) {
+            SyncEstoquePedidoJob::dispatch($staging->id);
+        }
+
         return ['status' => 'importado', 'numero' => $pedido['numero'] ?? $blingId];
     }
 
-    private function salvarNoStaging(array $pedido): void
+    private function salvarNoStaging(array $pedido): ?PedidoBlingStaging
     {
         $canal = $this->identificarCanal($pedido);
         $nfId = $pedido['notaFiscal']['id'] ?? 0;
@@ -295,6 +302,8 @@ class BlingImportService
         } elseif (str_contains(strtolower($canal), 'shopee')) {
             ShopeeService::reprocessarPedido($staging);
         }
+
+        return $staging;
     }
 
     private function buscarDadosMLPreCalculo(string $canal, ?string $numeroLoja, ?string $numeroPedido): array
