@@ -4,8 +4,8 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PedidoBlingStagingResource\Pages;
 use App\Models\PedidoBlingStaging;
+use App\Jobs\SyncEstoquePedidoJob;
 use App\Services\Bling\BlingClient;
-use App\Services\Bling\BlingEstoquePedidoService;
 use App\Services\Bling\BlingImportService;
 use App\Services\AprovacaoVendaService;
 use App\Services\CotacaoFreteService;
@@ -451,20 +451,13 @@ class PedidoBlingStagingResource extends Resource
                     ->color('primary')
                     ->requiresConfirmation()
                     ->modalHeading('Sincronizar Estoque')
-                    ->modalDescription('Vai atualizar o estoque dos itens deste pedido na conta oposta. Pode demorar alguns segundos.')
+                    ->modalDescription('A sincronização será processada em background. Você receberá uma notificação quando concluir.')
                     ->action(function (PedidoBlingStaging $record) {
-                        $resultado = BlingEstoquePedidoService::sincronizar($record);
-                        if ($resultado['success']) {
-                            Notification::make()
-                                ->title('Estoque sincronizado com sucesso')
-                                ->body(implode("\n", $resultado['log']))
-                                ->success()->send();
-                        } else {
-                            Notification::make()
-                                ->title("Sincronização com {$resultado['erros']} erro(s)")
-                                ->body(implode("\n", $resultado['log']))
-                                ->warning()->send();
-                        }
+                        SyncEstoquePedidoJob::dispatch($record->id);
+                        Notification::make()
+                            ->title('Sincronização enviada para processamento')
+                            ->body("Pedido #{$record->numero_pedido} será sincronizado em background.")
+                            ->info()->send();
                     })
                     ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente' && !$record->estoque_sincronizado),
                 Tables\Actions\Action::make('buscar_nfe')
@@ -780,26 +773,17 @@ class PedidoBlingStagingResource extends Resource
                     ->color('primary')
                     ->requiresConfirmation()
                     ->modalHeading('Sincronizar Estoque em Massa')
-                    ->modalDescription('Vai sincronizar o estoque de todos os pedidos selecionados que ainda não foram sincronizados.')
+                    ->modalDescription('Os pedidos selecionados serão sincronizados em background. Você receberá notificações ao concluir.')
                     ->action(function ($records) {
-                        $sincronizados = 0;
-                        $erros = 0;
+                        $enviados = 0;
                         foreach ($records as $record) {
                             if ($record->estoque_sincronizado) continue;
-                            $resultado = BlingEstoquePedidoService::sincronizar($record);
-                            if ($resultado['success']) {
-                                $sincronizados++;
-                            } else {
-                                $erros++;
-                            }
+                            SyncEstoquePedidoJob::dispatch($record->id);
+                            $enviados++;
                         }
-                        if ($sincronizados > 0) {
-                            Notification::make()->title("{$sincronizados} pedido(s) sincronizados.")->success()->send();
-                        }
-                        if ($erros > 0) {
-                            Notification::make()->title("{$erros} pedido(s) com erro.")->warning()->send();
-                        }
-                        if ($sincronizados === 0 && $erros === 0) {
+                        if ($enviados > 0) {
+                            Notification::make()->title("{$enviados} pedido(s) enviados para sincronização.")->info()->send();
+                        } else {
                             Notification::make()->title('Nenhum pedido para sincronizar.')->info()->send();
                         }
                     }),
