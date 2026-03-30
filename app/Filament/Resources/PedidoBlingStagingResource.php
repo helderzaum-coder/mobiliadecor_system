@@ -4,6 +4,8 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PedidoBlingStagingResource\Pages;
 use App\Models\PedidoBlingStaging;
+use App\Services\Bling\BlingClient;
+use App\Services\Bling\BlingEstoquePedidoService;
 use App\Services\Bling\BlingImportService;
 use App\Services\AprovacaoVendaService;
 use App\Services\CotacaoFreteService;
@@ -223,6 +225,13 @@ class PedidoBlingStagingResource extends Resource
                         'rejeitado' => 'danger',
                         default => 'gray',
                     }),
+                Tables\Columns\IconColumn::make('estoque_sincronizado')
+                    ->label('Estoque')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-clock')
+                    ->trueColor('success')
+                    ->falseColor('warning'),
                 Tables\Columns\IconColumn::make('planilha_shopee')
                     ->label('Planilha')
                     ->boolean()
@@ -359,6 +368,105 @@ class PedidoBlingStagingResource extends Resource
             ->filtersFormColumns(3)
             ->actions([
                 Tables\Actions\EditAction::make()->label('Revisar'),
+                Tables\Actions\Action::make('ver_estrutura')
+                    ->label('Estrutura')
+                    ->icon('heroicon-o-cube')
+                    ->color('gray')
+                    ->modalHeading('Estrutura dos Produtos')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fechar')
+                    ->modalContent(function (PedidoBlingStaging $record) {
+                        $client = new BlingClient($record->bling_account);
+                        $itens = $record->itens ?? [];
+
+                        $html = '<table class="w-full text-sm border-collapse text-gray-700 dark:text-gray-200">';
+                        $html .= '<thead><tr class="border-b border-gray-300 dark:border-gray-600">'
+                            . '<th class="text-left p-2">SKU</th>'
+                            . '<th class="text-left p-2">Descrição</th>'
+                            . '<th class="text-center p-2">Tipo</th>'
+                            . '<th class="text-center p-2">Qtd</th>'
+                            . '</tr></thead><tbody>';
+
+                        foreach ($itens as $item) {
+                            $sku = $item['codigo'] ?? '';
+                            $desc = $item['descricao'] ?? '';
+                            $qtd = $item['quantidade'] ?? 1;
+                            $formato = '—';
+                            $componentes = [];
+
+                            if ($sku) {
+                                $produto = $client->getProductBySku($sku);
+                                if ($produto) {
+                                    $f = strtoupper($produto['formato'] ?? 'S');
+                                    $formato = match ($f) {
+                                        'S' => '<span class="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Simples</span>',
+                                        'V' => '<span class="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Variação</span>',
+                                        'E', 'C' => '<span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">Kit</span>',
+                                        default => $f,
+                                    };
+
+                                    if (in_array($f, ['E', 'C'])) {
+                                        $detalhe = $client->getProductById((int) $produto['id']);
+                                        if ($detalhe) {
+                                            foreach ($detalhe['estrutura']['componentes'] ?? [] as $comp) {
+                                                $compProd = isset($comp['produto']['id'])
+                                                    ? $client->getProductById((int) $comp['produto']['id'])
+                                                    : null;
+                                                $componentes[] = [
+                                                    'sku' => $compProd['codigo'] ?? '—',
+                                                    'descricao' => $comp['produto']['nome'] ?? $compProd['nome'] ?? '—',
+                                                    'quantidade' => $comp['quantidade'] ?? 1,
+                                                ];
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            $html .= '<tr class="border-b border-gray-200 dark:border-gray-700">'
+                                . '<td class="p-2 font-mono">' . e($sku) . '</td>'
+                                . '<td class="p-2">' . e($desc) . '</td>'
+                                . '<td class="p-2 text-center">' . $formato . '</td>'
+                                . '<td class="p-2 text-center">' . $qtd . '</td>'
+                                . '</tr>';
+
+                            foreach ($componentes as $comp) {
+                                $html .= '<tr class="border-b border-gray-200 dark:border-gray-700">'
+                                    . '<td class="p-2 pl-6 font-mono text-xs text-gray-700 dark:text-gray-200">↳ ' . e($comp['sku']) . '</td>'
+                                    . '<td class="p-2 text-xs text-gray-700 dark:text-gray-200">' . e($comp['descricao']) . '</td>'
+                                    . '<td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-100">Componente</span></td>'
+                                    . '<td class="p-2 text-center text-xs text-gray-700 dark:text-gray-200">' . ($comp['quantidade'] * $qtd) . '</td>'
+                                    . '</tr>';
+                            }
+                        }
+
+                        $html .= '</tbody></table>';
+
+                        return new HtmlString($html);
+                    })
+                    ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente'),
+                Tables\Actions\Action::make('sincronizar_estoque')
+                    ->label('Sync Estoque')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('primary')
+                    ->requiresConfirmation()
+                    ->modalHeading('Sincronizar Estoque')
+                    ->modalDescription('Vai atualizar o estoque dos itens deste pedido na conta oposta. Pode demorar alguns segundos.')
+                    ->action(function (PedidoBlingStaging $record) {
+                        $resultado = BlingEstoquePedidoService::sincronizar($record);
+                        if ($resultado['success']) {
+                            Notification::make()
+                                ->title('Estoque sincronizado com sucesso')
+                                ->body(implode("\n", $resultado['log']))
+                                ->success()->send();
+                        } else {
+                            Notification::make()
+                                ->title("Sincronização com {$resultado['erros']} erro(s)")
+                                ->body(implode("\n", $resultado['log']))
+                                ->warning()->send();
+                        }
+                    })
+                    ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente' && !$record->estoque_sincronizado),
                 Tables\Actions\Action::make('buscar_nfe')
                     ->label('Buscar NF-e')
                     ->icon('heroicon-o-document-magnifying-glass')
@@ -666,6 +774,35 @@ class PedidoBlingStagingResource extends Resource
                     }),
             ])
             ->bulkActions([
+                Tables\Actions\BulkAction::make('sincronizar_estoque_massa')
+                    ->label('Sync Estoque')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('primary')
+                    ->requiresConfirmation()
+                    ->modalHeading('Sincronizar Estoque em Massa')
+                    ->modalDescription('Vai sincronizar o estoque de todos os pedidos selecionados que ainda não foram sincronizados.')
+                    ->action(function ($records) {
+                        $sincronizados = 0;
+                        $erros = 0;
+                        foreach ($records as $record) {
+                            if ($record->estoque_sincronizado) continue;
+                            $resultado = BlingEstoquePedidoService::sincronizar($record);
+                            if ($resultado['success']) {
+                                $sincronizados++;
+                            } else {
+                                $erros++;
+                            }
+                        }
+                        if ($sincronizados > 0) {
+                            Notification::make()->title("{$sincronizados} pedido(s) sincronizados.")->success()->send();
+                        }
+                        if ($erros > 0) {
+                            Notification::make()->title("{$erros} pedido(s) com erro.")->warning()->send();
+                        }
+                        if ($sincronizados === 0 && $erros === 0) {
+                            Notification::make()->title('Nenhum pedido para sincronizar.')->info()->send();
+                        }
+                    }),
                 Tables\Actions\BulkAction::make('aprovar_selecionados')
                     ->label('Aprovar Selecionados')
                     ->icon('heroicon-o-check-circle')
