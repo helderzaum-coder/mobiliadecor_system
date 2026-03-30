@@ -49,23 +49,25 @@ class BlingWebhookController extends Controller
         $evento  = strtolower((string) ($payload['event'] ?? $payload['tipo'] ?? $payload['type'] ?? ''));
         $data    = is_array($payload['data'] ?? null) ? $payload['data'] : $payload;
 
-        Log::info("BlingWebhook [{$account}]: evento '{$evento}'", ['data' => $data]);
-
-        try {
-            // Pedido de venda criado ou atualizado
-            if ($this->isEventoPedido($evento, $data)) {
-                return $this->handlePedido($account, $data);
-            }
-
-            // Lançamento de estoque criado ou atualizado
-            if ($this->isEventoEstoque($evento, $data)) {
-                return $this->handleEstoque($account, $data);
-            }
-
-      //      Log::info("BlingWebhook [{$account}]: evento '{$evento}' ignorado", [
-                'payload_keys' => array_keys($payload),
-                'data_keys' => is_array($data) ? array_keys($data) : [],
-            ]);
+        // Log::info("BlingWebhook [{$account}]: evento '{$evento}'", ['data' => $data]);
+ 
+         try {
+             // Pedido de venda criado ou atualizado
+             if ($this->isEventoPedido($evento, $data)) {
+                 return $this->handlePedido($account, $data);
+             }
+ 
+             // Lançamento de estoque criado ou atualizado
+             if ($this->isEventoEstoque($evento, $data)) {
+                 return $this->handleEstoque($account, $data);
+             }
+ 
+             /*
+             Log::info("BlingWebhook [{$account}]: evento '{$evento}' ignorado", [
+                 'payload_keys' => array_keys($payload),
+                 'data_keys' => is_array($data) ? array_keys($data) : [],
+             ]);
+             */
             return response()->json(['status' => 'ignored', 'event' => $evento]);
 
         } catch (\Throwable $e) {
