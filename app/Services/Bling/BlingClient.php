@@ -96,7 +96,9 @@ class BlingClient
 
         // Se 429 (rate limit), esperar e tentar novamente
         if ($response->status() === 429 && !$isRetry) {
-            Log::warning("Bling [{$this->accountKey}]: HTTP 429 (rate limit) ao chamar {$path}, aguardando 2s...");
+            // Silenciando o log de 429 de Warning para Info para não sujar o log de produção
+            // O sistema já lida com isso automaticamente via retry
+            Log::info("Bling [{$this->accountKey}]: HTTP 429 (rate limit) ao chamar {$path}, aguardando 2s...");
             sleep(2);
             return $this->request($method, $path, $query, $body, true);
         }

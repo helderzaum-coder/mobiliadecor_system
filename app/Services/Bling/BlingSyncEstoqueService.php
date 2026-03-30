@@ -194,6 +194,16 @@ class BlingSyncEstoqueService
      */
     private function buscarProdutoCompleto(BlingClient $client, string $sku, bool $allowKit = false): ?array
     {
+        // Cache SKU-to-ID para economizar API calls (evita buscar o produto toda vez)
+        $accountKey = ($client === $this->origem) ? $this->origemKey : $this->destinoKey;
+        $cacheKey = "bling_sku_to_id_{$accountKey}_{$sku}";
+        $cachedId = Cache::get($cacheKey);
+
+        if ($cachedId) {
+            $detalhe = $client->getProductById((int) $cachedId);
+            if ($detalhe) return $detalhe;
+        }
+
         $res = $client->get('/produtos', ['codigo' => $sku, 'limite' => 10]);
         if (!$res['success'] || empty($res['body']['data']))
             return null;
@@ -205,6 +215,9 @@ class BlingSyncEstoqueService
                 if (!$allowKit && ($f === 'E' || $f === 'C'))
                     continue;
 
+                // Salvar no cache por 24h
+                Cache::put($cacheKey, $p['id'], now()->addDay());
+                
                 $detalhe = $client->getProductById((int) $p['id']);
                 return $detalhe ?? $p;
             }
