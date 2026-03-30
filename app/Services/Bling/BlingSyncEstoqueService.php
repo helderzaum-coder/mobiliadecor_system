@@ -8,12 +8,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * ╔══════════════════════════════════════════════════════════════════════╗
  * ║  BlingSyncEstoqueService — Mirroring Automático de Estoque         ║
- * ║                                                                    ║
- * ║  Garante que o estoque das duas contas Bling seja idêntico,        ║
- * ║  sincronizando depósito a depósito (Geral, Virtual, etc).          ║
- * ║                                                                    ║
- * ║  Estratégia: Absolute Mirroring (sempre busca o saldo REAL na      ║
- * ║  origem e espelha no destino, evitando drift de quantidades).      ║
+ * ║  VERSÃO CORRIGIDA (ANTI-LOOP POR SKU)                              ║
  * ╚══════════════════════════════════════════════════════════════════════╝
  */
 class BlingSyncEstoqueService
@@ -25,97 +20,81 @@ class BlingSyncEstoqueService
 
     public function __construct(string $origemKey)
     {
-        $this->origemKey  = $origemKey;
+        $this->origemKey = $origemKey;
         $this->destinoKey = $origemKey === 'primary' ? 'secondary' : 'primary';
-        $this->origem     = new BlingClient($origemKey);
-        $this->destino    = new BlingClient($this->destinoKey);
+        $this->origem = new BlingClient($origemKey);
+        $this->destino = new BlingClient($this->destinoKey);
     }
 
     /**
-     * Espelha o saldo de um produto da conta origem para a destino (por depósitos).
+     * Espelha o saldo de um produto da conta origem para a destino.
      */
     public function espelharEstoque(int $produtoIdOrigem, float $saldoWebhook): array
     {
-        // Anti-loop protection: se este ID acabou de ser atualizado pelo sync, ignorar
-        $cacheKey = "bling_sync_loop_{$this->origemKey}_{$produtoIdOrigem}";
-        if (Cache::has($cacheKey)) {
-            return ['success' => true, 'log' => ["Sync ignorado (anti-loop) para produto #{$produtoIdOrigem}"]];
-        }
-
-        $log = [];
-
-        // 1. Buscar detalhes do produto na ORIGEM para identificar o SKU e formato
+        // 1. Buscar detalhes do produto na ORIGEM para identificar o SKU
         $prodOrigem = $this->origem->getProductById($produtoIdOrigem);
 
         if (!$prodOrigem) {
             return ['success' => false, 'log' => ["Produto #{$produtoIdOrigem} não encontrado na origem"]];
         }
 
-        $sku     = $prodOrigem['codigo'] ?? null;
-        $formato = strtoupper($prodOrigem['formato'] ?? 'S');
-
+        $sku = $prodOrigem['codigo'] ?? null;
         if (!$sku) {
-            return ['success' => false, 'log' => ["Produto #{$produtoIdOrigem} não possui SKU — pulando"]];
+            return ['success' => false, 'log' => ["Produto #{$produtoIdOrigem} sem SKU"]];
         }
 
-        $log[] = "--- Espelhando SKU: {$sku} ({$this->origemKey} → {$this->destinoKey}) ---";
+        // --- TRAVA ANTI-LOOP POR SKU ---
+        // Se este SKU foi atualizado recentemente por QUALQUER conta, ignoramos o "eco"
+        $cacheKey = "bling_sync_lock_" . md5($sku);
+        if (Cache::has($cacheKey)) {
+            // Retornamos sucesso silencioso para não encher o log do Laravel
+            return ['success' => true, 'is_loop' => true, 'log' => ["SKU {$sku} ignorado (trava anti-loop ativa)"]];
+        }
+
+        $log = ["--- Sincronizando SKU: {$sku} ({$this->origemKey} → {$this->destinoKey}) ---"];
 
         // 2. Buscar produto no DESTINO
         $prodDestino = $this->buscarProdutoCompleto($this->destino, $sku, true);
 
         if (!$prodDestino) {
-            $log[] = "SKU {$sku} não encontrado no destino — ignorando";
+            $log[] = "SKU {$sku} não existe no destino — nada a sincronizar";
             return ['success' => true, 'log' => $log];
         }
 
         $produtoIdDestino = (int) $prodDestino['id'];
+        $formato = strtoupper($prodOrigem['formato'] ?? 'S');
 
-        // 3. Marcar anti-loop no DESTINO para evitar gatilho imediato de volta
-        Cache::put("bling_sync_loop_{$this->destinoKey}_{$produtoIdDestino}", true, now()->addMinutes(10));
+        // 3. ATIVAR TRAVA: Marcamos que este SKU está sendo sincronizado agora
+        // Usamos 60 segundos para cobrir o tempo de resposta do Bling disparar o webhook de volta
+        Cache::put($cacheKey, true, 60);
 
-        // CASO A: Kits (Formato E/C) — Usam saldo consolidado (não têm depósitos físicos próprios no Bling)
+        // CASO A: Kits (Formato E/C)
         if ($formato === 'E' || $formato === 'C') {
             $saldoTotal = (int) ($prodOrigem['estoque']['saldoVirtualTotal'] ?? 0);
-            $log[] = "Produto é KIT: espelhando saldo consolidado {$saldoTotal}";
             $res = $this->atualizarEstoque($produtoIdDestino, $saldoTotal, null);
-            return ['success' => $res['success'], 'log' => array_merge($log, $res['success']?['✓ Sucesso']:['✗ Erro'])];
+            return ['success' => $res['success'], 'log' => array_merge($log, ["Saldo KIT: {$saldoTotal}"])];
         }
 
-        // CASO B: Produtos Simples ou Variações — Mirroring Depósito a Depósito
+        // CASO B: Produtos Simples ou Variações (Mirroring Depósito a Depósito)
         $saldosOrigem = $this->buscarSaldosPorDeposito($this->origem, $produtoIdOrigem);
 
         if (!$saldosOrigem) {
-            // Fallback: se não conseguir ler por depósito, usa o consolidado
             $saldoTotal = (int) ($prodOrigem['estoque']['saldoVirtualTotal'] ?? 0);
-            $log[] = "Falha ao segmentar depósitos: usando saldo consolidado {$saldoTotal}";
             $res = $this->atualizarEstoque($produtoIdDestino, $saldoTotal, null);
-            return ['success' => $res['success'], 'log' => array_merge($log, $res['success']?['✓ Sucesso']:['✗ Erro'])];
+            return ['success' => $res['success'], 'log' => array_merge($log, ["Saldo Total: {$saldoTotal}"])];
         }
 
         $success = true;
         foreach ($saldosOrigem as $nomeDeposito => $quantidade) {
-            $log[] = "Saldo '{$nomeDeposito}': {$quantidade}";
-            
             $depDestinoId = $this->getDepositoIdPorNome($this->destino, $nomeDeposito);
-            
             if ($depDestinoId) {
                 $res = $this->atualizarEstoque($produtoIdDestino, $quantidade, $depDestinoId);
-                if ($res['success']) {
-                    $log[] = "  ✓ atualizado no destino (depósito ID {$depDestinoId})";
-                } else {
-                    $log[] = "  ✗ falha ao atualizar depósito '{$nomeDeposito}' (HTTP {$res['http_code']})";
+                if (!$res['success'])
                     $success = false;
-                }
-            } else {
-                $log[] = "  ! depósito '{$nomeDeposito}' não existe no destino — ignorando este saldo";
             }
         }
 
-        Log::info("BlingSyncEstoque: Mirroring finalizado", [
-            'sku' => $sku,
-            'origem' => $this->origemKey,
-            'log'    => $log
-        ]);
+        Log::info("BlingSync: SKU {$sku} sincronizado com sucesso.");
 
         return ['success' => $success, 'log' => $log];
     }
@@ -131,11 +110,12 @@ class BlingSyncEstoqueService
         }
 
         $itens = $res['body']['data']['itens'] ?? [];
-        $log   = ["Pedido #{$pedidoId} ({$this->origemKey}): " . count($itens) . " item(ns)"];
+        $log = ["Pedido #{$pedidoId} ({$this->origemKey}): " . count($itens) . " item(ns)"];
 
         foreach ($itens as $item) {
             $sku = $item['codigo'] ?? null;
-            if (!$sku) continue;
+            if (!$sku)
+                continue;
 
             // Para cada item vendido, forçamos o espelhamento absoluto para regularizar os depósitos
             $prodOrigem = $this->buscarProdutoCompleto($this->origem, $sku, true);
@@ -154,12 +134,14 @@ class BlingSyncEstoqueService
     private function buscarSaldosPorDeposito(BlingClient $client, int $produtoId): ?array
     {
         $res = $client->get('/estoques/saldos', ['idsProdutos[]' => $produtoId]);
-        if (!$res['success'] || empty($res['body']['data'])) return null;
+        if (!$res['success'] || empty($res['body']['data']))
+            return null;
 
         $dados = $res['body']['data'][0] ?? null;
-        
+
         $depositosRes = $client->get('/depositos', ['limite' => 100]);
-        if (!$depositosRes['success']) return null;
+        if (!$depositosRes['success'])
+            return null;
 
         $depNomes = [];
         foreach ($depositosRes['body']['data'] ?? [] as $d) {
@@ -187,13 +169,15 @@ class BlingSyncEstoqueService
     {
         // Tenta descobrir a chave da conta (primary/secondary) dinamicamente
         $accountKey = ($client === $this->origem) ? $this->origemKey : $this->destinoKey;
-        $cacheKey   = "bling_dep_id_{$accountKey}_" . str_replace(' ', '_', $nome);
+        $cacheKey = "bling_dep_id_{$accountKey}_" . str_replace(' ', '_', $nome);
 
         $id = Cache::get($cacheKey);
-        if ($id) return (int) $id;
+        if ($id)
+            return (int) $id;
 
         $res = $client->get('/depositos', ['limite' => 100]);
-        if (!$res['success']) return null;
+        if (!$res['success'])
+            return null;
 
         $target = strtolower(trim($nome));
         foreach ($res['body']['data'] ?? [] as $d) {
@@ -211,13 +195,15 @@ class BlingSyncEstoqueService
     private function buscarProdutoCompleto(BlingClient $client, string $sku, bool $allowKit = false): ?array
     {
         $res = $client->get('/produtos', ['codigo' => $sku, 'limite' => 10]);
-        if (!$res['success'] || empty($res['body']['data'])) return null;
+        if (!$res['success'] || empty($res['body']['data']))
+            return null;
 
         foreach ($res['body']['data'] as $p) {
             if (($p['codigo'] ?? '') === $sku) {
                 // Se não é kit e não queremos kit, pula
                 $f = strtoupper($p['formato'] ?? 'S');
-                if (!$allowKit && ($f === 'E' || $f === 'C')) continue;
+                if (!$allowKit && ($f === 'E' || $f === 'C'))
+                    continue;
 
                 $detalhe = $client->getProductById((int) $p['id']);
                 return $detalhe ?? $p;
@@ -241,19 +227,19 @@ class BlingSyncEstoqueService
         }
 
         $params = [
-            'produto'     => ['id' => $produtoId],
-            'deposito'    => ['id' => (int) $depositoId],
-            'operacao'    => 'B',
-            'preco'       => 0,
-            'custo'       => 0,
-            'quantidade'  => $quantidade,
+            'produto' => ['id' => $produtoId],
+            'deposito' => ['id' => (int) $depositoId],
+            'operacao' => 'B',
+            'preco' => 0,
+            'custo' => 0,
+            'quantidade' => $quantidade,
             'observacoes' => 'Sync Automático: Deposit-to-Deposit Mirroring',
         ];
 
         $res = $this->destino->post('/estoques', [], $params);
 
         // Retry para rate limit (429) ou erro intermitente (5xx)
-        if (!$res['success'] && in_array((int)($res['http_code'] ?? 0), [429, 500, 502, 503, 504])) {
+        if (!$res['success'] && in_array((int) ($res['http_code'] ?? 0), [429, 500, 502, 503, 504])) {
             sleep(2);
             $res = $this->destino->post('/estoques', [], $params);
         }

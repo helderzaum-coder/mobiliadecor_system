@@ -62,7 +62,7 @@ class BlingWebhookController extends Controller
                 return $this->handleEstoque($account, $data);
             }
 
-            Log::info("BlingWebhook [{$account}]: evento '{$evento}' ignorado", [
+      //      Log::info("BlingWebhook [{$account}]: evento '{$evento}' ignorado", [
                 'payload_keys' => array_keys($payload),
                 'data_keys' => is_array($data) ? array_keys($data) : [],
             ]);
@@ -96,7 +96,8 @@ class BlingWebhookController extends Controller
         // Debounce: não processar o mesmo pedido mais de uma vez a cada 5 minutos
         $debounceKey = "bling_pedido_debounce_{$account}_{$pedidoId}";
         if (Cache::has($debounceKey)) {
-            Log::info("BlingWebhook [{$account}]: pedido #{$pedidoId} já processado recentemente — ignorando estoque");
+     //            Log::info("BlingWebhook [{$account}]: pedido #{$pedidoId} já processado recentemente — ignorando estoque");
+     
             $logResult = ['estoque' => ['skipped' => 'debounce']];
             try {
                 $importService = new BlingImportService($account);
@@ -113,7 +114,7 @@ class BlingWebhookController extends Controller
 
         // 1. Sincronizar estoque na conta oposta — SOMENTE se o pedido ainda não existe no staging
         if ($estoqueJaSincronizado) {
-            Log::info("BlingWebhook [{$account}]: pedido #{$pedidoId} já existe no staging — pulando sincronização de estoque");
+          //  Log::info("BlingWebhook [{$account}]: pedido #{$pedidoId} já existe no staging — pulando sincronização de estoque");
             $logResult['estoque'] = ['skipped' => 'pedido_ja_existe_no_staging'];
         } else {
             $service   = new BlingSyncEstoqueService($account);
@@ -126,7 +127,7 @@ class BlingWebhookController extends Controller
             $importService = new BlingImportService($account);
             $importResult = $importService->importarPedidoPorId((int) $pedidoId);
             $logResult['staging'] = $importResult;
-            Log::info("BlingWebhook [{$account}]: pedido #{$pedidoId} staging: {$importResult['status']}");
+        //    Log::info("BlingWebhook [{$account}]: pedido #{$pedidoId} staging: {$importResult['status']}");
         } catch (\Throwable $e) {
             $logResult['staging'] = ['status' => 'erro', 'motivo' => $e->getMessage()];
             Log::warning("BlingWebhook [{$account}]: erro ao importar pedido #{$pedidoId} para staging", [
@@ -134,7 +135,7 @@ class BlingWebhookController extends Controller
             ]);
         }
 
-        Log::info("BlingWebhook [{$account}]: pedido #{$pedidoId} processado", $logResult);
+     //   Log::info("BlingWebhook [{$account}]: pedido #{$pedidoId} processado", $logResult);
 
         return response()->json(['status' => 'ok', 'pedido' => $pedidoId, 'log' => $logResult]);
     }
@@ -154,7 +155,7 @@ class BlingWebhookController extends Controller
         // Anti-loop: verificar se foi o nosso sistema que gerou esta atualização
         $cacheKey = "bling_sync_loop_{$account}_{$produtoId}";
         if (Cache::has($cacheKey)) {
-            Log::info("BlingWebhook [{$account}]: loop detectado para produto #{$produtoId} — ignorando");
+        //    Log::info("BlingWebhook [{$account}]: loop detectado para produto #{$produtoId} — ignorando");
             return response()->json(['status' => 'ignored', 'reason' => 'loop_prevention']);
         }
 
@@ -168,7 +169,11 @@ class BlingWebhookController extends Controller
         $service   = new BlingSyncEstoqueService($account);
         $resultado = $service->espelharEstoque((int) $produtoId, 0); // saldo do webhook ignorado, busca real via API
 
-        Log::info("BlingWebhook [{$account}]: estoque produto #{$produtoId} espelhado", $resultado['log']);
+        if (isset($resultado['is_loop']) && $resultado['is_loop']) {
+            return response()->json(['status' => 'ignored loop', 'produto_id' => $produtoId], 200);
+        }
+
+     //   Log::info("BlingWebhook [{$account}]: estoque produto #{$produtoId} espelhado", $resultado['log']);
 
         return response()->json(['status' => 'ok', 'produto_id' => $produtoId, 'log' => $resultado['log']]);
     }
