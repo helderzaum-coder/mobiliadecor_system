@@ -166,6 +166,6 @@ class TrocaTampos extends Page implements HasForms
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->hasRole('admin') ?? false;
+        return auth()->user()?->hasAnyRole(['admin', 'tampo']) ?? false;
     }
 }
