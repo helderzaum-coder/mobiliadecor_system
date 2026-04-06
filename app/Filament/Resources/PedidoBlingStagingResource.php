@@ -203,6 +203,28 @@ class PedidoBlingStagingResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('cotacao_link')
+                    ->label('Frete')
+                    ->html()
+                    ->getStateUsing(function (PedidoBlingStaging $record) {
+                        if (!$record->dest_uf || !$record->dest_cep || !$record->peso_bruto) {
+                            return '<span style="color:#6b7280;font-size:11px;">—</span>';
+                        }
+                        return '<span style="cursor:pointer;font-size:13px;" title="Cotar Frete">🚚</span>';
+                    })
+                    ->action(
+                        Tables\Actions\Action::make('cotar_frete_col')
+                            ->modalHeading('Cotação de Frete')
+                            ->modalSubmitAction(false)
+                            ->modalCancelActionLabel('Fechar')
+                            ->modalContent(function (PedidoBlingStaging $record) {
+                                if (!$record->dest_uf || !$record->dest_cep || !$record->peso_bruto) {
+                                    return new HtmlString('<p class="text-sm text-danger-500">Dados de envio incompletos (UF, CEP ou peso). Reimporte o pedido.</p>');
+                                }
+                                // Reutiliza o mesmo método de cotação
+                                return self::renderCotacaoModal($record);
+                            })
+                    ),
                 Tables\Columns\TextColumn::make('bling_account')->label('Conta')
                     ->formatStateUsing(fn (string $state) => $state === 'primary' ? 'Mobilia' : 'HES'),
                 Tables\Columns\TextColumn::make('numero_pedido')->label('Pedido')->searchable(),
@@ -378,133 +400,7 @@ class PedidoBlingStagingResource extends Resource
                         if (!$record->dest_uf || !$record->dest_cep || !$record->peso_bruto) {
                             return new HtmlString('<p class="text-sm text-danger-500">Dados de envio incompletos (UF, CEP ou peso). Reimporte o pedido.</p>');
                         }
-
-                        $valorNf = (float) ($record->nfe_valor ?: $record->total_pedido);
-
-                        // Buscar volumes via CotacaoWhatsappService
-                        $waData = CotacaoWhatsappService::gerar($record);
-                        $volumes = $waData['volumes'] ?: 1;
-
-                        $cotacoes = CotacaoFreteService::cotar(
-                            $record->dest_uf,
-                            $record->dest_cep,
-                            (float) $record->peso_bruto,
-                            $valorNf,
-                            $record->dest_cidade
-                        );
-
-                        if (empty($cotacoes)) {
-                            return new HtmlString('<p class="text-sm text-warning-500">Nenhuma transportadora encontrada para este destino/peso.</p>');
-                        }
-
-                        $html = '<div class="text-xs text-gray-400 mb-3">'
-                            . "Destino: {$record->dest_cidade}/{$record->dest_uf} - CEP {$record->dest_cep} | "
-                            . "Peso: {$record->peso_bruto}kg | NF: R$ " . number_format($valorNf, 2, ',', '.')
-                            . '</div>';
-
-                        $html .= '<table class="w-full text-sm border-collapse text-gray-700 dark:text-gray-200">';
-                        $html .= '<thead><tr class="border-b border-gray-300 dark:border-gray-600">'
-                            . '<th class="text-left p-2">Transportadora</th>'
-                            . '<th class="text-left p-2">Região</th>'
-                            . '<th class="text-right p-2">Frete</th>'
-                            . '<th class="text-right p-2">Despacho</th>'
-                            . '<th class="text-right p-2">Pedágio</th>'
-                            . '<th class="text-right p-2">ADV</th>'
-                            . '<th class="text-right p-2">GRIS</th>'
-                            . '<th class="text-right p-2">TAS</th>'
-                            . '<th class="text-right p-2">Taxas</th>'
-                            . '<th class="text-right p-2">ICMS</th>'
-                            . '<th class="text-right p-2 font-bold">Total</th>'
-                            . '</tr></thead><tbody>';
-
-                        foreach ($cotacoes as $c) {
-                            $isConsulta = !empty($c['somente_consulta']);
-                            $taxasInfo = '';
-                            foreach ($c['taxas_especiais'] as $t) {
-                                $taxasInfo .= $t['tipo'] . ': R$ ' . number_format($t['valor'], 2, ',', '.') . ' ';
-                            }
-
-                            if ($isConsulta) {
-                                $temTaxa = !empty($c['taxas_especiais']);
-                                $taxaBadge = $temTaxa
-                                    ? '<span class="text-xs bg-amber-100 dark:bg-amber-700 text-amber-800 dark:text-amber-100 px-1.5 py-0.5 rounded">TDA: R$ ' . number_format($c['taxas_especiais_total'], 2, ',', '.') . '</span>'
-                                    : '<span class="text-xs bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-100 px-1.5 py-0.5 rounded">Sem TDA</span>';
-                                $html .= '<tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">'
-                                    . '<td class="p-2 font-medium">' . e($c['nome']) . ' <span class="text-xs text-blue-600 dark:text-blue-400">(consultar)</span></td>'
-                                    . '<td class="p-2">' . e($c['uf_faixa']) . '</td>'
-                                    . '<td colspan="7" class="p-2 text-center text-gray-500 dark:text-gray-400 text-xs">Atende a região — solicitar cotação direta ' . $taxaBadge . '</td>'
-                                    . '<td class="text-right p-2">-</td>'
-                                    . '<td class="text-right p-2 font-bold text-blue-600 dark:text-blue-400">Consultar</td>'
-                                    . '</tr>';
-                            } else {
-                                $html .= '<tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">'
-                                    . '<td class="p-2">' . e($c['nome']) . '</td>'
-                                    . '<td class="p-2">' . e($c['regiao']) . ' / ' . e($c['uf_faixa']) . '</td>'
-                                    . '<td class="text-right p-2">R$ ' . number_format($c['frete_peso'], 2, ',', '.') . '</td>'
-                                    . '<td class="text-right p-2">R$ ' . number_format($c['despacho'], 2, ',', '.') . '</td>'
-                                    . '<td class="text-right p-2">R$ ' . number_format($c['pedagio'], 2, ',', '.') . '</td>'
-                                    . '<td class="text-right p-2">R$ ' . number_format($c['advalorem'], 2, ',', '.') . '</td>'
-                                    . '<td class="text-right p-2">R$ ' . number_format($c['gris'], 2, ',', '.') . '</td>'
-                                    . '<td class="text-right p-2">R$ ' . number_format($c['tas'] ?? 0, 2, ',', '.') . '</td>'
-                                    . '<td class="text-right p-2" title="' . e($taxasInfo) . '">R$ ' . number_format($c['taxas_especiais_total'], 2, ',', '.') . '</td>'
-                                    . '<td class="text-right p-2">' . (($c['icms_percentual'] ?? 0) > 0 ? 'R$ ' . number_format($c['icms_valor'], 2, ',', '.') . ' <span class="text-xs text-gray-500 dark:text-gray-400">(' . $c['icms_percentual'] . '%)</span>' : '-') . '</td>'
-                                    . '<td class="text-right p-2 font-bold">R$ ' . number_format($c['total'], 2, ',', '.') . '</td>'
-                                    . '</tr>';
-                            }
-                        }
-
-                        $html .= '</tbody></table>';
-
-                        // Gerar textos WhatsApp para cada cotação
-                        $waTextos = [];
-                        foreach ($cotacoes as $i => $c) {
-                            $isConsulta = !empty($c['somente_consulta']);
-                            $temTda = !empty($c['taxas_especiais']);
-                            $tdaTexto = $temTda
-                                ? 'TDA: R$ ' . number_format($c['taxas_especiais_total'], 2, ',', '.')
-                                : 'Sem TDA';
-
-                            if ($isConsulta) {
-                                $waTextos[$i] = strtoupper($record->cliente_nome) . "\n"
-                                    . $record->dest_cidade . '/' . $record->dest_uf . ' - CEP ' . preg_replace('/(\d{5})(\d{3})/', '$1-$2', $record->dest_cep) . "\n"
-                                    . number_format((float)$record->peso_bruto, 2, ',', '.') . 'kg'
-                                    . ' - ' . $volumes . ' vol'
-                                    . ' - NF R$ ' . number_format($valorNf, 2, ',', '.') . "\n"
-                                    . $c['nome'] . ': SOLICITAR COTAÇÃO'
-                                    . ' (' . $tdaTexto . ')';
-                            } else {
-                                $icmsTexto = ($c['icms_percentual'] ?? 0) > 0
-                                    ? ' + ICMS ' . $c['icms_percentual'] . '%'
-                                    : '';
-                                $waTextos[$i] = strtoupper($record->cliente_nome) . "\n"
-                                    . $record->dest_cidade . '/' . $record->dest_uf . ' - CEP ' . preg_replace('/(\d{5})(\d{3})/', '$1-$2', $record->dest_cep) . "\n"
-                                    . number_format((float)$record->peso_bruto, 2, ',', '.') . 'kg'
-                                    . ' - ' . $volumes . ' vol'
-                                    . ' - R$ ' . number_format($valorNf, 2, ',', '.') . "\n"
-                                    . $c['nome'] . ': R$ ' . number_format($c['total'], 2, ',', '.')
-                                    . ' (' . $tdaTexto . $icmsTexto . ')';
-                            }
-                        }
-
-                        $html .= '<div class="mt-4 flex flex-wrap gap-2">';
-                        foreach ($cotacoes as $i => $c) {
-                            $isConsulta = !empty($c['somente_consulta']);
-                            $btnStyle = $isConsulta
-                                ? 'background:#2563eb;color:#fff;padding:4px 12px;font-size:12px;border-radius:6px;border:none;cursor:pointer;'
-                                : 'background:#16a34a;color:#fff;padding:4px 12px;font-size:12px;border-radius:6px;border:none;cursor:pointer;';
-                            $btnLabel = $isConsulta
-                                ? '📋 ' . e($c['nome']) . ' (consultar)'
-                                : '📋 ' . e($c['nome']);
-                            $html .= '<button onclick="navigator.clipboard.writeText(this.dataset.texto).then(()=>{this.innerText=\'Copiado!\';setTimeout(()=>this.innerText=this.dataset.label,2000)})" '
-                                . 'data-texto="' . str_replace('"', '&quot;', $waTextos[$i]) . '" '
-                                . 'data-label="' . $btnLabel . '" '
-                                . 'style="' . $btnStyle . '">'
-                                . $btnLabel
-                                . '</button>';
-                        }
-                        $html .= '</div>';
-
-                        return new HtmlString($html);
+                        return self::renderCotacaoModal($record);
                     })
                     ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente' && $record->dest_uf && $record->dest_cep && $record->peso_bruto),
                 Tables\Actions\EditAction::make()->label('Revisar'),
@@ -860,6 +756,139 @@ class PedidoBlingStagingResource extends Resource
      *
      * ⚠️ NÃO ALTERAR: Regras de aprovação por canal:
      *  - NF-e obrigatória para todos
+    /**
+     * Renderiza o conteúdo do modal de cotação de frete (reutilizado pela coluna e pela action).
+     */
+    private static function renderCotacaoModal(PedidoBlingStaging $record): HtmlString
+    {
+        $valorNf = (float) ($record->nfe_valor ?: $record->total_pedido);
+
+        $waData = CotacaoWhatsappService::gerar($record);
+        $volumes = $waData['volumes'] ?: 1;
+
+        $cotacoes = CotacaoFreteService::cotar(
+            $record->dest_uf,
+            $record->dest_cep,
+            (float) $record->peso_bruto,
+            $valorNf,
+            $record->dest_cidade
+        );
+
+        if (empty($cotacoes)) {
+            return new HtmlString('<p class="text-sm text-warning-500">Nenhuma transportadora encontrada para este destino/peso.</p>');
+        }
+
+        $html = '<div class="text-xs text-gray-400 mb-3">'
+            . "Destino: {$record->dest_cidade}/{$record->dest_uf} - CEP {$record->dest_cep} | "
+            . "Peso: {$record->peso_bruto}kg | NF: R$ " . number_format($valorNf, 2, ',', '.')
+            . '</div>';
+
+        $html .= '<table class="w-full text-sm border-collapse text-gray-700 dark:text-gray-200">';
+        $html .= '<thead><tr class="border-b border-gray-300 dark:border-gray-600">'
+            . '<th class="text-left p-2">Transportadora</th>'
+            . '<th class="text-left p-2">Região</th>'
+            . '<th class="text-right p-2">Frete</th>'
+            . '<th class="text-right p-2">Despacho</th>'
+            . '<th class="text-right p-2">Pedágio</th>'
+            . '<th class="text-right p-2">ADV</th>'
+            . '<th class="text-right p-2">GRIS</th>'
+            . '<th class="text-right p-2">TAS</th>'
+            . '<th class="text-right p-2">Taxas</th>'
+            . '<th class="text-right p-2">ICMS</th>'
+            . '<th class="text-right p-2 font-bold">Total</th>'
+            . '</tr></thead><tbody>';
+
+        foreach ($cotacoes as $c) {
+            $isConsulta = !empty($c['somente_consulta']);
+            $taxasInfo = '';
+            foreach ($c['taxas_especiais'] as $t) {
+                $taxasInfo .= $t['tipo'] . ': R$ ' . number_format($t['valor'], 2, ',', '.') . ' ';
+            }
+
+            if ($isConsulta) {
+                $temTaxa = !empty($c['taxas_especiais']);
+                $taxaBadge = $temTaxa
+                    ? '<span class="text-xs bg-amber-100 dark:bg-amber-700 text-amber-800 dark:text-amber-100 px-1.5 py-0.5 rounded">TDA: R$ ' . number_format($c['taxas_especiais_total'], 2, ',', '.') . '</span>'
+                    : '<span class="text-xs bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-100 px-1.5 py-0.5 rounded">Sem TDA</span>';
+                $html .= '<tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">'
+                    . '<td class="p-2 font-medium">' . e($c['nome']) . ' <span class="text-xs text-blue-600 dark:text-blue-400">(consultar)</span></td>'
+                    . '<td class="p-2">' . e($c['uf_faixa']) . '</td>'
+                    . '<td colspan="7" class="p-2 text-center text-gray-500 dark:text-gray-400 text-xs">Atende a região — solicitar cotação direta ' . $taxaBadge . '</td>'
+                    . '<td class="text-right p-2">-</td>'
+                    . '<td class="text-right p-2 font-bold text-blue-600 dark:text-blue-400">Consultar</td>'
+                    . '</tr>';
+            } else {
+                $html .= '<tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">'
+                    . '<td class="p-2">' . e($c['nome']) . '</td>'
+                    . '<td class="p-2">' . e($c['regiao']) . ' / ' . e($c['uf_faixa']) . '</td>'
+                    . '<td class="text-right p-2">R$ ' . number_format($c['frete_peso'], 2, ',', '.') . '</td>'
+                    . '<td class="text-right p-2">R$ ' . number_format($c['despacho'], 2, ',', '.') . '</td>'
+                    . '<td class="text-right p-2">R$ ' . number_format($c['pedagio'], 2, ',', '.') . '</td>'
+                    . '<td class="text-right p-2">R$ ' . number_format($c['advalorem'], 2, ',', '.') . '</td>'
+                    . '<td class="text-right p-2">R$ ' . number_format($c['gris'], 2, ',', '.') . '</td>'
+                    . '<td class="text-right p-2">R$ ' . number_format($c['tas'] ?? 0, 2, ',', '.') . '</td>'
+                    . '<td class="text-right p-2" title="' . e($taxasInfo) . '">R$ ' . number_format($c['taxas_especiais_total'], 2, ',', '.') . '</td>'
+                    . '<td class="text-right p-2">' . (($c['icms_percentual'] ?? 0) > 0 ? 'R$ ' . number_format($c['icms_valor'], 2, ',', '.') . ' <span class="text-xs text-gray-500 dark:text-gray-400">(' . $c['icms_percentual'] . '%)</span>' : '-') . '</td>'
+                    . '<td class="text-right p-2 font-bold">R$ ' . number_format($c['total'], 2, ',', '.') . '</td>'
+                    . '</tr>';
+            }
+        }
+
+        $html .= '</tbody></table>';
+
+        $waTextos = [];
+        foreach ($cotacoes as $i => $c) {
+            $isConsulta = !empty($c['somente_consulta']);
+            $temTda = !empty($c['taxas_especiais']);
+            $tdaTexto = $temTda
+                ? 'TDA: R$ ' . number_format($c['taxas_especiais_total'], 2, ',', '.')
+                : 'Sem TDA';
+
+            if ($isConsulta) {
+                $waTextos[$i] = strtoupper($record->cliente_nome) . "\n"
+                    . $record->dest_cidade . '/' . $record->dest_uf . ' - CEP ' . preg_replace('/(\d{5})(\d{3})/', '$1-$2', $record->dest_cep) . "\n"
+                    . number_format((float)$record->peso_bruto, 2, ',', '.') . 'kg'
+                    . ' - ' . $volumes . ' vol'
+                    . ' - NF R$ ' . number_format($valorNf, 2, ',', '.') . "\n"
+                    . $c['nome'] . ': SOLICITAR COTAÇÃO'
+                    . ' (' . $tdaTexto . ')';
+            } else {
+                $icmsTexto = ($c['icms_percentual'] ?? 0) > 0
+                    ? ' + ICMS ' . $c['icms_percentual'] . '%'
+                    : '';
+                $waTextos[$i] = strtoupper($record->cliente_nome) . "\n"
+                    . $record->dest_cidade . '/' . $record->dest_uf . ' - CEP ' . preg_replace('/(\d{5})(\d{3})/', '$1-$2', $record->dest_cep) . "\n"
+                    . number_format((float)$record->peso_bruto, 2, ',', '.') . 'kg'
+                    . ' - ' . $volumes . ' vol'
+                    . ' - R$ ' . number_format($valorNf, 2, ',', '.') . "\n"
+                    . $c['nome'] . ': R$ ' . number_format($c['total'], 2, ',', '.')
+                    . ' (' . $tdaTexto . $icmsTexto . ')';
+            }
+        }
+
+        $html .= '<div class="mt-4 flex flex-wrap gap-2">';
+        foreach ($cotacoes as $i => $c) {
+            $isConsulta = !empty($c['somente_consulta']);
+            $btnStyle = $isConsulta
+                ? 'background:#2563eb;color:#fff;padding:4px 12px;font-size:12px;border-radius:6px;border:none;cursor:pointer;'
+                : 'background:#16a34a;color:#fff;padding:4px 12px;font-size:12px;border-radius:6px;border:none;cursor:pointer;';
+            $btnLabel = $isConsulta
+                ? '📋 ' . e($c['nome']) . ' (consultar)'
+                : '📋 ' . e($c['nome']);
+            $html .= '<button onclick="navigator.clipboard.writeText(this.dataset.texto).then(()=>{this.innerText=\'Copiado!\';setTimeout(()=>this.innerText=this.dataset.label,2000)})" '
+                . 'data-texto="' . str_replace('"', '&quot;', $waTextos[$i]) . '" '
+                . 'data-label="' . $btnLabel . '" '
+                . 'style="' . $btnStyle . '">'
+                . $btnLabel
+                . '</button>';
+        }
+        $html .= '</div>';
+
+        return new HtmlString($html);
+    }
+
+    /**
+     *  Verifica se o pedido está pronto para aprovação.
      *  - Custo frete obrigatório EXCETO: ML (qualquer tipo) e Shopee Xpress (frete=0)
      *  - ML: requer planilha ML processada (rebate)
      *  - Shopee: requer planilha Shopee processada
