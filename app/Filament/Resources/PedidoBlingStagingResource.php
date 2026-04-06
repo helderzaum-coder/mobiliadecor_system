@@ -202,6 +202,19 @@ class PedidoBlingStagingResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->defaultPaginationPageOption(10)
+            ->modifyQueryUsing(fn ($query) => $query->select([
+                'id', 'bling_id', 'bling_account', 'numero_pedido', 'numero_loja',
+                'canal', 'cliente_nome', 'data_pedido', 'total_produtos', 'total_pedido',
+                'frete', 'custo_frete', 'nota_fiscal', 'nfe_numero', 'nfe_chave_acesso',
+                'nfe_valor', 'comissao_calculada', 'subsidio_pix', 'base_imposto',
+                'percentual_imposto', 'valor_imposto', 'status', 'planilha_shopee',
+                'estoque_sincronizado', 'dest_cep', 'dest_cidade', 'dest_uf',
+                'peso_bruto', 'embalagem_largura', 'embalagem_altura', 'embalagem_comprimento',
+                'ml_tipo_anuncio', 'ml_tipo_frete', 'ml_tem_rebate', 'ml_valor_rebate',
+                'ml_sale_fee', 'ml_frete_custo', 'ml_frete_receita', 'ml_order_id', 'ml_shipping_id',
+                'itens', 'created_at', 'updated_at',
+            ]))
             ->columns([
                 Tables\Columns\TextColumn::make('cotacao_link')
                     ->label('Frete')
