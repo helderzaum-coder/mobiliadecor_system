@@ -100,17 +100,21 @@ class TransportadoraTaxaImportService
                 }
 
                 try {
-                    TransportadoraTaxa::create([
-                        'id_transportadora' => $idTransportadora,
-                        'tipo_taxa'   => $tipoTaxa,
-                        'uf'          => strtoupper(trim($row['B'] ?? '')) ?: null,
-                        'cidade'      => trim($row['C'] ?? '') ?: null,
-                        'cep_inicio'  => preg_replace('/\D/', '', $row['D'] ?? '') ?: null,
-                        'cep_fim'     => preg_replace('/\D/', '', $row['E'] ?? '') ?: null,
-                        'valor_fixo'  => self::parseDecimal($row['F'] ?? null),
-                        'percentual'  => self::parseDecimal($row['G'] ?? null),
-                        'observacao'  => trim($row['H'] ?? '') ?: null,
-                    ]);
+                    TransportadoraTaxa::updateOrCreate(
+                        [
+                            'id_transportadora' => $idTransportadora,
+                            'tipo_taxa'   => $tipoTaxa,
+                            'uf'          => strtoupper(trim($row['B'] ?? '')) ?: null,
+                            'cidade'      => trim($row['C'] ?? '') ?: null,
+                            'cep_inicio'  => preg_replace('/\D/', '', $row['D'] ?? '') ?: null,
+                            'cep_fim'     => preg_replace('/\D/', '', $row['E'] ?? '') ?: null,
+                        ],
+                        [
+                            'valor_fixo'  => self::parseDecimal($row['F'] ?? null),
+                            'percentual'  => self::parseDecimal($row['G'] ?? null),
+                            'observacao'  => trim($row['H'] ?? '') ?: null,
+                        ]
+                    );
                     $resultado['importados']++;
                 } catch (\Exception $e) {
                     $resultado['erros']++;
