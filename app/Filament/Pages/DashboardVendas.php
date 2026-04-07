@@ -98,7 +98,21 @@ class DashboardVendas extends Page implements HasForms
             $query->where('bling_account', $this->conta);
         }
 
-        return $query->limit(100)->get();
+        $vendas = $query->limit(100)->get();
+
+        // Carregar itens do staging para cada venda
+        $blingIds = $vendas->pluck('bling_id')->filter()->toArray();
+        if (!empty($blingIds)) {
+            $stagingItens = \App\Models\PedidoBlingStaging::whereIn('bling_id', $blingIds)
+                ->pluck('itens', 'bling_id')
+                ->toArray();
+
+            foreach ($vendas as $venda) {
+                $venda->staging_itens = $stagingItens[$venda->bling_id] ?? [];
+            }
+        }
+
+        return $vendas;
     }
 
     public function getTotaisProperty(): array

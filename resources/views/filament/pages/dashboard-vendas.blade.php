@@ -63,27 +63,31 @@
 
             <div class="rounded-xl bg-white dark:bg-gray-800 shadow border-l-4 {{ $borderColor }} p-4">
                 {{-- Header --}}
-                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
                     <div class="flex items-center gap-3">
                         <span class="text-sm font-bold text-gray-800 dark:text-white">
                             #{{ $venda->numero_pedido_canal }}
                         </span>
-                        <span class="text-xs px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                        <span style="background:#4b5563;color:#e5e7eb;padding:2px 8px;border-radius:4px;font-size:11px;">
                             {{ $conta }}
                         </span>
-                        <span class="text-xs px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                        <span style="background:#2563eb;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">
                             {{ $canal }}
                         </span>
                         @if($venda->ml_tipo_frete)
-                            <span class="text-xs px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
+                            <span style="background:#7c3aed;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">
                                 {{ $venda->ml_tipo_frete }}
                             </span>
                         @endif
+                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ $venda->data_venda?->format('d/m/Y') }}</span>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <span class="text-xs text-gray-500">{{ $venda->data_venda?->format('d/m/Y') }}</span>
-                        <span class="text-xs text-gray-500">{{ $venda->cliente_nome }}</span>
-                    </div>
+                </div>
+                {{-- Cliente --}}
+                <div class="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                    {{ $venda->cliente_nome }}
+                    @if($venda->cliente_documento)
+                        <span class="text-gray-400 dark:text-gray-500">· {{ $venda->cliente_documento }}</span>
+                    @endif
                 </div>
 
                 {{-- Valores --}}
@@ -152,6 +156,21 @@
                             ⚠ {{ $alerta }}
                         </span>
                     @endforeach
+                </div>
+                @endif
+
+                {{-- Itens do pedido --}}
+                @if(!empty($venda->staging_itens))
+                <div class="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+                    <div class="flex flex-wrap gap-3 text-xs">
+                        @foreach($venda->staging_itens as $item)
+                            <span class="text-gray-600 dark:text-gray-400">
+                                <span class="font-mono text-gray-800 dark:text-gray-200">{{ $item['codigo'] ?? '-' }}</span>
+                                {{ $item['descricao'] ?? '' }}
+                                <span class="font-semibold">x{{ $item['quantidade'] ?? 1 }}</span>
+                            </span>
+                        @endforeach
+                    </div>
                 </div>
                 @endif
             </div>
