@@ -556,9 +556,9 @@ class PedidoBlingStagingResource extends Resource
                     })
                     ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente' && !empty($record->nfe_chave_acesso) && (float) $record->custo_frete == 0),
                 Tables\Actions\Action::make('aplicar_cotacao')
-                    ->label('Aplicar Frete')
-                    ->icon('heroicon-o-check')
-                    ->color('warning')
+                    ->label('Aplicar Frete e Aprovar')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
                     ->form([
                         Forms\Components\Select::make('id_transportadora')
                             ->label('Transportadora')
@@ -589,9 +589,18 @@ class PedidoBlingStagingResource extends Resource
                         $selecionada = collect($cotacoes)->firstWhere('id_transportadora', (int) $data['id_transportadora']);
                         if ($selecionada) {
                             $record->update(['custo_frete' => $selecionada['total']]);
-                            Notification::make()
-                                ->title("Frete aplicado: {$selecionada['nome']} - R$ " . number_format($selecionada['total'], 2, ',', '.'))
-                                ->success()->send();
+
+                            // Aprovar automaticamente após aplicar frete
+                            try {
+                                $venda = AprovacaoVendaService::aprovar($record);
+                                Notification::make()
+                                    ->title("Frete R$ " . number_format($selecionada['total'], 2, ',', '.') . " ({$selecionada['nome']}) — Pedido aprovado!")
+                                    ->success()->send();
+                            } catch (\Throwable $e) {
+                                Notification::make()
+                                    ->title("Frete aplicado, mas erro ao aprovar: " . $e->getMessage())
+                                    ->danger()->send();
+                            }
                         }
                     })
                     ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente' && $record->dest_uf && $record->dest_cep && $record->peso_bruto),
