@@ -209,7 +209,13 @@ class TransportadoraTaxaImportService
 
                 if (count($batch) >= 500) {
                     try {
-                        TransportadoraTabelaFrete::insert($batch);
+                        TransportadoraTabelaFrete::upsert($batch, [
+                            'id_transportadora', 'uf', 'cep_inicio', 'cep_fim', 'peso_min', 'peso_max',
+                        ], [
+                            'regiao', 'valor_kg', 'valor_fixo', 'frete_minimo', 'despacho',
+                            'pedagio_valor', 'pedagio_fracao_kg', 'adv_percentual', 'adv_minimo',
+                            'gris_percentual', 'gris_minimo', 'updated_at',
+                        ]);
                         $resultado['importados'] += count($batch);
                     } catch (\Exception $e) {
                         $resultado['erros'] += count($batch);
@@ -225,7 +231,13 @@ class TransportadoraTaxaImportService
 
         if (!empty($batch)) {
             try {
-                TransportadoraTabelaFrete::insert($batch);
+                TransportadoraTabelaFrete::upsert($batch, [
+                    'id_transportadora', 'uf', 'cep_inicio', 'cep_fim', 'peso_min', 'peso_max',
+                ], [
+                    'regiao', 'valor_kg', 'valor_fixo', 'frete_minimo', 'despacho',
+                    'pedagio_valor', 'pedagio_fracao_kg', 'adv_percentual', 'adv_minimo',
+                    'gris_percentual', 'gris_minimo', 'updated_at',
+                ]);
                 $resultado['importados'] += count($batch);
             } catch (\Exception $e) {
                 $resultado['erros'] += count($batch);
