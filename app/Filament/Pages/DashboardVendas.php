@@ -160,15 +160,21 @@ class DashboardVendas extends Page implements HasForms
 
         $vendas = $query->limit(100)->get();
 
-        // Carregar itens do staging para cada venda
+        // Carregar itens e documento do staging para cada venda
         $blingIds = $vendas->pluck('bling_id')->filter()->toArray();
         if (!empty($blingIds)) {
-            $stagingItens = \App\Models\PedidoBlingStaging::whereIn('bling_id', $blingIds)
-                ->pluck('itens', 'bling_id')
-                ->toArray();
+            $stagings = \App\Models\PedidoBlingStaging::whereIn('bling_id', $blingIds)
+                ->select('bling_id', 'itens', 'cliente_documento')
+                ->get()
+                ->keyBy('bling_id');
 
             foreach ($vendas as $venda) {
-                $venda->staging_itens = $stagingItens[$venda->bling_id] ?? [];
+                $staging = $stagings[$venda->bling_id] ?? null;
+                $venda->staging_itens = $staging?->itens ?? [];
+                // Fallback: se venda não tem documento, usar do staging
+                if (empty($venda->cliente_documento) && !empty($staging?->cliente_documento)) {
+                    $venda->cliente_documento = $staging->cliente_documento;
+                }
             }
         }
 

@@ -86,7 +86,11 @@
                 <div class="text-xs text-gray-600 dark:text-gray-400 mb-3">
                     {{ $venda->cliente_nome }}
                     @if($venda->cliente_documento)
-                        <span class="text-gray-400 dark:text-gray-500">· {{ $venda->cliente_documento }}</span>
+                        <span class="text-gray-400 dark:text-gray-500">·</span>
+                        <span style="cursor:pointer;text-decoration:underline dotted;" title="Clique para copiar"
+                            onclick="navigator.clipboard.writeText('{{ $venda->cliente_documento }}').then(()=>{this.innerText='Copiado!';setTimeout(()=>this.innerText='{{ $venda->cliente_documento }}',1500)})">
+                            {{ $venda->cliente_documento }}
+                        </span>
                     @endif
                 </div>
 
