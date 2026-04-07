@@ -119,6 +119,10 @@
                         <div class="font-semibold text-gray-800 dark:text-white">R$ {{ number_format($imposto, 2, ',', '.') }}</div>
                     </div>
                     <div>
+                        <div class="text-gray-500">Repasse</div>
+                        <div class="font-semibold text-blue-600 dark:text-blue-400">R$ {{ number_format($totalProd + $freteCliente - $comissao, 2, ',', '.') }}</div>
+                    </div>
+                    <div>
                         @php $fretePago = (bool) $venda->frete_pago; @endphp
                         <div class="text-gray-500">Frete (cobrado → {{ $fretePago ? 'pago' : ($custoFrete > 0 ? 'cotado' : '-') }})</div>
                         <div class="font-semibold text-gray-800 dark:text-white">
