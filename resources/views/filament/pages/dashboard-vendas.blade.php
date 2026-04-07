@@ -1,0 +1,162 @@
+<x-filament-panels::page>
+    <form wire:submit.prevent="">
+        {{ $this->form }}
+    </form>
+
+    {{-- Resumo --}}
+    @php $totais = $this->totais; @endphp
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4">
+        <div class="rounded-xl bg-white dark:bg-gray-800 p-4 shadow text-center">
+            <div class="text-2xl font-bold text-gray-800 dark:text-white">{{ $totais['qtd'] }}</div>
+            <div class="text-xs text-gray-500">Vendas</div>
+        </div>
+        <div class="rounded-xl bg-white dark:bg-gray-800 p-4 shadow text-center">
+            <div class="text-2xl font-bold text-gray-800 dark:text-white">R$ {{ number_format($totais['total'], 2, ',', '.') }}</div>
+            <div class="text-xs text-gray-500">Faturamento</div>
+        </div>
+        <div class="rounded-xl bg-white dark:bg-gray-800 p-4 shadow text-center">
+            <div class="text-2xl font-bold {{ $totais['lucro'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                R$ {{ number_format($totais['lucro'], 2, ',', '.') }}
+            </div>
+            <div class="text-xs text-gray-500">Lucro Total ({{ $totais['margem'] }}%)</div>
+        </div>
+        <div class="rounded-xl bg-white dark:bg-gray-800 p-4 shadow text-center">
+            <div class="text-2xl font-bold text-green-600">{{ $totais['com_lucro'] }}</div>
+            <div class="text-xs text-gray-500">Com Lucro</div>
+        </div>
+        <div class="rounded-xl bg-white dark:bg-gray-800 p-4 shadow text-center">
+            <div class="text-2xl font-bold text-red-600">{{ $totais['com_prejuizo'] }}</div>
+            <div class="text-xs text-gray-500">Com Prejuízo</div>
+        </div>
+    </div>
+
+    {{-- Cards de Vendas --}}
+    <div class="mt-6 space-y-3">
+        @forelse($this->vendas as $venda)
+            @php
+                $lucro = (float) $venda->margem_venda_total;
+                $margemPct = (float) $venda->margem_contribuicao;
+                $margemFrete = (float) $venda->margem_frete;
+                $margemProd = (float) $venda->margem_produto;
+                $custoFrete = (float) $venda->valor_frete_transportadora;
+                $freteCliente = (float) $venda->valor_frete_cliente;
+                $comissao = (float) $venda->comissao;
+                $imposto = (float) $venda->valor_imposto;
+                $custoProd = (float) $venda->custo_produtos;
+                $totalProd = (float) $venda->total_produtos;
+                $total = (float) $venda->valor_total_venda;
+                $subsidio = (float) $venda->subsidio_pix;
+
+                $borderColor = $lucro >= 0 ? 'border-green-500' : 'border-red-500';
+                $lucroBg = $lucro >= 0 ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20';
+                $lucroColor = $lucro >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400';
+
+                // Alertas
+                $alertas = [];
+                if ($custoFrete <= 0 && $freteCliente > 0) $alertas[] = 'Frete não cotado';
+                if ($custoProd <= 0) $alertas[] = 'Sem custo de produto';
+                if ($imposto <= 0) $alertas[] = 'Sem imposto';
+
+                $conta = $venda->bling_account === 'primary' ? 'Mobilia' : 'HES';
+                $canal = $venda->canal?->nome_canal ?? '-';
+            @endphp
+
+            <div class="rounded-xl bg-white dark:bg-gray-800 shadow border-l-4 {{ $borderColor }} p-4">
+                {{-- Header --}}
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm font-bold text-gray-800 dark:text-white">
+                            #{{ $venda->numero_pedido_canal }}
+                        </span>
+                        <span class="text-xs px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                            {{ $conta }}
+                        </span>
+                        <span class="text-xs px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                            {{ $canal }}
+                        </span>
+                        @if($venda->ml_tipo_frete)
+                            <span class="text-xs px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
+                                {{ $venda->ml_tipo_frete }}
+                            </span>
+                        @endif
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-gray-500">{{ $venda->data_venda?->format('d/m/Y') }}</span>
+                        <span class="text-xs text-gray-500">{{ $venda->cliente_nome }}</span>
+                    </div>
+                </div>
+
+                {{-- Valores --}}
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 text-xs">
+                    <div>
+                        <div class="text-gray-500">Total Pedido</div>
+                        <div class="font-semibold text-gray-800 dark:text-white">R$ {{ number_format($total, 2, ',', '.') }}</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-500">Subtotal</div>
+                        <div class="font-semibold text-gray-800 dark:text-white">R$ {{ number_format($totalProd, 2, ',', '.') }}</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-500">Custo Prod.</div>
+                        <div class="font-semibold {{ $custoProd > 0 ? 'text-gray-800 dark:text-white' : 'text-orange-600' }}">
+                            R$ {{ number_format($custoProd, 2, ',', '.') }}
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-gray-500">Comissão</div>
+                        <div class="font-semibold text-gray-800 dark:text-white">R$ {{ number_format($comissao, 2, ',', '.') }}</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-500">Imposto</div>
+                        <div class="font-semibold text-gray-800 dark:text-white">R$ {{ number_format($imposto, 2, ',', '.') }}</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-500">Frete (cobrado → pago)</div>
+                        <div class="font-semibold text-gray-800 dark:text-white">
+                            R$ {{ number_format($freteCliente, 2, ',', '.') }} → R$ {{ number_format($custoFrete, 2, ',', '.') }}
+                        </div>
+                    </div>
+                    @if($subsidio > 0)
+                    <div>
+                        <div class="text-gray-500">Subsídio Pix</div>
+                        <div class="font-semibold text-blue-600">R$ {{ number_format($subsidio, 2, ',', '.') }}</div>
+                    </div>
+                    @endif
+                    <div class="rounded-lg p-2 {{ $lucroBg }}">
+                        <div class="text-gray-500">Lucro Final</div>
+                        <div class="font-bold text-base {{ $lucroColor }}">
+                            R$ {{ number_format($lucro, 2, ',', '.') }}
+                            <span class="text-xs">({{ $margemPct }}%)</span>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Margens detalhadas --}}
+                <div class="flex flex-wrap gap-3 mt-2 text-xs">
+                    <span class="{{ $margemProd >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                        📦 Margem Prod: R$ {{ number_format($margemProd, 2, ',', '.') }}
+                        ({{ $totalProd > 0 ? round(($margemProd / $totalProd) * 100, 1) : 0 }}%)
+                    </span>
+                    @if($freteCliente > 0 || $custoFrete > 0)
+                    <span class="{{ $margemFrete >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                        🚚 Margem Frete: R$ {{ number_format($margemFrete, 2, ',', '.') }}
+                    </span>
+                    @endif
+                </div>
+
+                {{-- Alertas --}}
+                @if(!empty($alertas))
+                <div class="flex flex-wrap gap-2 mt-2">
+                    @foreach($alertas as $alerta)
+                        <span class="text-xs px-2 py-0.5 rounded bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200">
+                            ⚠ {{ $alerta }}
+                        </span>
+                    @endforeach
+                </div>
+                @endif
+            </div>
+        @empty
+            <div class="text-center text-gray-500 py-8">Nenhuma venda encontrada para o período selecionado.</div>
+        @endforelse
+    </div>
+</x-filament-panels::page>
