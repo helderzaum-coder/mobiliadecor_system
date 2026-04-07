@@ -164,11 +164,22 @@
                 <div class="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
                     <div class="flex flex-wrap gap-3 text-xs">
                         @foreach($venda->staging_itens as $item)
+                            @php
+                                $sku = $item['codigo'] ?? null;
+                                $desc = $item['descricao'] ?? null;
+                                $qtd = $item['quantidade'] ?? 1;
+                            @endphp
+                            @if($sku || $desc)
                             <span class="text-gray-600 dark:text-gray-400">
-                                <span class="font-mono text-gray-800 dark:text-gray-200">{{ $item['codigo'] ?? '-' }}</span>
-                                {{ $item['descricao'] ?? '' }}
-                                <span class="font-semibold">x{{ $item['quantidade'] ?? 1 }}</span>
+                                @if($sku)<span class="font-mono text-gray-800 dark:text-gray-200">{{ $sku }}</span>@endif
+                                {{ $desc }}
+                                <span class="font-semibold">x{{ $qtd }}</span>
                             </span>
+                            @else
+                            <span class="text-gray-500 dark:text-gray-500 italic">
+                                Item x{{ $qtd }} — R$ {{ number_format((float)($item['valor'] ?? 0), 2, ',', '.') }}
+                            </span>
+                            @endif
                         @endforeach
                     </div>
                 </div>
