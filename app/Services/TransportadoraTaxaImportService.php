@@ -143,19 +143,23 @@ class TransportadoraTaxaImportService
             return $resultado;
         }
 
-        if ($limparAntes) {
-            TransportadoraTabelaFrete::where('id_transportadora', $idTransportadora)->delete();
+        // Primeira passada: identificar UFs presentes na planilha
+        $ufsNaPlanilha = [];
+        foreach (self::lerLinhas($filePath) as $row) {
+            $uf = strtoupper(trim($row['A'] ?? ''));
+            if (!empty($uf)) {
+                $ufsNaPlanilha[$uf] = true;
+            }
         }
 
-        // Carregar chaves existentes em memória para evitar duplicatas
-        $existentes = [];
-        if (!$limparAntes) {
-            TransportadoraTabelaFrete::where('id_transportadora', $idTransportadora)
-                ->select(['uf', 'cep_inicio', 'cep_fim', 'peso_min', 'peso_max'])
-                ->cursor()
-                ->each(function ($f) use (&$existentes) {
-                    $existentes["{$f->uf}|{$f->cep_inicio}|{$f->cep_fim}|{$f->peso_min}|{$f->peso_max}"] = true;
-                });
+        // Limpar apenas as UFs que estão na planilha (não afeta outros estados)
+        if (!empty($ufsNaPlanilha)) {
+            $deletados = TransportadoraTabelaFrete::where('id_transportadora', $idTransportadora)
+                ->whereIn('uf', array_keys($ufsNaPlanilha))
+                ->delete();
+            if ($deletados > 0) {
+                $resultado['mensagens'][] = "{$deletados} registro(s) antigos removidos para UF(s): " . implode(', ', array_keys($ufsNaPlanilha));
+            }
         }
 
         $ufsEncontradas = [];
@@ -177,13 +181,6 @@ class TransportadoraTaxaImportService
 
                 $pesoMin = self::parseDecimal($row['E'] ?? 0) ?? 0;
                 $pesoMax = self::parseDecimal($row['F'] ?? 0) ?? 0;
-
-                $chave = "{$uf}|{$cepA}|{$cepB}|{$pesoMin}|{$pesoMax}";
-                if (isset($existentes[$chave])) {
-                    $resultado['erros']++;
-                    continue;
-                }
-                $existentes[$chave] = true;
 
                 $batch[] = [
                     'id_transportadora' => $idTransportadora,
