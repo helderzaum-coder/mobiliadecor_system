@@ -63,6 +63,7 @@ class VendaRecalculoService
 
         $venda->update([
             'valor_frete_transportadora' => $staging->custo_frete,
+            'frete_pago' => true,
         ]);
 
         self::recalcularMargens($venda);

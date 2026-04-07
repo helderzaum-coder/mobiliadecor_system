@@ -119,10 +119,11 @@
                         <div class="font-semibold text-gray-800 dark:text-white">R$ {{ number_format($imposto, 2, ',', '.') }}</div>
                     </div>
                     <div>
-                        <div class="text-gray-500">Frete (cobrado → {{ $custoFrete > 0 && !$venda->nfe_chave_acesso ? 'cotado' : 'pago' }})</div>
+                        @php $fretePago = (bool) $venda->frete_pago; @endphp
+                        <div class="text-gray-500">Frete (cobrado → {{ $fretePago ? 'pago' : ($custoFrete > 0 ? 'cotado' : '-') }})</div>
                         <div class="font-semibold text-gray-800 dark:text-white">
                             R$ {{ number_format($freteCliente, 2, ',', '.') }} → R$ {{ number_format($custoFrete, 2, ',', '.') }}
-                            @if($custoFrete > 0 && !$venda->nfe_chave_acesso)
+                            @if($custoFrete > 0 && !$fretePago)
                                 <span style="color:#d97706;font-size:10px;">⚠ estimado</span>
                             @endif
                         </div>
@@ -170,18 +171,19 @@
                 @php
                     $isML = str_contains(strtolower($canal), 'mercado');
                     $isShopee = str_contains(strtolower($canal), 'shopee');
-                    $temNfe = !empty($venda->nfe_chave_acesso);
-                    $temFretePago = $custoFrete > 0;
+                    $temNfe = !empty($venda->nfe_chave_acesso) || !empty($venda->numero_nota_fiscal);
+                    $fretePagoReal = (bool) $venda->frete_pago;
                     $temPlanilha = (bool) $venda->planilha_processada;
+                    $isMarketplace = $isML || $isShopee;
                 @endphp
                 <div class="flex flex-wrap gap-2 mt-3">
-                    @if(!$venda->numero_nota_fiscal || !$temNfe)
+                    @if(!$temNfe)
                         <button wire:click="buscarNfe({{ $venda->id_venda }})" wire:loading.attr="disabled"
                             style="background:#2563eb;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
                             📄 Buscar NF-e
                         </button>
                     @endif
-                    @if($temNfe && !$temFretePago)
+                    @if($temNfe && !$fretePagoReal && !$isMarketplace)
                         <button wire:click="buscarCte({{ $venda->id_venda }})" wire:loading.attr="disabled"
                             style="background:#7c3aed;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
                             🚚 Buscar CT-e
