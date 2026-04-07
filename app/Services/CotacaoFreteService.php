@@ -198,7 +198,9 @@ class CotacaoFreteService
 
     private static function encontrarFaixa(int $idTransportadora, string $uf, string $cep, float $peso): ?TransportadoraTabelaFrete
     {
-        $cepInt = (int) $cep;
+        // Garantir 8 dígitos com zero à esquerda
+        $cepPadded = str_pad(preg_replace('/\D/', '', $cep), 8, '0', STR_PAD_LEFT);
+        $cepInt = (int) $cepPadded;
 
         // Buscar faixa mais específica: UF + CEP + peso
         $query = TransportadoraTabelaFrete::where('id_transportadora', $idTransportadora)
@@ -212,8 +214,8 @@ class CotacaoFreteService
             ->whereNotNull('cep_fim')
             ->get()
             ->first(function ($f) use ($cepInt) {
-                $min = min((int) $f->cep_inicio, (int) $f->cep_fim);
-                $max = max((int) $f->cep_inicio, (int) $f->cep_fim);
+                $min = min((int) str_pad($f->cep_inicio, 8, '0', STR_PAD_LEFT), (int) str_pad($f->cep_fim, 8, '0', STR_PAD_LEFT));
+                $max = max((int) str_pad($f->cep_inicio, 8, '0', STR_PAD_LEFT), (int) str_pad($f->cep_fim, 8, '0', STR_PAD_LEFT));
                 return $cepInt >= $min && $cepInt <= $max;
             });
 
@@ -234,8 +236,8 @@ class CotacaoFreteService
             ->whereNotNull('cep_fim')
             ->get()
             ->first(function ($f) use ($cepInt) {
-                $min = min((int) $f->cep_inicio, (int) $f->cep_fim);
-                $max = max((int) $f->cep_inicio, (int) $f->cep_fim);
+                $min = min((int) str_pad($f->cep_inicio, 8, '0', STR_PAD_LEFT), (int) str_pad($f->cep_fim, 8, '0', STR_PAD_LEFT));
+                $max = max((int) str_pad($f->cep_inicio, 8, '0', STR_PAD_LEFT), (int) str_pad($f->cep_fim, 8, '0', STR_PAD_LEFT));
                 return $cepInt >= $min && $cepInt <= $max;
             });
 

@@ -106,8 +106,8 @@ class TransportadoraTaxaImportService
                             'tipo_taxa'   => $tipoTaxa,
                             'uf'          => strtoupper(trim($row['B'] ?? '')) ?: null,
                             'cidade'      => trim($row['C'] ?? '') ?: null,
-                            'cep_inicio'  => preg_replace('/\D/', '', $row['D'] ?? '') ?: null,
-                            'cep_fim'     => preg_replace('/\D/', '', $row['E'] ?? '') ?: null,
+                            'cep_inicio'  => ($c = preg_replace('/\D/', '', $row['D'] ?? '')) ? str_pad($c, 8, '0', STR_PAD_LEFT) : null,
+                            'cep_fim'     => ($c = preg_replace('/\D/', '', $row['E'] ?? '')) ? str_pad($c, 8, '0', STR_PAD_LEFT) : null,
                         ],
                         [
                             'valor_fixo'  => self::parseDecimal($row['F'] ?? null),
@@ -175,6 +175,9 @@ class TransportadoraTaxaImportService
 
                 $cepA = preg_replace('/\D/', '', $row['B'] ?? '') ?: null;
                 $cepB = preg_replace('/\D/', '', $row['C'] ?? '') ?: null;
+                // Garantir 8 dígitos com zero à esquerda (CEP brasileiro)
+                if ($cepA) $cepA = str_pad($cepA, 8, '0', STR_PAD_LEFT);
+                if ($cepB) $cepB = str_pad($cepB, 8, '0', STR_PAD_LEFT);
                 if ($cepA && $cepB && $cepA > $cepB) {
                     [$cepA, $cepB] = [$cepB, $cepA];
                 }
