@@ -119,9 +119,12 @@
                         <div class="font-semibold text-gray-800 dark:text-white">R$ {{ number_format($imposto, 2, ',', '.') }}</div>
                     </div>
                     <div>
-                        <div class="text-gray-500">Frete (cobrado → pago)</div>
+                        <div class="text-gray-500">Frete (cobrado → {{ $custoFrete > 0 && !$venda->nfe_chave_acesso ? 'cotado' : 'pago' }})</div>
                         <div class="font-semibold text-gray-800 dark:text-white">
                             R$ {{ number_format($freteCliente, 2, ',', '.') }} → R$ {{ number_format($custoFrete, 2, ',', '.') }}
+                            @if($custoFrete > 0 && !$venda->nfe_chave_acesso)
+                                <span style="color:#d97706;font-size:10px;">⚠ estimado</span>
+                            @endif
                         </div>
                     </div>
                     @if($subsidio > 0)
