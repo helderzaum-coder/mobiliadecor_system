@@ -148,7 +148,7 @@ class ShopeePlanilhaService
      */
     private static function calcularPedido(array $linhas): array
     {
-        $totalProdutos = 0;
+        $precosProduto = 0;
         $frete = 0;
         $comissao = 0;
         $subsidioPix = 0;
@@ -156,17 +156,19 @@ class ShopeePlanilhaService
         $itens = [];
 
         foreach ($linhas as $row) {
-            // Subtotal do produto (coluna U)
-            $subtotalItem = self::parseDecimal($row['U'] ?? 0);
-            $totalProdutos += $subtotalItem;
+            // Preço do Produto (coluna U) — inclui o subsídio pix
+            $precoProduto = self::parseDecimal($row['U'] ?? 0);
+            $precosProduto += $precoProduto;
+
+            // Subsídio Pix (coluna Y) — desconto pix que a Shopee absorve
+            $subsidioPix += abs(self::parseDecimal($row['Y'] ?? 0));
 
             // Quantidade (coluna S)
             $quantidade = (int) (self::parseDecimal($row['S'] ?? 1) ?: 1);
 
-            // Montar item — coluna N = Nome do Produto, coluna O = SKU
+            // Montar item — detectar SKU vs descrição
             $skuRaw = trim($row['O'] ?? '');
             $descRaw = trim($row['N'] ?? '');
-            // Detectar qual é o SKU (numérico) e qual é a descrição
             if (preg_match('/^\d+$/', $skuRaw)) {
                 $sku = $skuRaw;
                 $desc = $descRaw;
@@ -181,19 +183,16 @@ class ShopeePlanilhaService
                 'codigo' => $sku,
                 'descricao' => $desc,
                 'quantidade' => $quantidade,
-                'valor' => round($subtotalItem, 2),
+                'valor' => round($precoProduto, 2),
             ];
 
             // Taxa de comissão líquida (coluna AR) + Taxa de serviço líquida (coluna AT)
             $comissao += abs(self::parseDecimal($row['AR'] ?? 0));
             $comissao += abs(self::parseDecimal($row['AT'] ?? 0));
 
-            // Subsídio Pix (coluna Y)
-            $subsidioPix += abs(self::parseDecimal($row['Y'] ?? 0));
-
             // Frete: calcular apenas uma vez (é por pedido, não por item)
             if (!$freteCalculado) {
-                // Frete = Taxa de envio paga pelo comprador (AM) + Desconto de Frete Aproximado (AN)
+                // Frete recebido = Taxa de envio paga pelo comprador (AM) + Desconto de Frete da Shopee (AN)
                 $taxaEnvioComprador = self::parseDecimal($row['AM'] ?? 0);
                 $descontoFrete = self::parseDecimal($row['AN'] ?? 0);
                 $frete = $taxaEnvioComprador + abs($descontoFrete);
@@ -201,11 +200,14 @@ class ShopeePlanilhaService
             }
         }
 
-        // Total do pedido = Subtotal + Frete
-        $totalPedido = $totalProdutos + $frete;
+        // Subtotal real = Preço produto - Subsídio Pix (pix está embutido no preço U)
+        $subtotalReal = $precosProduto - $subsidioPix;
+
+        // Total do pedido (renda) = Subtotal real + Frete recebido
+        $totalPedido = $subtotalReal + $frete;
 
         return [
-            'total_produtos' => round($totalProdutos, 2),
+            'total_produtos' => round($subtotalReal, 2),
             'total_pedido' => round($totalPedido, 2),
             'frete' => round($frete, 2),
             'comissao' => round($comissao, 2),

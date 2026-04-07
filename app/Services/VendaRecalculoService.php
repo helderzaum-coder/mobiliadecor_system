@@ -143,7 +143,7 @@ class VendaRecalculoService
 
         $updateData = [
             'comissao' => $comissao,
-            'subsidio_pix' => $subsidioPix,
+            'subsidio_pix' => 0, // Shopee: pix já descontado do subtotal (U - Y), não somar no lucro
             'planilha_processada' => true,
         ];
 
