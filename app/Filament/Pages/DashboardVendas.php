@@ -31,6 +31,66 @@ class DashboardVendas extends Page implements HasForms
         $this->mes_selecionado = now()->format('Y-m');
     }
 
+    public function buscarNfe(int $vendaId): void
+    {
+        $venda = Venda::find($vendaId);
+        if (!$venda) return;
+
+        $result = \App\Services\VendaRecalculoService::buscarNfe($venda);
+        \Filament\Notifications\Notification::make()
+            ->title($result['msg'])
+            ->{$result['success'] ? 'success' : 'warning'}()
+            ->send();
+    }
+
+    public function buscarCte(int $vendaId): void
+    {
+        $venda = Venda::find($vendaId);
+        if (!$venda) return;
+
+        $result = \App\Services\VendaRecalculoService::buscarCte($venda);
+        \Filament\Notifications\Notification::make()
+            ->title($result['msg'])
+            ->{$result['success'] ? 'success' : 'warning'}()
+            ->send();
+    }
+
+    public function aplicarPlanilhaML(int $vendaId): void
+    {
+        $venda = Venda::find($vendaId);
+        if (!$venda) return;
+
+        $result = \App\Services\VendaRecalculoService::aplicarPlanilhaML($venda);
+        \Filament\Notifications\Notification::make()
+            ->title($result['msg'])
+            ->{$result['success'] ? 'success' : 'warning'}()
+            ->send();
+    }
+
+    public function aplicarPlanilhaShopee(int $vendaId): void
+    {
+        $venda = Venda::find($vendaId);
+        if (!$venda) return;
+
+        $result = \App\Services\VendaRecalculoService::aplicarPlanilhaShopee($venda);
+        \Filament\Notifications\Notification::make()
+            ->title($result['msg'])
+            ->{$result['success'] ? 'success' : 'warning'}()
+            ->send();
+    }
+
+    public function recalcular(int $vendaId): void
+    {
+        $venda = Venda::find($vendaId);
+        if (!$venda) return;
+
+        \App\Services\VendaRecalculoService::recalcularMargens($venda);
+        \Filament\Notifications\Notification::make()
+            ->title('Margens recalculadas.')
+            ->success()
+            ->send();
+    }
+
     public function form(Forms\Form $form): Forms\Form
     {
         return $form->schema([

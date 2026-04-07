@@ -159,6 +159,45 @@
                 </div>
                 @endif
 
+                {{-- Botões de ação --}}
+                @php
+                    $isML = str_contains(strtolower($canal), 'mercado');
+                    $isShopee = str_contains(strtolower($canal), 'shopee');
+                    $temNfe = !empty($venda->nfe_chave_acesso);
+                    $temFretePago = $custoFrete > 0;
+                    $temPlanilha = (bool) $venda->planilha_processada;
+                @endphp
+                <div class="flex flex-wrap gap-2 mt-3">
+                    @if(!$venda->numero_nota_fiscal || !$temNfe)
+                        <button wire:click="buscarNfe({{ $venda->id_venda }})" wire:loading.attr="disabled"
+                            style="background:#2563eb;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                            📄 Buscar NF-e
+                        </button>
+                    @endif
+                    @if($temNfe && !$temFretePago)
+                        <button wire:click="buscarCte({{ $venda->id_venda }})" wire:loading.attr="disabled"
+                            style="background:#7c3aed;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                            🚚 Buscar CT-e
+                        </button>
+                    @endif
+                    @if($isML && !$temPlanilha)
+                        <button wire:click="aplicarPlanilhaML({{ $venda->id_venda }})" wire:loading.attr="disabled"
+                            style="background:#d97706;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                            📊 Aplicar Planilha ML
+                        </button>
+                    @endif
+                    @if($isShopee && !$temPlanilha)
+                        <button wire:click="aplicarPlanilhaShopee({{ $venda->id_venda }})" wire:loading.attr="disabled"
+                            style="background:#ea580c;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                            📊 Aplicar Planilha Shopee
+                        </button>
+                    @endif
+                    <button wire:click="recalcular({{ $venda->id_venda }})" wire:loading.attr="disabled"
+                        style="background:#059669;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                        🔄 Recalcular
+                    </button>
+                </div>
+
                 {{-- Itens do pedido --}}
                 @if(!empty($venda->staging_itens))
                 <div class="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">

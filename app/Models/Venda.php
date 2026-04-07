@@ -16,6 +16,8 @@ class Venda extends Model
         'bling_account',
         'numero_pedido_canal',
         'numero_nota_fiscal',
+        'nfe_chave_acesso',
+        'nfe_valor',
         'valor_total_venda',
         'total_produtos',
         'custo_produtos',
@@ -27,6 +29,7 @@ class Venda extends Model
         'percentual_imposto',
         'valor_imposto',
         'id_canal',
+        'canal_nome',
         'id_cnpj',
         'data_venda',
         'cliente_nome',
@@ -47,6 +50,7 @@ class Venda extends Model
         'ml_frete_receita',
         'ml_order_id',
         'ml_shipping_id',
+        'planilha_processada',
     ];
 
     protected $casts = [
@@ -71,6 +75,7 @@ class Venda extends Model
         'ml_sale_fee' => 'decimal:2',
         'ml_frete_custo' => 'decimal:2',
         'ml_frete_receita' => 'decimal:2',
+        'planilha_processada' => 'boolean',
     ];
 
     public function canal(): BelongsTo
