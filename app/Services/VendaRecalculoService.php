@@ -133,16 +133,36 @@ class VendaRecalculoService
             return ['success' => false, 'msg' => "Planilha Shopee não encontrada para pedido {$numeroPedido}."];
         }
 
-        $comissao = abs((float) $dado->total_taxas);
+        // Usar dados_originais que tem os valores corretos do novo mapeamento
+        $originais = $dado->dados_originais ?? [];
+        $comissao = abs((float) ($originais['comissao'] ?? $dado->taxa_comissao));
+        $subsidioPix = abs((float) ($originais['subsidio_pix'] ?? 0));
+        $frete = (float) ($originais['frete'] ?? $dado->taxa_envio);
+        $totalProdutos = (float) ($originais['total_produtos'] ?? 0);
+        $totalPedido = (float) ($originais['total_pedido'] ?? 0);
 
-        $venda->update([
+        $updateData = [
             'comissao' => $comissao,
+            'subsidio_pix' => $subsidioPix,
             'planilha_processada' => true,
-        ]);
+        ];
+
+        // Atualizar valores de produto e frete se vieram da planilha
+        if ($totalProdutos > 0) {
+            $updateData['total_produtos'] = $totalProdutos;
+        }
+        if ($totalPedido > 0) {
+            $updateData['valor_total_venda'] = $totalPedido;
+        }
+        if ($frete >= 0) {
+            $updateData['valor_frete_cliente'] = $frete;
+        }
+
+        $venda->update($updateData);
 
         self::recalcularMargens($venda);
 
-        return ['success' => true, 'msg' => "Planilha Shopee aplicada. Comissão: R$ " . number_format($comissao, 2, ',', '.')];
+        return ['success' => true, 'msg' => "Planilha Shopee aplicada. Comissão: R$ " . number_format($comissao, 2, ',', '.') . " | Subsídio: R$ " . number_format($subsidioPix, 2, ',', '.')];
     }
 
     /**

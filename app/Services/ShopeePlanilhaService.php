@@ -92,7 +92,7 @@ class ShopeePlanilhaService
                         'taxa_comissao' => $dados['comissao'],
                         'taxa_servico' => 0,
                         'taxa_envio' => $dados['frete'],
-                        'total_taxas' => $dados['comissao'] + $dados['subsidio_pix'],
+                        'total_taxas' => $dados['comissao'],
                         'dados_originais' => $dados,
                     ]
                 );
@@ -163,10 +163,23 @@ class ShopeePlanilhaService
             // Quantidade (coluna S)
             $quantidade = (int) (self::parseDecimal($row['S'] ?? 1) ?: 1);
 
-            // Montar item
+            // Montar item — coluna N = Nome do Produto, coluna O = SKU
+            $skuRaw = trim($row['O'] ?? '');
+            $descRaw = trim($row['N'] ?? '');
+            // Detectar qual é o SKU (numérico) e qual é a descrição
+            if (preg_match('/^\d+$/', $skuRaw)) {
+                $sku = $skuRaw;
+                $desc = $descRaw;
+            } elseif (preg_match('/^\d+$/', $descRaw)) {
+                $sku = $descRaw;
+                $desc = $skuRaw;
+            } else {
+                $sku = $skuRaw;
+                $desc = $descRaw;
+            }
             $itens[] = [
-                'codigo' => trim($row['N'] ?? ''),
-                'descricao' => trim($row['O'] ?? ''),
+                'codigo' => $sku,
+                'descricao' => $desc,
                 'quantidade' => $quantidade,
                 'valor' => round($subtotalItem, 2),
             ];
