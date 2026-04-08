@@ -109,16 +109,20 @@ class ShopeeCorrigirDadosService
                 }
 
                 // Endereço
+                $enderecoCompleto = trim($row['BA'] ?? '');
                 if ($endereco || $cidade || $uf || $cep) {
-                    // Converter UF por extenso para sigla
                     $ufSigla = self::ufParaSigla($uf);
 
-                    // Extrair número do endereço
+                    // Extrair número do endereço (segundo elemento separado por vírgula)
                     $numero = '';
                     $rua = $endereco;
-                    if (preg_match('/,\s*(\d+)/', $endereco, $m)) {
-                        $numero = $m[1];
-                        $rua = trim(preg_replace('/,\s*\d+.*$/', '', $endereco));
+                    $partes = array_map('trim', explode(',', $endereco));
+                    if (count($partes) >= 2) {
+                        $rua = $partes[0];
+                        // Segundo elemento pode ser o número
+                        if (preg_match('/^\d+\w*$/', $partes[1])) {
+                            $numero = $partes[1];
+                        }
                     }
 
                     $payload['endereco'] = [
@@ -128,6 +132,7 @@ class ShopeeCorrigirDadosService
                         'municipio' => $cidade,
                         'uf' => $ufSigla,
                         'cep' => $cep,
+                        'complemento' => $enderecoCompleto ? "Endereço completo: {$enderecoCompleto}" : '',
                     ];
                 }
 
