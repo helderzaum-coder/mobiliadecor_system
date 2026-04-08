@@ -12,6 +12,12 @@ class EditVenda extends EditRecord
 {
     protected static string $resource = VendaResource::class;
 
+    protected function afterSave(): void
+    {
+        // Recalcular margens automaticamente ao salvar
+        \App\Services\VendaRecalculoService::recalcularMargens($this->record);
+    }
+
     protected function getHeaderActions(): array
     {
         return [
