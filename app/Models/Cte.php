@@ -17,9 +17,12 @@ class Cte extends Model
         'destinatario',
         'transportadora',
         'arquivo',
+        'utilizado',
+        'venda_id',
     ];
 
     protected $casts = [
         'valor_frete' => 'decimal:2',
+        'utilizado' => 'boolean',
     ];
 }

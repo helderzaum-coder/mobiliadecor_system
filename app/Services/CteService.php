@@ -101,14 +101,22 @@ class CteService
 
         $totalFrete = 0;
         $numeros = [];
+        $cteIds = [];
         foreach ($ctes as $cte) {
             $totalFrete += (float) $cte['valor_frete'];
             $numeros[] = $cte['numero_cte'];
+            $cteIds[] = $cte['id'];
         }
 
         $venda->update([
             'valor_frete_transportadora' => round($totalFrete, 2),
             'frete_pago' => true,
+        ]);
+
+        // Marcar CTEs como utilizados
+        Cte::whereIn('id', $cteIds)->update([
+            'utilizado' => true,
+            'venda_id' => $venda->id_venda,
         ]);
 
         VendaRecalculoService::recalcularMargens($venda);
