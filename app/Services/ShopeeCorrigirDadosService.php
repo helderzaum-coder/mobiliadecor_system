@@ -151,6 +151,9 @@ class ShopeeCorrigirDadosService
                         'cliente_documento' => $cpf ? self::formatarCpf($cpf) : null,
                     ]);
 
+                    // Atualizar observações do pedido no Bling com dados financeiros
+                    self::atualizarObservacoesPedido($client, $staging, $pedidoId);
+
                     $resultado['corrigidos']++;
                 } else {
                     $erro = $res['body']['error']['message'] ?? $res['body']['message'] ?? "HTTP {$res['http_code']}";
@@ -166,6 +169,44 @@ class ShopeeCorrigirDadosService
         }
 
         return $resultado;
+    }
+
+    /**
+     * Atualiza observações do pedido no Bling com dados financeiros da planilha.
+     */
+    private static function atualizarObservacoesPedido(BlingClient $client, PedidoBlingStaging $staging, string $pedidoId): void
+    {
+        try {
+            // Buscar dados financeiros da planilha Shopee
+            $planilha = \App\Models\PlanilhaShopeeDado::where('numero_pedido', $pedidoId)->first();
+            $originais = $planilha?->dados_originais ?? [];
+
+            $subtotal = (float) ($originais['total_produtos'] ?? $staging->total_produtos ?? 0);
+            $frete = (float) ($originais['frete'] ?? $staging->frete ?? 0);
+            $faturar = round($subtotal / 2, 2);
+
+            $obs = "=== DADOS SHOPEE ===\n"
+                . "Subtotal: R$ " . number_format($subtotal, 2, ',', '.') . "\n"
+                . "Faturar (meia nota): R$ " . number_format($faturar, 2, ',', '.') . "\n"
+                . "Frete recebido: R$ " . number_format($frete, 2, ',', '.');
+
+            $res = $client->put("/pedidos/vendas/{$staging->bling_id}", [], [
+                'observacoes' => $obs,
+            ]);
+
+            if (!$res['success']) {
+                Log::warning("ShopeeCorrigir: erro ao atualizar observações do pedido", [
+                    'pedido' => $pedidoId,
+                    'bling_id' => $staging->bling_id,
+                    'response' => $res,
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::warning("ShopeeCorrigir: erro ao atualizar observações", [
+                'pedido' => $pedidoId,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private static function formatarCpf(string $cpf): string
