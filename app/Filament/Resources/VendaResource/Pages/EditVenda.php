@@ -14,6 +14,11 @@ class EditVenda extends EditRecord
 
     protected function afterSave(): void
     {
+        // Se o frete transportadora foi preenchido manualmente, marcar como pago
+        if ((float) $this->record->valor_frete_transportadora > 0 && !$this->record->frete_pago) {
+            $this->record->update(['frete_pago' => true]);
+        }
+
         // Recalcular margens automaticamente ao salvar
         \App\Services\VendaRecalculoService::recalcularMargens($this->record);
     }
