@@ -65,7 +65,6 @@ class ImportarPlanilhaShopee extends Page implements HasForms
         $filePath = storage_path('app/public/' . $arquivo);
 
         if (!file_exists($filePath)) {
-            // Tentar caminho alternativo do Livewire
             $filePath = storage_path('app/' . $arquivo);
         }
 
@@ -91,6 +90,50 @@ class ImportarPlanilhaShopee extends Page implements HasForms
         }
 
         $this->form->fill();
+    }
+
+    public function corrigirDadosBling(): void
+    {
+        try {
+            $data = $this->form->getState();
+        } catch (\Exception $e) {
+            $this->data = [];
+            $this->form->fill();
+            Notification::make()->title('O arquivo enviado expirou. Faça o upload novamente.')->danger()->send();
+            return;
+        }
+
+        $arquivo = $data['arquivo'] ?? null;
+
+        if (!$arquivo) {
+            Notification::make()->title('Selecione um arquivo.')->danger()->send();
+            return;
+        }
+
+        $filePath = storage_path('app/public/' . $arquivo);
+        if (!file_exists($filePath)) {
+            $filePath = storage_path('app/' . $arquivo);
+        }
+        if (!file_exists($filePath)) {
+            Notification::make()->title('Arquivo não encontrado.')->danger()->send();
+            return;
+        }
+
+        $resultado = \App\Services\ShopeeCorrigirDadosService::processar($filePath);
+
+        $msg = "Corrigidos: {$resultado['corrigidos']}";
+        if ($resultado['nao_encontrados'] > 0) {
+            $msg .= " | Não encontrados: {$resultado['nao_encontrados']}";
+        }
+        if ($resultado['erros'] > 0) {
+            $msg .= " | Erros: {$resultado['erros']}";
+        }
+
+        if ($resultado['corrigidos'] > 0) {
+            Notification::make()->title($msg)->success()->send();
+        } else {
+            Notification::make()->title($msg)->warning()->send();
+        }
     }
 
     public static function canAccess(): bool
