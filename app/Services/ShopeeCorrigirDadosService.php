@@ -123,11 +123,18 @@ class ShopeeCorrigirDadosService
                 $res = $client->put("/contatos/{$contatoId}", [], $payload);
 
                 if ($res['success']) {
-                    // Atualizar staging local também
+                    // Atualizar staging local
                     $staging->update([
                         'cliente_nome' => $nome,
                         'cliente_documento' => $cpf ? self::formatarCpf($cpf) : $staging->cliente_documento,
                     ]);
+
+                    // Atualizar venda se já foi aprovada
+                    \App\Models\Venda::where('bling_id', $staging->bling_id)->update([
+                        'cliente_nome' => $nome,
+                        'cliente_documento' => $cpf ? self::formatarCpf($cpf) : null,
+                    ]);
+
                     $resultado['corrigidos']++;
                 } else {
                     $erro = $res['body']['error']['message'] ?? $res['body']['message'] ?? "HTTP {$res['http_code']}";
