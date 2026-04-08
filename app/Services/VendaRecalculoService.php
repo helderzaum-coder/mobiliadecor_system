@@ -42,33 +42,11 @@ class VendaRecalculoService
     }
 
     /**
-     * Busca CT-e e atualiza custo frete na venda.
+     * Busca CT-e no banco e aplica na venda.
      */
     public static function buscarCte(Venda $venda): array
     {
-        $staging = PedidoBlingStaging::where('bling_id', $venda->bling_id)->first();
-        if (!$staging) {
-            return ['success' => false, 'msg' => 'Staging não encontrado.'];
-        }
-
-        // Garantir que staging tem chave NF-e
-        if (empty($staging->nfe_chave_acesso) && !empty($venda->nfe_chave_acesso)) {
-            $staging->update(['nfe_chave_acesso' => $venda->nfe_chave_acesso]);
-        }
-
-        $result = CteService::processarCte($staging);
-        if (!$result['success']) {
-            return $result;
-        }
-
-        $venda->update([
-            'valor_frete_transportadora' => $staging->custo_frete,
-            'frete_pago' => true,
-        ]);
-
-        self::recalcularMargens($venda);
-
-        return $result;
+        return CteService::aplicarCteNaVenda($venda);
     }
 
     /**

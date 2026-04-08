@@ -2,166 +2,215 @@
 
 namespace App\Services;
 
-use App\Models\PedidoBlingStaging;
+use App\Models\Cte;
+use App\Models\Venda;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
-/**
- * ╔══════════════════════════════════════════════════════════════════════╗
- * ║  ATENÇÃO: CÓDIGO ESTÁVEL E FUNCIONAL — NÃO SOBRESCREVER           ║
- * ║                                                                    ║
- * ║  Este serviço busca CT-e (XML) vinculado a um pedido pela chave    ║
- * ║  da NF-e. Fluxo:                                                   ║
- * ║  1. Lê XMLs da pasta storage/app/ctes/pendentes/                   ║
- * ║  2. Compara chave NF-e do XML com a do pedido                      ║
- * ║  3. Extrai valor do frete (vTPrest) e número do CT-e (nCT)         ║
- * ║  4. Atualiza custo_frete no staging                                ║
- * ║  5. Move XML para ctes/processados/                                ║
- * ║                                                                    ║
- * ║  Referência funcional: commit de 23/03/2026                        ║
- * ╚══════════════════════════════════════════════════════════════════════╝
- */
 class CteService
 {
     private static string $pastaPendentes = 'ctes/pendentes';
     private static string $pastaProcessados = 'ctes/processados';
 
     /**
-     * Busca CT-e vinculado a um pedido pela chave da NF-e.
-     * Retorna os dados do CT-e ou null se não encontrado.
+     * Processa todos os XMLs pendentes e salva no banco.
+     * Retorna resumo do processamento.
      */
-    public static function buscarCtePorPedido(PedidoBlingStaging $staging): ?array
+    public static function processarXmlsPendentes(): array
     {
-        $chaveNfe = $staging->nfe_chave_acesso;
-
-        if (empty($chaveNfe)) {
-            return null;
-        }
-
         $pasta = storage_path('app/' . self::$pastaPendentes);
+        $resultado = ['importados' => 0, 'erros' => 0, 'duplicados' => 0, 'detalhes' => []];
 
         if (!File::isDirectory($pasta)) {
-            return null;
+            File::makeDirectory($pasta, 0755, true);
+            return $resultado;
         }
 
         $arquivos = File::glob($pasta . '/*.xml');
 
         foreach ($arquivos as $arquivo) {
             try {
-                $xml = simplexml_load_file($arquivo);
+                $dados = self::extrairDadosXml($arquivo);
 
-                if (!$xml) {
+                if (!$dados || empty($dados['chave_nfe'])) {
+                    $resultado['erros']++;
+                    $resultado['detalhes'][] = basename($arquivo) . ': chave NF-e não encontrada';
                     continue;
                 }
 
-                // Registrar namespaces para busca
-                $namespaces = $xml->getNamespaces(true);
-                $ns = reset($namespaces) ?: '';
-
-                // Buscar a chave da NF-e dentro do XML
-                $chaveEncontrada = self::buscarChaveNfe($xml, $ns);
-
-                if ($chaveEncontrada && $chaveEncontrada === $chaveNfe) {
-                    $dados = self::extrairDadosCte($xml, $ns);
-                    $dados['arquivo'] = basename($arquivo);
-                    $dados['arquivo_path'] = $arquivo;
-                    return $dados;
+                // Verificar duplicata pelo arquivo
+                $jaExiste = Cte::where('arquivo', basename($arquivo))->exists();
+                if ($jaExiste) {
+                    $resultado['duplicados']++;
+                    // Mover mesmo assim
+                    self::moverParaProcessados($arquivo);
+                    continue;
                 }
+
+                Cte::create([
+                    'numero_cte' => $dados['numero_cte'],
+                    'chave_cte' => $dados['chave_cte'],
+                    'chave_nfe' => $dados['chave_nfe'],
+                    'valor_frete' => $dados['valor_frete'],
+                    'remetente' => $dados['remetente'],
+                    'destinatario' => $dados['destinatario'],
+                    'transportadora' => $dados['transportadora'],
+                    'arquivo' => basename($arquivo),
+                ]);
+
+                self::moverParaProcessados($arquivo);
+                $resultado['importados']++;
+                $resultado['detalhes'][] = basename($arquivo) . ": CT-e {$dados['numero_cte']} - R$ " . number_format($dados['valor_frete'], 2, ',', '.');
+
             } catch (\Exception $e) {
-                Log::warning("CTE: Erro ao ler XML {$arquivo}", ['error' => $e->getMessage()]);
-                continue;
+                $resultado['erros']++;
+                $resultado['detalhes'][] = basename($arquivo) . ': ' . $e->getMessage();
+                Log::warning("CTE: Erro ao processar XML", ['arquivo' => basename($arquivo), 'error' => $e->getMessage()]);
             }
         }
 
-        return null;
+        return $resultado;
     }
 
     /**
-     * Processa CT-e: atualiza custo_frete no staging e move o XML.
+     * Busca CT-es no banco pela chave NF-e de uma venda.
      */
-    public static function processarCte(PedidoBlingStaging $staging): array
+    public static function buscarCtesParaVenda(Venda $venda): array
     {
-        $cte = self::buscarCtePorPedido($staging);
+        $chaveNfe = $venda->nfe_chave_acesso;
+        if (empty($chaveNfe)) {
+            return [];
+        }
 
-        if (!$cte) {
+        return Cte::where('chave_nfe', $chaveNfe)
+            ->orderBy('created_at')
+            ->get()
+            ->toArray();
+    }
+
+    /**
+     * Aplica o valor do CT-e na venda (soma todos os CT-es da NF-e).
+     */
+    public static function aplicarCteNaVenda(Venda $venda): array
+    {
+        $ctes = self::buscarCtesParaVenda($venda);
+
+        if (empty($ctes)) {
+            return ['success' => false, 'msg' => 'Nenhum CT-e encontrado para esta NF-e.'];
+        }
+
+        $totalFrete = 0;
+        $numeros = [];
+        foreach ($ctes as $cte) {
+            $totalFrete += (float) $cte['valor_frete'];
+            $numeros[] = $cte['numero_cte'];
+        }
+
+        $venda->update([
+            'valor_frete_transportadora' => round($totalFrete, 2),
+            'frete_pago' => true,
+        ]);
+
+        VendaRecalculoService::recalcularMargens($venda);
+
+        $qtd = count($ctes);
+        $nums = implode(', ', $numeros);
+        return [
+            'success' => true,
+            'msg' => "{$qtd} CT-e(s) encontrado(s): {$nums} — Frete total: R$ " . number_format($totalFrete, 2, ',', '.'),
+        ];
+    }
+
+    /**
+     * Processa CT-e para um PedidoBlingStaging (compatibilidade com fluxo antigo).
+     */
+    public static function processarCte(\App\Models\PedidoBlingStaging $staging): array
+    {
+        $chaveNfe = $staging->nfe_chave_acesso;
+        if (empty($chaveNfe)) {
             return ['success' => false, 'msg' => 'CT-e não encontrado para esta NF-e.'];
         }
 
-        // Atualizar custo do frete no staging
-        $staging->update([
-            'custo_frete' => $cte['valor_frete'],
-        ]);
+        $ctes = Cte::where('chave_nfe', $chaveNfe)->get();
+        if ($ctes->isEmpty()) {
+            return ['success' => false, 'msg' => 'CT-e não encontrado para esta NF-e.'];
+        }
 
-        // Mover XML para processados
-        $destino = storage_path('app/' . self::$pastaProcessados . '/' . $cte['arquivo']);
-        File::move($cte['arquivo_path'], $destino);
+        $totalFrete = $ctes->sum('valor_frete');
+        $staging->update(['custo_frete' => round($totalFrete, 2)]);
 
         return [
             'success' => true,
-            'msg' => "CT-e {$cte['numero']} encontrado. Frete: R$ {$cte['valor_frete']}",
-            'dados' => $cte,
+            'msg' => "CT-e encontrado. Frete: R$ " . number_format($totalFrete, 2, ',', '.'),
         ];
     }
 
     /**
-     * Busca a chave da NF-e dentro do XML do CT-e.
+     * Extrai dados de um XML de CT-e.
      */
-    private static function buscarChaveNfe(\SimpleXMLElement $xml, string $ns): ?string
+    private static function extrairDadosXml(string $arquivo): ?array
     {
-        // Tentar com namespace
-        if ($ns) {
-            $xml->registerXPathNamespace('cte', $ns);
-            $chaves = $xml->xpath('//cte:infNFe/cte:chave');
-            if (!empty($chaves)) {
-                return (string) $chaves[0];
-            }
-        }
+        $xml = simplexml_load_file($arquivo);
+        if (!$xml) return null;
 
-        // Tentar sem namespace (fallback)
-        $chaves = $xml->xpath('//infNFe/chave');
-        if (!empty($chaves)) {
-            return (string) $chaves[0];
-        }
+        $namespaces = $xml->getNamespaces(true);
+        $ns = reset($namespaces) ?: '';
 
-        // Busca por regex no conteúdo bruto como último recurso
-        return null;
-    }
-
-    /**
-     * Extrai dados relevantes do CT-e.
-     */
-    private static function extrairDadosCte(\SimpleXMLElement $xml, string $ns): array
-    {
-        $valor = 0;
-        $numero = '';
+        $dados = [
+            'numero_cte' => '',
+            'chave_cte' => '',
+            'chave_nfe' => '',
+            'valor_frete' => 0,
+            'remetente' => '',
+            'destinatario' => '',
+            'transportadora' => '',
+        ];
 
         if ($ns) {
             $xml->registerXPathNamespace('cte', $ns);
-
-            $vTPrest = $xml->xpath('//cte:vTPrest');
-            if (!empty($vTPrest)) {
-                $valor = (float) $vTPrest[0];
-            }
 
             $nCT = $xml->xpath('//cte:nCT');
-            if (!empty($nCT)) {
-                $numero = (string) $nCT[0];
-            }
-        } else {
-            $vTPrest = $xml->xpath('//vTPrest');
-            if (!empty($vTPrest)) {
-                $valor = (float) $vTPrest[0];
+            $dados['numero_cte'] = !empty($nCT) ? (string) $nCT[0] : '';
+
+            $chaveNfe = $xml->xpath('//cte:infNFe/cte:chave');
+            $dados['chave_nfe'] = !empty($chaveNfe) ? (string) $chaveNfe[0] : '';
+
+            $vTPrest = $xml->xpath('//cte:vTPrest');
+            $dados['valor_frete'] = !empty($vTPrest) ? round((float) $vTPrest[0], 2) : 0;
+
+            $chaveCte = $xml->xpath('//cte:infCte/@Id');
+            if (!empty($chaveCte)) {
+                $dados['chave_cte'] = str_replace('CTe', '', (string) $chaveCte[0]);
             }
 
+            $rem = $xml->xpath('//cte:rem/cte:xNome');
+            $dados['remetente'] = !empty($rem) ? (string) $rem[0] : '';
+
+            $dest = $xml->xpath('//cte:dest/cte:xNome');
+            $dados['destinatario'] = !empty($dest) ? (string) $dest[0] : '';
+
+            $emit = $xml->xpath('//cte:emit/cte:xNome');
+            $dados['transportadora'] = !empty($emit) ? (string) $emit[0] : '';
+        } else {
             $nCT = $xml->xpath('//nCT');
-            if (!empty($nCT)) {
-                $numero = (string) $nCT[0];
-            }
+            $dados['numero_cte'] = !empty($nCT) ? (string) $nCT[0] : '';
+
+            $chaveNfe = $xml->xpath('//infNFe/chave');
+            $dados['chave_nfe'] = !empty($chaveNfe) ? (string) $chaveNfe[0] : '';
+
+            $vTPrest = $xml->xpath('//vTPrest');
+            $dados['valor_frete'] = !empty($vTPrest) ? round((float) $vTPrest[0], 2) : 0;
         }
 
-        return [
-            'numero' => $numero,
-            'valor_frete' => round($valor, 2),
-        ];
+        return $dados;
+    }
+
+    private static function moverParaProcessados(string $arquivo): void
+    {
+        $destino = storage_path('app/' . self::$pastaProcessados);
+        if (!File::isDirectory($destino)) {
+            File::makeDirectory($destino, 0755, true);
+        }
+        File::move($arquivo, $destino . '/' . basename($arquivo));
     }
 }

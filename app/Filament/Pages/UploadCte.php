@@ -130,8 +130,13 @@ class UploadCte extends Page implements HasForms
         $this->resultado = $resultado;
 
         if ($resultado['novos'] > 0) {
+            // Processar XMLs pendentes e salvar no banco automaticamente
+            $processamento = \App\Services\CteService::processarXmlsPendentes();
+            $resultado['banco_importados'] = $processamento['importados'];
+            $resultado['banco_erros'] = $processamento['erros'];
+
             Notification::make()
-                ->title("{$resultado['novos']} CT-e(s) enviado(s) com sucesso")
+                ->title("{$resultado['novos']} CT-e(s) enviado(s), {$processamento['importados']} salvo(s) no banco")
                 ->success()->send();
         } else {
             Notification::make()
