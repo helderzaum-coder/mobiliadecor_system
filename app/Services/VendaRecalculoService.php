@@ -143,7 +143,7 @@ class VendaRecalculoService
 
         $updateData = [
             'comissao' => $comissao,
-            'subsidio_pix' => 0, // Shopee: pix já descontado do subtotal (U - Y), não somar no lucro
+            'subsidio_pix' => $subsidioPix, // Exibir na dashboard (não soma no lucro pois já descontado do subtotal)
             'planilha_processada' => true,
         ];
 
@@ -206,7 +206,12 @@ class VendaRecalculoService
         $margemFrete = $frete - $custoFrete - $comissaoFrete - $impostoFrete;
         $comissaoProduto = $comissao - $comissaoFrete;
         $margemProduto = $totalProdutos - $custoProdutos - $comissaoProduto - $impostoProduto + $valorRebate;
-        $margemVendaTotal = $margemProduto + $margemFrete + $subsidioPix;
+
+        // Subsídio pix: para Shopee já está descontado do subtotal (U - Y), não somar no lucro
+        $isShopee = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'shopee');
+        $subsidioNoLucro = $isShopee ? 0 : $subsidioPix;
+
+        $margemVendaTotal = $margemProduto + $margemFrete + $subsidioNoLucro;
         $margemContribuicao = $totalPedido > 0
             ? round(($margemVendaTotal / $totalPedido) * 100, 2)
             : 0;
