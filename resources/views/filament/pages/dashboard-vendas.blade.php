@@ -181,7 +181,7 @@
                 @php
                     $isML = str_contains(strtolower($canal), 'mercado');
                     $isShopee = str_contains(strtolower($canal), 'shopee');
-                    $temNfe = !empty($venda->nfe_chave_acesso) || !empty($venda->numero_nota_fiscal);
+                    $temNfe = !empty($venda->nfe_chave_acesso);
                     $fretePagoReal = (bool) $venda->frete_pago;
                     $temPlanilha = (bool) $venda->planilha_processada;
                     $isMarketplace = $isML || $isShopee;
