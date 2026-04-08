@@ -141,6 +141,7 @@ class AprovacaoVendaService
             'custo_produtos' => round($custoProdutos, 2),
             'valor_frete_cliente' => $frete,
             'valor_frete_transportadora' => $custoFrete,
+            'frete_cotado' => $custoFrete, // Guardar cotação original
             'comissao' => $comissao,
             'subsidio_pix' => $subsidioPix,
             'base_imposto' => (float) $staging->base_imposto,

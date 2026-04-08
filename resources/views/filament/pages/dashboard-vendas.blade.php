@@ -123,10 +123,16 @@
                         <div class="font-semibold text-blue-600 dark:text-blue-400">R$ {{ number_format($totalProd + $freteCliente - $comissao, 2, ',', '.') }}</div>
                     </div>
                     <div>
-                        @php $fretePago = (bool) $venda->frete_pago; @endphp
+                        @php
+                            $fretePago = (bool) $venda->frete_pago;
+                            $freteCotado = (float) ($venda->frete_cotado ?? 0);
+                        @endphp
                         <div class="text-gray-500">Frete (cobrado → {{ $fretePago ? 'pago' : ($custoFrete > 0 ? 'cotado' : '-') }})</div>
                         <div class="font-semibold text-gray-800 dark:text-white">
                             R$ {{ number_format($freteCliente, 2, ',', '.') }} → R$ {{ number_format($custoFrete, 2, ',', '.') }}
+                            @if($fretePago && $freteCotado > 0 && $freteCotado != $custoFrete)
+                                <span style="color:#6b7280;font-size:10px;">(cotado: R$ {{ number_format($freteCotado, 2, ',', '.') }})</span>
+                            @endif
                             @if($custoFrete > 0 && !$fretePago)
                                 <span style="color:#d97706;font-size:10px;">⚠ estimado</span>
                             @endif
