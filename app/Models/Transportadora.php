@@ -26,6 +26,7 @@ class Transportadora extends Model
         'trt_valor',
         'tas_valor',
         'tda_valor',
+        'ajuste_percentual',
     ];
 
     protected $casts = [
@@ -42,6 +43,7 @@ class Transportadora extends Model
         'trt_valor' => 'decimal:2',
         'tas_valor' => 'decimal:2',
         'tda_valor' => 'decimal:2',
+        'ajuste_percentual' => 'decimal:2',
     ];
 
     public function faturas(): HasMany

@@ -109,6 +109,12 @@ class TransportadoraResource extends Resource
                     ->prefix('R$')
                     ->default(0)
                     ->helperText('Taxa de Administração do Seguro'),
+                Forms\Components\TextInput::make('ajuste_percentual')
+                    ->label('Ajuste Final (%)')
+                    ->numeric()
+                    ->suffix('%')
+                    ->default(0)
+                    ->helperText('Percentual aplicado sobre o total (ex: 12 para +12%)'),
             ])->columns(4),
 
             Forms\Components\Section::make('Tabela de Frete')->schema([

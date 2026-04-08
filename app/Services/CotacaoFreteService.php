@@ -177,6 +177,14 @@ class CotacaoFreteService
             }
         }
 
+        // 10. Ajuste percentual (ex: +12% para LMS)
+        $ajustePerc = (float) ($transp->ajuste_percentual ?? 0);
+        $ajusteValor = 0;
+        if ($ajustePerc != 0) {
+            $ajusteValor = round($total * ($ajustePerc / 100), 2);
+            $total = round($total + $ajusteValor, 2);
+        }
+
         return [
             'id_transportadora' => $transp->id_transportadora,
             'nome' => $transp->nome_transportadora,
@@ -192,6 +200,8 @@ class CotacaoFreteService
             'taxas_especiais_total' => round($taxasEspeciais['total'], 2),
             'icms_percentual' => $icmsPerc,
             'icms_valor' => $icmsValor,
+            'ajuste_percentual' => $ajustePerc,
+            'ajuste_valor' => $ajusteValor,
             'total' => round($total, 2),
         ];
     }
