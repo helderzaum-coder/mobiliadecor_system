@@ -74,6 +74,9 @@ class VendaResource extends Resource
                     ->label('Frete')->numeric()->prefix('R$'),
                 Forms\Components\TextInput::make('valor_frete_transportadora')
                     ->label('Frete Pago (Transp.)')->numeric()->prefix('R$'),
+                Forms\Components\TextInput::make('frete_cotado')
+                    ->label('Frete Cotado')->numeric()->prefix('R$')->disabled()
+                    ->helperText('Valor estimado na cotação original'),
                 Forms\Components\Toggle::make('frete_pago')->label('Frete Pago'),
             ])->columns(3),
 
