@@ -20,6 +20,76 @@ class ConsultaCtes extends Page
     public ?string $data_inicio = null;
     public ?string $data_fim = null;
 
+    public function vincularManual(int $cteId): void
+    {
+        $cte = Cte::find($cteId);
+        if (!$cte) return;
+
+        // Buscar venda pelo destinatário (nome do cliente)
+        $venda = \App\Models\Venda::where('cliente_nome', 'like', '%' . $cte->destinatario . '%')
+            ->where('frete_pago', false)
+            ->first();
+
+        if (!$venda) {
+            \Filament\Notifications\Notification::make()
+                ->title("Nenhuma venda pendente encontrada para '{$cte->destinatario}'")
+                ->warning()->send();
+            return;
+        }
+
+        $venda->update([
+            'valor_frete_transportadora' => $cte->valor_frete,
+            'nfe_chave_acesso' => $cte->chave_nfe,
+            'frete_pago' => true,
+        ]);
+
+        $cte->update([
+            'utilizado' => true,
+            'venda_id' => $venda->id_venda,
+        ]);
+
+        \App\Services\VendaRecalculoService::recalcularMargens($venda);
+
+        \Filament\Notifications\Notification::make()
+            ->title("CT-e {$cte->numero_cte} vinculado à venda #{$venda->numero_pedido_canal} — R$ " . number_format($cte->valor_frete, 2, ',', '.'))
+            ->success()->send();
+    }
+
+    public function vincularPorPedido(int $cteId, string $numeroPedido): void
+    {
+        $cte = Cte::find($cteId);
+        if (!$cte) return;
+
+        $venda = \App\Models\Venda::where('numero_pedido_canal', $numeroPedido)->first();
+        if (!$venda) {
+            \Filament\Notifications\Notification::make()
+                ->title("Pedido '{$numeroPedido}' não encontrado")
+                ->danger()->send();
+            return;
+        }
+
+        // Somar com frete existente se já tem outro CT-e
+        $freteAtual = $venda->frete_pago ? (float) $venda->valor_frete_transportadora : 0;
+        $novoFrete = $freteAtual + (float) $cte->valor_frete;
+
+        $venda->update([
+            'valor_frete_transportadora' => round($novoFrete, 2),
+            'nfe_chave_acesso' => $venda->nfe_chave_acesso ?: $cte->chave_nfe,
+            'frete_pago' => true,
+        ]);
+
+        $cte->update([
+            'utilizado' => true,
+            'venda_id' => $venda->id_venda,
+        ]);
+
+        \App\Services\VendaRecalculoService::recalcularMargens($venda);
+
+        \Filament\Notifications\Notification::make()
+            ->title("CT-e {$cte->numero_cte} vinculado à venda #{$numeroPedido} — Frete total: R$ " . number_format($novoFrete, 2, ',', '.'))
+            ->success()->send();
+    }
+
     public function getCtesProperty()
     {
         $query = Cte::orderByRaw('COALESCE(data_emissao, created_at) DESC');

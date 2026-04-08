@@ -100,6 +100,7 @@
                     <th class="text-left p-2">Destinatário</th>
                     <th class="text-center p-2">Status</th>
                     <th class="text-left p-2">Data Emissão</th>
+                    <th class="text-center p-2">Ações</th>
                 </tr>
             </thead>
             <tbody>
@@ -122,10 +123,34 @@
                             @endif
                         </td>
                         <td class="p-2 text-xs text-gray-500">{{ $cte->data_emissao?->format('d/m/Y') ?? $cte->created_at?->format('d/m/Y') }}</td>
+                        <td class="p-2 text-center">
+                            @if(!$cte->utilizado)
+                                <div class="flex items-center gap-1 justify-center" x-data="{ open: false, pedido: '' }">
+                                    <button wire:click="vincularManual({{ $cte->id }})"
+                                        style="background:#2563eb;color:#fff;padding:2px 8px;font-size:10px;border-radius:4px;border:none;cursor:pointer;"
+                                        title="Vincular automaticamente pelo nome do destinatário">
+                                        Auto
+                                    </button>
+                                    <button @click="open = !open"
+                                        style="background:#7c3aed;color:#fff;padding:2px 8px;font-size:10px;border-radius:4px;border:none;cursor:pointer;"
+                                        title="Vincular por número do pedido">
+                                        Pedido
+                                    </button>
+                                    <div x-show="open" x-cloak class="flex items-center gap-1">
+                                        <input type="text" x-model="pedido" placeholder="Nº pedido"
+                                            class="rounded border border-gray-400 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs px-2 py-1 w-36 text-gray-800 dark:text-white">
+                                        <button @click="$wire.vincularPorPedido({{ $cte->id }}, pedido); open = false"
+                                            style="background:#059669;color:#fff;padding:2px 8px;font-size:10px;border-radius:4px;border:none;cursor:pointer;">
+                                            OK
+                                        </button>
+                                    </div>
+                                </div>
+                            @endif
+                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="p-4 text-center text-gray-500">Nenhum CT-e encontrado.</td>
+                        <td colspan="8" class="p-4 text-center text-gray-500">Nenhum CT-e encontrado.</td>
                     </tr>
                 @endforelse
             </tbody>
