@@ -14,8 +14,11 @@ class EditVenda extends EditRecord
 
     protected function afterSave(): void
     {
-        // Se o frete transportadora foi preenchido manualmente, marcar como pago
-        if ((float) $this->record->valor_frete_transportadora > 0 && !$this->record->frete_pago) {
+        $frete = (float) $this->record->valor_frete_transportadora;
+        $cotado = (float) $this->record->frete_cotado;
+
+        // Marcar como pago somente se o frete foi alterado manualmente (diferente da cotação)
+        if ($frete > 0 && !$this->record->frete_pago && ($cotado == 0 || $frete != $cotado)) {
             $this->record->update(['frete_pago' => true]);
         }
 
