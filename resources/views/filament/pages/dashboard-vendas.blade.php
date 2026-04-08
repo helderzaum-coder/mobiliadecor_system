@@ -57,6 +57,15 @@
                 if ($custoProd <= 0) $alertas[] = 'Sem custo de produto';
                 if ($imposto <= 0) $alertas[] = 'Sem imposto';
 
+                // Status da venda
+                $temNfeChave = !empty($venda->nfe_chave_acesso);
+                $fretePagoFlag = (bool) $venda->frete_pago;
+                $planilhaOk = (bool) $venda->planilha_processada;
+                $isML = str_contains(strtolower($canal), 'mercado');
+                $isShopee = str_contains(strtolower($canal), 'shopee');
+                $precisaPlanilha = $isML || $isShopee;
+                $completo = $temNfeChave && $fretePagoFlag && (!$precisaPlanilha || $planilhaOk);
+
                 $conta = $venda->bling_account === 'primary' ? 'Mobilia' : 'HES';
                 $canal = $venda->canal?->nome_canal ?? '-';
             @endphp
@@ -80,6 +89,19 @@
                             </span>
                         @endif
                         <span class="text-xs text-gray-500 dark:text-gray-400">{{ $venda->data_venda?->format('d/m/Y') }}</span>
+                        @if($completo)
+                            <span style="background:#059669;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">✅ Completo</span>
+                        @else
+                            @if(!$temNfeChave)
+                                <span style="background:#dc2626;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">Falta NF-e</span>
+                            @endif
+                            @if(!$fretePagoFlag && !$isML)
+                                <span style="background:#d97706;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">Falta Frete</span>
+                            @endif
+                            @if($precisaPlanilha && !$planilhaOk)
+                                <span style="background:#7c3aed;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">Falta Planilha</span>
+                            @endif
+                        @endif
                     </div>
                 </div>
                 {{-- Cliente --}}
@@ -247,4 +269,20 @@
             <div class="text-center text-gray-500 py-8">Nenhuma venda encontrada para o período selecionado.</div>
         @endforelse
     </div>
+
+    {{-- Paginação --}}
+    @php $totalPaginas = $this->totalPaginas; @endphp
+    @if($totalPaginas > 1)
+    <div class="flex items-center justify-center gap-4 mt-6">
+        <button wire:click="paginaAnterior" @if($pagina <= 1) disabled @endif
+            style="background:{{ $pagina <= 1 ? '#374151' : '#2563eb' }};color:#fff;padding:6px 16px;font-size:13px;border-radius:6px;border:none;cursor:{{ $pagina <= 1 ? 'default' : 'pointer' }};opacity:{{ $pagina <= 1 ? '0.5' : '1' }};">
+            ← Anterior
+        </button>
+        <span class="text-sm text-gray-500">Página {{ $pagina }} de {{ $totalPaginas }}</span>
+        <button wire:click="proximaPagina" @if($pagina >= $totalPaginas) disabled @endif
+            style="background:{{ $pagina >= $totalPaginas ? '#374151' : '#2563eb' }};color:#fff;padding:6px 16px;font-size:13px;border-radius:6px;border:none;cursor:{{ $pagina >= $totalPaginas ? 'default' : 'pointer' }};opacity:{{ $pagina >= $totalPaginas ? '0.5' : '1' }};">
+            Próxima →
+        </button>
+    </div>
+    @endif
 </x-filament-panels::page>
