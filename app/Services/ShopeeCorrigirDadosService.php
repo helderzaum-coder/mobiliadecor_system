@@ -97,7 +97,12 @@ class ShopeeCorrigirDadosService
                 ];
 
                 if ($telefone) {
-                    $payload['telefone'] = $telefone;
+                    // Remover código do país (55) se presente
+                    $tel = preg_replace('/\D/', '', $telefone);
+                    if (strlen($tel) >= 12 && str_starts_with($tel, '55')) {
+                        $tel = substr($tel, 2);
+                    }
+                    $payload['telefone'] = $tel;
                 }
                 if ($cpf) {
                     $payload['numeroDocumento'] = $cpf;
