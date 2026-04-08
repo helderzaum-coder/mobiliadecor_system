@@ -16,6 +16,7 @@ class Cte extends Model
         'remetente',
         'destinatario',
         'transportadora',
+        'data_emissao',
         'arquivo',
         'utilizado',
         'venda_id',
@@ -24,5 +25,6 @@ class Cte extends Model
     protected $casts = [
         'valor_frete' => 'decimal:2',
         'utilizado' => 'boolean',
+        'data_emissao' => 'date',
     ];
 }

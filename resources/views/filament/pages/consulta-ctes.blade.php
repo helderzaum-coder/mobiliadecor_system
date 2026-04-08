@@ -48,7 +48,7 @@
                     <th class="text-left p-2">Transportadora</th>
                     <th class="text-left p-2">Destinatário</th>
                     <th class="text-center p-2">Status</th>
-                    <th class="text-left p-2">Data</th>
+                    <th class="text-left p-2">Data Emissão</th>
                 </tr>
             </thead>
             <tbody>
@@ -66,7 +66,7 @@
                                 <span style="background:#d97706;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">Pendente</span>
                             @endif
                         </td>
-                        <td class="p-2 text-xs text-gray-500">{{ $cte->created_at?->format('d/m/Y H:i') }}</td>
+                        <td class="p-2 text-xs text-gray-500">{{ $cte->data_emissao?->format('d/m/Y') ?? $cte->created_at?->format('d/m/Y') }}</td>
                     </tr>
                 @empty
                     <tr>

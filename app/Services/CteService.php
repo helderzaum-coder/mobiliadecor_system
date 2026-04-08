@@ -172,6 +172,7 @@ class CteService
             'remetente' => '',
             'destinatario' => '',
             'transportadora' => '',
+            'data_emissao' => null,
         ];
 
         if ($ns) {
@@ -199,6 +200,14 @@ class CteService
 
             $emit = $xml->xpath('//cte:emit/cte:xNome');
             $dados['transportadora'] = !empty($emit) ? (string) $emit[0] : '';
+
+            // Data de emissão (dhEmi)
+            $dhEmi = $xml->xpath('//cte:dhEmi');
+            if (!empty($dhEmi)) {
+                try {
+                    $dados['data_emissao'] = \Carbon\Carbon::parse((string) $dhEmi[0])->format('Y-m-d');
+                } catch (\Exception $e) {}
+            }
         } else {
             $nCT = $xml->xpath('//nCT');
             $dados['numero_cte'] = !empty($nCT) ? (string) $nCT[0] : '';
