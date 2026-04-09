@@ -215,7 +215,19 @@ class ShopeeCorrigirDadosService
                 'data' => $pedidoData['data'] ?? now()->format('Y-m-d'),
                 'itens' => $itens,
                 'observacoes' => $obs,
+                // Preservar campos existentes
+                'loja' => $pedidoData['loja'] ?? null,
+                'numeroPedidoLoja' => $pedidoData['numeroPedidoLoja'] ?? null,
+                'desconto' => $pedidoData['desconto'] ?? null,
+                'outrasDespesas' => $pedidoData['outrasDespesas'] ?? null,
+                'dataSaida' => $pedidoData['dataSaida'] ?? null,
+                'dataPrevista' => $pedidoData['dataPrevista'] ?? null,
+                'transporte' => $pedidoData['transporte'] ?? null,
+                'parcelas' => $pedidoData['parcelas'] ?? null,
             ];
+
+            // Remover campos null para não sobrescrever
+            $payload = array_filter($payload, fn ($v) => $v !== null);
 
             $res = $client->put("/pedidos/vendas/{$staging->bling_id}", [], $payload);
 
