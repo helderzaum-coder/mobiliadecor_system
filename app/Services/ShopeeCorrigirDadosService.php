@@ -246,7 +246,22 @@ class ShopeeCorrigirDadosService
                 }
             }
 
+            // LOG DE DEPURAÇÃO: Payload enviado
+            Log::info("ShopeeCorrigir DEBUG: Enviando payload para Bling", [
+                'pedidoId' => $pedidoId,
+                'blingId' => $staging->bling_id,
+                'payload' => $payload
+            ]);
+
             $res = $client->put("/pedidos/vendas/{$staging->bling_id}", [], $payload);
+
+            // LOG DE DEPURAÇÃO: Resposta da API
+            Log::info("ShopeeCorrigir DEBUG: Resposta do Bling", [
+                'pedidoId' => $pedidoId,
+                'success' => $res['success'],
+                'http_code' => $res['http_code'] ?? 'N/A',
+                'body' => $res['body'] ?? []
+            ]);
 
             Log::info("ShopeeCorrigir: PUT pedido", [
                 'pedido' => $pedidoId,
