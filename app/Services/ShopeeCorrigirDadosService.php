@@ -213,23 +213,30 @@ class ShopeeCorrigirDadosService
                 $numeroPedidoLoja = trim((string) ($pedidoData['numeroPedidoLoja'] ?? $pedidoId));
             }
 
-            // Monta o objeto `loja` preservando o numeroPedidoLoja dentro dele.
-            // A API Bling v3 usa o campo `loja.numero` como numeroPedidoLoja;
-            // se enviarmos `loja` com `numero` vazio/nulo, o Bling apaga o número do pedido na loja virtual.
-            $lojaPayload = $pedidoData['loja'] ?? null;
-            if (is_array($lojaPayload) && $numeroPedidoLoja !== '') {
-                $lojaPayload['numero'] = $numeroPedidoLoja;
-            }
+            // IMPORTANTE: NÃO enviar o campo `loja` no PUT.
+            // A API Bling v3, ao receber `loja: null`, apaga o numeroPedidoLoja.
+            // O campo `numeroPedidoLoja` no top-level não é aceito pela API no PUT.
+            // A única forma confiável é montar o objeto `loja` com id + numero corretos.
+            $lojaOriginal = $pedidoData['loja'] ?? null;
+            $lojaId = is_array($lojaOriginal) ? ($lojaOriginal['id'] ?? null) : null;
 
             $payload = [
                 'contato' => ['id' => $pedidoData['contato']['id'] ?? null],
                 'data' => $pedidoData['data'] ?? now()->format('Y-m-d'),
                 'numero' => $pedidoData['numero'] ?? null,
-                'loja' => $lojaPayload,
-                'numeroPedidoLoja' => $numeroPedidoLoja,
                 'itens' => $itens,
                 'observacoesInternas' => $obs,
             ];
+
+            // Só inclui `loja` se tiver o ID — e sempre força o numero correto
+            if ($lojaId) {
+                $payload['loja'] = [
+                    'id' => $lojaId,
+                    'numero' => $numeroPedidoLoja,
+                ];
+            }
+            // Se não tiver loja vinculada, omite completamente o campo
+            // (o Bling preserva o numeroPedidoLoja existente quando o campo não é enviado)
 
             foreach (['transporte', 'parcelas', 'desconto', 'outrasDespesas', 'dataSaida', 'dataPrevista', 'observacoes'] as $campo) {
                 if (isset($pedidoData[$campo])) {
@@ -240,10 +247,11 @@ class ShopeeCorrigirDadosService
             Log::info('ShopeeCorrigir DEBUG: update pedido com observacoesInternas', [
                 'pedidoId' => $pedidoId,
                 'bling_id' => $staging->bling_id,
-                'observacoesInternas_atual' => $obsAtual,
-                'observacoesInternas_nova' => $obs,
+                'loja_original_da_api' => $lojaOriginal,
+                'loja_id_extraido' => $lojaId,
                 'numeroPedidoLoja_final' => $numeroPedidoLoja,
-                'loja_no_payload' => $payload['loja'] ?? null,
+                'payload_loja_enviado' => $payload['loja'] ?? '(omitido)',
+                'payload_completo' => $payload,
             ]);
 
             $res = $client->put("/pedidos/vendas/{$staging->bling_id}", [], $payload);
@@ -251,7 +259,14 @@ class ShopeeCorrigirDadosService
             if (!$res['success']) {
                 Log::error('ShopeeCorrigir: Erro ao atualizar pedido', [
                     'pedido' => $pedidoId,
+                    'http_code' => $res['http_code'] ?? null,
                     'response' => $res['body'] ?? []
+                ]);
+            } else {
+                Log::info('ShopeeCorrigir: Pedido atualizado com sucesso', [
+                    'pedido' => $pedidoId,
+                    'bling_id' => $staging->bling_id,
+                    'numeroPedidoLoja_enviado' => $numeroPedidoLoja,
                 ]);
             }
         } catch (\Exception $e) {
