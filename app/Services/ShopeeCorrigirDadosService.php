@@ -113,7 +113,7 @@ class ShopeeCorrigirDadosService
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // PASSO 2 — PUT /contatos/{id}
+    // PASSO 2 — PUT /contatos/{id} 
     // Atualiza nome, CPF, telefone e endereço do cliente no cadastro Bling.
     // É independente do pedido — não afeta numeroPedidoLoja.
     // ════════════════════════════════════════════════════════════════════════
