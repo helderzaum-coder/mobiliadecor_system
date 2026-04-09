@@ -152,7 +152,7 @@ class ShopeeCorrigirDadosService
                     ]);
 
                     // Atualizar observações do pedido no Bling com dados financeiros
-                    self::atualizarObservacoesPedido($client, $staging, $pedidoId);
+                    self::atualizarObservacoesPedido($client, $staging, $pedidoId, $row);
 
                     $resultado['corrigidos']++;
                 } else {
@@ -174,14 +174,25 @@ class ShopeeCorrigirDadosService
     /**
      * Atualiza observações do pedido no Bling com dados financeiros da planilha.
      */
-    private static function atualizarObservacoesPedido(BlingClient $client, PedidoBlingStaging $staging, string $pedidoId): void
+    private static function atualizarObservacoesPedido(BlingClient $client, PedidoBlingStaging $staging, string $pedidoId, array $row = []): void
     {
         try {
-            $planilha = \App\Models\PlanilhaShopeeDado::where('numero_pedido', $pedidoId)->first();
-            $originais = $planilha?->dados_originais ?? [];
+            // Calcular valores diretamente da row da planilha (mesma lógica do processar)
+            if (!empty($row)) {
+                $precoU = self::parseDecimalValue($row['U'] ?? 0);
+                $subsidioY = abs(self::parseDecimalValue($row['Y'] ?? 0));
+                $subtotal = $precoU - $subsidioY;
+                $taxaEnvio = self::parseDecimalValue($row['AM'] ?? 0);
+                $descontoFrete = abs(self::parseDecimalValue($row['AN'] ?? 0));
+                $frete = $taxaEnvio + $descontoFrete;
+            } else {
+                // Fallback: buscar dos dados já processados
+                $planilha = \App\Models\PlanilhaShopeeDado::where('numero_pedido', $pedidoId)->first();
+                $originais = $planilha?->dados_originais ?? [];
+                $subtotal = (float) ($originais['total_produtos'] ?? $staging->total_produtos ?? 0);
+                $frete = (float) ($originais['frete'] ?? $staging->frete ?? 0);
+            }
 
-            $subtotal = (float) ($originais['total_produtos'] ?? $staging->total_produtos ?? 0);
-            $frete = (float) ($originais['frete'] ?? $staging->frete ?? 0);
             $faturar = round($subtotal / 2, 2);
 
             $obs = "=== DADOS SHOPEE ===\n"
@@ -250,6 +261,18 @@ class ShopeeCorrigirDadosService
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    private static function parseDecimalValue($value): float
+    {
+        if (is_numeric($value)) return (float) $value;
+        $str = trim((string) $value);
+        if ($str === '') return 0;
+        if (str_contains($str, ',')) {
+            $str = str_replace('.', '', $str);
+            $str = str_replace(',', '.', $str);
+        }
+        return is_numeric($str) ? (float) $str : 0;
     }
 
     private static function formatarCpf(string $cpf): string
