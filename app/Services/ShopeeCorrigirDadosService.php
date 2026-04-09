@@ -233,7 +233,7 @@ class ShopeeCorrigirDadosService
                 'contato' => ['id' => $contatoId],
                 'data' => $pedidoData['data'] ?? now()->format('Y-m-d'),
                 'numero' => $pedidoData['numero'] ?? null,
-// 'loja' => $pedidoData['loja'] ?? null,  // Removido para preservar campo Bling
+                'loja' => $pedidoData['loja'] ?? null,
                 'numeroPedidoLoja' => $staging->numero_loja ?? $pedidoId,
                 'itens' => $itens,
                 'observacoesInternas' => $obs,
