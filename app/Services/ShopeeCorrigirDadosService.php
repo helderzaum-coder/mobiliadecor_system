@@ -223,7 +223,7 @@ class ShopeeCorrigirDadosService
                 'observacoes' => $obs,
                 // Preservar campos existentes
                 'loja' => $pedidoData['loja'] ?? null,
-                'numeroPedidoLoja' => $pedidoData['numeroPedidoLoja'] ?? null,
+                'numeroPedidoLoja' => $pedidoData['numeroPedidoLoja'] ?? $staging->numero_loja ?? $pedidoId,
                 'desconto' => $pedidoData['desconto'] ?? null,
                 'outrasDespesas' => $pedidoData['outrasDespesas'] ?? null,
                 'dataSaida' => $pedidoData['dataSaida'] ?? null,
