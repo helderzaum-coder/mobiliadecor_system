@@ -24,6 +24,7 @@ class DashboardVendas extends Page implements HasForms
     public ?string $canal = null;
     public ?string $conta = null;
     public ?string $status_filtro = null;
+    public ?string $busca_pedido = null;
     public int $pagina = 1;
     public int $porPagina = 20;
 
@@ -93,6 +94,7 @@ class DashboardVendas extends Page implements HasForms
     public function updatedCanal(): void { $this->pagina = 1; }
     public function updatedConta(): void { $this->pagina = 1; }
     public function updatedStatusFiltro(): void { $this->pagina = 1; }
+    public function updatedBuscaPedido(): void { $this->pagina = 1; }
 
     // ---- Form ----
 
@@ -166,6 +168,9 @@ class DashboardVendas extends Page implements HasForms
             default => $query,
         };
 
+        if ($this->busca_pedido) {
+            $query->where('numero_pedido_canal', 'like', '%' . $this->busca_pedido . '%');
+        }
         if ($this->canal) {
             $query->whereHas('canal', fn ($q) => $q->where('nome_canal', $this->canal));
         }

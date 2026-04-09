@@ -3,6 +3,12 @@
         {{ $this->form }}
     </form>
 
+    {{-- Busca por número do pedido --}}
+    <div class="mt-4">
+        <input type="text" wire:model.debounce.400ms="busca_pedido" placeholder="🔍 Buscar por número do pedido..."
+            class="w-full md:w-1/3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-800 dark:text-white px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+    </div>
+
     {{-- Resumo --}}
     @php $totais = $this->totais; @endphp
     <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4">
