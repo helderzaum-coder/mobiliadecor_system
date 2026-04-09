@@ -27,9 +27,16 @@ class ShopeeCorrigirDadosService
         $pedidos = [];
         $header = null;
         foreach ($rows as $row) {
-            if (!$header) { $header = $row; continue; }
+            if (!$header) {
+                $header = $row;
+                continue;
+            }
+
             $pedidoId = trim($row['A'] ?? '');
-            if (empty($pedidoId) || isset($pedidos[$pedidoId])) continue;
+            if (empty($pedidoId) || isset($pedidos[$pedidoId])) {
+                continue;
+            }
+
             $pedidos[$pedidoId] = $row;
         }
 
@@ -40,6 +47,7 @@ class ShopeeCorrigirDadosService
 
         foreach ($pedidos as $pedidoId => $row) {
             $staging = $stagings[$pedidoId] ?? null;
+
             if (!$staging) {
                 $resultado['nao_encontrados']++;
                 continue;
@@ -54,12 +62,14 @@ class ShopeeCorrigirDadosService
             $uf = trim($row['BE'] ?? '');
             $cep = preg_replace('/\D/', '', trim($row['BG'] ?? ''));
 
-            if (empty($nome)) continue;
+            if (empty($nome)) {
+                continue;
+            }
 
             try {
                 $client = new BlingClient($staging->bling_account);
                 $pedidoBling = $client->getPedido((int) $staging->bling_id);
-                
+
                 if (!$pedidoBling['success']) {
                     $resultado['erros']++;
                     $resultado['detalhes'][] = "{$pedidoId}: erro ao buscar pedido no Bling";
@@ -73,7 +83,6 @@ class ShopeeCorrigirDadosService
                     continue;
                 }
 
-                // Montar payload para atualizar contato
                 $tipoPessoa = strlen($cpf) > 11 ? 'J' : 'F';
                 $payloadContato = [
                     'nome' => $nome,
@@ -83,16 +92,16 @@ class ShopeeCorrigirDadosService
 
                 if ($telefone) {
                     $tel = preg_replace('/\D/', '', $telefone);
+
                     if (strlen($tel) >= 12 && str_starts_with($tel, '55')) {
                         $tel = substr($tel, 2);
                     }
-                    // Bling exige fone com DDD (mínimo 10 dígitos)
+
                     if (strlen($tel) >= 10) {
                         $payloadContato['telefone'] = $tel;
                     }
                 }
 
-                // Validar CPF/CNPJ básico antes de enviar
                 if ($cpf && (strlen($cpf) == 11 || strlen($cpf) == 14)) {
                     $payloadContato['numeroDocumento'] = $cpf;
                 }
@@ -102,6 +111,7 @@ class ShopeeCorrigirDadosService
                     $partes = array_map('trim', explode(',', $endereco));
                     $rua = $partes[0] ?? $endereco;
                     $numero = '';
+
                     if (count($partes) >= 2 && preg_match('/^\d+\w*$/', $partes[1])) {
                         $numero = $partes[1];
                     }
@@ -115,16 +125,20 @@ class ShopeeCorrigirDadosService
                         'cep' => $cep,
                         'complemento' => $endereco ? "Endereço completo: {$endereco}" : '',
                     ];
-                    
-                    // Remover UF se for inválida (Bling valida estritamente 2 letras)
+
                     if (empty($payloadContato['endereco']['uf'])) {
                         unset($payloadContato['endereco']['uf']);
                     }
                 }
 
-                // Tentar atualizar o contato
+                Log::info('ShopeeCorrigir DEBUG: payload contato', [
+                    'pedidoId' => $pedidoId,
+                    'contatoId' => $contatoId,
+                    'payload_contato' => $payloadContato,
+                ]);
+
                 $resContato = $client->put("/contatos/{$contatoId}", [], $payloadContato);
-                
+
                 if (!$resContato['success']) {
                     Log::warning("ShopeeCorrigir: Falha ao atualizar contato, mas prosseguindo para o pedido", [
                         'pedido' => $pedidoId,
@@ -132,10 +146,8 @@ class ShopeeCorrigirDadosService
                     ]);
                 }
 
-                // Independente do contato, atualizar o pedido para garantir o Número da Loja
                 self::atualizarDadosPedido($client, $staging, $pedidoId, $row, $pedidoBling['body']['data'] ?? []);
-                
-                // Atualizar localmente
+
                 $staging->update([
                     'cliente_nome' => $nome,
                     'cliente_documento' => $cpf ? self::formatarCpf($cpf) : $staging->cliente_documento,
@@ -147,7 +159,6 @@ class ShopeeCorrigirDadosService
                 ]);
 
                 $resultado['corrigidos']++;
-
             } catch (\Exception $e) {
                 $resultado['erros']++;
                 $resultado['detalhes'][] = "{$pedidoId}: {$e->getMessage()}";
@@ -183,34 +194,45 @@ class ShopeeCorrigirDadosService
                     'valor' => $item['valor'] ?? 0,
                     'unidade' => $item['unidade'] ?? 'UN',
                 ];
+
                 if (!empty($item['produto']['id'])) {
                     $itemData['produto'] = ['id' => $item['produto']['id']];
                 }
+
                 $itens[] = $itemData;
             }
 
-            // PAYLOAD DO PEDIDO - PRESERVAÇÃO TOTAL
+            $numeroPedidoLoja = trim((string) ($staging->numero_loja ?? ''));
+            if ($numeroPedidoLoja === '') {
+                $numeroPedidoLoja = trim((string) ($pedidoData['numeroPedidoLoja'] ?? $pedidoId));
+            }
+
             $payload = [
                 'contato' => ['id' => $pedidoData['contato']['id'] ?? null],
                 'data' => $pedidoData['data'] ?? now()->format('Y-m-d'),
                 'numero' => $pedidoData['numero'] ?? null,
-                'loja' => $pedidoData['loja'] ?? null, // PRESERVA A LOJA ORIGINAL
-                'numeroPedidoLoja' => $staging->numero_loja ?? $pedidoId, // PRESERVA O NÚMERO DA LOJA
+                'loja' => $pedidoData['loja'] ?? null,
+                'numeroPedidoLoja' => $numeroPedidoLoja,
                 'itens' => $itens,
                 'observacoesInternas' => $obs,
             ];
 
-            // Preservar outros campos
             foreach (['transporte', 'parcelas', 'desconto', 'outrasDespesas', 'dataSaida', 'dataPrevista', 'observacoes'] as $campo) {
                 if (isset($pedidoData[$campo])) {
                     $payload[$campo] = $pedidoData[$campo];
                 }
             }
 
-            Log::info("ShopeeCorrigir DEBUG: Enviando payload do pedido", [
+            Log::info('ShopeeCorrigir DEBUG: origem numeroPedidoLoja', [
                 'pedidoId' => $pedidoId,
-                'loja_no_payload' => $payload['loja'] ?? 'NULL',
-                'numeroPedidoLoja_no_payload' => $payload['numeroPedidoLoja'] ?? 'NULL'
+                'staging_numero_loja_bruto' => $staging->numero_loja ?? null,
+                'staging_numero_loja_trim' => isset($staging->numero_loja) ? trim((string) $staging->numero_loja) : null,
+                'pedidoData_numeroPedidoLoja' => $pedidoData['numeroPedidoLoja'] ?? null,
+                'numeroPedidoLoja_final' => $numeroPedidoLoja,
+                'payload_minimo' => [
+                    'loja' => $payload['loja'] ?? null,
+                    'numeroPedidoLoja' => $payload['numeroPedidoLoja'] ?? null,
+                ],
             ]);
 
             $res = $client->put("/pedidos/vendas/{$staging->bling_id}", [], $payload);
@@ -221,7 +243,6 @@ class ShopeeCorrigirDadosService
                     'response' => $res['body'] ?? []
                 ]);
             }
-
         } catch (\Exception $e) {
             Log::error("ShopeeCorrigir: Erro crítico em atualizarDadosPedido", ['error' => $e->getMessage()]);
         }
@@ -229,13 +250,20 @@ class ShopeeCorrigirDadosService
 
     private static function parseDecimalValue($value): float
     {
-        if (is_numeric($value)) return (float) $value;
+        if (is_numeric($value)) {
+            return (float) $value;
+        }
+
         $str = trim((string) $value);
-        if ($str === '') return 0;
+        if ($str === '') {
+            return 0;
+        }
+
         if (str_contains($str, ',')) {
             $str = str_replace('.', '', $str);
             $str = str_replace(',', '.', $str);
         }
+
         return is_numeric($str) ? (float) $str : 0;
     }
 
@@ -244,13 +272,16 @@ class ShopeeCorrigirDadosService
         if (strlen($cpf) === 11) {
             return substr($cpf, 0, 3) . '.' . substr($cpf, 3, 3) . '.' . substr($cpf, 6, 3) . '-' . substr($cpf, 9, 2);
         }
+
         return $cpf;
     }
 
     private static function ufParaSigla(string $uf): string
     {
         $uf = mb_strtolower(trim($uf));
-        if (strlen($uf) === 2) return strtoupper($uf);
+        if (strlen($uf) === 2) {
+            return strtoupper($uf);
+        }
 
         $mapa = [
             'acre' => 'AC', 'alagoas' => 'AL', 'amapá' => 'AP', 'amapa' => 'AP',
