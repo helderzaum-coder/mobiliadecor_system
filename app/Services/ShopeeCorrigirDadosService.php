@@ -213,11 +213,19 @@ class ShopeeCorrigirDadosService
                 $numeroPedidoLoja = trim((string) ($pedidoData['numeroPedidoLoja'] ?? $pedidoId));
             }
 
+            // Monta o objeto `loja` preservando o numeroPedidoLoja dentro dele.
+            // A API Bling v3 usa o campo `loja.numero` como numeroPedidoLoja;
+            // se enviarmos `loja` com `numero` vazio/nulo, o Bling apaga o número do pedido na loja virtual.
+            $lojaPayload = $pedidoData['loja'] ?? null;
+            if (is_array($lojaPayload) && $numeroPedidoLoja !== '') {
+                $lojaPayload['numero'] = $numeroPedidoLoja;
+            }
+
             $payload = [
                 'contato' => ['id' => $pedidoData['contato']['id'] ?? null],
                 'data' => $pedidoData['data'] ?? now()->format('Y-m-d'),
                 'numero' => $pedidoData['numero'] ?? null,
-                'loja' => $pedidoData['loja'] ?? null,
+                'loja' => $lojaPayload,
                 'numeroPedidoLoja' => $numeroPedidoLoja,
                 'itens' => $itens,
                 'observacoesInternas' => $obs,
