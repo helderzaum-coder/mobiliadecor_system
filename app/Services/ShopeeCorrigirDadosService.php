@@ -185,6 +185,7 @@ class ShopeeCorrigirDadosService
             $faturar = round($subtotal / 2, 2);
 
             $obs = "=== DADOS SHOPEE ===\n"
+                . "ID Pedido: {$pedidoId}\n"
                 . "Subtotal: R$ " . number_format($subtotal, 2, ',', '.') . "\n"
                 . "Faturar (meia nota): R$ " . number_format($faturar, 2, ',', '.') . "\n"
                 . "Frete recebido: R$ " . number_format($frete, 2, ',', '.');
