@@ -233,19 +233,27 @@ class ShopeeCorrigirDadosService
                 'contato' => ['id' => $contatoId],
                 'data' => $pedidoData['data'] ?? now()->format('Y-m-d'),
                 'numero' => $pedidoData['numero'] ?? null,
+                'loja' => $pedidoData['loja'] ?? null,
                 'numeroPedidoLoja' => $staging->numero_loja ?? $pedidoId,
                 'itens' => $itens,
                 'observacoesInternas' => $obs,
             ];
 
             // Preservar campos existentes
-            foreach (['loja', 'transporte', 'parcelas', 'desconto', 'outrasDespesas', 'dataSaida', 'dataPrevista', 'observacoes'] as $campo) {
+            foreach (['transporte', 'parcelas', 'desconto', 'outrasDespesas', 'dataSaida', 'dataPrevista', 'observacoes'] as $campo) {
                 if (isset($pedidoData[$campo]) && $pedidoData[$campo] !== null) {
                     $payload[$campo] = $pedidoData[$campo];
                 }
             }
 
             $res = $client->put("/pedidos/vendas/{$staging->bling_id}", [], $payload);
+
+            Log::info("ShopeeCorrigir: PUT pedido", [
+                'pedido' => $pedidoId,
+                'loja' => $payload['loja'] ?? 'NULL',
+                'numeroPedidoLoja' => $payload['numeroPedidoLoja'] ?? 'NULL',
+                'success' => $res['success'],
+            ]);
 
             if (!$res['success']) {
                 Log::warning("ShopeeCorrigir: erro ao atualizar observações do pedido no Bling", [
