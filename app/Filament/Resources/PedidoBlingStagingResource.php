@@ -610,10 +610,6 @@ class PedidoBlingStagingResource extends Resource
                     ->color('success')
                     ->requiresConfirmation()
                     ->action(function (PedidoBlingStaging $record) {
-                        if (self::isShopee($record) && !$record->planilha_shopee) {
-                            Notification::make()->title('Processe a planilha Shopee antes de aprovar.')->danger()->send();
-                            return;
-                        }
                         AprovacaoVendaService::aprovar($record);
                         Notification::make()->title('Pedido aprovado e venda criada.')->success()->send();
                     })
@@ -711,21 +707,13 @@ class PedidoBlingStagingResource extends Resource
                     ->color('success')
                     ->requiresConfirmation()
                     ->action(function ($records) {
-                        $bloqueados = 0;
                         $aprovados = 0;
                         foreach ($records as $record) {
-                            if (self::isShopee($record) && !$record->planilha_shopee) {
-                                $bloqueados++;
-                                continue;
-                            }
                             AprovacaoVendaService::aprovar($record);
                             $aprovados++;
                         }
                         if ($aprovados > 0) {
                             Notification::make()->title("{$aprovados} pedido(s) aprovados e vendas criadas.")->success()->send();
-                        }
-                        if ($bloqueados > 0) {
-                            Notification::make()->title("{$bloqueados} pedido(s) Shopee aguardando planilha.")->warning()->send();
                         }
                     }),
                 Tables\Actions\BulkAction::make('rejeitar_selecionados')
@@ -943,14 +931,6 @@ class PedidoBlingStagingResource extends Resource
             $checks[] = [
                 'ok' => $record->ml_tem_rebate !== null,
                 'label' => 'Planilha ML (Rebate)',
-            ];
-        }
-
-        // Shopee: planilha processada
-        if ($isShopee) {
-            $checks[] = [
-                'ok' => (bool) $record->planilha_shopee,
-                'label' => 'Planilha Shopee',
             ];
         }
 
