@@ -9,9 +9,6 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ShopeeCorrigirDadosService
 {
-    /**
-     * Processa planilha Shopee e corrige dados dos contatos no Bling.
-     */
     public static function processar(string $filePath): array
     {
         $resultado = ['corrigidos' => 0, 'erros' => 0, 'nao_encontrados' => 0, 'detalhes' => []];
@@ -21,7 +18,12 @@ class ShopeeCorrigirDadosService
             $sheet = $spreadsheet->getActiveSheet();
             $rows = $sheet->toArray(null, true, true, true);
         } catch (\Exception $e) {
-            return ['corrigidos' => 0, 'erros' => 1, 'nao_encontrados' => 0, 'detalhes' => ["Erro ao ler arquivo: {$e->getMessage()}"]];
+            return [
+                'corrigidos' => 0,
+                'erros' => 1,
+                'nao_encontrados' => 0,
+                'detalhes' => ["Erro ao ler arquivo: {$e->getMessage()}"]
+            ];
         }
 
         $pedidos = [];
@@ -47,7 +49,6 @@ class ShopeeCorrigirDadosService
 
         foreach ($pedidos as $pedidoId => $row) {
             $staging = $stagings[$pedidoId] ?? null;
-
             if (!$staging) {
                 $resultado['nao_encontrados']++;
                 continue;
@@ -92,11 +93,9 @@ class ShopeeCorrigirDadosService
 
                 if ($telefone) {
                     $tel = preg_replace('/\D/', '', $telefone);
-
                     if (strlen($tel) >= 12 && str_starts_with($tel, '55')) {
                         $tel = substr($tel, 2);
                     }
-
                     if (strlen($tel) >= 10) {
                         $payloadContato['telefone'] = $tel;
                     }
@@ -140,7 +139,7 @@ class ShopeeCorrigirDadosService
                 $resContato = $client->put("/contatos/{$contatoId}", [], $payloadContato);
 
                 if (!$resContato['success']) {
-                    Log::warning("ShopeeCorrigir: Falha ao atualizar contato, mas prosseguindo para o pedido", [
+                    Log::warning('ShopeeCorrigir: Falha ao atualizar contato, mas prosseguindo para o pedido', [
                         'pedido' => $pedidoId,
                         'response' => $resContato['body'] ?? []
                     ]);
@@ -185,6 +184,15 @@ class ShopeeCorrigirDadosService
                 . "Faturar (meia nota): R$ " . number_format($faturar, 2, ',', '.') . "\n"
                 . "Frete recebido: R$ " . number_format($frete, 2, ',', '.');
 
+            $obsAtual = trim((string) ($pedidoData['observacoesInternas'] ?? ''));
+            if ($obsAtual === trim($obs)) {
+                Log::info('ShopeeCorrigir DEBUG: observacoesInternas já está igual, pulando update', [
+                    'pedidoId' => $pedidoId,
+                    'bling_id' => $staging->bling_id,
+                ]);
+                return;
+            }
+
             $itens = [];
             foreach ($pedidoData['itens'] ?? [] as $item) {
                 $itemData = [
@@ -194,11 +202,9 @@ class ShopeeCorrigirDadosService
                     'valor' => $item['valor'] ?? 0,
                     'unidade' => $item['unidade'] ?? 'UN',
                 ];
-
                 if (!empty($item['produto']['id'])) {
                     $itemData['produto'] = ['id' => $item['produto']['id']];
                 }
-
                 $itens[] = $itemData;
             }
 
@@ -223,47 +229,40 @@ class ShopeeCorrigirDadosService
                 }
             }
 
-            Log::info('ShopeeCorrigir DEBUG: origem numeroPedidoLoja', [
+            Log::info('ShopeeCorrigir DEBUG: update pedido com observacoesInternas', [
                 'pedidoId' => $pedidoId,
-                'staging_numero_loja_bruto' => $staging->numero_loja ?? null,
-                'staging_numero_loja_trim' => isset($staging->numero_loja) ? trim((string) $staging->numero_loja) : null,
-                'pedidoData_numeroPedidoLoja' => $pedidoData['numeroPedidoLoja'] ?? null,
+                'bling_id' => $staging->bling_id,
+                'observacoesInternas_atual' => $obsAtual,
+                'observacoesInternas_nova' => $obs,
                 'numeroPedidoLoja_final' => $numeroPedidoLoja,
-                'payload_minimo' => [
-                    'loja' => $payload['loja'] ?? null,
-                    'numeroPedidoLoja' => $payload['numeroPedidoLoja'] ?? null,
-                ],
+                'loja_no_payload' => $payload['loja'] ?? null,
             ]);
 
             $res = $client->put("/pedidos/vendas/{$staging->bling_id}", [], $payload);
 
             if (!$res['success']) {
-                Log::error("ShopeeCorrigir: Erro ao atualizar pedido", [
+                Log::error('ShopeeCorrigir: Erro ao atualizar pedido', [
                     'pedido' => $pedidoId,
                     'response' => $res['body'] ?? []
                 ]);
             }
         } catch (\Exception $e) {
-            Log::error("ShopeeCorrigir: Erro crítico em atualizarDadosPedido", ['error' => $e->getMessage()]);
+            Log::error('ShopeeCorrigir: Erro crítico em atualizarDadosPedido', [
+                'pedido' => $pedidoId,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 
     private static function parseDecimalValue($value): float
     {
-        if (is_numeric($value)) {
-            return (float) $value;
-        }
-
+        if (is_numeric($value)) return (float) $value;
         $str = trim((string) $value);
-        if ($str === '') {
-            return 0;
-        }
-
+        if ($str === '') return 0;
         if (str_contains($str, ',')) {
             $str = str_replace('.', '', $str);
             $str = str_replace(',', '.', $str);
         }
-
         return is_numeric($str) ? (float) $str : 0;
     }
 
@@ -272,16 +271,13 @@ class ShopeeCorrigirDadosService
         if (strlen($cpf) === 11) {
             return substr($cpf, 0, 3) . '.' . substr($cpf, 3, 3) . '.' . substr($cpf, 6, 3) . '-' . substr($cpf, 9, 2);
         }
-
         return $cpf;
     }
 
     private static function ufParaSigla(string $uf): string
     {
         $uf = mb_strtolower(trim($uf));
-        if (strlen($uf) === 2) {
-            return strtoupper($uf);
-        }
+        if (strlen($uf) === 2) return strtoupper($uf);
 
         $mapa = [
             'acre' => 'AC', 'alagoas' => 'AL', 'amapá' => 'AP', 'amapa' => 'AP',
