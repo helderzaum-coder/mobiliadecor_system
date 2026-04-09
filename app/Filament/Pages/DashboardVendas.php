@@ -257,6 +257,7 @@ class DashboardVendas extends Page implements HasForms
     public function getGraficoVendasDiariasProperty(): array
     {
         $rows = $this->buildQuery()
+            ->reorder()
             ->selectRaw('DATE(data_venda) as dia, SUM(valor_total_venda) as faturamento, SUM(margem_venda_total) as lucro, COUNT(*) as qtd')
             ->groupByRaw('DATE(data_venda)')
             ->orderBy('dia')
@@ -272,6 +273,7 @@ class DashboardVendas extends Page implements HasForms
     public function getVendasPorCanalProperty(): array
     {
         return $this->buildQuery()
+            ->reorder()
             ->selectRaw('COALESCE(canal_nome, "Outros") as canal, COUNT(*) as qtd, SUM(valor_total_venda) as total, SUM(margem_venda_total) as lucro')
             ->groupBy('canal_nome')
             ->orderByDesc('total')
