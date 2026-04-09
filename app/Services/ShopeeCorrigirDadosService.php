@@ -202,6 +202,7 @@ class ShopeeCorrigirDadosService
             foreach ($pedidoData['itens'] ?? [] as $item) {
                 $itens[] = [
                     'id' => $item['id'] ?? 0,
+                    'codigo' => $item['codigo'] ?? '',
                     'quantidade' => $item['quantidade'] ?? 1,
                     'valor' => $item['valor'] ?? 0,
                     'descricao' => $item['descricao'] ?? '',
