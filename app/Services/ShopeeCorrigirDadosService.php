@@ -190,7 +190,27 @@ class ShopeeCorrigirDadosService
                 . "Faturar (meia nota): R$ " . number_format($faturar, 2, ',', '.') . "\n"
                 . "Frete recebido: R$ " . number_format($frete, 2, ',', '.');
 
+            // Buscar pedido completo para pegar os itens (Bling exige itens no PUT)
+            $pedidoBling = $client->getPedido((int) $staging->bling_id);
+            if (!$pedidoBling['success']) return;
+
+            $pedidoData = $pedidoBling['body']['data'] ?? [];
+            $itens = [];
+            foreach ($pedidoData['itens'] ?? [] as $item) {
+                $itens[] = [
+                    'id' => $item['id'] ?? null,
+                    'codigo' => $item['codigo'] ?? '',
+                    'descricao' => $item['descricao'] ?? '',
+                    'quantidade' => $item['quantidade'] ?? 1,
+                    'valor' => $item['valor'] ?? 0,
+                    'unidade' => $item['unidade'] ?? 'UN',
+                ];
+            }
+
+            if (empty($itens)) return;
+
             $res = $client->put("/pedidos/vendas/{$staging->bling_id}", [], [
+                'itens' => $itens,
                 'observacoes' => $obs,
             ]);
 
