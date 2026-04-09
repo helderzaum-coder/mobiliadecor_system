@@ -29,6 +29,21 @@ class MercadoLivreDebugPedido extends Command
                 $shipping = $client->get("/shipments/{$shippingId}");
                 $this->line(json_encode($shipping, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
             }
+
+            // Billing info - dados financeiros reais (tarifa, estorno, total)
+            $this->newLine();
+            $this->info("=== BILLING /orders/{$orderId}/billing_info ===");
+            $billing = $client->get("/orders/{$orderId}/billing_info");
+            $this->line(json_encode($billing, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+            // Payment details - detalhes do pagamento
+            $paymentId = $order['body']['payments'][0]['id'] ?? null;
+            if ($paymentId) {
+                $this->newLine();
+                $this->info("=== PAYMENT /collections/{$paymentId} ===");
+                $payment = $client->get("/collections/{$paymentId}");
+                $this->line(json_encode($payment, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            }
         }
 
         return 0;
