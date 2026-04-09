@@ -213,30 +213,31 @@ class ShopeeCorrigirDadosService
                 $numeroPedidoLoja = trim((string) ($pedidoData['numeroPedidoLoja'] ?? $pedidoId));
             }
 
-            // IMPORTANTE: NÃO enviar o campo `loja` no PUT.
-            // A API Bling v3, ao receber `loja: null`, apaga o numeroPedidoLoja.
-            // O campo `numeroPedidoLoja` no top-level não é aceito pela API no PUT.
-            // A única forma confiável é montar o objeto `loja` com id + numero corretos.
+            // Diagnóstico do campo `loja` retornado pela API Bling:
+            // - Se loja.id > 0: pedido vinculado a uma loja Bling → envia loja com id + numero
+            // - Se loja.id = 0 ou null: pedido sem vínculo de loja → omite campo `loja`
+            // Em AMBOS os casos, envia `numeroPedidoLoja` no top-level (campo aceito no PUT)
+            // NUNCA enviar `loja: null` pois o Bling apaga o numeroPedidoLoja.
             $lojaOriginal = $pedidoData['loja'] ?? null;
-            $lojaId = is_array($lojaOriginal) ? ($lojaOriginal['id'] ?? null) : null;
+            $lojaId = is_array($lojaOriginal) ? (int) ($lojaOriginal['id'] ?? 0) : 0;
 
             $payload = [
                 'contato' => ['id' => $pedidoData['contato']['id'] ?? null],
                 'data' => $pedidoData['data'] ?? now()->format('Y-m-d'),
                 'numero' => $pedidoData['numero'] ?? null,
+                'numeroPedidoLoja' => $numeroPedidoLoja,  // sempre no top-level
                 'itens' => $itens,
                 'observacoesInternas' => $obs,
             ];
 
-            // Só inclui `loja` se tiver o ID — e sempre força o numero correto
-            if ($lojaId) {
+            // Inclui `loja` apenas quando a API retornou um id real (> 0)
+            if ($lojaId > 0) {
                 $payload['loja'] = [
                     'id' => $lojaId,
                     'numero' => $numeroPedidoLoja,
                 ];
             }
-            // Se não tiver loja vinculada, omite completamente o campo
-            // (o Bling preserva o numeroPedidoLoja existente quando o campo não é enviado)
+            // loja.id = 0 significa sem vínculo → omite para não apagar o numeroPedidoLoja
 
             foreach (['transporte', 'parcelas', 'desconto', 'outrasDespesas', 'dataSaida', 'dataPrevista', 'observacoes'] as $campo) {
                 if (isset($pedidoData[$campo])) {
