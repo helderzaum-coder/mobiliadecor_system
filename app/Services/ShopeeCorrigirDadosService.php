@@ -177,7 +177,6 @@ class ShopeeCorrigirDadosService
     private static function atualizarObservacoesPedido(BlingClient $client, PedidoBlingStaging $staging, string $pedidoId): void
     {
         try {
-            // Buscar dados financeiros da planilha Shopee
             $planilha = \App\Models\PlanilhaShopeeDado::where('numero_pedido', $pedidoId)->first();
             $originais = $planilha?->dados_originais ?? [];
 
@@ -190,29 +189,34 @@ class ShopeeCorrigirDadosService
                 . "Faturar (meia nota): R$ " . number_format($faturar, 2, ',', '.') . "\n"
                 . "Frete recebido: R$ " . number_format($frete, 2, ',', '.');
 
-            // Buscar pedido completo para pegar os itens (Bling exige itens no PUT)
+            // Buscar pedido completo no Bling (PATCH exige campos obrigatórios)
             $pedidoBling = $client->getPedido((int) $staging->bling_id);
             if (!$pedidoBling['success']) return;
 
             $pedidoData = $pedidoBling['body']['data'] ?? [];
+            $contatoId = $pedidoData['contato']['id'] ?? null;
+            if (!$contatoId) return;
+
+            // Montar itens no formato que o Bling aceita
             $itens = [];
             foreach ($pedidoData['itens'] ?? [] as $item) {
                 $itens[] = [
-                    'id' => $item['id'] ?? null,
-                    'codigo' => $item['codigo'] ?? '',
-                    'descricao' => $item['descricao'] ?? '',
+                    'id' => $item['id'] ?? 0,
                     'quantidade' => $item['quantidade'] ?? 1,
                     'valor' => $item['valor'] ?? 0,
-                    'unidade' => $item['unidade'] ?? 'UN',
+                    'descricao' => $item['descricao'] ?? '',
                 ];
             }
-
             if (empty($itens)) return;
 
-            $res = $client->put("/pedidos/vendas/{$staging->bling_id}", [], [
+            $payload = [
+                'contato' => ['id' => $contatoId],
+                'data' => $pedidoData['data'] ?? now()->format('Y-m-d'),
                 'itens' => $itens,
                 'observacoes' => $obs,
-            ]);
+            ];
+
+            $res = $client->put("/pedidos/vendas/{$staging->bling_id}", [], $payload);
 
             if (!$res['success']) {
                 Log::warning("ShopeeCorrigir: erro ao atualizar observações do pedido", [
