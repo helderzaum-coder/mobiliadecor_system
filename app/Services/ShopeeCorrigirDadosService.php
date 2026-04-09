@@ -220,7 +220,7 @@ class ShopeeCorrigirDadosService
                 'contato' => ['id' => $contatoId],
                 'data' => $pedidoData['data'] ?? now()->format('Y-m-d'),
                 'itens' => $itens,
-                'observacoes' => $obs,
+                'observacoesInternas' => $obs,
                 // Preservar campos existentes
                 'loja' => $pedidoData['loja'] ?? null,
                 'numeroPedidoLoja' => $pedidoData['numeroPedidoLoja'] ?? $staging->numero_loja ?? $pedidoId,
