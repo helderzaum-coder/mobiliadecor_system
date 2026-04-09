@@ -177,14 +177,17 @@ class DashboardVendas extends Page implements HasForms
         if ($this->status_filtro === 'falta_nfe') {
             $query->where(fn ($q) => $q->whereNull('nfe_chave_acesso')->orWhere('nfe_chave_acesso', ''));
         } elseif ($this->status_filtro === 'falta_frete') {
-            $query->where('frete_pago', false)
-                ->where(fn ($q) => $q->where('valor_frete_transportadora', '>', 0)->orWhere('valor_frete_cliente', '>', 0));
+            $query->where('frete_pago', false);
         } elseif ($this->status_filtro === 'falta_planilha') {
             $query->where('planilha_processada', false)
                 ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%'));
         } elseif ($this->status_filtro === 'completo') {
             $query->where(fn ($q) => $q->whereNotNull('nfe_chave_acesso')->where('nfe_chave_acesso', '!=', ''))
-                ->where('frete_pago', true);
+                ->where('frete_pago', true)
+                ->where(fn ($q) => $q
+                    ->where('planilha_processada', true)
+                    ->orWhereDoesntHave('canal', fn ($q2) => $q2->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%'))
+                );
         }
 
         return $query;
