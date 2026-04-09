@@ -84,8 +84,8 @@ class ShopeeCorrigirDadosService
                 self::atualizarContato($client, $pedidoId, $contatoId, $row);
 
                 // ── PASSO 3: PUT /pedidos/vendas/{bling_id} — atualiza observações ──
-                // Nota: a API Bling v3 não suporta PATCH neste endpoint (retorna 404).
-                // Usamos PUT, mas com cuidado para não apagar o numeroPedidoLoja.
+                // A Bling v3 não documenta PATCH para este endpoint. Usamos PUT com
+                // o payload completo do GET, sobrescrevendo apenas observacoesInternas.
                 self::atualizarObservacoesPedido($client, $staging, $pedidoId, $row, $pedidoData);
 
                 // ── PASSO 4: Atualiza banco local ────────────────────────────────────
@@ -195,13 +195,15 @@ class ShopeeCorrigirDadosService
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // PASSO 3 — PATCH /pedidos/vendas/{bling_id}
+    // PASSO 3 — PUT /pedidos/vendas/{bling_id}
     //
-    // Com a URL correta (api.bling.com.br), o PATCH é suportado.
-    // Envia SOMENTE o campo de observações — o Bling preserva tudo o mais,
-    // incluindo numeroPedidoLoja, itens, transporte, parcelas etc.
+    // A API Bling v3 NÃO documenta PATCH para este endpoint.
+    // O único PATCH disponível é para situação:
+    //   PATCH /pedidos/vendas/{id}/situacoes/{idSituacao}
     //
-    // Campo: "observacoesinternas" (tudo minúsculo — conforme doc Bling v3)
+    // Estratégia: reutiliza o payload completo obtido no GET (Passo 1) e
+    // sobrescreve apenas o campo "observacoesInternas". Assim o PUT não
+    // apaga numeroPedidoLoja, itens, transporte, parcelas etc.
     // ════════════════════════════════════════════════════════════════════════
     private static function atualizarObservacoesPedido(
         BlingClient $client,
@@ -228,28 +230,44 @@ class ShopeeCorrigirDadosService
             $obsAtual = trim((string) ($pedidoData['observacoesInternas'] ?? ''));
 
             if ($obsAtual === trim($obs)) {
-                Log::info('ShopeeCorrigir: observacoesinternas já está igual, pulando PATCH', [
+                Log::info('ShopeeCorrigir: observacoesInternas já está igual, pulando PUT', [
                     'pedidoId' => $pedidoId,
                     'bling_id' => $staging->bling_id,
                 ]);
                 return;
             }
 
-            // PATCH — apenas o campo necessário.
-            // Outros campos (numeroPedidoLoja, itens, loja etc.) não são tocados.
-            $res = $client->patch("/pedidos/vendas/{$staging->bling_id}", [], [
-                'observacoesinternas' => $obs,   // minúsculo conforme API Bling v3
+            // ── Monta payload PUT completo a partir dos dados do GET ──────────
+            // Sobrescreve apenas observacoesInternas; tudo o mais é mantido.
+            $payload = $pedidoData;
+            $payload['observacoesInternas'] = $obs;
+
+            // O PUT da Bling v3 aceita "contato" como objeto com apenas "id"
+            if (isset($payload['contato']['id'])) {
+                $payload['contato'] = ['id' => $payload['contato']['id']];
+            }
+
+            // Campos somente-leitura que a API rejeita se enviados no PUT
+            foreach (['id', 'numero', 'situacao', 'dataOperacao', 'dataCriacao'] as $campo) {
+                unset($payload[$campo]);
+            }
+
+            Log::info('ShopeeCorrigir: enviando PUT observacoesInternas', [
+                'pedido'   => $pedidoId,
+                'bling_id' => $staging->bling_id,
             ]);
 
+            $res = $client->put("/pedidos/vendas/{$staging->bling_id}", [], $payload);
+
             if (!$res['success']) {
-                Log::error('ShopeeCorrigir: erro no PATCH de observacoesinternas', [
+                Log::error('ShopeeCorrigir: erro no PUT de observacoesInternas', [
                     'pedido'    => $pedidoId,
                     'bling_id'  => $staging->bling_id,
                     'http_code' => $res['http_code'] ?? null,
                     'response'  => $res['body'] ?? [],
                 ]);
             } else {
-                Log::info('ShopeeCorrigir: PATCH observacoesinternas aplicado com sucesso', [
+                Log::info('ShopeeCorrigir: PUT observacoesInternas aplicado com sucesso', [
                     'pedido'   => $pedidoId,
                     'bling_id' => $staging->bling_id,
                 ]);
