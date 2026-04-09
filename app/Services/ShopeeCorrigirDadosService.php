@@ -197,12 +197,15 @@ class ShopeeCorrigirDadosService
 
             $obs = "=== DADOS SHOPEE ===\n"
                 . "ID Pedido: {$pedidoId}\n"
-                . "Nº Loja Virtual: {$pedidoId}\n"
                 . "Subtotal: R$ " . number_format($subtotal, 2, ',', '.') . "\n"
                 . "Faturar (meia nota): R$ " . number_format($faturar, 2, ',', '.') . "\n"
                 . "Frete recebido: R$ " . number_format($frete, 2, ',', '.');
 
-            // Buscar pedido completo no Bling (PATCH exige campos obrigatórios)
+            // Salvar localmente
+            $staging->update(['observacoes' => $obs]);
+            \App\Models\Venda::where('bling_id', $staging->bling_id)->update(['observacoes' => $obs]);
+
+            // Enviar para o Bling via PUT (com todos os campos obrigatórios)
             $pedidoBling = $client->getPedido((int) $staging->bling_id);
             if (!$pedidoBling['success']) return;
 
@@ -210,7 +213,6 @@ class ShopeeCorrigirDadosService
             $contatoId = $pedidoData['contato']['id'] ?? null;
             if (!$contatoId) return;
 
-            // Montar itens no formato que o Bling aceita
             $itens = [];
             foreach ($pedidoData['itens'] ?? [] as $item) {
                 $itemData = [
@@ -220,7 +222,6 @@ class ShopeeCorrigirDadosService
                     'valor' => $item['valor'] ?? 0,
                     'unidade' => $item['unidade'] ?? 'UN',
                 ];
-                // Vincular ao produto pelo ID (não pelo código, que causa duplicata)
                 if (!empty($item['produto']['id'])) {
                     $itemData['produto'] = ['id' => $item['produto']['id']];
                 }
@@ -231,32 +232,31 @@ class ShopeeCorrigirDadosService
             $payload = [
                 'contato' => ['id' => $contatoId],
                 'data' => $pedidoData['data'] ?? now()->format('Y-m-d'),
+                'numero' => $pedidoData['numero'] ?? null,
+                'numeroPedidoLoja' => $staging->numero_loja ?? $pedidoId,
                 'itens' => $itens,
                 'observacoesInternas' => $obs,
-                // Preservar campos existentes (não enviar numeroPedidoLoja para não apagar)
-                'loja' => $pedidoData['loja'] ?? null,
-                'desconto' => $pedidoData['desconto'] ?? null,
-                'outrasDespesas' => $pedidoData['outrasDespesas'] ?? null,
-                'dataSaida' => $pedidoData['dataSaida'] ?? null,
-                'dataPrevista' => $pedidoData['dataPrevista'] ?? null,
-                'transporte' => $pedidoData['transporte'] ?? null,
-                'parcelas' => $pedidoData['parcelas'] ?? null,
             ];
 
-            // Remover campos null para não sobrescrever
-            $payload = array_filter($payload, fn ($v) => $v !== null);
+            // Preservar campos existentes
+            foreach (['loja', 'transporte', 'parcelas', 'desconto', 'outrasDespesas', 'dataSaida', 'dataPrevista', 'observacoes'] as $campo) {
+                if (isset($pedidoData[$campo]) && $pedidoData[$campo] !== null) {
+                    $payload[$campo] = $pedidoData[$campo];
+                }
+            }
 
             $res = $client->put("/pedidos/vendas/{$staging->bling_id}", [], $payload);
 
             if (!$res['success']) {
-                Log::warning("ShopeeCorrigir: erro ao atualizar observações do pedido", [
+                Log::warning("ShopeeCorrigir: erro ao atualizar observações do pedido no Bling", [
                     'pedido' => $pedidoId,
                     'bling_id' => $staging->bling_id,
                     'response' => $res,
                 ]);
             }
+
         } catch (\Exception $e) {
-            Log::warning("ShopeeCorrigir: erro ao atualizar observações", [
+            Log::warning("ShopeeCorrigir: erro ao salvar observações", [
                 'pedido' => $pedidoId,
                 'error' => $e->getMessage(),
             ]);
