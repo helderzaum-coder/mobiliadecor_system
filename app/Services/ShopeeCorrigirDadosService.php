@@ -62,7 +62,7 @@ class ShopeeCorrigirDadosService
             try {
                 $client = new BlingClient($staging->bling_account);
 
-                // ── PASSO 1: Busca o pedido para obter o contatoId ──────────────────
+                // ── PASSO 1: Busca o pedido completo ────────────────────────────────
                 $pedidoBling = $client->getPedido((int) $staging->bling_id);
 
                 if (!$pedidoBling['success']) {
@@ -80,14 +80,15 @@ class ShopeeCorrigirDadosService
                     continue;
                 }
 
-                // ── PASSO 2: Atualiza dados do CLIENTE via PUT /contatos/{id} ───────
+                // ── PASSO 2: PUT /contatos/{id} — atualiza dados do cliente ─────────
                 self::atualizarContato($client, $pedidoId, $contatoId, $row);
 
-                // ── PASSO 3: Atualiza APENAS observacoesInternas via PATCH ──────────
-                // Usa somente o bling_id como referência — não toca em nenhum outro campo
-                self::patchObservacoesInternas($client, $staging, $pedidoId, $row, $pedidoData);
+                // ── PASSO 3: PUT /pedidos/vendas/{bling_id} — atualiza observações ──
+                // Nota: a API Bling v3 não suporta PATCH neste endpoint (retorna 404).
+                // Usamos PUT, mas com cuidado para não apagar o numeroPedidoLoja.
+                self::atualizarObservacoesPedido($client, $staging, $pedidoId, $row, $pedidoData);
 
-                // ── PASSO 4: Atualiza banco de dados local ───────────────────────────
+                // ── PASSO 4: Atualiza banco local ────────────────────────────────────
                 $cpf = preg_replace('/\D/', '', trim($row['AZ'] ?? ''));
 
                 $staging->update([
@@ -114,6 +115,7 @@ class ShopeeCorrigirDadosService
     // ════════════════════════════════════════════════════════════════════════
     // PASSO 2 — PUT /contatos/{id}
     // Atualiza nome, CPF, telefone e endereço do cliente no cadastro Bling.
+    // É independente do pedido — não afeta numeroPedidoLoja.
     // ════════════════════════════════════════════════════════════════════════
     private static function atualizarContato(BlingClient $client, string $pedidoId, int $contatoId, array $row): void
     {
@@ -194,10 +196,14 @@ class ShopeeCorrigirDadosService
 
     // ════════════════════════════════════════════════════════════════════════
     // PASSO 3 — PATCH /pedidos/vendas/{bling_id}
-    // Atualiza SOMENTE observacoesInternas — não toca em nenhum outro campo.
-    // Não há risco de apagar numeroPedidoLoja, itens, transporte, etc.
+    //
+    // Com a URL correta (api.bling.com.br), o PATCH é suportado.
+    // Envia SOMENTE o campo de observações — o Bling preserva tudo o mais,
+    // incluindo numeroPedidoLoja, itens, transporte, parcelas etc.
+    //
+    // Campo: "observacoesinternas" (tudo minúsculo — conforme doc Bling v3)
     // ════════════════════════════════════════════════════════════════════════
-    private static function patchObservacoesInternas(
+    private static function atualizarObservacoesPedido(
         BlingClient $client,
         PedidoBlingStaging $staging,
         string $pedidoId,
@@ -205,13 +211,13 @@ class ShopeeCorrigirDadosService
         array $pedidoData
     ): void {
         try {
-            $precoU      = self::parseDecimalValue($row['U'] ?? 0);
-            $subsidioY   = abs(self::parseDecimalValue($row['Y'] ?? 0));
-            $subtotal    = $precoU - $subsidioY;
-            $taxaEnvio   = self::parseDecimalValue($row['AM'] ?? 0);
+            $precoU        = self::parseDecimalValue($row['U'] ?? 0);
+            $subsidioY     = abs(self::parseDecimalValue($row['Y'] ?? 0));
+            $subtotal      = $precoU - $subsidioY;
+            $taxaEnvio     = self::parseDecimalValue($row['AM'] ?? 0);
             $descontoFrete = abs(self::parseDecimalValue($row['AN'] ?? 0));
-            $frete       = $taxaEnvio + $descontoFrete;
-            $faturar     = round($subtotal / 2, 2);
+            $frete         = $taxaEnvio + $descontoFrete;
+            $faturar       = round($subtotal / 2, 2);
 
             $obs = "=== DADOS SHOPEE ===\n"
                 . "ID Pedido: {$pedidoId}\n"
@@ -222,34 +228,35 @@ class ShopeeCorrigirDadosService
             $obsAtual = trim((string) ($pedidoData['observacoesInternas'] ?? ''));
 
             if ($obsAtual === trim($obs)) {
-                Log::info('ShopeeCorrigir: observacoesInternas já está igual, pulando PATCH', [
+                Log::info('ShopeeCorrigir: observacoesinternas já está igual, pulando PATCH', [
                     'pedidoId' => $pedidoId,
                     'bling_id' => $staging->bling_id,
                 ]);
                 return;
             }
 
-            // PATCH com apenas o campo necessário — o Bling preserva tudo o mais
+            // PATCH — apenas o campo necessário.
+            // Outros campos (numeroPedidoLoja, itens, loja etc.) não são tocados.
             $res = $client->patch("/pedidos/vendas/{$staging->bling_id}", [], [
-                'observacoesInternas' => $obs,
+                'observacoesinternas' => $obs,   // minúsculo conforme API Bling v3
             ]);
 
             if (!$res['success']) {
-                Log::error('ShopeeCorrigir: erro no PATCH de observacoesInternas', [
+                Log::error('ShopeeCorrigir: erro no PATCH de observacoesinternas', [
                     'pedido'    => $pedidoId,
                     'bling_id'  => $staging->bling_id,
                     'http_code' => $res['http_code'] ?? null,
                     'response'  => $res['body'] ?? [],
                 ]);
             } else {
-                Log::info('ShopeeCorrigir: PATCH observacoesInternas aplicado com sucesso', [
+                Log::info('ShopeeCorrigir: PATCH observacoesinternas aplicado com sucesso', [
                     'pedido'   => $pedidoId,
                     'bling_id' => $staging->bling_id,
                 ]);
             }
 
         } catch (\Exception $e) {
-            Log::error('ShopeeCorrigir: erro crítico no patchObservacoesInternas', [
+            Log::error('ShopeeCorrigir: erro crítico em atualizarObservacoesPedido', [
                 'pedido' => $pedidoId,
                 'error'  => $e->getMessage(),
             ]);
