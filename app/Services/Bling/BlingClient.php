@@ -56,11 +56,6 @@ class BlingClient
         return $this->request('PATCH', $path, $query, $body);
     }
 
-    public function patch(string $path, array $query = [], array $body = []): array
-    {
-        return $this->request('PATCH', $path, $query, $body);
-    }
-
     private function request(string $method, string $path, array $query = [], ?array $body = null, bool $isRetry = false): array
     {
         // Rate limit centralizado: mínimo 340ms entre requisições (≈3 req/s)
