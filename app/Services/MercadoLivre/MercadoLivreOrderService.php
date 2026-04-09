@@ -15,7 +15,7 @@ class MercadoLivreOrderService
 
     /**
      * Busca dados complementares de um pedido ML pelo ID do pedido (pack_id ou order_id)
-     * Retorna: tipo_anuncio, tem_rebate, tipo_frete (ME1/ME2), valor_rebate
+     * Usa /orders, /shipments e /collections para obter todos os dados financeiros.
      */
     public function buscarDadosPedido(string $orderId): ?array
     {
@@ -35,17 +35,18 @@ class MercadoLivreOrderService
             'sale_fee' => 0,
             'frete_ml_custo' => 0,
             'frete_ml_receita' => 0,
+            'net_received_amount' => 0,
         ];
 
-        // Tipo de anúncio (clássico/premium) e sale_fee - vem do item
+        $listingTypeId = null;
+        $unitPrice = 0;
+
         if (!empty($order['order_items'])) {
             $item = $order['order_items'][0];
             $listingTypeId = $item['listing_type_id'] ?? null;
+            $unitPrice = (float) ($item['unit_price'] ?? 0);
             $resultado['tipo_anuncio'] = $this->traduzirTipoAnuncio($listingTypeId);
-
-            // sale_fee = comissão real cobrada pelo ML (já com rebate descontado se houver)
-            $saleFee = (float) ($item['sale_fee'] ?? 0);
-            $resultado['sale_fee'] = $saleFee;
+            $resultado['sale_fee'] = (float) ($item['sale_fee'] ?? 0);
         }
 
         // Tipo de frete e custos - vem do shipping
@@ -56,6 +57,36 @@ class MercadoLivreOrderService
             $resultado['tipo_frete'] = $dadosFrete['tipo_frete'];
             $resultado['frete_ml_custo'] = $dadosFrete['frete_ml_custo'];
             $resultado['frete_ml_receita'] = $dadosFrete['frete_ml_receita'];
+        }
+
+        // Dados financeiros reais via /collections
+        $paymentId = $order['payments'][0]['id'] ?? null;
+        if ($paymentId) {
+            $financeiro = $this->buscarDadosFinanceiros($paymentId);
+            if ($financeiro) {
+                $resultado['net_received_amount'] = $financeiro['net_received_amount'];
+
+                // Comissão líquida = o que o ML realmente descontou
+                $comissaoLiquida = $financeiro['transaction_amount'] + $financeiro['shipping_cost'] - $financeiro['net_received_amount'];
+                $resultado['sale_fee'] = round($comissaoLiquida, 2);
+
+                // Tarifa bruta = preço × percentual do tipo de anúncio
+                $tarifaBruta = $unitPrice * $this->percentualPorTipoAnuncio($listingTypeId) / 100;
+
+                // Rebate = diferença entre tarifa bruta e comissão líquida
+                $rebate = round($tarifaBruta - $comissaoLiquida, 2);
+                if ($rebate > 0.01) {
+                    $resultado['tem_rebate'] = true;
+                    $resultado['valor_rebate'] = $rebate;
+                }
+
+                Log::info("ML financeiro pedido {$orderId}", [
+                    'net_received' => $financeiro['net_received_amount'],
+                    'comissao_liquida' => $comissaoLiquida,
+                    'tarifa_bruta' => round($tarifaBruta, 2),
+                    'rebate' => $rebate,
+                ]);
+            }
         }
 
         return $resultado;
@@ -122,6 +153,29 @@ class MercadoLivreOrderService
             'tipo_frete' => $tipoFrete,
             'frete_ml_custo' => $listCost,    // o que o ML cobra do vendedor
             'frete_ml_receita' => $cost,       // o que o comprador pagou
+        ];
+    }
+
+    /**
+     * Busca dados financeiros reais via /collections/{payment_id}
+     * Retorna net_received_amount (valor real repassado ao vendedor)
+     */
+    private function buscarDadosFinanceiros(int $paymentId): ?array
+    {
+        $response = $this->client->get("/collections/{$paymentId}");
+
+        if (!$response['success']) {
+            Log::warning("ML: Erro ao buscar collection {$paymentId}", $response);
+            return null;
+        }
+
+        $data = $response['body'];
+
+        return [
+            'net_received_amount' => (float) ($data['net_received_amount'] ?? 0),
+            'transaction_amount' => (float) ($data['transaction_amount'] ?? 0),
+            'shipping_cost' => (float) ($data['shipping_cost'] ?? 0),
+            'total_paid_amount' => (float) ($data['total_paid_amount'] ?? 0),
         ];
     }
 

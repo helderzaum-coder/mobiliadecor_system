@@ -50,15 +50,30 @@ class VendaRecalculoService
     }
 
     /**
-     * Aplica dados da planilha ML já importada.
+     * Aplica dados financeiros do ML via API (ou planilha como fallback).
      */
     public static function aplicarPlanilhaML(Venda $venda): array
     {
         $numeroPedido = $venda->numero_pedido_canal;
+
+        // Tentar buscar via API do ML
+        try {
+            $mlAccount = $venda->bling_account ?? 'primary';
+            $mlService = new \App\Services\MercadoLivre\MercadoLivreOrderService($mlAccount);
+            $dados = $mlService->buscarDadosPedido((string) $numeroPedido);
+
+            if ($dados && $dados['net_received_amount'] > 0) {
+                return self::aplicarDadosMLNaVenda($venda, $dados);
+            }
+        } catch (\Exception $e) {
+            Log::warning("ML API fallback para planilha, pedido {$numeroPedido}: " . $e->getMessage());
+        }
+
+        // Fallback: planilha
         $dado = PlanilhaMlDado::where('numero_venda', $numeroPedido)->first();
 
         if (!$dado) {
-            return ['success' => false, 'msg' => "Planilha ML não encontrada para pedido {$numeroPedido}."];
+            return ['success' => false, 'msg' => "Dados ML não encontrados para pedido {$numeroPedido} (API e planilha)."];
         }
 
         $saleFee = abs((float) $dado->tarifa_venda);
@@ -76,7 +91,6 @@ class VendaRecalculoService
             'planilha_processada' => true,
         ]);
 
-        // Recalcular comissão ML
         $tipoFrete = $venda->ml_tipo_frete;
         if ($tipoFrete === 'ME2' || $tipoFrete === 'FULL') {
             $taxaFreteML = $freteCusto > 0 ? ($freteCusto - $freteReceita) : 0;
@@ -96,7 +110,52 @@ class VendaRecalculoService
 
         self::recalcularMargens($venda);
 
-        return ['success' => true, 'msg' => "Planilha ML aplicada. Comissão: R$ " . number_format($venda->comissao, 2, ',', '.')];
+        return ['success' => true, 'msg' => "Planilha ML aplicada (fallback). Comissão: R$ " . number_format($venda->comissao, 2, ',', '.')];
+    }
+
+    /**
+     * Aplica dados financeiros obtidos da API do ML na venda.
+     */
+    private static function aplicarDadosMLNaVenda(Venda $venda, array $dados): array
+    {
+        $saleFee = (float) $dados['sale_fee'];
+        $freteCusto = (float) $dados['frete_ml_custo'];
+        $freteReceita = (float) $dados['frete_ml_receita'];
+        $rebate = (float) $dados['valor_rebate'];
+        $temRebate = (bool) $dados['tem_rebate'];
+        $tipoFrete = $dados['tipo_frete'] ?? $venda->ml_tipo_frete;
+
+        $venda->update([
+            'ml_sale_fee' => $saleFee,
+            'ml_frete_custo' => $freteCusto,
+            'ml_frete_receita' => $freteReceita,
+            'ml_valor_rebate' => $rebate,
+            'ml_tem_rebate' => $temRebate,
+            'ml_tipo_anuncio' => $dados['tipo_anuncio'] ?? $venda->ml_tipo_anuncio,
+            'ml_tipo_frete' => $tipoFrete,
+            'ml_order_id' => $dados['order_id'] ?? $venda->ml_order_id,
+            'ml_shipping_id' => $dados['shipping_id'] ?? $venda->ml_shipping_id,
+            'planilha_processada' => true,
+        ]);
+
+        if ($tipoFrete === 'ME2' || $tipoFrete === 'FULL') {
+            $taxaFreteML = $freteCusto > 0 ? ($freteCusto - $freteReceita) : 0;
+            $venda->update([
+                'comissao' => $saleFee + $taxaFreteML,
+                'valor_frete_cliente' => 0,
+                'valor_frete_transportadora' => 0,
+            ]);
+        } else {
+            $venda->update([
+                'comissao' => $saleFee,
+                'valor_frete_cliente' => $freteReceita,
+                'valor_frete_transportadora' => $freteCusto,
+            ]);
+        }
+
+        self::recalcularMargens($venda);
+
+        return ['success' => true, 'msg' => "Dados ML aplicados via API. Comissão: R$ " . number_format($venda->comissao, 2, ',', '.') . ($temRebate ? " | Rebate: R$ " . number_format($rebate, 2, ',', '.') : '')];
     }
 
     /**

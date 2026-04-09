@@ -298,7 +298,11 @@ class BlingImportService
             || str_contains(strtolower($pedido['intermediador']['descricao'] ?? ''), 'mercado');
 
         if ($isMl) {
-            MercadoLivrePlanilhaService::reprocessarPedido($staging);
+            // Se a API do ML já trouxe dados financeiros (net_received_amount > 0),
+            // não precisa mais da planilha
+            if (empty($mlDados['ml_sale_fee']) || $mlDados['ml_sale_fee'] <= 0) {
+                MercadoLivrePlanilhaService::reprocessarPedido($staging);
+            }
         } elseif (str_contains(strtolower($canal), 'shopee')) {
             ShopeeService::reprocessarPedido($staging);
         }
