@@ -3,36 +3,32 @@
         {{ $this->form }}
     </form>
 
-    {{-- Busca por número do pedido --}}
-    <div class="mt-4">
-        <input type="text" wire:model.debounce.400ms="busca_pedido" placeholder="🔍 Buscar por número do pedido..."
-            class="w-full md:w-1/3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-800 dark:text-white px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
-    </div>
-
-    {{-- Resumo --}}
+    {{-- Resumo horizontal compacto --}}
     @php $totais = $this->totais; @endphp
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4">
-        <div class="rounded-xl bg-white dark:bg-gray-800 p-4 shadow text-center">
-            <div class="text-2xl font-bold text-gray-800 dark:text-white">{{ $totais['qtd'] }}</div>
-            <div class="text-xs text-gray-500">Vendas</div>
+    <div class="flex flex-wrap items-center gap-4 mt-4 rounded-xl bg-white dark:bg-gray-800 shadow px-5 py-3">
+        <div class="flex items-center gap-1.5">
+            <span class="text-lg font-bold text-gray-800 dark:text-white">{{ $totais['qtd'] }}</span>
+            <span class="text-xs text-gray-500">vendas</span>
         </div>
-        <div class="rounded-xl bg-white dark:bg-gray-800 p-4 shadow text-center">
-            <div class="text-2xl font-bold text-gray-800 dark:text-white">R$ {{ number_format($totais['total'], 2, ',', '.') }}</div>
-            <div class="text-xs text-gray-500">Faturamento</div>
+        <span class="text-gray-300 dark:text-gray-600">|</span>
+        <div class="flex items-center gap-1.5">
+            <span class="text-lg font-bold text-gray-800 dark:text-white">R$ {{ number_format($totais['total'], 2, ',', '.') }}</span>
+            <span class="text-xs text-gray-500">faturamento</span>
         </div>
-        <div class="rounded-xl bg-white dark:bg-gray-800 p-4 shadow text-center">
-            <div class="text-2xl font-bold {{ $totais['lucro'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                R$ {{ number_format($totais['lucro'], 2, ',', '.') }}
-            </div>
-            <div class="text-xs text-gray-500">Lucro Total ({{ $totais['margem'] }}%)</div>
+        <span class="text-gray-300 dark:text-gray-600">|</span>
+        <div class="flex items-center gap-1.5">
+            <span class="text-lg font-bold {{ $totais['lucro'] >= 0 ? 'text-green-600' : 'text-red-600' }}">R$ {{ number_format($totais['lucro'], 2, ',', '.') }}</span>
+            <span class="text-xs text-gray-500">lucro ({{ $totais['margem'] }}%)</span>
         </div>
-        <div class="rounded-xl bg-white dark:bg-gray-800 p-4 shadow text-center">
-            <div class="text-2xl font-bold text-green-600">{{ $totais['com_lucro'] }}</div>
-            <div class="text-xs text-gray-500">Com Lucro</div>
+        <span class="text-gray-300 dark:text-gray-600">|</span>
+        <div class="flex items-center gap-1.5">
+            <span class="text-lg font-bold text-green-600">{{ $totais['com_lucro'] }}</span>
+            <span class="text-xs text-gray-500">c/ lucro</span>
         </div>
-        <div class="rounded-xl bg-white dark:bg-gray-800 p-4 shadow text-center">
-            <div class="text-2xl font-bold text-red-600">{{ $totais['com_prejuizo'] }}</div>
-            <div class="text-xs text-gray-500">Com Prejuízo</div>
+        <span class="text-gray-300 dark:text-gray-600">|</span>
+        <div class="flex items-center gap-1.5">
+            <span class="text-lg font-bold text-red-600">{{ $totais['com_prejuizo'] }}</span>
+            <span class="text-xs text-gray-500">c/ prejuízo</span>
         </div>
     </div>
 

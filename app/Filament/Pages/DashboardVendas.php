@@ -101,7 +101,12 @@ class DashboardVendas extends Page implements HasForms
     public function form(Forms\Form $form): Forms\Form
     {
         return $form->schema([
-            Forms\Components\Grid::make(6)->schema([
+            Forms\Components\Grid::make(7)->schema([
+                Forms\Components\TextInput::make('busca_pedido')
+                    ->label('Pedido')
+                    ->placeholder('Nº pedido...')
+                    ->reactive()
+                    ->debounce(400),
                 Forms\Components\Select::make('periodo')
                     ->label('Período')
                     ->options([
