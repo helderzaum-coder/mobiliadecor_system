@@ -11,18 +11,6 @@ class ShopeeCorrigirDadosService
 {
     /**
      * Processa planilha Shopee e corrige dados dos contatos no Bling.
-     *
-     * Colunas utilizadas:
-     * A  = Nº do pedido
-     * AX = Nome do destinatário
-     * AY = Telefone
-     * AZ = CPF do Comprador
-     * BA = Endereço de entrega
-     * BB = Cidade (pode estar vazio, usar BD)
-     * BC = Bairro
-     * BD = Cidade (alternativo)
-     * BE = UF
-     * BG = CEP
      */
     public static function processar(string $filePath): array
     {
@@ -36,7 +24,6 @@ class ShopeeCorrigirDadosService
             return ['corrigidos' => 0, 'erros' => 1, 'nao_encontrados' => 0, 'detalhes' => ["Erro ao ler arquivo: {$e->getMessage()}"]];
         }
 
-        // Agrupar por pedido (pegar apenas primeira linha de cada pedido)
         $pedidos = [];
         $header = null;
         foreach ($rows as $row) {
@@ -46,7 +33,6 @@ class ShopeeCorrigirDadosService
             $pedidos[$pedidoId] = $row;
         }
 
-        // Buscar stagings correspondentes
         $stagings = PedidoBlingStaging::whereIn('numero_loja', array_keys($pedidos))
             ->whereNotNull('bling_id')
             ->get()
@@ -72,9 +58,8 @@ class ShopeeCorrigirDadosService
 
             try {
                 $client = new BlingClient($staging->bling_account);
-
-                // Buscar pedido no Bling para pegar o ID do contato
                 $pedidoBling = $client->getPedido((int) $staging->bling_id);
+                
                 if (!$pedidoBling['success']) {
                     $resultado['erros']++;
                     $resultado['detalhes'][] = "{$pedidoId}: erro ao buscar pedido no Bling";
@@ -90,77 +75,78 @@ class ShopeeCorrigirDadosService
 
                 // Montar payload para atualizar contato
                 $tipoPessoa = strlen($cpf) > 11 ? 'J' : 'F';
-                $payload = [
+                $payloadContato = [
                     'nome' => $nome,
                     'tipo' => $tipoPessoa,
                     'situacao' => 'A',
                 ];
 
                 if ($telefone) {
-                    // Remover código do país (55) se presente
                     $tel = preg_replace('/\D/', '', $telefone);
                     if (strlen($tel) >= 12 && str_starts_with($tel, '55')) {
                         $tel = substr($tel, 2);
                     }
-                    $payload['telefone'] = $tel;
-                }
-                if ($cpf) {
-                    $payload['numeroDocumento'] = $cpf;
+                    // Bling exige fone com DDD (mínimo 10 dígitos)
+                    if (strlen($tel) >= 10) {
+                        $payloadContato['telefone'] = $tel;
+                    }
                 }
 
-                // Endereço
-                $enderecoCompleto = trim($row['BA'] ?? '');
+                // Validar CPF/CNPJ básico antes de enviar
+                if ($cpf && (strlen($cpf) == 11 || strlen($cpf) == 14)) {
+                    $payloadContato['numeroDocumento'] = $cpf;
+                }
+
                 if ($endereco || $cidade || $uf || $cep) {
                     $ufSigla = self::ufParaSigla($uf);
-
-                    // Extrair número do endereço (segundo elemento separado por vírgula)
-                    $numero = '';
-                    $rua = $endereco;
                     $partes = array_map('trim', explode(',', $endereco));
-                    if (count($partes) >= 2) {
-                        $rua = $partes[0];
-                        // Segundo elemento pode ser o número
-                        if (preg_match('/^\d+\w*$/', $partes[1])) {
-                            $numero = $partes[1];
-                        }
+                    $rua = $partes[0] ?? $endereco;
+                    $numero = '';
+                    if (count($partes) >= 2 && preg_match('/^\d+\w*$/', $partes[1])) {
+                        $numero = $partes[1];
                     }
 
-                    $payload['endereco'] = [
+                    $payloadContato['endereco'] = [
                         'endereco' => $rua,
                         'numero' => $numero,
                         'bairro' => $bairro,
                         'municipio' => $cidade,
-                        'uf' => $ufSigla,
+                        'uf' => (strlen($ufSigla) == 2) ? $ufSigla : '',
                         'cep' => $cep,
-                        'complemento' => $enderecoCompleto ? "Endereço completo: {$enderecoCompleto}" : '',
+                        'complemento' => $endereco ? "Endereço completo: {$endereco}" : '',
                     ];
+                    
+                    // Remover UF se for inválida (Bling valida estritamente 2 letras)
+                    if (empty($payloadContato['endereco']['uf'])) {
+                        unset($payloadContato['endereco']['uf']);
+                    }
                 }
 
-                $res = $client->put("/contatos/{$contatoId}", [], $payload);
-
-                if ($res['success']) {
-                    // Atualizar staging local
-                    $staging->update([
-                        'cliente_nome' => $nome,
-                        'cliente_documento' => $cpf ? self::formatarCpf($cpf) : $staging->cliente_documento,
+                // Tentar atualizar o contato
+                $resContato = $client->put("/contatos/{$contatoId}", [], $payloadContato);
+                
+                if (!$resContato['success']) {
+                    Log::warning("ShopeeCorrigir: Falha ao atualizar contato, mas prosseguindo para o pedido", [
+                        'pedido' => $pedidoId,
+                        'response' => $resContato['body'] ?? []
                     ]);
-
-                    // Atualizar venda se já foi aprovada
-                    \App\Models\Venda::where('bling_id', $staging->bling_id)->update([
-                        'cliente_nome' => $nome,
-                        'cliente_documento' => $cpf ? self::formatarCpf($cpf) : null,
-                    ]);
-
-                    // Atualizar observações do pedido no Bling com dados financeiros
-                    self::atualizarObservacoesPedido($client, $staging, $pedidoId, $row);
-
-                    $resultado['corrigidos']++;
-                } else {
-                    $erro = $res['body']['error']['message'] ?? $res['body']['message'] ?? "HTTP {$res['http_code']}";
-                    $resultado['erros']++;
-                    $resultado['detalhes'][] = "{$pedidoId}: {$erro}";
-                    Log::warning("ShopeeCorrigir: erro ao atualizar contato", ['pedido' => $pedidoId, 'response' => $res]);
                 }
+
+                // Independente do contato, atualizar o pedido para garantir o Número da Loja
+                self::atualizarDadosPedido($client, $staging, $pedidoId, $row, $pedidoBling['body']['data'] ?? []);
+                
+                // Atualizar localmente
+                $staging->update([
+                    'cliente_nome' => $nome,
+                    'cliente_documento' => $cpf ? self::formatarCpf($cpf) : $staging->cliente_documento,
+                ]);
+
+                \App\Models\Venda::where('bling_id', $staging->bling_id)->update([
+                    'cliente_nome' => $nome,
+                    'cliente_documento' => $cpf ? self::formatarCpf($cpf) : null,
+                ]);
+
+                $resultado['corrigidos']++;
 
             } catch (\Exception $e) {
                 $resultado['erros']++;
@@ -171,28 +157,15 @@ class ShopeeCorrigirDadosService
         return $resultado;
     }
 
-    /**
-     * Atualiza observações do pedido no Bling com dados financeiros da planilha.
-     */
-    private static function atualizarObservacoesPedido(BlingClient $client, PedidoBlingStaging $staging, string $pedidoId, array $row = []): void
+    private static function atualizarDadosPedido(BlingClient $client, PedidoBlingStaging $staging, string $pedidoId, array $row, array $pedidoData): void
     {
         try {
-            // Calcular valores diretamente da row da planilha (mesma lógica do processar)
-            if (!empty($row)) {
-                $precoU = self::parseDecimalValue($row['U'] ?? 0);
-                $subsidioY = abs(self::parseDecimalValue($row['Y'] ?? 0));
-                $subtotal = $precoU - $subsidioY;
-                $taxaEnvio = self::parseDecimalValue($row['AM'] ?? 0);
-                $descontoFrete = abs(self::parseDecimalValue($row['AN'] ?? 0));
-                $frete = $taxaEnvio + $descontoFrete;
-            } else {
-                // Fallback: buscar dos dados já processados
-                $planilha = \App\Models\PlanilhaShopeeDado::where('numero_pedido', $pedidoId)->first();
-                $originais = $planilha?->dados_originais ?? [];
-                $subtotal = (float) ($originais['total_produtos'] ?? $staging->total_produtos ?? 0);
-                $frete = (float) ($originais['frete'] ?? $staging->frete ?? 0);
-            }
-
+            $precoU = self::parseDecimalValue($row['U'] ?? 0);
+            $subsidioY = abs(self::parseDecimalValue($row['Y'] ?? 0));
+            $subtotal = $precoU - $subsidioY;
+            $taxaEnvio = self::parseDecimalValue($row['AM'] ?? 0);
+            $descontoFrete = abs(self::parseDecimalValue($row['AN'] ?? 0));
+            $frete = $taxaEnvio + $descontoFrete;
             $faturar = round($subtotal / 2, 2);
 
             $obs = "=== DADOS SHOPEE ===\n"
@@ -200,18 +173,6 @@ class ShopeeCorrigirDadosService
                 . "Subtotal: R$ " . number_format($subtotal, 2, ',', '.') . "\n"
                 . "Faturar (meia nota): R$ " . number_format($faturar, 2, ',', '.') . "\n"
                 . "Frete recebido: R$ " . number_format($frete, 2, ',', '.');
-
-            // Salvar localmente
-            $staging->update(['observacoes' => $obs]);
-            \App\Models\Venda::where('bling_id', $staging->bling_id)->update(['observacoes' => $obs]);
-
-            // Enviar para o Bling via PUT (com todos os campos obrigatórios)
-            $pedidoBling = $client->getPedido((int) $staging->bling_id);
-            if (!$pedidoBling['success']) return;
-
-            $pedidoData = $pedidoBling['body']['data'] ?? [];
-            $contatoId = $pedidoData['contato']['id'] ?? null;
-            if (!$contatoId) return;
 
             $itens = [];
             foreach ($pedidoData['itens'] ?? [] as $item) {
@@ -227,62 +188,42 @@ class ShopeeCorrigirDadosService
                 }
                 $itens[] = $itemData;
             }
-            if (empty($itens)) return;
 
+            // PAYLOAD DO PEDIDO - PRESERVAÇÃO TOTAL
             $payload = [
-                'contato' => ['id' => $contatoId],
+                'contato' => ['id' => $pedidoData['contato']['id'] ?? null],
                 'data' => $pedidoData['data'] ?? now()->format('Y-m-d'),
                 'numero' => $pedidoData['numero'] ?? null,
-                'loja' => $pedidoData['loja'] ?? null,
-                'numeroPedidoLoja' => $staging->numero_loja ?? $pedidoId,
+                'loja' => $pedidoData['loja'] ?? null, // PRESERVA A LOJA ORIGINAL
+                'numeroPedidoLoja' => $staging->numero_loja ?? $pedidoId, // PRESERVA O NÚMERO DA LOJA
                 'itens' => $itens,
                 'observacoesInternas' => $obs,
             ];
 
-            // Preservar campos existentes
+            // Preservar outros campos
             foreach (['transporte', 'parcelas', 'desconto', 'outrasDespesas', 'dataSaida', 'dataPrevista', 'observacoes'] as $campo) {
-                if (isset($pedidoData[$campo]) && $pedidoData[$campo] !== null) {
+                if (isset($pedidoData[$campo])) {
                     $payload[$campo] = $pedidoData[$campo];
                 }
             }
 
-            // LOG DE DEPURAÇÃO: Payload enviado
-            Log::info("ShopeeCorrigir DEBUG: Enviando payload para Bling", [
+            Log::info("ShopeeCorrigir DEBUG: Enviando payload do pedido", [
                 'pedidoId' => $pedidoId,
-                'blingId' => $staging->bling_id,
-                'payload' => $payload
+                'loja_no_payload' => $payload['loja'] ?? 'NULL',
+                'numeroPedidoLoja_no_payload' => $payload['numeroPedidoLoja'] ?? 'NULL'
             ]);
 
             $res = $client->put("/pedidos/vendas/{$staging->bling_id}", [], $payload);
 
-            // LOG DE DEPURAÇÃO: Resposta da API
-            Log::info("ShopeeCorrigir DEBUG: Resposta do Bling", [
-                'pedidoId' => $pedidoId,
-                'success' => $res['success'],
-                'http_code' => $res['http_code'] ?? 'N/A',
-                'body' => $res['body'] ?? []
-            ]);
-
-            Log::info("ShopeeCorrigir: PUT pedido", [
-                'pedido' => $pedidoId,
-                'loja' => $payload['loja'] ?? 'NULL',
-                'numeroPedidoLoja' => $payload['numeroPedidoLoja'] ?? 'NULL',
-                'success' => $res['success'],
-            ]);
-
             if (!$res['success']) {
-                Log::warning("ShopeeCorrigir: erro ao atualizar observações do pedido no Bling", [
+                Log::error("ShopeeCorrigir: Erro ao atualizar pedido", [
                     'pedido' => $pedidoId,
-                    'bling_id' => $staging->bling_id,
-                    'response' => $res,
+                    'response' => $res['body'] ?? []
                 ]);
             }
 
         } catch (\Exception $e) {
-            Log::warning("ShopeeCorrigir: erro ao salvar observações", [
-                'pedido' => $pedidoId,
-                'error' => $e->getMessage(),
-            ]);
+            Log::error("ShopeeCorrigir: Erro crítico em atualizarDadosPedido", ['error' => $e->getMessage()]);
         }
     }
 
@@ -308,8 +249,7 @@ class ShopeeCorrigirDadosService
 
     private static function ufParaSigla(string $uf): string
     {
-        $uf = trim($uf);
-        // Se já é sigla (2 caracteres), retorna
+        $uf = mb_strtolower(trim($uf));
         if (strlen($uf) === 2) return strtoupper($uf);
 
         $mapa = [
@@ -327,6 +267,6 @@ class ShopeeCorrigirDadosService
             'sao paulo' => 'SP', 'sergipe' => 'SE', 'tocantins' => 'TO',
         ];
 
-        return $mapa[strtolower($uf)] ?? strtoupper(substr($uf, 0, 2));
+        return $mapa[$uf] ?? '';
     }
 }
