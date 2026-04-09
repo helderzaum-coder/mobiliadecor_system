@@ -200,13 +200,18 @@ class ShopeeCorrigirDadosService
             // Montar itens no formato que o Bling aceita
             $itens = [];
             foreach ($pedidoData['itens'] ?? [] as $item) {
-                $itens[] = [
+                $itemData = [
                     'id' => $item['id'] ?? 0,
-                    'codigo' => $item['codigo'] ?? '',
+                    'descricao' => $item['descricao'] ?? '',
                     'quantidade' => $item['quantidade'] ?? 1,
                     'valor' => $item['valor'] ?? 0,
-                    'descricao' => $item['descricao'] ?? '',
+                    'unidade' => $item['unidade'] ?? 'UN',
                 ];
+                // Vincular ao produto pelo ID (não pelo código, que causa duplicata)
+                if (!empty($item['produto']['id'])) {
+                    $itemData['produto'] = ['id' => $item['produto']['id']];
+                }
+                $itens[] = $itemData;
             }
             if (empty($itens)) return;
 
