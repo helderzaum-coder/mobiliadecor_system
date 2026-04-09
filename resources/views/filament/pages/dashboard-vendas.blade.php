@@ -12,48 +12,52 @@
     @endphp
 
     {{-- KPI Cards --}}
-    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mt-4">
-        <div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md p-5 border-t-4 border-blue-500">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-semibold text-blue-500 uppercase tracking-wide">Vendas</span>
-                <span class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-500">🛒</span>
+    <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;">
+        <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid #3b82f6;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <span style="font-size:11px;font-weight:700;color:#3b82f6;text-transform:uppercase;letter-spacing:.5px;">Vendas</span>
+                <span style="width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,.15);display:flex;align-items:center;justify-content:center;font-size:16px;">🛒</span>
             </div>
-            <div class="text-3xl font-extrabold text-gray-800 dark:text-white">{{ $totais['qtd'] }}</div>
-            <div class="text-xs text-gray-400 mt-1">pedidos no período</div>
+            <div style="font-size:28px;font-weight:800;color:var(--kpi-text,#1f2937);">{{ $totais['qtd'] }}</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">pedidos no período</div>
         </div>
-        <div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md p-5 border-t-4 border-indigo-500">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-semibold text-indigo-500 uppercase tracking-wide">Faturamento</span>
-                <span class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-500">💰</span>
+        <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid #6366f1;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <span style="font-size:11px;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.5px;">Faturamento</span>
+                <span style="width:32px;height:32px;border-radius:8px;background:rgba(99,102,241,.15);display:flex;align-items:center;justify-content:center;font-size:16px;">💰</span>
             </div>
-            <div class="text-3xl font-extrabold text-gray-800 dark:text-white">R$ {{ number_format($totais['total'], 2, ',', '.') }}</div>
-            <div class="text-xs text-gray-400 mt-1">ticket médio R$ {{ number_format($ticketMedio, 2, ',', '.') }}</div>
+            <div style="font-size:28px;font-weight:800;color:var(--kpi-text,#1f2937);">R$ {{ number_format($totais['total'], 2, ',', '.') }}</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">ticket médio R$ {{ number_format($ticketMedio, 2, ',', '.') }}</div>
         </div>
-        <div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md p-5 border-t-4 {{ $totais['lucro'] >= 0 ? 'border-green-500' : 'border-red-500' }}">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-semibold {{ $totais['lucro'] >= 0 ? 'text-green-500' : 'text-red-500' }} uppercase tracking-wide">Lucro</span>
-                <span class="w-8 h-8 rounded-lg {{ $totais['lucro'] >= 0 ? 'bg-green-100 dark:bg-green-900/40 text-green-500' : 'bg-red-100 dark:bg-red-900/40 text-red-500' }} flex items-center justify-center">📈</span>
+        <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid {{ $totais['lucro'] >= 0 ? '#10b981' : '#ef4444' }};">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <span style="font-size:11px;font-weight:700;color:{{ $totais['lucro'] >= 0 ? '#10b981' : '#ef4444' }};text-transform:uppercase;letter-spacing:.5px;">Lucro</span>
+                <span style="width:32px;height:32px;border-radius:8px;background:{{ $totais['lucro'] >= 0 ? 'rgba(16,185,129,.15)' : 'rgba(239,68,68,.15)' }};display:flex;align-items:center;justify-content:center;font-size:16px;">📈</span>
             </div>
-            <div class="text-3xl font-extrabold {{ $totais['lucro'] >= 0 ? 'text-green-600' : 'text-red-600' }}">R$ {{ number_format($totais['lucro'], 2, ',', '.') }}</div>
-            <div class="text-xs text-gray-400 mt-1">margem {{ $totais['margem'] }}%</div>
+            <div style="font-size:28px;font-weight:800;color:{{ $totais['lucro'] >= 0 ? '#059669' : '#dc2626' }};">R$ {{ number_format($totais['lucro'], 2, ',', '.') }}</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">margem {{ $totais['margem'] }}%</div>
         </div>
-        <div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md p-5 border-t-4 border-emerald-500">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-semibold text-emerald-500 uppercase tracking-wide">Com Lucro</span>
-                <span class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-500">✅</span>
+        <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid #10b981;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <span style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.5px;">Com Lucro</span>
+                <span style="width:32px;height:32px;border-radius:8px;background:rgba(16,185,129,.15);display:flex;align-items:center;justify-content:center;font-size:16px;">✅</span>
             </div>
-            <div class="text-3xl font-extrabold text-emerald-600">{{ $totais['com_lucro'] }}</div>
-            <div class="text-xs text-gray-400 mt-1">{{ $totais['qtd'] > 0 ? round(($totais['com_lucro'] / $totais['qtd']) * 100, 1) : 0 }}% do total</div>
+            <div style="font-size:28px;font-weight:800;color:#059669;">{{ $totais['com_lucro'] }}</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">{{ $totais['qtd'] > 0 ? round(($totais['com_lucro'] / $totais['qtd']) * 100, 1) : 0 }}% do total</div>
         </div>
-        <div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md p-5 border-t-4 border-red-500">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-semibold text-red-500 uppercase tracking-wide">Com Prejuízo</span>
-                <span class="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center text-red-500">⚠️</span>
+        <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid #ef4444;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <span style="font-size:11px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:.5px;">Com Prejuízo</span>
+                <span style="width:32px;height:32px;border-radius:8px;background:rgba(239,68,68,.15);display:flex;align-items:center;justify-content:center;font-size:16px;">⚠️</span>
             </div>
-            <div class="text-3xl font-extrabold text-red-600">{{ $totais['com_prejuizo'] }}</div>
-            <div class="text-xs text-gray-400 mt-1">{{ $totais['qtd'] > 0 ? round(($totais['com_prejuizo'] / $totais['qtd']) * 100, 1) : 0 }}% do total</div>
+            <div style="font-size:28px;font-weight:800;color:#dc2626;">{{ $totais['com_prejuizo'] }}</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">{{ $totais['qtd'] > 0 ? round(($totais['com_prejuizo'] / $totais['qtd']) * 100, 1) : 0 }}% do total</div>
         </div>
     </div>
+    <style>
+        .dark { --kpi-bg: #1f2937; --kpi-text: #f9fafb; }
+        :root { --kpi-bg: #fff; --kpi-text: #1f2937; }
+    </style>
 
     {{-- Gráficos --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
