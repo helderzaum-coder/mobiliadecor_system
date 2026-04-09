@@ -4,31 +4,92 @@
     </form>
 
     {{-- Resumo horizontal compacto --}}
-    @php $totais = $this->totais; @endphp
-    <div class="flex flex-wrap items-center gap-4 mt-4 rounded-xl bg-white dark:bg-gray-800 shadow px-5 py-3">
-        <div class="flex items-center gap-1.5">
-            <span class="text-lg font-bold text-gray-800 dark:text-white">{{ $totais['qtd'] }}</span>
-            <span class="text-xs text-gray-500">vendas</span>
+    @php
+        $totais = $this->totais;
+        $grafico = $this->graficoVendasDiarias;
+        $porCanal = $this->vendasPorCanal;
+        $ticketMedio = $totais['qtd'] > 0 ? $totais['total'] / $totais['qtd'] : 0;
+    @endphp
+
+    {{-- KPI Cards --}}
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mt-4">
+        <div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md p-5 border-t-4 border-blue-500">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-blue-500 uppercase tracking-wide">Vendas</span>
+                <span class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-500">🛒</span>
+            </div>
+            <div class="text-3xl font-extrabold text-gray-800 dark:text-white">{{ $totais['qtd'] }}</div>
+            <div class="text-xs text-gray-400 mt-1">pedidos no período</div>
         </div>
-        <span class="text-gray-300 dark:text-gray-600">|</span>
-        <div class="flex items-center gap-1.5">
-            <span class="text-lg font-bold text-gray-800 dark:text-white">R$ {{ number_format($totais['total'], 2, ',', '.') }}</span>
-            <span class="text-xs text-gray-500">faturamento</span>
+        <div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md p-5 border-t-4 border-indigo-500">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-indigo-500 uppercase tracking-wide">Faturamento</span>
+                <span class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-500">💰</span>
+            </div>
+            <div class="text-3xl font-extrabold text-gray-800 dark:text-white">R$ {{ number_format($totais['total'], 2, ',', '.') }}</div>
+            <div class="text-xs text-gray-400 mt-1">ticket médio R$ {{ number_format($ticketMedio, 2, ',', '.') }}</div>
         </div>
-        <span class="text-gray-300 dark:text-gray-600">|</span>
-        <div class="flex items-center gap-1.5">
-            <span class="text-lg font-bold {{ $totais['lucro'] >= 0 ? 'text-green-600' : 'text-red-600' }}">R$ {{ number_format($totais['lucro'], 2, ',', '.') }}</span>
-            <span class="text-xs text-gray-500">lucro ({{ $totais['margem'] }}%)</span>
+        <div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md p-5 border-t-4 {{ $totais['lucro'] >= 0 ? 'border-green-500' : 'border-red-500' }}">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold {{ $totais['lucro'] >= 0 ? 'text-green-500' : 'text-red-500' }} uppercase tracking-wide">Lucro</span>
+                <span class="w-8 h-8 rounded-lg {{ $totais['lucro'] >= 0 ? 'bg-green-100 dark:bg-green-900/40 text-green-500' : 'bg-red-100 dark:bg-red-900/40 text-red-500' }} flex items-center justify-center">📈</span>
+            </div>
+            <div class="text-3xl font-extrabold {{ $totais['lucro'] >= 0 ? 'text-green-600' : 'text-red-600' }}">R$ {{ number_format($totais['lucro'], 2, ',', '.') }}</div>
+            <div class="text-xs text-gray-400 mt-1">margem {{ $totais['margem'] }}%</div>
         </div>
-        <span class="text-gray-300 dark:text-gray-600">|</span>
-        <div class="flex items-center gap-1.5">
-            <span class="text-lg font-bold text-green-600">{{ $totais['com_lucro'] }}</span>
-            <span class="text-xs text-gray-500">c/ lucro</span>
+        <div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md p-5 border-t-4 border-emerald-500">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-emerald-500 uppercase tracking-wide">Com Lucro</span>
+                <span class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-500">✅</span>
+            </div>
+            <div class="text-3xl font-extrabold text-emerald-600">{{ $totais['com_lucro'] }}</div>
+            <div class="text-xs text-gray-400 mt-1">{{ $totais['qtd'] > 0 ? round(($totais['com_lucro'] / $totais['qtd']) * 100, 1) : 0 }}% do total</div>
         </div>
-        <span class="text-gray-300 dark:text-gray-600">|</span>
-        <div class="flex items-center gap-1.5">
-            <span class="text-lg font-bold text-red-600">{{ $totais['com_prejuizo'] }}</span>
-            <span class="text-xs text-gray-500">c/ prejuízo</span>
+        <div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md p-5 border-t-4 border-red-500">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-red-500 uppercase tracking-wide">Com Prejuízo</span>
+                <span class="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center text-red-500">⚠️</span>
+            </div>
+            <div class="text-3xl font-extrabold text-red-600">{{ $totais['com_prejuizo'] }}</div>
+            <div class="text-xs text-gray-400 mt-1">{{ $totais['qtd'] > 0 ? round(($totais['com_prejuizo'] / $totais['qtd']) * 100, 1) : 0 }}% do total</div>
+        </div>
+    </div>
+
+    {{-- Gráficos --}}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+        {{-- Gráfico de barras - Faturamento/Lucro diário --}}
+        <div class="lg:col-span-2 rounded-2xl bg-white dark:bg-gray-800 shadow-md p-5">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Faturamento & Lucro Diário</h3>
+            </div>
+            <div style="position:relative;height:220px;">
+                <canvas id="chartVendasDiarias"></canvas>
+            </div>
+        </div>
+
+        {{-- Donut margem + breakdown por canal --}}
+        <div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md p-5">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4">Vendas por Canal</h3>
+            <div style="position:relative;height:180px;" class="mb-4">
+                <canvas id="chartCanais"></canvas>
+            </div>
+            <div class="space-y-2">
+                @php
+                    $canalCores = ['#3b82f6','#f59e0b','#10b981','#8b5cf6','#ef4444','#06b6d4','#ec4899','#6366f1'];
+                @endphp
+                @foreach($porCanal as $i => $c)
+                    <div class="flex items-center justify-between text-xs">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full" style="background:{{ $canalCores[$i % count($canalCores)] }}"></span>
+                            <span class="text-gray-600 dark:text-gray-300">{{ $c['canal'] }}</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="font-semibold text-gray-800 dark:text-white">{{ $c['qtd'] }}</span>
+                            <span class="text-gray-400 w-24 text-right">R$ {{ number_format($c['total'], 0, ',', '.') }}</span>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
         </div>
     </div>
 
@@ -287,4 +348,61 @@
         </button>
     </div>
     @endif
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+    <script>
+        document.addEventListener('livewire:navigated', () => initDashboardCharts());
+        document.addEventListener('livewire:init', () => {
+            initDashboardCharts();
+            Livewire.hook('morph.updated', () => setTimeout(initDashboardCharts, 100));
+        });
+
+        let chartBar = null, chartDonut = null;
+
+        function initDashboardCharts() {
+            const barEl = document.getElementById('chartVendasDiarias');
+            const donutEl = document.getElementById('chartCanais');
+            if (!barEl || !donutEl) return;
+
+            const grafico = @json($grafico);
+            const porCanal = @json($porCanal);
+            const cores = ['#3b82f6','#f59e0b','#10b981','#8b5cf6','#ef4444','#06b6d4','#ec4899','#6366f1'];
+            const isDark = document.documentElement.classList.contains('dark');
+            const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+            const textColor = isDark ? '#9ca3af' : '#6b7280';
+
+            if (chartBar) chartBar.destroy();
+            chartBar = new Chart(barEl, {
+                type: 'bar',
+                data: {
+                    labels: grafico.labels,
+                    datasets: [
+                        { label: 'Faturamento', data: grafico.faturamento, backgroundColor: '#3b82f6', borderRadius: 6, barPercentage: 0.6 },
+                        { label: 'Lucro', data: grafico.lucro, backgroundColor: '#10b981', borderRadius: 6, barPercentage: 0.6 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 16, color: textColor, font: { size: 11 } } } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 } } },
+                        y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 }, callback: v => 'R$ ' + (v/1000).toFixed(1) + 'k' } }
+                    }
+                }
+            });
+
+            if (chartDonut) chartDonut.destroy();
+            chartDonut = new Chart(donutEl, {
+                type: 'doughnut',
+                data: {
+                    labels: porCanal.map(c => c.canal),
+                    datasets: [{ data: porCanal.map(c => c.total), backgroundColor: cores.slice(0, porCanal.length), borderWidth: 0 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: '65%',
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+    </script>
 </x-filament-panels::page>

@@ -254,6 +254,37 @@ class DashboardVendas extends Page implements HasForms
         return max(1, (int) ceil($this->totais['qtd'] / $this->porPagina));
     }
 
+    public function getGraficoVendasDiariasProperty(): array
+    {
+        $rows = $this->buildQuery()
+            ->selectRaw('DATE(data_venda) as dia, SUM(valor_total_venda) as faturamento, SUM(margem_venda_total) as lucro, COUNT(*) as qtd')
+            ->groupByRaw('DATE(data_venda)')
+            ->orderBy('dia')
+            ->get();
+
+        return [
+            'labels' => $rows->pluck('dia')->map(fn ($d) => \Carbon\Carbon::parse($d)->format('d/m'))->toArray(),
+            'faturamento' => $rows->pluck('faturamento')->map(fn ($v) => round((float) $v, 2))->toArray(),
+            'lucro' => $rows->pluck('lucro')->map(fn ($v) => round((float) $v, 2))->toArray(),
+        ];
+    }
+
+    public function getVendasPorCanalProperty(): array
+    {
+        return $this->buildQuery()
+            ->selectRaw('COALESCE(canal_nome, "Outros") as canal, COUNT(*) as qtd, SUM(valor_total_venda) as total, SUM(margem_venda_total) as lucro')
+            ->groupBy('canal_nome')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn ($r) => [
+                'canal' => $r->canal,
+                'qtd' => $r->qtd,
+                'total' => round((float) $r->total, 2),
+                'lucro' => round((float) $r->lucro, 2),
+            ])
+            ->toArray();
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->hasRole('admin') ?? false;
