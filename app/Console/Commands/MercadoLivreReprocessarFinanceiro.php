@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\PedidoBlingStaging;
+use App\Services\AprovacaoVendaService;
 use App\Services\MercadoLivre\MercadoLivreOrderService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -13,7 +14,8 @@ class MercadoLivreReprocessarFinanceiro extends Command
         {--account=primary : Conta ML (primary/secondary)}
         {--status=pendente : Status dos pedidos (pendente/aprovado/todos)}
         {--limit=200 : Limite de pedidos}
-        {--force : Reprocessar mesmo pedidos que já têm sale_fee}';
+        {--force : Reprocessar mesmo pedidos que já têm sale_fee}
+        {--auto-aprovar : Auto-aprovar ME2/FULL após reprocessar}';
 
     protected $description = 'Rebusca dados financeiros (comissão, frete, rebate) da API do ML para pedidos antigos';
 
@@ -23,6 +25,7 @@ class MercadoLivreReprocessarFinanceiro extends Command
         $status = $this->option('status');
         $limit = (int) $this->option('limit');
         $force = $this->option('force');
+        $autoAprovar = $this->option('auto-aprovar');
 
         $query = PedidoBlingStaging::where('bling_account', $account)
             ->where(function ($q) {
@@ -84,6 +87,18 @@ class MercadoLivreReprocessarFinanceiro extends Command
 
                     $pedido->update($updates);
                     $ok++;
+
+                    // Auto-aprovar ME2/FULL se flag ativa e pedido pendente
+                    if ($autoAprovar && $pedido->status === 'pendente' && in_array($dados['tipo_frete'], ['ME2', 'FULL'])) {
+                        try {
+                            AprovacaoVendaService::aprovar($pedido);
+                            $this->newLine();
+                            $this->line("  ✓ {$orderId} auto-aprovado ({$dados['tipo_frete']})");
+                        } catch (\Exception $e) {
+                            $this->newLine();
+                            $this->warn("  ✗ {$orderId} erro ao aprovar: {$e->getMessage()}");
+                        }
+                    }
                 } else {
                     $erro++;
                 }
