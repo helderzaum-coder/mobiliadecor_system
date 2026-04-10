@@ -7,6 +7,7 @@ use App\Models\PedidoBlingStaging;
 use App\Models\Venda;
 use App\Services\MercadoLivre\MercadoLivreOrderService;
 use App\Services\MercadoLivrePlanilhaService;
+use App\Services\AprovacaoVendaService;
 use App\Services\Shopee\ShopeeService;
 use Illuminate\Support\Facades\Log;
 
@@ -302,6 +303,17 @@ class BlingImportService
             // não precisa mais da planilha
             if (empty($mlDados['ml_sale_fee']) || $mlDados['ml_sale_fee'] <= 0) {
                 MercadoLivrePlanilhaService::reprocessarPedido($staging);
+            }
+
+            // ME2/FULL: auto-aprovar (não precisa cotar frete)
+            $tipoFrete = $mlDados['ml_tipo_frete'] ?? null;
+            if (in_array($tipoFrete, ['ME2', 'FULL'])) {
+                try {
+                    AprovacaoVendaService::aprovar($staging);
+                    Log::info("ML auto-aprovado: pedido {$staging->numero_pedido} (tipo frete: {$tipoFrete})");
+                } catch (\Exception $e) {
+                    Log::warning("ML auto-aprovação falhou para pedido {$staging->numero_pedido}: " . $e->getMessage());
+                }
             }
         } elseif (str_contains(strtolower($canal), 'shopee')) {
             ShopeeService::reprocessarPedido($staging);

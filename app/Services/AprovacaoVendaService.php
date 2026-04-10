@@ -135,7 +135,7 @@ class AprovacaoVendaService
             'bling_id' => $staging->bling_id,
             'bling_account' => $staging->bling_account,
             'numero_pedido_canal' => $staging->numero_loja ?? $staging->numero_pedido,
-            'numero_nota_fiscal' => $staging->nota_fiscal,
+            'numero_nota_fiscal' => $staging->nota_fiscal ?? '',
             'valor_total_venda' => $totalPedido,
             'total_produtos' => $totalProdutos,
             'custo_produtos' => round($custoProdutos, 2),
