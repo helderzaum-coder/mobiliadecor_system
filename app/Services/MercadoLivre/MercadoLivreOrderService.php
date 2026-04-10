@@ -66,9 +66,14 @@ class MercadoLivreOrderService
             if ($financeiro) {
                 $resultado['net_received_amount'] = $financeiro['net_received_amount'];
 
-                // Comissão líquida = o que o ML realmente descontou
-                $comissaoLiquida = $financeiro['transaction_amount'] + $financeiro['shipping_cost'] - $financeiro['net_received_amount'];
-                $resultado['sale_fee'] = round($comissaoLiquida, 2);
+                // Desconto total = tudo que o ML reteve (comissão + frete)
+                $descontoTotal = $financeiro['transaction_amount'] + $financeiro['shipping_cost'] - $financeiro['net_received_amount'];
+
+                // Comissão líquida = desconto total - custo frete ML (list_cost do shipping)
+                // Porque o desconto total inclui comissão + frete cobrado do vendedor
+                $freteMlCusto = $resultado['frete_ml_custo'];
+                $comissaoLiquida = round($descontoTotal - $freteMlCusto, 2);
+                $resultado['sale_fee'] = max($comissaoLiquida, 0);
 
                 // Tarifa bruta = preço × percentual do tipo de anúncio
                 $tarifaBruta = $unitPrice * $this->percentualPorTipoAnuncio($listingTypeId) / 100;
@@ -82,6 +87,8 @@ class MercadoLivreOrderService
 
                 Log::info("ML financeiro pedido {$orderId}", [
                     'net_received' => $financeiro['net_received_amount'],
+                    'desconto_total' => $descontoTotal,
+                    'frete_ml_custo' => $freteMlCusto,
                     'comissao_liquida' => $comissaoLiquida,
                     'tarifa_bruta' => round($tarifaBruta, 2),
                     'rebate' => $rebate,
