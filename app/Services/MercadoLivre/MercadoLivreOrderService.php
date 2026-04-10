@@ -155,8 +155,8 @@ class MercadoLivreOrderService
 
         return [
             'tipo_frete' => $tipoFrete,
-            'frete_ml_custo' => $listCost,    // o que o ML cobra do vendedor
-            'frete_ml_receita' => $cost,       // o que o comprador pagou
+            'frete_ml_custo' => round($listCost - $cost, 2),  // custo real do vendedor (tarifa ML - pago pelo comprador)
+            'frete_ml_receita' => $cost,                       // valor pago pelo comprador
         ];
     }
 
