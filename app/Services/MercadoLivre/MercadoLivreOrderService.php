@@ -59,42 +59,35 @@ class MercadoLivreOrderService
             $resultado['frete_ml_receita'] = $dadosFrete['frete_ml_receita'];
         }
 
-        // Dados financeiros reais via /collections
+        // Dados financeiros: sale_fee do order é a comissão real cobrada pelo ML
+        // net_received_amount do /collections serve apenas como confirmação
         $paymentId = $order['payments'][0]['id'] ?? null;
         if ($paymentId) {
             $financeiro = $this->buscarDadosFinanceiros($paymentId);
             if ($financeiro) {
                 $resultado['net_received_amount'] = $financeiro['net_received_amount'];
-
-                // Desconto total = tudo que o ML reteve (comissão + frete)
-                $descontoTotal = $financeiro['transaction_amount'] + $financeiro['shipping_cost'] - $financeiro['net_received_amount'];
-
-                // Comissão líquida = desconto total - custo frete ML (list_cost do shipping)
-                // Porque o desconto total inclui comissão + frete cobrado do vendedor
-                $freteMlCusto = $resultado['frete_ml_custo'];
-                $comissaoLiquida = round($descontoTotal - $freteMlCusto, 2);
-                $resultado['sale_fee'] = max($comissaoLiquida, 0);
-
-                // Tarifa bruta = preço × percentual do tipo de anúncio
-                $tarifaBruta = $unitPrice * $this->percentualPorTipoAnuncio($listingTypeId) / 100;
-
-                // Rebate = diferença entre tarifa bruta e comissão líquida
-                $rebate = round($tarifaBruta - $comissaoLiquida, 2);
-                if ($rebate > 0.01) {
-                    $resultado['tem_rebate'] = true;
-                    $resultado['valor_rebate'] = $rebate;
-                }
-
-                Log::info("ML financeiro pedido {$orderId}", [
-                    'net_received' => $financeiro['net_received_amount'],
-                    'desconto_total' => $descontoTotal,
-                    'frete_ml_custo' => $freteMlCusto,
-                    'comissao_liquida' => $comissaoLiquida,
-                    'tarifa_bruta' => round($tarifaBruta, 2),
-                    'rebate' => $rebate,
-                ]);
             }
         }
+
+        // Comissão = sale_fee do order (valor real cobrado pelo ML)
+        // Tarifa bruta = preço × percentual do tipo de anúncio
+        $tarifaBruta = round($unitPrice * $this->percentualPorTipoAnuncio($listingTypeId) / 100, 2);
+        $saleFee = $resultado['sale_fee']; // já veio do order_items[0].sale_fee
+
+        // Rebate = tarifa bruta - sale_fee (se ML deu desconto na comissão)
+        $rebate = round($tarifaBruta - $saleFee, 2);
+        if ($rebate > 0.01) {
+            $resultado['tem_rebate'] = true;
+            $resultado['valor_rebate'] = $rebate;
+        }
+
+        Log::info("ML financeiro pedido {$orderId}", [
+            'sale_fee' => $saleFee,
+            'tarifa_bruta' => $tarifaBruta,
+            'frete_ml_custo' => $resultado['frete_ml_custo'],
+            'rebate' => $rebate,
+            'net_received' => $resultado['net_received_amount'],
+        ]);
 
         return $resultado;
     }
@@ -183,6 +176,7 @@ class MercadoLivreOrderService
             'transaction_amount' => (float) ($data['transaction_amount'] ?? 0),
             'shipping_cost' => (float) ($data['shipping_cost'] ?? 0),
             'total_paid_amount' => (float) ($data['total_paid_amount'] ?? 0),
+            'finance_fee' => (float) ($data['finance_fee'] ?? 0),
         ];
     }
 
