@@ -169,8 +169,9 @@ class ShopeeCorrigirDadosService
                 'cep'         => $cep,
             ];
 
-            if ($endereco) {
-                $payload['observacao'] = "Endereço completo: {$endereco}";
+            $partesEndereco = array_filter([$endereco, $bairro, $cidade, $ufSigla, $cep]);
+            if ($partesEndereco) {
+                $payload['observacao'] = 'Endereço completo: ' . implode(', ', $partesEndereco);
             }
 
             if (empty($enderecoPayload['uf'])) {

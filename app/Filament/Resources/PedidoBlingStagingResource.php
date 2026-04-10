@@ -213,7 +213,7 @@ class PedidoBlingStagingResource extends Resource
                 'peso_bruto', 'embalagem_largura', 'embalagem_altura', 'embalagem_comprimento',
                 'ml_tipo_anuncio', 'ml_tipo_frete', 'ml_tem_rebate', 'ml_valor_rebate',
                 'ml_sale_fee', 'ml_frete_custo', 'ml_frete_receita', 'ml_order_id', 'ml_shipping_id',
-                'itens', 'created_at', 'updated_at',
+                'created_at', 'updated_at',
             ]))
             ->columns([
                 Tables\Columns\TextColumn::make('cotacao_link')
@@ -425,6 +425,10 @@ class PedidoBlingStagingResource extends Resource
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Fechar')
                     ->modalContent(function (PedidoBlingStaging $record) {
+                        $record->loadMissing([]);
+                        if (!array_key_exists('itens', $record->getAttributes())) {
+                            $record->itens = PedidoBlingStaging::where('id', $record->id)->value('itens');
+                        }
                         $client = new BlingClient($record->bling_account);
                         $itens = $record->itens ?? [];
 
@@ -630,6 +634,9 @@ class PedidoBlingStagingResource extends Resource
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Fechar')
                     ->modalContent(function (PedidoBlingStaging $record) {
+                        if (!array_key_exists('itens', $record->getAttributes())) {
+                            $record->itens = PedidoBlingStaging::where('id', $record->id)->value('itens');
+                        }
                         $resultado = CotacaoWhatsappService::gerar($record);
 
                         if ($resultado['erro']) {
@@ -771,6 +778,9 @@ class PedidoBlingStagingResource extends Resource
      */
     private static function renderCotacaoModal(PedidoBlingStaging $record): HtmlString
     {
+        if (!array_key_exists('itens', $record->getAttributes())) {
+            $record->itens = PedidoBlingStaging::where('id', $record->id)->value('itens');
+        }
         $valorNf = (float) ($record->nfe_valor ?: $record->total_pedido);
 
         $waData = CotacaoWhatsappService::gerar($record);
