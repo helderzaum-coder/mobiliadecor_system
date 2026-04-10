@@ -182,7 +182,7 @@ class ShopeeCorrigirDadosService
                 'municipio'   => $cidade,
                 'uf'          => (strlen($ufSigla) === 2) ? $ufSigla : '',
                 'cep'         => $cep,
-                'observacao' => $endereco ? "Endereço completo: {$endereco}" : '',
+                'complemento' => $endereco ? "Endereço completo: {$endereco}" : '',
             ];
 
             if (empty($enderecoPayload['uf'])) {
