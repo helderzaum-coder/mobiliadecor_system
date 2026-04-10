@@ -176,19 +176,17 @@ class ShopeeCorrigirDadosService
             }
 
             $enderecoPayload = [
-                'geral' => [
-                    'endereco'    => $rua,
-                    'numero'      => $numero,
-                    'complemento' => mb_substr($obsTexto, 0, 100), // Bling limita até 100 caracteres geralmente
-                    'bairro'      => $bairro,
-                    'municipio'   => $cidade,
-                    'uf'          => (strlen($ufSigla) === 2) ? $ufSigla : '',
-                    'cep'         => $cep,
-                ]
+                'endereco'    => $rua,
+                'numero'      => $numero,
+                'bairro'      => $bairro,
+                'municipio'   => $cidade,
+                'uf'          => (strlen($ufSigla) === 2) ? $ufSigla : '',
+                'cep'         => $cep,
+                'complemento' => $endereco ? "Endereço completo: {$endereco}" : '',
             ];
 
-            if (empty($enderecoPayload['geral']['uf'])) {
-                unset($enderecoPayload['geral']['uf']);
+            if (empty($enderecoPayload['uf'])) {
+                unset($enderecoPayload['uf']);
             }
 
             $payload['endereco'] = $enderecoPayload;
