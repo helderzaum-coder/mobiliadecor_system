@@ -69,12 +69,9 @@ class AprovacaoVendaService
 
             if ($tipoFrete === 'ME2' || $tipoFrete === 'FULL') {
                 // ME2/FULL: vendedor não lida com frete
-                // Taxa frete ML (custo - receita) entra como parte da comissão
-                $taxaFreteML = $mlFreteCusto > 0 ? ($mlFreteCusto - $mlFreteReceita) : 0;
-                // Se temos sale_fee real da API, usar como comissão + taxa frete
+                // frete_ml_custo já é o custo líquido (list_cost - cost)
                 if ($mlSaleFee > 0) {
-                    $comissao = $mlSaleFee + $taxaFreteML;
-                    // sale_fee da API já tem rebate descontado, não somar rebate de novo
+                    $comissao = $mlSaleFee + $mlFreteCusto;
                     $valorRebate = 0;
                 }
                 $frete = 0;

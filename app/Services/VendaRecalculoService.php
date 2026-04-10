@@ -139,9 +139,9 @@ class VendaRecalculoService
         ]);
 
         if ($tipoFrete === 'ME2' || $tipoFrete === 'FULL') {
-            $taxaFreteML = $freteCusto > 0 ? ($freteCusto - $freteReceita) : 0;
+            // frete_ml_custo já é líquido (list_cost - cost)
             $venda->update([
-                'comissao' => $saleFee + $taxaFreteML,
+                'comissao' => $saleFee + $freteCusto,
                 'valor_frete_cliente' => 0,
                 'valor_frete_transportadora' => 0,
             ]);

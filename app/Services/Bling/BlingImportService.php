@@ -251,9 +251,8 @@ class BlingImportService
         $mlFreteReceita = (float) ($mlDados['ml_frete_receita'] ?? 0);
         if ($mlSaleFee > 0) {
             if ($isMlMe2Full) {
-                // ME2/FULL: comissão = sale_fee + taxa frete ML
-                $taxaFreteML = $mlFreteCusto > 0 ? ($mlFreteCusto - $mlFreteReceita) : 0;
-                $comissaoData['comissao_total'] = round($mlSaleFee + $taxaFreteML, 2);
+                // ME2/FULL: comissão = sale_fee + frete ML (já é custo líquido do vendedor)
+                $comissaoData['comissao_total'] = round($mlSaleFee + $mlFreteCusto, 2);
             } else {
                 $comissaoData['comissao_total'] = $mlSaleFee;
             }
