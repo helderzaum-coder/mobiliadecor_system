@@ -130,6 +130,17 @@ class ShopeeCorrigirDadosService
 
         $tipoPessoa = strlen($cpf) > 11 ? 'J' : 'F';
 
+        // Busca contato atual para preservar campos existentes e descobrir estrutura
+        $contatoAtual = $client->get("/contatos/{$contatoId}");
+        $contatoData = $contatoAtual['success'] ? ($contatoAtual['body']['data'] ?? []) : [];
+
+        Log::info('ShopeeCorrigir: estrutura contato atual do Bling', [
+            'pedidoId'  => $pedidoId,
+            'contatoId' => $contatoId,
+            'campos'    => array_keys($contatoData),
+            'contato'   => $contatoData,
+        ]);
+
         $payload = [
             'nome'     => $nome,
             'tipo'     => $tipoPessoa,
@@ -150,8 +161,12 @@ class ShopeeCorrigirDadosService
             $payload['numeroDocumento'] = $cpf;
         }
 
+        // Monta texto do endereço completo para observação
+        $ufSigla = self::ufParaSigla($uf);
+        $partesEndereco = array_filter([$endereco, $bairro, $cidade, $ufSigla, $cep]);
+        $obsTexto = $partesEndereco ? 'Endereço completo: ' . implode(', ', $partesEndereco) : '';
+
         if ($endereco || $cidade || $uf || $cep) {
-            $ufSigla = self::ufParaSigla($uf);
             $partes  = array_map('trim', explode(',', $endereco));
             $rua     = $partes[0] ?? $endereco;
             $numero  = '';
@@ -169,16 +184,17 @@ class ShopeeCorrigirDadosService
                 'cep'         => $cep,
             ];
 
-            $partesEndereco = array_filter([$endereco, $bairro, $cidade, $ufSigla, $cep]);
-            if ($partesEndereco) {
-                $payload['observacao'] = 'Endereço completo: ' . implode(', ', $partesEndereco);
-            }
-
             if (empty($enderecoPayload['uf'])) {
                 unset($enderecoPayload['uf']);
             }
 
             $payload['endereco'] = $enderecoPayload;
+        }
+
+        // Tenta todos os campos possíveis de observação da API Bling v3
+        if ($obsTexto) {
+            $payload['observacao']  = $obsTexto;
+            $payload['observacoes'] = $obsTexto;
         }
 
         Log::info('ShopeeCorrigir: atualizando contato', [
@@ -188,6 +204,13 @@ class ShopeeCorrigirDadosService
         ]);
 
         $res = $client->put("/contatos/{$contatoId}", [], $payload);
+
+        Log::info('ShopeeCorrigir: resposta PUT contato', [
+            'pedido'    => $pedidoId,
+            'success'   => $res['success'],
+            'http_code' => $res['http_code'] ?? null,
+            'response'  => $res['body'] ?? [],
+        ]);
 
         if (!$res['success']) {
             Log::warning('ShopeeCorrigir: falha ao atualizar contato (prosseguindo)', [
