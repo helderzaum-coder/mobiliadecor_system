@@ -243,6 +243,14 @@ class PedidoBlingStagingResource extends Resource
                 Tables\Columns\TextColumn::make('numero_pedido')->label('Pedido')->searchable(),
                 Tables\Columns\TextColumn::make('numero_loja')->label('Pedido Canal')->searchable(),
                 Tables\Columns\TextColumn::make('canal')->label('Canal'),
+                Tables\Columns\TextColumn::make('ml_tipo_frete')->label('Frete ML')
+                    ->badge()
+                    ->color(fn (?string $state) => match ($state) {
+                        'ME1' => 'warning',
+                        'ME2' => 'success',
+                        'FULL' => 'info',
+                        default => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('cliente_nome')->label('Cliente')->limit(30)->searchable(),
                 Tables\Columns\TextColumn::make('data_pedido')->label('Data')->date('d/m/Y')->sortable(),
                 Tables\Columns\TextColumn::make('total_pedido')->label('Total')->money('BRL'),
@@ -314,6 +322,14 @@ class PedidoBlingStagingResource extends Resource
                         ->toArray()
                     )
                     ->searchable(),
+                Tables\Filters\SelectFilter::make('ml_tipo_frete')
+                    ->label('Tipo Frete ML')
+                    ->options([
+                        'ME1' => 'ME1 (Coleta)',
+                        'ME2' => 'ME2 (Drop-off)',
+                        'FULL' => 'FULL (Fulfillment)',
+                        'default' => 'Default',
+                    ]),
                 Tables\Filters\TernaryFilter::make('pronto')
                     ->label('Pronto p/ Aprovar')
                     ->queries(
