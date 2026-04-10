@@ -179,6 +179,7 @@ class ShopeeCorrigirDadosService
                 'geral' => [
                     'endereco'    => $rua,
                     'numero'      => $numero,
+                    'complemento' => mb_substr($obsTexto, 0, 100), // Bling limita até 100 caracteres geralmente
                     'bairro'      => $bairro,
                     'municipio'   => $cidade,
                     'uf'          => (strlen($ufSigla) === 2) ? $ufSigla : '',
@@ -193,15 +194,7 @@ class ShopeeCorrigirDadosService
             $payload['endereco'] = $enderecoPayload;
         }
 
-        // Na API Bling v3 as observações de contato frequentemente ficam em campos adicionais
-        // ou foram removidas diretamente na raiz.
-        if ($obsTexto) {
-            $payload['dadosAdicionais'] = [
-                'observacoes' => $obsTexto
-            ];
-            // Mantemos na raiz como fallback caso a API reclame
-            $payload['observacao']  = $obsTexto;
-        }
+        // Observação foi transferida para o complemento do endereço acima
 
         Log::info('ShopeeCorrigir: atualizando contato', [
             'pedidoId'  => $pedidoId,
