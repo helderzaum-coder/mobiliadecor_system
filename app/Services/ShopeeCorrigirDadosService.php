@@ -176,25 +176,31 @@ class ShopeeCorrigirDadosService
             }
 
             $enderecoPayload = [
-                'endereco'    => $rua,
-                'numero'      => $numero,
-                'bairro'      => $bairro,
-                'municipio'   => $cidade,
-                'uf'          => (strlen($ufSigla) === 2) ? $ufSigla : '',
-                'cep'         => $cep,
+                'geral' => [
+                    'endereco'    => $rua,
+                    'numero'      => $numero,
+                    'bairro'      => $bairro,
+                    'municipio'   => $cidade,
+                    'uf'          => (strlen($ufSigla) === 2) ? $ufSigla : '',
+                    'cep'         => $cep,
+                ]
             ];
 
-            if (empty($enderecoPayload['uf'])) {
-                unset($enderecoPayload['uf']);
+            if (empty($enderecoPayload['geral']['uf'])) {
+                unset($enderecoPayload['geral']['uf']);
             }
 
             $payload['endereco'] = $enderecoPayload;
         }
 
-        // Tenta todos os campos possíveis de observação da API Bling v3
+        // Na API Bling v3 as observações de contato frequentemente ficam em campos adicionais
+        // ou foram removidas diretamente na raiz.
         if ($obsTexto) {
+            $payload['dadosAdicionais'] = [
+                'observacoes' => $obsTexto
+            ];
+            // Mantemos na raiz como fallback caso a API reclame
             $payload['observacao']  = $obsTexto;
-            $payload['observacoes'] = $obsTexto;
         }
 
         Log::info('ShopeeCorrigir: atualizando contato', [
