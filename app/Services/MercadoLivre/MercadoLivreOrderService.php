@@ -40,13 +40,16 @@ class MercadoLivreOrderService
 
         $listingTypeId = null;
         $unitPrice = 0;
+        $totalQuantity = 1;
 
         if (!empty($order['order_items'])) {
             $item = $order['order_items'][0];
             $listingTypeId = $item['listing_type_id'] ?? null;
             $unitPrice = (float) ($item['unit_price'] ?? 0);
+            $totalQuantity = (int) ($item['quantity'] ?? 1);
             $resultado['tipo_anuncio'] = $this->traduzirTipoAnuncio($listingTypeId);
-            $resultado['sale_fee'] = (float) ($item['sale_fee'] ?? 0);
+            // sale_fee vem por unidade, multiplicar pela quantidade
+            $resultado['sale_fee'] = round((float) ($item['sale_fee'] ?? 0) * $totalQuantity, 2);
         }
 
         // Tipo de frete e custos - vem do shipping
@@ -69,9 +72,10 @@ class MercadoLivreOrderService
             }
         }
 
-        // Comissão = sale_fee do order (valor real cobrado pelo ML)
-        // Tarifa bruta = preço × percentual do tipo de anúncio
-        $tarifaBruta = round($unitPrice * $this->percentualPorTipoAnuncio($listingTypeId) / 100, 2);
+        // Comissão = sale_fee do order (já multiplicado pela quantidade)
+        // Tarifa bruta = preço total × percentual do tipo de anúncio
+        $totalProduto = $unitPrice * $totalQuantity;
+        $tarifaBruta = round($totalProduto * $this->percentualPorTipoAnuncio($listingTypeId) / 100, 2);
         $saleFee = $resultado['sale_fee']; // já veio do order_items[0].sale_fee
 
         // Rebate = tarifa bruta - sale_fee (se ML deu desconto na comissão)
