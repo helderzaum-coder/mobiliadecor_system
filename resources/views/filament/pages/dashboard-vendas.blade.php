@@ -202,6 +202,19 @@
                     <div>
                         <div class="text-gray-500">Comissão</div>
                         <div class="font-semibold text-gray-800 dark:text-white">R$ {{ number_format($comissao, 2, ',', '.') }}</div>
+                        @php
+                            $mlSaleFee = (float) ($venda->ml_sale_fee ?? 0);
+                            $mlFreteCusto = (float) ($venda->ml_frete_custo ?? 0);
+                            $mlRebate = (float) ($venda->ml_valor_rebate ?? 0);
+                            $isMLVenda = str_contains(strtolower($canal), 'mercado');
+                        @endphp
+                        @if($isMLVenda && ($mlSaleFee > 0 || $mlFreteCusto > 0))
+                            <div style="font-size:10px;color:#9ca3af;margin-top:2px;">
+                                Tarifa: R$ {{ number_format($mlSaleFee + $mlRebate, 2, ',', '.') }}
+                                @if($mlRebate > 0) <span style="color:#10b981;">(-{{ number_format($mlRebate, 2, ',', '.') }} estorno)</span> @endif
+                                | Envio: R$ {{ number_format($mlFreteCusto, 2, ',', '.') }}
+                            </div>
+                        @endif
                     </div>
                     <div>
                         <div class="text-gray-500">Imposto</div>
