@@ -244,6 +244,20 @@ class BlingImportService
         $isMlMe2Full = in_array($mlDados['ml_tipo_frete'] ?? null, ['ME2', 'FULL']);
 
         $comissaoData = $this->preCalcularComissao($canal, $itens, $mlDados['ml_tipo_anuncio'] ?? null, $mlDados['ml_tipo_frete'] ?? null);
+
+        // Para ML com dados da API, usar sale_fee real em vez do pré-cálculo
+        $mlSaleFee = (float) ($mlDados['ml_sale_fee'] ?? 0);
+        $mlFreteCusto = (float) ($mlDados['ml_frete_custo'] ?? 0);
+        $mlFreteReceita = (float) ($mlDados['ml_frete_receita'] ?? 0);
+        if ($mlSaleFee > 0) {
+            if ($isMlMe2Full) {
+                // ME2/FULL: comissão = sale_fee + taxa frete ML
+                $taxaFreteML = $mlFreteCusto > 0 ? ($mlFreteCusto - $mlFreteReceita) : 0;
+                $comissaoData['comissao_total'] = round($mlSaleFee + $taxaFreteML, 2);
+            } else {
+                $comissaoData['comissao_total'] = $mlSaleFee;
+            }
+        }
         $impostoData = $this->preCalcularImposto(
             $canal,
             (float) ($pedido['total'] ?? 0),
