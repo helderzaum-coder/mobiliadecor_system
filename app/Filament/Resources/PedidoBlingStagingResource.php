@@ -664,7 +664,7 @@ class PedidoBlingStagingResource extends Resource
                                 $dados = $mlService->buscarDadosPedido((string) $orderId);
 
                                 if ($dados) {
-                                    $record->update([
+                                    $updates = [
                                         'ml_tipo_anuncio' => $dados['tipo_anuncio'],
                                         'ml_tipo_frete' => $dados['tipo_frete'],
                                         'ml_tem_rebate' => $dados['tem_rebate'],
@@ -674,8 +674,22 @@ class PedidoBlingStagingResource extends Resource
                                         'ml_frete_receita' => $dados['frete_ml_receita'],
                                         'ml_order_id' => $dados['order_id'],
                                         'ml_shipping_id' => $dados['shipping_id'],
-                                    ]);
-                                    Notification::make()->title('Desaprovado e dados ML atualizados.')->success()->send();
+                                    ];
+
+                                    // Atualizar comissão com sale_fee real
+                                    if ($dados['sale_fee'] > 0) {
+                                        $isME2Full = in_array($dados['tipo_frete'], ['ME2', 'FULL']);
+                                        if ($isME2Full) {
+                                            $taxaFrete = $dados['frete_ml_custo'] > 0 ? ($dados['frete_ml_custo'] - $dados['frete_ml_receita']) : 0;
+                                            $updates['comissao_calculada'] = round($dados['sale_fee'] + $taxaFrete, 2);
+                                            $updates['custo_frete'] = 0;
+                                        } else {
+                                            $updates['comissao_calculada'] = $dados['sale_fee'];
+                                        }
+                                    }
+
+                                    $record->update($updates);
+                                    Notification::make()->title('Desaprovado e dados ML atualizados. Comissão: R$ ' . number_format($updates['comissao_calculada'] ?? 0, 2, ',', '.'))->success()->send();
                                     return;
                                 }
                             } catch (\Exception $e) {
