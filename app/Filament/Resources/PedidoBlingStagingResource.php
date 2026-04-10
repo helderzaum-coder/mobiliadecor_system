@@ -92,10 +92,10 @@ class PedidoBlingStagingResource extends Resource
 
             Forms\Components\Section::make('Comissão e Impostos (editáveis)')->schema([
                 Forms\Components\TextInput::make('comissao_calculada')
-                    ->label('Comissão')
+                    ->label(fn ($record) => $record && self::isML($record) ? 'Descontos ML (Comissão + Frete)' : 'Comissão')
                     ->numeric()
                     ->prefix('R$')
-                    ->helperText('Pré-calculado pelas regras do canal. Edite se necessário.'),
+                    ->helperText(fn ($record) => $record && self::isML($record) ? 'Total retido pelo ML (sale_fee + frete envio)' : 'Pré-calculado pelas regras do canal. Edite se necessário.'),
                 Forms\Components\TextInput::make('subsidio_pix')
                     ->label('Subsídio Pix')
                     ->numeric()
@@ -121,32 +121,38 @@ class PedidoBlingStagingResource extends Resource
                 Forms\Components\TextInput::make('ml_tipo_frete')
                     ->label('Tipo Frete')
                     ->disabled(),
+                Forms\Components\Placeholder::make('ml_comissao_bruta')
+                    ->label('Comissão Bruta (tarifa de venda)')
+                    ->content(fn ($record) => 'R$ ' . number_format(
+                        (float) ($record->ml_sale_fee ?? 0) + (float) ($record->ml_valor_rebate ?? 0), 2, ',', '.')
+                    )
+                    ->helperText('sale_fee + rebate = tarifa cheia do ML'),
                 Forms\Components\TextInput::make('ml_sale_fee')
-                    ->label('Comissão ML (sale_fee)')
+                    ->label('Comissão Líquida (sale_fee)')
                     ->numeric()
                     ->prefix('R$')
                     ->disabled()
-                    ->helperText('Comissão real cobrada pelo ML'),
+                    ->helperText('Comissão real cobrada (já com estorno descontado)'),
                 Forms\Components\TextInput::make('ml_frete_custo')
-                    ->label('Frete ML Custo')
+                    ->label('Frete ML (envios)')
                     ->numeric()
                     ->prefix('R$')
                     ->disabled()
                     ->helperText('Tarifa de envio cobrada pelo ML (list_cost)'),
                 Forms\Components\TextInput::make('ml_frete_receita')
-                    ->label('Frete ML Receita')
+                    ->label('Frete Comprador')
                     ->numeric()
                     ->prefix('R$')
                     ->disabled()
-                    ->helperText('Valor pago pelo comprador (cost)'),
-                Forms\Components\Toggle::make('ml_tem_rebate')
-                    ->label('Tem Rebate'),
+                    ->helperText('Valor de frete pago pelo comprador'),
                 Forms\Components\TextInput::make('ml_valor_rebate')
-                    ->label('Valor Rebate')
+                    ->label('Estorno / Rebate')
                     ->numeric()
                     ->prefix('R$')
-                    ->helperText('Informe o valor do rebate/desconto do ML'),
-            ])->columns(3)
+                    ->helperText('Desconto/bônus devolvido pelo ML'),
+                Forms\Components\Toggle::make('ml_tem_rebate')
+                    ->label('Tem Rebate'),
+            ])->columns(4)
             ->visible(fn ($record) => $record && self::isML($record)),
 
             Forms\Components\Section::make('Dados de Envio')->schema([
