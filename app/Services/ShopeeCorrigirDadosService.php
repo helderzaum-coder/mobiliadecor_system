@@ -72,7 +72,7 @@ class ShopeeCorrigirDadosService
                 }
 
                 $pedidoData = $pedidoBling['body']['data'] ?? [];
-                $contatoId  = $pedidoData['contato']['id'] ?? null;
+                $contatoId = $pedidoData['contato']['id'] ?? null;
 
                 if (!$contatoId) {
                     $resultado['erros']++;
@@ -92,12 +92,12 @@ class ShopeeCorrigirDadosService
                 $cpf = preg_replace('/\D/', '', trim($row['AZ'] ?? ''));
 
                 $staging->update([
-                    'cliente_nome'      => $nome,
+                    'cliente_nome' => $nome,
                     'cliente_documento' => $cpf ? self::formatarCpf($cpf) : $staging->cliente_documento,
                 ]);
 
                 \App\Models\Venda::where('bling_id', $staging->bling_id)->update([
-                    'cliente_nome'      => $nome,
+                    'cliente_nome' => $nome,
                     'cliente_documento' => $cpf ? self::formatarCpf($cpf) : null,
                 ]);
 
@@ -119,14 +119,14 @@ class ShopeeCorrigirDadosService
     // ════════════════════════════════════════════════════════════════════════
     private static function atualizarContato(BlingClient $client, string $pedidoId, int $contatoId, array $row): void
     {
-        $nome     = trim($row['AX'] ?? '');
+        $nome = trim($row['AX'] ?? '');
         $telefone = trim($row['AY'] ?? '');
-        $cpf      = preg_replace('/\D/', '', trim($row['AZ'] ?? ''));
+        $cpf = preg_replace('/\D/', '', trim($row['AZ'] ?? ''));
         $endereco = trim($row['BA'] ?? '');
-        $bairro   = trim($row['BC'] ?? '');
-        $cidade   = trim($row['BB'] ?? '') ?: trim($row['BD'] ?? '');
-        $uf       = trim($row['BE'] ?? '');
-        $cep      = preg_replace('/\D/', '', trim($row['BG'] ?? ''));
+        $bairro = trim($row['BC'] ?? '');
+        $cidade = trim($row['BB'] ?? '') ?: trim($row['BD'] ?? '');
+        $uf = trim($row['BE'] ?? '');
+        $cep = preg_replace('/\D/', '', trim($row['BG'] ?? ''));
 
         $tipoPessoa = strlen($cpf) > 11 ? 'J' : 'F';
 
@@ -135,15 +135,15 @@ class ShopeeCorrigirDadosService
         $contatoData = $contatoAtual['success'] ? ($contatoAtual['body']['data'] ?? []) : [];
 
         Log::info('ShopeeCorrigir: estrutura contato atual do Bling', [
-            'pedidoId'  => $pedidoId,
+            'pedidoId' => $pedidoId,
             'contatoId' => $contatoId,
-            'campos'    => array_keys($contatoData),
-            'contato'   => $contatoData,
+            'campos' => array_keys($contatoData),
+            'contato' => $contatoData,
         ]);
 
         $payload = [
-            'nome'     => $nome,
-            'tipo'     => $tipoPessoa,
+            'nome' => $nome,
+            'tipo' => $tipoPessoa,
             'situacao' => 'A',
         ];
 
@@ -167,21 +167,21 @@ class ShopeeCorrigirDadosService
         $obsTexto = $enderecoCompletoBA ?: (implode(', ', array_filter([$endereco, $bairro, $cidade, $ufSigla, $cep])));
 
         if ($endereco || $cidade || $uf || $cep) {
-            $partes  = array_map('trim', explode(',', $endereco));
-            $rua     = $partes[0] ?? $endereco;
-            $numero  = '';
+            $partes = array_map('trim', explode(',', $endereco));
+            $rua = $partes[0] ?? $endereco;
+            $numero = '';
 
             if (count($partes) >= 2 && preg_match('/^\d+\w*$/', $partes[1])) {
                 $numero = $partes[1];
             }
 
             $enderecoPayload = [
-                'endereco'    => $rua,
-                'numero'      => $numero,
-                'bairro'      => $bairro,
-                'municipio'   => $cidade,
-                'uf'          => (strlen($ufSigla) === 2) ? $ufSigla : '',
-                'cep'         => $cep,
+                'endereco' => $rua,
+                'numero' => $numero,
+                'bairro' => $bairro,
+                'municipio' => $cidade,
+                'uf' => (strlen($ufSigla) === 2) ? $ufSigla : '',
+                'cep' => $cep,
                 'complemento' => $endereco ? "Endereço completo: {$endereco}" : '',
             ];
 
@@ -195,25 +195,25 @@ class ShopeeCorrigirDadosService
         // Observação foi transferida para o complemento do endereço acima
 
         Log::info('ShopeeCorrigir: atualizando contato', [
-            'pedidoId'  => $pedidoId,
+            'pedidoId' => $pedidoId,
             'contatoId' => $contatoId,
-            'payload'   => $payload,
+            'payload' => $payload,
         ]);
 
         $res = $client->put("/contatos/{$contatoId}", [], $payload);
 
         Log::info('ShopeeCorrigir: resposta PUT contato', [
-            'pedido'    => $pedidoId,
-            'success'   => $res['success'],
+            'pedido' => $pedidoId,
+            'success' => $res['success'],
             'http_code' => $res['http_code'] ?? null,
-            'response'  => $res['body'] ?? [],
+            'response' => $res['body'] ?? [],
         ]);
 
         if (!$res['success']) {
             Log::warning('ShopeeCorrigir: falha ao atualizar contato (prosseguindo)', [
-                'pedido'    => $pedidoId,
+                'pedido' => $pedidoId,
                 'http_code' => $res['http_code'] ?? null,
-                'response'  => $res['body'] ?? [],
+                'response' => $res['body'] ?? [],
             ]);
         }
     }
@@ -237,13 +237,13 @@ class ShopeeCorrigirDadosService
         array $pedidoData
     ): void {
         try {
-            $precoU        = self::parseDecimalValue($row['U'] ?? 0);
-            $subsidioY     = abs(self::parseDecimalValue($row['Y'] ?? 0));
-            $subtotal      = $precoU - $subsidioY;
-            $taxaEnvio     = self::parseDecimalValue($row['AM'] ?? 0);
+            $precoU = self::parseDecimalValue($row['U'] ?? 0);
+            $subsidioY = abs(self::parseDecimalValue($row['Y'] ?? 0));
+            $subtotal = $precoU - $subsidioY;
+            $taxaEnvio = self::parseDecimalValue($row['AM'] ?? 0);
             $descontoFrete = abs(self::parseDecimalValue($row['AN'] ?? 0));
-            $frete         = $taxaEnvio + $descontoFrete;
-            $faturar       = round($subtotal / 2, 2);
+            $frete = $taxaEnvio + $descontoFrete;
+            $faturar = round($subtotal / 2, 2);
 
             $obs = "=== DADOS SHOPEE ===\n"
                 . "ID Pedido: {$pedidoId}\n"
@@ -277,7 +277,7 @@ class ShopeeCorrigirDadosService
             }
 
             Log::info('ShopeeCorrigir: enviando PUT observacoesInternas', [
-                'pedido'   => $pedidoId,
+                'pedido' => $pedidoId,
                 'bling_id' => $staging->bling_id,
             ]);
 
@@ -285,14 +285,14 @@ class ShopeeCorrigirDadosService
 
             if (!$res['success']) {
                 Log::error('ShopeeCorrigir: erro no PUT de observacoesInternas', [
-                    'pedido'    => $pedidoId,
-                    'bling_id'  => $staging->bling_id,
+                    'pedido' => $pedidoId,
+                    'bling_id' => $staging->bling_id,
                     'http_code' => $res['http_code'] ?? null,
-                    'response'  => $res['body'] ?? [],
+                    'response' => $res['body'] ?? [],
                 ]);
             } else {
                 Log::info('ShopeeCorrigir: PUT observacoesInternas aplicado com sucesso', [
-                    'pedido'   => $pedidoId,
+                    'pedido' => $pedidoId,
                     'bling_id' => $staging->bling_id,
                 ]);
             }
@@ -300,7 +300,7 @@ class ShopeeCorrigirDadosService
         } catch (\Exception $e) {
             Log::error('ShopeeCorrigir: erro crítico em atualizarObservacoesPedido', [
                 'pedido' => $pedidoId,
-                'error'  => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -311,9 +311,11 @@ class ShopeeCorrigirDadosService
 
     private static function parseDecimalValue($value): float
     {
-        if (is_numeric($value)) return (float) $value;
+        if (is_numeric($value))
+            return (float) $value;
         $str = trim((string) $value);
-        if ($str === '') return 0;
+        if ($str === '')
+            return 0;
         if (str_contains($str, ',')) {
             $str = str_replace('.', '', $str);
             $str = str_replace(',', '.', $str);
@@ -332,21 +334,48 @@ class ShopeeCorrigirDadosService
     private static function ufParaSigla(string $uf): string
     {
         $uf = mb_strtolower(trim($uf));
-        if (strlen($uf) === 2) return strtoupper($uf);
+        if (strlen($uf) === 2)
+            return strtoupper($uf);
 
         $mapa = [
-            'acre' => 'AC', 'alagoas' => 'AL', 'amapá' => 'AP', 'amapa' => 'AP',
-            'amazonas' => 'AM', 'bahia' => 'BA', 'ceará' => 'CE', 'ceara' => 'CE',
-            'distrito federal' => 'DF', 'espírito santo' => 'ES', 'espirito santo' => 'ES',
-            'goiás' => 'GO', 'goias' => 'GO', 'maranhão' => 'MA', 'maranhao' => 'MA',
-            'mato grosso' => 'MT', 'mato grosso do sul' => 'MS',
-            'minas gerais' => 'MG', 'pará' => 'PA', 'para' => 'PA',
-            'paraíba' => 'PB', 'paraiba' => 'PB', 'paraná' => 'PR', 'parana' => 'PR',
-            'pernambuco' => 'PE', 'piauí' => 'PI', 'piaui' => 'PI',
-            'rio de janeiro' => 'RJ', 'rio grande do norte' => 'RN',
-            'rio grande do sul' => 'RS', 'rondônia' => 'RO', 'rondonia' => 'RO',
-            'roraima' => 'RR', 'santa catarina' => 'SC', 'são paulo' => 'SP',
-            'sao paulo' => 'SP', 'sergipe' => 'SE', 'tocantins' => 'TO',
+            'acre' => 'AC',
+            'alagoas' => 'AL',
+            'amapá' => 'AP',
+            'amapa' => 'AP',
+            'amazonas' => 'AM',
+            'bahia' => 'BA',
+            'ceará' => 'CE',
+            'ceara' => 'CE',
+            'distrito federal' => 'DF',
+            'espírito santo' => 'ES',
+            'espirito santo' => 'ES',
+            'goiás' => 'GO',
+            'goias' => 'GO',
+            'maranhão' => 'MA',
+            'maranhao' => 'MA',
+            'mato grosso' => 'MT',
+            'mato grosso do sul' => 'MS',
+            'minas gerais' => 'MG',
+            'pará' => 'PA',
+            'para' => 'PA',
+            'paraíba' => 'PB',
+            'paraiba' => 'PB',
+            'paraná' => 'PR',
+            'parana' => 'PR',
+            'pernambuco' => 'PE',
+            'piauí' => 'PI',
+            'piaui' => 'PI',
+            'rio de janeiro' => 'RJ',
+            'rio grande do norte' => 'RN',
+            'rio grande do sul' => 'RS',
+            'rondônia' => 'RO',
+            'rondonia' => 'RO',
+            'roraima' => 'RR',
+            'santa catarina' => 'SC',
+            'são paulo' => 'SP',
+            'sao paulo' => 'SP',
+            'sergipe' => 'SE',
+            'tocantins' => 'TO',
         ];
 
         return $mapa[$uf] ?? '';
