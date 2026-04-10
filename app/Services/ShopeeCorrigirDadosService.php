@@ -176,19 +176,27 @@ class ShopeeCorrigirDadosService
             }
 
             $enderecoPayload = [
-                'endereco'    => $rua,
-                'numero'      => $numero,
-                'bairro'      => $bairro,
-                'municipio'   => $cidade,
-                'uf'          => (strlen($ufSigla) === 2) ? $ufSigla : '',
-                'cep'         => $cep,
-            ];
+    'endereco'    => $rua,
+    'numero'      => $numero,
+    'bairro'      => $bairro,
+    'municipio'   => $cidade,
+    'uf'          => (strlen($ufSigla) === 2) ? $ufSigla : '',
+    'cep'         => $cep,
+    // NÃO coloque mais o complemento aqui
+];
 
-            if (empty($enderecoPayload['uf'])) {
-                unset($enderecoPayload['uf']);
-            }
+// Payload principal (o que você envia na requisição)
+$payload = [ /* seus outros campos aqui... */ ];
 
-            $payload['endereco'] = $enderecoPayload;
+// Adiciona a observação com o endereço completo
+if (!empty($endereco)) {
+    $payload['observacoes'] = "Endereço completo: {$endereco}";
+}
+
+// Se o endereço for um sub-array (ex: dentro de 'cliente'), faça assim:
+$payload['cliente'] = $enderecoPayload;   // ou o nome do campo que você usa
+// ou merge se já tiver outros campos do cliente:
+$payload['cliente'] = array_merge($payload['cliente'] ?? [], $enderecoPayload);
         }
 
         // Tenta todos os campos possíveis de observação da API Bling v3
