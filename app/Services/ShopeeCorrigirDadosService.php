@@ -161,10 +161,10 @@ class ShopeeCorrigirDadosService
             $payload['numeroDocumento'] = $cpf;
         }
 
-        // Monta texto do endereço completo para observação
+        // Monta texto do endereço completo para observação - usa coluna BA diretamente
+        $enderecoCompletoBA = trim($row['BA'] ?? '');
         $ufSigla = self::ufParaSigla($uf);
-        $partesEndereco = array_filter([$endereco, $bairro, $cidade, $ufSigla, $cep]);
-        $obsTexto = $partesEndereco ? 'Endereço completo: ' . implode(', ', $partesEndereco) : '';
+        $obsTexto = $enderecoCompletoBA ?: (implode(', ', array_filter([$endereco, $bairro, $cidade, $ufSigla, $cep])));
 
         if ($endereco || $cidade || $uf || $cep) {
             $partes  = array_map('trim', explode(',', $endereco));
@@ -182,14 +182,13 @@ class ShopeeCorrigirDadosService
                 'municipio'   => $cidade,
                 'uf'          => (strlen($ufSigla) === 2) ? $ufSigla : '',
                 'cep'         => $cep,
-                'complemento' => $endereco ? "Endereço completo: {$endereco}" : '',
             ];
 
             if (empty($enderecoPayload['uf'])) {
                 unset($enderecoPayload['uf']);
             }
 
-           // $payload['endereco'] = $enderecoPayload;
+            $payload['endereco'] = $enderecoPayload;
         }
 
         // Tenta todos os campos possíveis de observação da API Bling v3
