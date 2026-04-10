@@ -58,6 +58,9 @@ jobs:
             php artisan optimize:clear
             php artisan optimize
 
+            # Limpar OPcache do web server
+            curl -s "http://localhost/clear_opcache.php" > /dev/null 2>&1 || true
+
             if php artisan list | grep -q "queue:restart"; then
               php artisan queue:restart
             fi
