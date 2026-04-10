@@ -645,8 +645,16 @@ class PedidoBlingStagingResource extends Resource
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->action(fn (PedidoBlingStaging $record) => $record->update(['status' => 'rejeitado']))
-                    ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente'),
+                    ->modalHeading('Rejeitar e Excluir')
+                    ->modalDescription('Isso vai excluir o pedido do staging e a venda vinculada (se houver). Na próxima importação ele será reimportado do zero.')
+                    ->action(function (PedidoBlingStaging $record) {
+                        // Excluir venda vinculada se existir
+                        \App\Models\Venda::where('bling_id', $record->bling_id)->delete();
+                        // Deletar o staging
+                        $record->delete();
+                        Notification::make()->title('Pedido excluído. Reimporte para trazer do zero.')->success()->send();
+                    })
+                    ->visible(fn (PedidoBlingStaging $record) => in_array($record->status, ['pendente', 'aprovado'])),
 
                 Tables\Actions\Action::make('desaprovar_reimportar')
                     ->label('Desaprovar e Reimportar')
@@ -805,20 +813,20 @@ class PedidoBlingStagingResource extends Resource
                         }
                     }),
                 Tables\Actions\BulkAction::make('rejeitar_selecionados')
-                    ->label('Rejeitar Selecionados')
+                    ->label('Excluir Selecionados')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->requiresConfirmation()
+                    ->modalDescription('Isso vai excluir os pedidos selecionados e suas vendas vinculadas. Na próxima importação serão reimportados do zero.')
                     ->action(function ($records) {
-                        $rejeitados = 0;
+                        $excluidos = 0;
                         foreach ($records as $record) {
-                            if ($record->status === 'pendente') {
-                                $record->update(['status' => 'rejeitado']);
-                                $rejeitados++;
-                            }
+                            \App\Models\Venda::where('bling_id', $record->bling_id)->delete();
+                            $record->delete();
+                            $excluidos++;
                         }
-                        if ($rejeitados > 0) {
-                            Notification::make()->title("{$rejeitados} pedido(s) rejeitados.")->success()->send();
+                        if ($excluidos > 0) {
+                            Notification::make()->title("{$excluidos} pedido(s) excluído(s).")->success()->send();
                         }
                     }),
             ]);
