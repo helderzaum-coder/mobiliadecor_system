@@ -241,6 +241,8 @@ class BlingImportService
 
         $mlDados = $this->buscarDadosMLPreCalculo($canal, $pedido['numeroLoja'] ?? null, $pedido['numero'] ?? null);
 
+        $isMlMe2Full = in_array($mlDados['ml_tipo_frete'] ?? null, ['ME2', 'FULL']);
+
         $comissaoData = $this->preCalcularComissao($canal, $itens, $mlDados['ml_tipo_anuncio'] ?? null, $mlDados['ml_tipo_frete'] ?? null);
         $impostoData = $this->preCalcularImposto(
             $canal,
@@ -260,7 +262,7 @@ class BlingImportService
             'total_produtos' => $pedido['totalProdutos'] ?? 0,
             'total_pedido' => $pedido['total'] ?? 0,
             'frete' => $pedido['transporte']['frete'] ?? 0,
-            'custo_frete' => $pedido['taxas']['custoFrete'] ?? 0,
+            'custo_frete' => $isMlMe2Full ? 0 : ($pedido['taxas']['custoFrete'] ?? 0),
             'comissao_calculada' => $comissaoData['comissao_total'],
             'subsidio_pix' => $comissaoData['subsidio_pix_total'],
             'base_imposto' => $impostoData['base_calculo'],
