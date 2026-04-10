@@ -626,6 +626,51 @@ class PedidoBlingStagingResource extends Resource
                     ->action(fn (PedidoBlingStaging $record) => $record->update(['status' => 'rejeitado']))
                     ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente'),
 
+                Tables\Actions\Action::make('desaprovar_reimportar')
+                    ->label('Desaprovar e Reimportar')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Desaprovar e Reimportar')
+                    ->modalDescription('Isso vai excluir a venda criada, voltar o pedido para pendente e rebuscar dados da API do ML. Continuar?')
+                    ->action(function (PedidoBlingStaging $record) {
+                        // Excluir venda vinculada
+                        \App\Models\Venda::where('bling_id', $record->bling_id)->delete();
+
+                        // Voltar para pendente
+                        $record->update(['status' => 'pendente']);
+
+                        // Rebuscar dados ML se for ML
+                        if (self::isML($record)) {
+                            try {
+                                $orderId = $record->numero_loja ?? $record->numero_pedido;
+                                $mlService = new \App\Services\MercadoLivre\MercadoLivreOrderService($record->bling_account);
+                                $dados = $mlService->buscarDadosPedido((string) $orderId);
+
+                                if ($dados) {
+                                    $record->update([
+                                        'ml_tipo_anuncio' => $dados['tipo_anuncio'],
+                                        'ml_tipo_frete' => $dados['tipo_frete'],
+                                        'ml_tem_rebate' => $dados['tem_rebate'],
+                                        'ml_valor_rebate' => $dados['valor_rebate'],
+                                        'ml_sale_fee' => $dados['sale_fee'],
+                                        'ml_frete_custo' => $dados['frete_ml_custo'],
+                                        'ml_frete_receita' => $dados['frete_ml_receita'],
+                                        'ml_order_id' => $dados['order_id'],
+                                        'ml_shipping_id' => $dados['shipping_id'],
+                                    ]);
+                                    Notification::make()->title('Desaprovado e dados ML atualizados.')->success()->send();
+                                    return;
+                                }
+                            } catch (\Exception $e) {
+                                // continua mesmo se falhar
+                            }
+                        }
+
+                        Notification::make()->title('Pedido desaprovado e voltou para pendente.')->success()->send();
+                    })
+                    ->visible(fn (PedidoBlingStaging $record) => $record->status === 'aprovado'),
+
                 Tables\Actions\Action::make('cotacao_whatsapp')
                     ->label('Cotação WA')
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
