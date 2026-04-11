@@ -215,7 +215,9 @@
                             <div style="font-size:10px;color:#9ca3af;margin-top:2px;">
                                 Tarifa: R$ {{ number_format($mlSaleFee + $mlRebate, 2, ',', '.') }}
                                 @if($mlRebate > 0) <span style="color:#10b981;">(-{{ number_format($mlRebate, 2, ',', '.') }} estorno)</span> @endif
-                                | Envio: R$ {{ number_format($mlFreteCusto, 2, ',', '.') }}
+                                @if($isMlMe2Full && $mlFreteCusto > 0)
+                                    | Envio: R$ {{ number_format($mlFreteCusto, 2, ',', '.') }}
+                                @endif
                             </div>
                         @endif
                     </div>
