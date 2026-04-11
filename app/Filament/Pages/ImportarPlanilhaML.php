@@ -14,6 +14,7 @@ class ImportarPlanilhaML extends Page implements HasForms
 {
     use InteractsWithForms;
 
+    protected static bool $shouldRegisterNavigation = false;
     protected static ?string $navigationIcon = 'heroicon-o-document-arrow-up';
     protected static ?string $navigationGroup = 'Integrações';
     protected static ?string $navigationLabel = 'Planilha Mercado Livre';
