@@ -290,6 +290,8 @@
                     $fretePagoReal = (bool) $venda->frete_pago;
                     $temPlanilha = (bool) $venda->planilha_processada;
                     $isMarketplace = $isML || $isShopee;
+                    $mlTipoFreteBtn = $venda->ml_tipo_frete ?? null;
+                    $isMlMe1 = $mlTipoFreteBtn === 'ME1';
                 @endphp
                 <div class="flex flex-wrap gap-2 mt-3">
                     @if(!$temNfe)
@@ -298,7 +300,7 @@
                             📄 Buscar NF-e
                         </button>
                     @endif
-                    @if($temNfe && !$fretePagoReal && !$isML)
+                    @if($temNfe && !$fretePagoReal && (!$isML || $isMlMe1))
                         <button wire:click="buscarCte({{ $venda->id_venda }})" wire:loading.attr="disabled"
                             style="background:#7c3aed;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
                             🚚 Buscar CT-e
