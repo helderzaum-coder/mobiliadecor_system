@@ -205,13 +205,22 @@ class DashboardVendas extends Page implements HasForms
         if ($this->status_filtro === 'falta_nfe') {
             $query->where(fn ($q) => $q->whereNull('nfe_chave_acesso')->orWhere('nfe_chave_acesso', ''));
         } elseif ($this->status_filtro === 'falta_frete') {
-            $query->where('frete_pago', false);
+            // Falta frete: frete_pago=false, EXCETO ML ME2/FULL (não precisam de frete)
+            $query->where('frete_pago', false)
+                ->where(fn ($q) => $q
+                    ->whereNull('ml_tipo_frete')
+                    ->orWhere('ml_tipo_frete', 'ME1')
+                );
         } elseif ($this->status_filtro === 'falta_planilha') {
             $query->where('planilha_processada', false)
                 ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%'));
         } elseif ($this->status_filtro === 'completo') {
+            // Completo: tem NF-e + (frete_pago OU ML ME2/FULL) + planilha ok
             $query->where(fn ($q) => $q->whereNotNull('nfe_chave_acesso')->where('nfe_chave_acesso', '!=', ''))
-                ->where('frete_pago', true)
+                ->where(fn ($q) => $q
+                    ->where('frete_pago', true)
+                    ->orWhereIn('ml_tipo_frete', ['ME2', 'FULL'])
+                )
                 ->where(fn ($q) => $q
                     ->where('planilha_processada', true)
                     ->orWhereDoesntHave('canal', fn ($q2) => $q2->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%'))

@@ -128,10 +128,13 @@
                 $temNfeChave = !empty($venda->nfe_chave_acesso);
                 $fretePagoFlag = (bool) $venda->frete_pago;
                 $planilhaOk = (bool) $venda->planilha_processada;
+                $mlTipoFrete = $venda->ml_tipo_frete ?? null;
+                $isMlMe2Full = in_array($mlTipoFrete, ['ME2', 'FULL']);
                 $isML = str_contains(strtolower($canal), 'mercado');
                 $isShopee = str_contains(strtolower($canal), 'shopee');
                 $precisaPlanilha = $isML || $isShopee;
-                $completo = $temNfeChave && $fretePagoFlag && (!$precisaPlanilha || $planilhaOk);
+                $freteOk = $fretePagoFlag || $isMlMe2Full;
+                $completo = $temNfeChave && $freteOk && (!$precisaPlanilha || $planilhaOk);
 
                 $conta = $venda->bling_account === 'primary' ? 'Mobilia' : 'HES';
                 $canal = $venda->canal?->nome_canal ?? '-';
@@ -162,7 +165,7 @@
                             @if(!$temNfeChave)
                                 <span style="background:#dc2626;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">Falta NF-e</span>
                             @endif
-                            @if(!$fretePagoFlag && !$isML)
+                            @if(!$fretePagoFlag && !$isML && !$isMlMe2Full)
                                 <span style="background:#d97706;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">Falta Frete</span>
                             @endif
                             @if($precisaPlanilha && !$planilhaOk)
