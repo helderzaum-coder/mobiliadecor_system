@@ -325,6 +325,12 @@
                         style="background:#059669;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
                         🔄 Recalcular
                     </button>
+                    @if($custoProd <= 0)
+                        <button wire:click="buscarCustos({{ $venda->id_venda }})" wire:loading.attr="disabled"
+                            style="background:#d97706;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                            💰 Buscar Custos
+                        </button>
+                    @endif
                 </div>
 
                 {{-- Itens do pedido --}}

@@ -81,6 +81,33 @@ class DashboardVendas extends Page implements HasForms
         \Filament\Notifications\Notification::make()->title('Margens recalculadas.')->success()->send();
     }
 
+    public function buscarCustos(int $vendaId): void
+    {
+        $venda = Venda::find($vendaId);
+        if (!$venda) return;
+
+        $staging = \App\Models\PedidoBlingStaging::where('bling_id', $venda->bling_id)->first();
+        if (!$staging) {
+            \Filament\Notifications\Notification::make()->title('Staging não encontrado.')->warning()->send();
+            return;
+        }
+
+        $atualizados = \App\Services\Bling\BlingImportService::buscarCustosProdutos($staging);
+
+        if ($atualizados > 0) {
+            // Recalcular custo total na venda
+            $custoProdutos = 0;
+            foreach ($staging->fresh()->itens ?? [] as $item) {
+                $custoProdutos += ((float) ($item['custo'] ?? 0)) * ((int) ($item['quantidade'] ?? 1));
+            }
+            $venda->update(['custo_produtos' => round($custoProdutos, 2)]);
+            \App\Services\VendaRecalculoService::recalcularMargens($venda);
+            \Filament\Notifications\Notification::make()->title("{$atualizados} custo(s) atualizado(s). Margens recalculadas.")->success()->send();
+        } else {
+            \Filament\Notifications\Notification::make()->title('Nenhum custo encontrado no Bling.')->warning()->send();
+        }
+    }
+
     public function paginaAnterior(): void
     {
         if ($this->pagina > 1) $this->pagina--;
