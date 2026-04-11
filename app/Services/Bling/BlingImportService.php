@@ -640,9 +640,29 @@ class BlingImportService
             return ucfirst(strtolower($matches[1]));
         }
 
-        $intermediador = $pedido['intermediador']['nomeUsuario'] ?? '';
-        if (!empty($intermediador)) {
-            return ucfirst($intermediador);
+        $intermediador = $pedido['intermediador'] ?? [];
+        $cnpj = $intermediador['cnpj'] ?? '';
+        $nomeUsuario = $intermediador['nomeUsuario'] ?? '';
+
+        // Identificar pelo CNPJ do intermediador
+        $cnpjLimpo = preg_replace('/\D/', '', $cnpj);
+        if ($cnpjLimpo === '03007331000141') {
+            return 'Mercadolivre';
+        }
+        if ($cnpjLimpo === '02489951000102') {
+            return 'Shopee';
+        }
+
+        // Identificar pelo nome do intermediador
+        if (!empty($nomeUsuario)) {
+            $nomeLower = strtolower($nomeUsuario);
+            if (str_contains($nomeLower, 'mercado') || str_contains($nomeLower, 'meli')) {
+                return 'Mercadolivre';
+            }
+            if (str_contains($nomeLower, 'shopee')) {
+                return 'Shopee';
+            }
+            return ucfirst($nomeUsuario);
         }
 
         return 'Direto';

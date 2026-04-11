@@ -209,9 +209,9 @@
                             $mlSaleFee = (float) ($venda->ml_sale_fee ?? 0);
                             $mlFreteCusto = (float) ($venda->ml_frete_custo ?? 0);
                             $mlRebate = (float) ($venda->ml_valor_rebate ?? 0);
-                            $isMLVenda = str_contains(strtolower($canal), 'mercado');
+                            $temDadosML = $mlSaleFee > 0 || $mlFreteCusto > 0;
                         @endphp
-                        @if($isMLVenda && ($mlSaleFee > 0 || $mlFreteCusto > 0))
+                        @if($temDadosML)
                             <div style="font-size:10px;color:#9ca3af;margin-top:2px;">
                                 Tarifa: R$ {{ number_format($mlSaleFee + $mlRebate, 2, ',', '.') }}
                                 @if($mlRebate > 0) <span style="color:#10b981;">(-{{ number_format($mlRebate, 2, ',', '.') }} estorno)</span> @endif
