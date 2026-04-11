@@ -13,6 +13,27 @@ class ListPedidosBlingStaging extends ListRecords
 {
     protected static string $resource = PedidoBlingStagingResource::class;
 
+    protected ?string $defaultTableSortColumn = 'data_pedido';
+    protected ?string $defaultTableSortDirection = 'desc';
+
+    public function getDefaultActiveTab(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Garante que o filtro de status 'pendente' esteja sempre ativo ao abrir a página
+     */
+    public function mount(): void
+    {
+        parent::mount();
+
+        // Se não tem filtros na URL, forçar status=pendente
+        if (empty(request()->query('tableFilters'))) {
+            $this->tableFilters['status']['value'] = 'pendente';
+        }
+    }
+
     protected function getHeaderActions(): array
     {
         return [
