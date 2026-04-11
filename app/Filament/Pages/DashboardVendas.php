@@ -25,6 +25,8 @@ class DashboardVendas extends Page implements HasForms
     public ?string $conta = null;
     public ?string $status_filtro = null;
     public ?string $busca_pedido = null;
+    public ?string $data_inicio = null;
+    public ?string $data_fim = null;
     public int $pagina = 1;
     public int $porPagina = 20;
 
@@ -95,13 +97,15 @@ class DashboardVendas extends Page implements HasForms
     public function updatedConta(): void { $this->pagina = 1; }
     public function updatedStatusFiltro(): void { $this->pagina = 1; }
     public function updatedBuscaPedido(): void { $this->pagina = 1; }
+    public function updatedDataInicio(): void { $this->pagina = 1; }
+    public function updatedDataFim(): void { $this->pagina = 1; }
 
     // ---- Form ----
 
     public function form(Forms\Form $form): Forms\Form
     {
         return $form->schema([
-            Forms\Components\Grid::make(7)->schema([
+            Forms\Components\Grid::make(8)->schema([
                 Forms\Components\TextInput::make('busca_pedido')
                     ->label('Pedido')
                     ->placeholder('Nº pedido...')
@@ -115,6 +119,7 @@ class DashboardVendas extends Page implements HasForms
                         'este_mes' => 'Este mês',
                         'mes_passado' => 'Mês passado',
                         'selecionar_mes' => 'Selecionar mês',
+                        'customizado' => 'Período customizado',
                     ])
                     ->reactive(),
                 Forms\Components\Select::make('mes_selecionado')
@@ -128,6 +133,16 @@ class DashboardVendas extends Page implements HasForms
                         return $options;
                     })
                     ->visible(fn ($get) => $get('periodo') === 'selecionar_mes')
+                    ->reactive(),
+                Forms\Components\DatePicker::make('data_inicio')
+                    ->label('De')
+                    ->displayFormat('d/m/Y')
+                    ->visible(fn ($get) => $get('periodo') === 'customizado')
+                    ->reactive(),
+                Forms\Components\DatePicker::make('data_fim')
+                    ->label('Até')
+                    ->displayFormat('d/m/Y')
+                    ->visible(fn ($get) => $get('periodo') === 'customizado')
                     ->reactive(),
                 Forms\Components\Select::make('canal')
                     ->label('Canal')
@@ -170,6 +185,9 @@ class DashboardVendas extends Page implements HasForms
                     now()->createFromFormat('Y-m', $this->mes_selecionado)->endOfMonth(),
                 ])
                 : $query,
+            'customizado' => $query
+                ->when($this->data_inicio, fn ($q) => $q->whereDate('data_venda', '>=', $this->data_inicio))
+                ->when($this->data_fim, fn ($q) => $q->whereDate('data_venda', '<=', $this->data_fim)),
             default => $query,
         };
 
