@@ -165,6 +165,7 @@ class AprovacaoVendaService
             'ml_frete_receita' => $staging->ml_frete_receita ?? 0,
             'ml_order_id' => $staging->ml_order_id,
             'ml_shipping_id' => $staging->ml_shipping_id,
+            'planilha_processada' => (float) ($staging->ml_sale_fee ?? 0) > 0,
         ]);
 
         $staging->update(['status' => 'aprovado']);
