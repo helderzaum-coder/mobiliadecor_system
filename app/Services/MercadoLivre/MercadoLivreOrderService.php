@@ -16,6 +16,7 @@ class MercadoLivreOrderService
     /**
      * Busca dados complementares de um pedido ML pelo ID do pedido (pack_id ou order_id)
      * Usa /orders, /shipments e /collections para obter todos os dados financeiros.
+     * Se o pedido faz parte de um pack, busca todas as orders do pack.
      */
     public function buscarDadosPedido(string $orderId): ?array
     {
@@ -38,29 +39,54 @@ class MercadoLivreOrderService
             'net_received_amount' => 0,
         ];
 
+        // Se faz parte de um pack, buscar todas as orders do pack
+        $packId = $order['pack_id'] ?? null;
+        $orders = [$order];
+
+        if ($packId) {
+            $packOrders = $this->getOrdersByPack($packId);
+            if (!empty($packOrders)) {
+                $orders = $packOrders;
+                Log::info("ML pack {$packId}: encontradas " . count($orders) . " orders");
+            }
+        }
+
         $listingTypeId = null;
         $totalProduto = 0;
         $totalSaleFee = 0;
+        $totalNetReceived = 0;
 
-        if (!empty($order['order_items'])) {
-            // Usar tipo de anúncio do primeiro item (normalmente é o mesmo para todos)
-            $listingTypeId = $order['order_items'][0]['listing_type_id'] ?? null;
-            $resultado['tipo_anuncio'] = $this->traduzirTipoAnuncio($listingTypeId);
+        foreach ($orders as $ord) {
+            if (!empty($ord['order_items'])) {
+                if (!$listingTypeId) {
+                    $listingTypeId = $ord['order_items'][0]['listing_type_id'] ?? null;
+                }
 
-            // Somar sale_fee e valor de TODOS os itens do pedido
-            foreach ($order['order_items'] as $item) {
-                $unitPrice = (float) ($item['unit_price'] ?? 0);
-                $qty = (int) ($item['quantity'] ?? 1);
-                $fee = (float) ($item['sale_fee'] ?? 0);
+                foreach ($ord['order_items'] as $item) {
+                    $unitPrice = (float) ($item['unit_price'] ?? 0);
+                    $qty = (int) ($item['quantity'] ?? 1);
+                    $fee = (float) ($item['sale_fee'] ?? 0);
 
-                $totalProduto += $unitPrice * $qty;
-                $totalSaleFee += $fee * $qty;
+                    $totalProduto += $unitPrice * $qty;
+                    $totalSaleFee += $fee * $qty;
+                }
             }
 
-            $resultado['sale_fee'] = round($totalSaleFee, 2);
+            // Somar net_received de cada order do pack
+            $paymentId = $ord['payments'][0]['id'] ?? null;
+            if ($paymentId) {
+                $financeiro = $this->buscarDadosFinanceiros($paymentId);
+                if ($financeiro) {
+                    $totalNetReceived += $financeiro['net_received_amount'];
+                }
+            }
         }
 
-        // Tipo de frete e custos - vem do shipping
+        $resultado['tipo_anuncio'] = $this->traduzirTipoAnuncio($listingTypeId);
+        $resultado['sale_fee'] = round($totalSaleFee, 2);
+        $resultado['net_received_amount'] = round($totalNetReceived, 2);
+
+        // Tipo de frete e custos - vem do shipping (compartilhado no pack)
         $shippingId = $order['shipping']['id'] ?? null;
         if ($shippingId) {
             $resultado['shipping_id'] = $shippingId;
@@ -70,34 +96,23 @@ class MercadoLivreOrderService
             $resultado['frete_ml_receita'] = $dadosFrete['frete_ml_receita'];
         }
 
-        // Dados financeiros: sale_fee do order é a comissão real cobrada pelo ML
-        // net_received_amount do /collections serve apenas como confirmação
-        $paymentId = $order['payments'][0]['id'] ?? null;
-        if ($paymentId) {
-            $financeiro = $this->buscarDadosFinanceiros($paymentId);
-            if ($financeiro) {
-                $resultado['net_received_amount'] = $financeiro['net_received_amount'];
-            }
-        }
-
-        // Comissão = soma de sale_fee de todos os itens
-        // Tarifa bruta = valor total dos produtos × percentual do tipo de anúncio
+        // Rebate = tarifa bruta - sale_fee
         $tarifaBruta = round($totalProduto * $this->percentualPorTipoAnuncio($listingTypeId) / 100, 2);
         $saleFee = $resultado['sale_fee'];
 
-        // Rebate = tarifa bruta - sale_fee (se ML deu desconto na comissão)
         $rebate = round($tarifaBruta - $saleFee, 2);
         if ($rebate > 0.01) {
             $resultado['tem_rebate'] = true;
             $resultado['valor_rebate'] = $rebate;
         }
 
-        Log::info("ML financeiro pedido {$orderId}", [
+        Log::info("ML financeiro pedido {$orderId}" . ($packId ? " (pack {$packId})" : ''), [
             'sale_fee' => $saleFee,
             'tarifa_bruta' => $tarifaBruta,
             'frete_ml_custo' => $resultado['frete_ml_custo'],
             'rebate' => $rebate,
             'net_received' => $resultado['net_received_amount'],
+            'orders_no_pack' => count($orders),
         ]);
 
         return $resultado;
@@ -116,6 +131,36 @@ class MercadoLivreOrderService
         }
 
         return $response['body'];
+    }
+
+    /**
+     * Busca todas as orders de um pack
+     */
+    private function getOrdersByPack(int $packId): array
+    {
+        $response = $this->client->get("/packs/{$packId}");
+
+        if (!$response['success']) {
+            Log::warning("ML: Erro ao buscar pack {$packId}", $response);
+            return [];
+        }
+
+        $orderIds = collect($response['body']['orders'] ?? [])->pluck('id')->filter()->toArray();
+
+        if (empty($orderIds)) {
+            return [];
+        }
+
+        $orders = [];
+        foreach ($orderIds as $oid) {
+            $order = $this->getOrder((string) $oid);
+            if ($order) {
+                $orders[] = $order;
+            }
+            usleep(100000); // rate limiting
+        }
+
+        return $orders;
     }
 
     /**
