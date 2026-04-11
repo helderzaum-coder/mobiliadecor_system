@@ -160,6 +160,7 @@ class DashboardVendas extends Page implements HasForms
                         'falta_nfe' => '⚠ Falta NF-e',
                         'falta_frete' => '🚚 Falta Frete',
                         'falta_planilha' => '📊 Falta Planilha',
+                        'sem_custo' => '💰 Sem Custo Produto',
                         'completo' => '✅ Completo',
                     ])
                     ->placeholder('Todos')
@@ -214,6 +215,8 @@ class DashboardVendas extends Page implements HasForms
         } elseif ($this->status_filtro === 'falta_planilha') {
             $query->where('planilha_processada', false)
                 ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%'));
+        } elseif ($this->status_filtro === 'sem_custo') {
+            $query->where(fn ($q) => $q->where('custo_produtos', '<=', 0)->orWhereNull('custo_produtos'));
         } elseif ($this->status_filtro === 'completo') {
             // Completo: tem NF-e + (frete_pago OU ML ME2/FULL) + planilha ok
             $query->where(fn ($q) => $q->whereNotNull('nfe_chave_acesso')->where('nfe_chave_acesso', '!=', ''))
