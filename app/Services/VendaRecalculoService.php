@@ -221,6 +221,11 @@ class VendaRecalculoService
         $percentualImposto = (float) $venda->percentual_imposto;
         $valorRebate = (float) ($venda->ml_valor_rebate ?? 0);
 
+        // Se sale_fee veio da API, o rebate já está descontado — não somar de novo
+        if ((float) ($venda->ml_sale_fee ?? 0) > 0) {
+            $valorRebate = 0;
+        }
+
         $comissaoSobreFrete = (bool) ($canal->comissao_sobre_frete ?? false);
         $impostoSobreFrete = (bool) ($canal->imposto_sobre_frete ?? false);
 
