@@ -39,17 +39,25 @@ class MercadoLivreOrderService
         ];
 
         $listingTypeId = null;
-        $unitPrice = 0;
-        $totalQuantity = 1;
+        $totalProduto = 0;
+        $totalSaleFee = 0;
 
         if (!empty($order['order_items'])) {
-            $item = $order['order_items'][0];
-            $listingTypeId = $item['listing_type_id'] ?? null;
-            $unitPrice = (float) ($item['unit_price'] ?? 0);
-            $totalQuantity = (int) ($item['quantity'] ?? 1);
+            // Usar tipo de anúncio do primeiro item (normalmente é o mesmo para todos)
+            $listingTypeId = $order['order_items'][0]['listing_type_id'] ?? null;
             $resultado['tipo_anuncio'] = $this->traduzirTipoAnuncio($listingTypeId);
-            // sale_fee vem por unidade, multiplicar pela quantidade
-            $resultado['sale_fee'] = round((float) ($item['sale_fee'] ?? 0) * $totalQuantity, 2);
+
+            // Somar sale_fee e valor de TODOS os itens do pedido
+            foreach ($order['order_items'] as $item) {
+                $unitPrice = (float) ($item['unit_price'] ?? 0);
+                $qty = (int) ($item['quantity'] ?? 1);
+                $fee = (float) ($item['sale_fee'] ?? 0);
+
+                $totalProduto += $unitPrice * $qty;
+                $totalSaleFee += $fee * $qty;
+            }
+
+            $resultado['sale_fee'] = round($totalSaleFee, 2);
         }
 
         // Tipo de frete e custos - vem do shipping
@@ -72,11 +80,10 @@ class MercadoLivreOrderService
             }
         }
 
-        // Comissão = sale_fee do order (já multiplicado pela quantidade)
-        // Tarifa bruta = preço total × percentual do tipo de anúncio
-        $totalProduto = $unitPrice * $totalQuantity;
+        // Comissão = soma de sale_fee de todos os itens
+        // Tarifa bruta = valor total dos produtos × percentual do tipo de anúncio
         $tarifaBruta = round($totalProduto * $this->percentualPorTipoAnuncio($listingTypeId) / 100, 2);
-        $saleFee = $resultado['sale_fee']; // já veio do order_items[0].sale_fee
+        $saleFee = $resultado['sale_fee'];
 
         // Rebate = tarifa bruta - sale_fee (se ML deu desconto na comissão)
         $rebate = round($tarifaBruta - $saleFee, 2);
