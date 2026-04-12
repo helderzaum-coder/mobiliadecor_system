@@ -250,9 +250,13 @@ class VendaRecalculoService
         $comissaoProduto = $comissao - $comissaoFrete;
         $margemProduto = $totalProdutos - $custoProdutos - $comissaoProduto - $impostoProduto + $valorRebate;
 
-        // Subsídio pix: para Shopee já está descontado do subtotal (U - Y), não somar no lucro
+        // Subsídio pix / descontos:
+        // - Shopee: já descontado do subtotal, não somar
+        // - Magalu: campo reutilizado para descontos do vendedor, subtrair do lucro
+        // - Outros: somar no lucro
         $isShopee = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'shopee');
-        $subsidioNoLucro = $isShopee ? 0 : $subsidioPix;
+        $isMagalu = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
+        $subsidioNoLucro = $isShopee ? 0 : ($isMagalu ? -$subsidioPix : $subsidioPix);
 
         $margemVendaTotal = $margemProduto + $margemFrete + $subsidioNoLucro;
         $margemContribuicao = $totalPedido > 0

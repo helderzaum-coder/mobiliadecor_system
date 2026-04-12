@@ -247,8 +247,11 @@
                     </div>
                     @if($subsidio > 0)
                     <div>
-                        <div class="text-gray-500">Subsídio Pix</div>
-                        <div class="font-semibold text-blue-600">R$ {{ number_format($subsidio, 2, ',', '.') }}</div>
+                        @php
+                            $isMagaluCard = str_contains(strtolower($canal), 'magalu');
+                        @endphp
+                        <div class="text-gray-500">{{ $isMagaluCard ? 'Descontos Vendedor' : 'Subsídio Pix' }}</div>
+                        <div class="font-semibold {{ $isMagaluCard ? 'text-red-600' : 'text-blue-600' }}">R$ {{ number_format($subsidio, 2, ',', '.') }}</div>
                     </div>
                     @endif
                     <div class="rounded-lg p-2 {{ $lucroBg }}">
