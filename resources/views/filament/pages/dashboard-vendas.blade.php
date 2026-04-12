@@ -451,58 +451,67 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
     <script>
-        document.addEventListener('livewire:navigated', () => initDashboardCharts());
-        document.addEventListener('livewire:init', () => {
-            initDashboardCharts();
-            Livewire.hook('morph.updated', () => setTimeout(initDashboardCharts, 100));
-        });
-
-        let chartBar = null, chartDonut = null;
+        let chartBar = null, chartDonut = null, chartInitTimeout = null;
 
         function initDashboardCharts() {
+            if (chartInitTimeout) clearTimeout(chartInitTimeout);
+            chartInitTimeout = setTimeout(doInitCharts, 200);
+        }
+
+        function doInitCharts() {
             const barEl = document.getElementById('chartVendasDiarias');
             const donutEl = document.getElementById('chartCanais');
             if (!barEl || !donutEl) return;
 
-            const grafico = @json($grafico);
-            const porCanal = @json($porCanal);
-            const cores = ['#3b82f6','#f59e0b','#10b981','#8b5cf6','#ef4444','#06b6d4','#ec4899','#6366f1'];
-            const isDark = document.documentElement.classList.contains('dark');
-            const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-            const textColor = isDark ? '#9ca3af' : '#6b7280';
+            try {
+                const grafico = @json($grafico);
+                const porCanal = @json($porCanal);
+                const cores = ['#3b82f6','#f59e0b','#10b981','#8b5cf6','#ef4444','#06b6d4','#ec4899','#6366f1'];
+                const isDark = document.documentElement.classList.contains('dark');
+                const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+                const textColor = isDark ? '#9ca3af' : '#6b7280';
 
-            if (chartBar) chartBar.destroy();
-            chartBar = new Chart(barEl, {
-                type: 'bar',
-                data: {
-                    labels: grafico.labels,
-                    datasets: [
-                        { label: 'Faturamento', data: grafico.faturamento, backgroundColor: '#3b82f6', borderRadius: 6, barPercentage: 0.6 },
-                        { label: 'Lucro', data: grafico.lucro, backgroundColor: '#10b981', borderRadius: 6, barPercentage: 0.6 }
-                    ]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 16, color: textColor, font: { size: 11 } } } },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 } } },
-                        y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 }, callback: v => 'R$ ' + (v/1000).toFixed(1) + 'k' } }
+                if (chartBar) { chartBar.destroy(); chartBar = null; }
+                if (chartDonut) { chartDonut.destroy(); chartDonut = null; }
+
+                chartBar = new Chart(barEl, {
+                    type: 'bar',
+                    data: {
+                        labels: grafico.labels,
+                        datasets: [
+                            { label: 'Faturamento', data: grafico.faturamento, backgroundColor: '#3b82f6', borderRadius: 6, barPercentage: 0.6 },
+                            { label: 'Lucro', data: grafico.lucro, backgroundColor: '#10b981', borderRadius: 6, barPercentage: 0.6 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 16, color: textColor, font: { size: 11 } } } },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 } } },
+                            y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 }, callback: v => 'R$ ' + (v/1000).toFixed(1) + 'k' } }
+                        }
                     }
-                }
-            });
+                });
 
-            if (chartDonut) chartDonut.destroy();
-            chartDonut = new Chart(donutEl, {
-                type: 'doughnut',
-                data: {
-                    labels: porCanal.map(c => c.canal),
-                    datasets: [{ data: porCanal.map(c => c.total), backgroundColor: cores.slice(0, porCanal.length), borderWidth: 0 }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false, cutout: '65%',
-                    plugins: { legend: { display: false } }
-                }
-            });
+                chartDonut = new Chart(donutEl, {
+                    type: 'doughnut',
+                    data: {
+                        labels: porCanal.map(c => c.canal),
+                        datasets: [{ data: porCanal.map(c => c.total), backgroundColor: cores.slice(0, porCanal.length), borderWidth: 0 }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, cutout: '65%',
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            } catch(e) { console.warn('Chart init error:', e); }
         }
+
+        document.addEventListener('DOMContentLoaded', initDashboardCharts);
+        document.addEventListener('livewire:navigated', initDashboardCharts);
+        document.addEventListener('livewire:init', () => {
+            initDashboardCharts();
+            Livewire.hook('morph.updated', () => initDashboardCharts());
+        });
     </script>
 </x-filament-panels::page>
