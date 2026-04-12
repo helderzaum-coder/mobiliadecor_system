@@ -1,11 +1,11 @@
 <x-filament-panels::page>
-    <form wire:submit.prevent="">
-        {{ $this->form }}
-    </form>
-
-    {{-- Botão Atualizar --}}
-    <div class="mt-2">
-        <button wire:click="$refresh" style="background:#2563eb;color:#fff;padding:5px 14px;font-size:12px;border-radius:6px;border:none;cursor:pointer;">
+    <div style="display:flex;align-items:flex-end;gap:12px;">
+        <div style="flex:1;">
+            <form wire:submit.prevent="">
+                {{ $this->form }}
+            </form>
+        </div>
+        <button wire:click="$refresh" style="background:#2563eb;color:#fff;padding:8px 14px;font-size:12px;border-radius:8px;border:none;cursor:pointer;margin-bottom:2px;white-space:nowrap;">
             🔄 Atualizar
         </button>
     </div>
