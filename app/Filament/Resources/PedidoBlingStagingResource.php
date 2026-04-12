@@ -254,6 +254,51 @@ class PedidoBlingStagingResource extends Resource
                                 return self::renderCotacaoModal($record);
                             })
                     ),
+                Tables\Columns\TextColumn::make('aplicar_frete_link')
+                    ->label('')
+                    ->html()
+                    ->getStateUsing(function (PedidoBlingStaging $record) {
+                        if ($record->status !== 'pendente' || !$record->dest_uf || !$record->dest_cep || !$record->peso_bruto) {
+                            return '';
+                        }
+                        return '<span style="cursor:pointer;font-size:13px;" title="Aplicar Frete e Aprovar">✅</span>';
+                    })
+                    ->action(
+                        Tables\Actions\Action::make('aplicar_frete_col')
+                            ->label('Aplicar Frete e Aprovar')
+                            ->icon('heroicon-o-check-circle')
+                            ->color('success')
+                            ->form([
+                                Forms\Components\Select::make('id_transportadora')
+                                    ->label('Transportadora')
+                                    ->options(function (PedidoBlingStaging $record) {
+                                        if (!$record->dest_uf || !$record->dest_cep || !$record->peso_bruto) return [];
+                                        $valorNf = (float) ($record->nfe_valor ?: $record->total_pedido);
+                                        $cotacoes = CotacaoFreteService::cotar($record->dest_uf, $record->dest_cep, (float) $record->peso_bruto, $valorNf, $record->dest_cidade);
+                                        $options = [];
+                                        foreach ($cotacoes as $c) {
+                                            if (!empty($c['somente_consulta'])) continue;
+                                            $options[$c['id_transportadora']] = $c['nome'] . ' - R$ ' . number_format($c['total'], 2, ',', '.') . ' (' . $c['uf_faixa'] . ' ' . $c['regiao'] . ')';
+                                        }
+                                        return $options;
+                                    })
+                                    ->required(),
+                            ])
+                            ->action(function (PedidoBlingStaging $record, array $data) {
+                                $valorNf = (float) ($record->nfe_valor ?: $record->total_pedido);
+                                $cotacoes = CotacaoFreteService::cotar($record->dest_uf, $record->dest_cep, (float) $record->peso_bruto, $valorNf, $record->dest_cidade);
+                                $selecionada = collect($cotacoes)->firstWhere('id_transportadora', (int) $data['id_transportadora']);
+                                if ($selecionada) {
+                                    $record->update(['custo_frete' => $selecionada['total']]);
+                                    try {
+                                        AprovacaoVendaService::aprovar($record);
+                                        Notification::make()->title("Frete R$ " . number_format($selecionada['total'], 2, ',', '.') . " ({$selecionada['nome']}) — Aprovado!")->success()->send();
+                                    } catch (\Throwable $e) {
+                                        Notification::make()->title("Erro ao aprovar: " . $e->getMessage())->danger()->send();
+                                    }
+                                }
+                            })
+                    ),
                 Tables\Columns\TextColumn::make('bling_account')->label('Conta')
                     ->formatStateUsing(fn (string $state) => $state === 'primary' ? 'Mobilia' : 'HES'),
                 Tables\Columns\TextColumn::make('numero_pedido')->label('Pedido')->searchable(),
