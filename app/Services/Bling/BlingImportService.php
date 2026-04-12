@@ -654,6 +654,9 @@ class BlingImportService
         if ($cnpjLimpo === '02489951000102') {
             return 'Shopee';
         }
+        if ($cnpjLimpo === '47960950000121') {
+            return 'Magalu';
+        }
 
         // Identificar pelo nome do intermediador
         if (!empty($nomeUsuario)) {
