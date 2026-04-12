@@ -227,7 +227,11 @@
                     </div>
                     <div>
                         <div class="text-gray-500">Repasse</div>
-                        <div class="font-semibold text-blue-600 dark:text-blue-400">R$ {{ number_format($totalProd + $freteCliente - $comissao, 2, ',', '.') }}</div>
+                        @php
+                            $isMagaluRepasse = str_contains(strtolower($canal), 'magalu');
+                            $repasse = $totalProd + $freteCliente - $comissao - ($isMagaluRepasse ? $subsidio : 0);
+                        @endphp
+                        <div class="font-semibold text-blue-600 dark:text-blue-400">R$ {{ number_format($repasse, 2, ',', '.') }}</div>
                     </div>
                     <div>
                         @php
