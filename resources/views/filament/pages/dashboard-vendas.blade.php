@@ -270,15 +270,68 @@
                 </div>
 
                 {{-- Margens detalhadas --}}
-                <div class="flex flex-wrap gap-3 mt-2 text-xs">
-                    <span class="{{ $margemProd >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                        📦 Margem Prod: R$ {{ number_format($margemProd, 2, ',', '.') }}
-                        ({{ $totalProd > 0 ? round(($margemProd / $totalProd) * 100, 1) : 0 }}%)
-                    </span>
+                <div class="mt-2 text-xs space-y-1">
+                    @php
+                        $comissaoSobreFrete = (bool) ($venda->canal?->comissao_sobre_frete ?? false);
+                        $impostoSobreFrete = (bool) ($venda->canal?->imposto_sobre_frete ?? false);
+                        $pctImposto = (float) $venda->percentual_imposto;
+
+                        // Comissão sobre frete
+                        $comissaoFreteVal = 0;
+                        if ($comissaoSobreFrete && $freteCliente > 0 && $venda->canal) {
+                            $regraCanal = $venda->canal->regrasComissao()->where('ativo', true)->first();
+                            if ($regraCanal) {
+                                $comissaoFreteVal = round($freteCliente * (float) $regraCanal->percentual / 100, 2);
+                            }
+                        }
+                        $comissaoProdVal = $comissao - $comissaoFreteVal;
+
+                        // Imposto sobre frete
+                        $impostoFreteVal = ($impostoSobreFrete && $freteCliente > 0 && $pctImposto > 0)
+                            ? round($freteCliente * $pctImposto / 100, 2) : 0;
+                        $impostoProdVal = $imposto - $impostoFreteVal;
+
+                        // Desconto (Magalu)
+                        $isMagaluCard2 = str_contains(strtolower($canal), 'magalu');
+                        $desconto = $total - $totalProd - $freteCliente;
+                    @endphp
+
+                    {{-- Margem Produto --}}
+                    <div class="rounded-lg p-2 {{ $margemProd >= 0 ? 'bg-green-50 dark:bg-green-900/10' : 'bg-red-50 dark:bg-red-900/10' }}">
+                        <div class="font-semibold {{ $margemProd >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400' }}">
+                            📦 Margem Produto: R$ {{ number_format($margemProd, 2, ',', '.') }}
+                            ({{ $totalProd > 0 ? round(($margemProd / $totalProd) * 100, 1) : 0 }}%)
+                        </div>
+                        <div style="color:#9ca3af;font-size:10px;margin-top:2px;padding-left:16px;">
+                            Subtotal: R$ {{ number_format($totalProd, 2, ',', '.') }}
+                            @if($desconto < -0.01 && $isMagaluCard2)
+                                | Desconto: R$ {{ number_format(abs($desconto), 2, ',', '.') }}
+                            @endif
+                            | Custo: R$ {{ number_format($custoProd, 2, ',', '.') }}
+                            | Comissão: R$ {{ number_format($comissaoProdVal, 2, ',', '.') }}
+                            @if($impostoProdVal > 0)
+                                | Imposto: R$ {{ number_format($impostoProdVal, 2, ',', '.') }}
+                            @endif
+                        </div>
+                    </div>
+
+                    {{-- Margem Frete --}}
                     @if($freteCliente > 0 || $custoFrete > 0)
-                    <span class="{{ $margemFrete >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                        🚚 Margem Frete: R$ {{ number_format($margemFrete, 2, ',', '.') }}
-                    </span>
+                    <div class="rounded-lg p-2 {{ $margemFrete >= 0 ? 'bg-green-50 dark:bg-green-900/10' : 'bg-red-50 dark:bg-red-900/10' }}">
+                        <div class="font-semibold {{ $margemFrete >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400' }}">
+                            🚚 Margem Frete: R$ {{ number_format($margemFrete, 2, ',', '.') }}
+                        </div>
+                        <div style="color:#9ca3af;font-size:10px;margin-top:2px;padding-left:16px;">
+                            Cobrado: R$ {{ number_format($freteCliente, 2, ',', '.') }}
+                            | Pago: R$ {{ number_format($custoFrete, 2, ',', '.') }}
+                            @if($comissaoFreteVal > 0)
+                                | Comissão: R$ {{ number_format($comissaoFreteVal, 2, ',', '.') }}
+                            @endif
+                            @if($impostoFreteVal > 0)
+                                | Imposto: R$ {{ number_format($impostoFreteVal, 2, ',', '.') }}
+                            @endif
+                        </div>
+                    </div>
                     @endif
                 </div>
 
