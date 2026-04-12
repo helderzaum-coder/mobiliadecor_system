@@ -694,7 +694,8 @@ class PedidoBlingStagingResource extends Resource
                                     if ($dados['sale_fee'] > 0) {
                                         $isME2Full = in_array($dados['tipo_frete'], ['ME2', 'FULL']);
                                         if ($isME2Full) {
-                                            $updates['comissao_calculada'] = round($dados['sale_fee'] + $dados['frete_ml_custo'], 2);
+                                            $freteLiquido = $dados['frete_ml_custo'] > 0 ? round($dados['frete_ml_custo'] - $dados['frete_ml_receita'], 2) : 0;
+                                            $updates['comissao_calculada'] = round($dados['sale_fee'] + $freteLiquido, 2);
                                             $updates['custo_frete'] = 0;
                                         } else {
                                             $updates['comissao_calculada'] = $dados['sale_fee'];

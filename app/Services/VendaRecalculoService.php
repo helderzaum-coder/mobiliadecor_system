@@ -139,9 +139,10 @@ class VendaRecalculoService
         ]);
 
         if ($tipoFrete === 'ME2' || $tipoFrete === 'FULL') {
-            // frete_ml_custo já é líquido (list_cost - cost)
+            // custo líquido = list_cost - cost
+            $freteLiquido = $freteCusto > 0 ? round($freteCusto - $freteReceita, 2) : 0;
             $venda->update([
-                'comissao' => $saleFee + $freteCusto,
+                'comissao' => $saleFee + $freteLiquido,
                 'valor_frete_cliente' => 0,
                 'valor_frete_transportadora' => 0,
             ]);

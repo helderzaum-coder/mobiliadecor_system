@@ -69,9 +69,10 @@ class AprovacaoVendaService
 
             if ($tipoFrete === 'ME2' || $tipoFrete === 'FULL') {
                 // ME2/FULL: vendedor não lida com frete
-                // frete_ml_custo já é o custo líquido (list_cost - cost)
+                // custo líquido = list_cost - cost (o que o ML reteve)
+                $freteLiquido = $mlFreteCusto > 0 ? round($mlFreteCusto - $mlFreteReceita, 2) : 0;
                 if ($mlSaleFee > 0) {
-                    $comissao = $mlSaleFee + $mlFreteCusto;
+                    $comissao = $mlSaleFee + $freteLiquido;
                     $valorRebate = 0;
                 }
                 $frete = 0;

@@ -83,7 +83,8 @@ class MercadoLivreReprocessarFinanceiro extends Command
                     // Zerar custo_frete e atualizar comissao_calculada para ME2/FULL
                     if (in_array($dados['tipo_frete'], ['ME2', 'FULL'])) {
                         $updates['custo_frete'] = 0;
-                        $updates['comissao_calculada'] = round($dados['sale_fee'] + $dados['frete_ml_custo'], 2);
+                        $freteLiquido = $dados['frete_ml_custo'] > 0 ? round($dados['frete_ml_custo'] - $dados['frete_ml_receita'], 2) : 0;
+                        $updates['comissao_calculada'] = round($dados['sale_fee'] + $freteLiquido, 2);
                     } elseif ($dados['sale_fee'] > 0) {
                         $updates['comissao_calculada'] = $dados['sale_fee'];
                     }
