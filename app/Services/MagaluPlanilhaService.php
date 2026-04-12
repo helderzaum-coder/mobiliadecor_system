@@ -73,11 +73,13 @@ class MagaluPlanilhaService
                 // Comissão real = serviços marketplace + tarifa fixa
                 $comissaoReal = round($comissaoServicos + $tarifaFixa, 2);
 
-                // Total descontos pagos pelo vendedor
-                $descontosVendedor = round($descontoVendedorVista + $descontoVendedorPromo + $descontoCupomVendedor, 2);
+                // Subsídio Magalu = valores que a Magalu paga ao vendedor (soma no repasse)
+                // AN + AP + AR (valores positivos)
+                $subsidiosMagalu = round(abs($subsidioMagaluVista) + abs($subsidioMagaluPromo) + abs($subsidioCupomMagalu), 2);
 
-                // Total subsídios pagos pela Magalu
-                $subsidiosMagalu = round($subsidioMagaluVista + $subsidioMagaluPromo + $subsidioCupomMagalu, 2);
+                // Repasse = Total pago + Subsídios Magalu - Comissão
+                // O desconto à vista (AO) se anula com o subsídio (AN)
+                // O preço promocional (AQ) já está embutido no preço do Bling
 
                 // Buscar venda pelo número do pedido
                 $venda = Venda::where('numero_pedido_canal', $numeroPedido)->first();
@@ -89,7 +91,6 @@ class MagaluPlanilhaService
 
                 $venda->update([
                     'comissao' => $comissaoReal,
-                    'subsidio_pix' => $descontosVendedor, // Reutilizar campo para descontos do vendedor
                     'planilha_processada' => true,
                 ]);
 
