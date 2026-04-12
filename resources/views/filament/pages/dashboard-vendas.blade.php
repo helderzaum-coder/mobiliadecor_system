@@ -3,6 +3,13 @@
         {{ $this->form }}
     </form>
 
+    {{-- Botão Atualizar --}}
+    <div class="mt-2">
+        <button wire:click="$refresh" style="background:#2563eb;color:#fff;padding:5px 14px;font-size:12px;border-radius:6px;border:none;cursor:pointer;">
+            🔄 Atualizar
+        </button>
+    </div>
+
     {{-- Resumo horizontal compacto --}}
     @php
         $totais = $this->totais;

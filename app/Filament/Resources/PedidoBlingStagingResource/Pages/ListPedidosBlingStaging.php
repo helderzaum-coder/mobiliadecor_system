@@ -22,16 +22,24 @@ class ListPedidosBlingStaging extends ListRecords
     }
 
     /**
-     * Garante que o filtro de status 'pendente' esteja sempre ativo ao abrir a página
+     * Redireciona para URL com filtros padrão se acessar sem filtros.
+     * Evita carregar todos os 800+ pedidos e travar o sistema.
      */
     public function mount(): void
     {
-        parent::mount();
-
-        // Se não tem filtros na URL, forçar status=pendente
+        // Se não tem filtros na URL, redirecionar com filtros padrão
         if (empty(request()->query('tableFilters'))) {
-            $this->tableFilters['status']['value'] = 'pendente';
+            $url = static::getUrl() . '?' . http_build_query([
+                'tableFilters' => [
+                    'status' => ['value' => 'pendente'],
+                    'periodo' => ['periodo_rapido' => 'este_mes'],
+                ],
+            ]);
+            redirect($url);
+            return;
         }
+
+        parent::mount();
     }
 
     protected function getHeaderActions(): array

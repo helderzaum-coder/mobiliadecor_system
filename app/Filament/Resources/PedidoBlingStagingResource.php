@@ -28,6 +28,16 @@ class PedidoBlingStagingResource extends Resource
     protected static ?string $modelLabel = 'Pedido (Revisão)';
     protected static ?string $pluralModelLabel = 'Pedidos (Revisão)';
 
+    public static function getNavigationUrl(): string
+    {
+        return static::getUrl() . '?' . http_build_query([
+            'tableFilters' => [
+                'status' => ['value' => 'pendente'],
+                'periodo' => ['periodo_rapido' => 'este_mes'],
+            ],
+        ]);
+    }
+
     public static function form(Form $form): Form
     {
         return $form->schema([
