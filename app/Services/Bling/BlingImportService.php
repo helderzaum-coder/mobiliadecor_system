@@ -555,6 +555,10 @@ class BlingImportService
             }
 
             $produto = $client->getProductBySku($sku);
+            if (!$produto) {
+                continue;
+            }
+
             $produtoId = $produto['id'] ?? null;
             if ($produtoId) {
                 $detalhe = $client->getProductById((int) $produtoId);
