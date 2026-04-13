@@ -126,7 +126,7 @@ class ImportarPlanilhaShopee extends Page implements HasForms
             $msg .= " | Já corrigidos (pulados): {$resultado['ja_corrigidos']}";
         }
         if ($resultado['nao_encontrados'] > 0) {
-            $msg .= " | Não encontrados: {$resultado['nao_encontrados']}";
+            $msg .= " | Não encontrados no staging: {$resultado['nao_encontrados']}";
         }
         if ($resultado['erros'] > 0) {
             $msg .= " | Erros: {$resultado['erros']}";
@@ -136,6 +136,15 @@ class ImportarPlanilhaShopee extends Page implements HasForms
             Notification::make()->title($msg)->success()->send();
         } else {
             Notification::make()->title($msg)->warning()->send();
+        }
+
+        if (!empty($resultado['detalhes'])) {
+            Notification::make()
+                ->title('Detalhes')
+                ->body(implode("\n", array_slice($resultado['detalhes'], 0, 10)))
+                ->warning()
+                ->persistent()
+                ->send();
         }
     }
 

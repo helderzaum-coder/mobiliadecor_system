@@ -1,7 +1,15 @@
 <x-filament-panels::page>
     <div class="max-w-2xl">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700 mb-6">
-            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Como funciona:</h3>
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Como baixar a planilha:</h3>
+            <div class="text-sm text-gray-500 dark:text-gray-400 space-y-1 mb-4">
+                <p>1. Acesse <a href="https://seller.shopee.com.br/portal/sale/order" target="_blank" class="text-blue-500 hover:underline">seller.shopee.com.br/portal/sale/order</a></p>
+                <p>2. Na página "Meus Pedidos", selecione a aba <strong>Todos</strong> (obrigatório para o formato correto)</p>
+                <p>3. Clique em <strong>Exportar</strong>, selecione o período desejado</p>
+                <p>4. Aguarde o link de download da planilha</p>
+            </div>
+
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">O que cada botão faz:</h3>
             <div class="text-sm text-gray-500 dark:text-gray-400 space-y-2">
                 <p><strong>📊 Processar Planilha</strong> — Importa os valores financeiros da Shopee (comissão, subsídio pix, frete) e vincula aos pedidos no staging pelo ID do Pedido (coluna A).</p>
                 <p><strong>📋 Corrigir Dados no Bling</strong> — Atualiza no Bling o cadastro do cliente (nome, CPF, telefone, endereço) e as observações internas do pedido com os dados da planilha. Pedidos já corrigidos são pulados automaticamente.</p>

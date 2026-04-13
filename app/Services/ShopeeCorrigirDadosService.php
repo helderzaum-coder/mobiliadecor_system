@@ -47,10 +47,18 @@ class ShopeeCorrigirDadosService
             ->get()
             ->keyBy('numero_loja');
 
+        Log::info('ShopeeCorrigir: iniciando processamento', [
+            'arquivo' => basename($filePath),
+            'forcar' => $forcar,
+            'total_pedidos_planilha' => count($pedidos),
+            'total_encontrados_staging' => $stagings->count(),
+        ]);
+
         foreach ($pedidos as $pedidoId => $row) {
             $staging = $stagings[$pedidoId] ?? null;
             if (!$staging) {
                 $resultado['nao_encontrados']++;
+                Log::info("ShopeeCorrigir: pedido {$pedidoId} não encontrado no staging");
                 continue;
             }
 
@@ -61,6 +69,9 @@ class ShopeeCorrigirDadosService
 
             $nome = trim($row['AX'] ?? '');
             if (empty($nome)) {
+                $resultado['erros']++;
+                $resultado['detalhes'][] = "{$pedidoId}: nome vazio na coluna AX";
+                Log::warning("ShopeeCorrigir: pedido {$pedidoId} com nome vazio na coluna AX");
                 continue;
             }
 
@@ -114,6 +125,8 @@ class ShopeeCorrigirDadosService
                 $resultado['detalhes'][] = "{$pedidoId}: {$e->getMessage()}";
             }
         }
+
+        Log::info('ShopeeCorrigir: processamento finalizado', $resultado);
 
         return $resultado;
     }
