@@ -92,7 +92,7 @@ class ImportarPlanilhaShopee extends Page implements HasForms
         $this->form->fill();
     }
 
-    public function corrigirDadosBling(): void
+    public function corrigirDadosBling(bool $forcar = false): void
     {
         try {
             $data = $this->form->getState();
@@ -119,9 +119,12 @@ class ImportarPlanilhaShopee extends Page implements HasForms
             return;
         }
 
-        $resultado = \App\Services\ShopeeCorrigirDadosService::processar($filePath);
+        $resultado = \App\Services\ShopeeCorrigirDadosService::processar($filePath, $forcar);
 
         $msg = "Corrigidos: {$resultado['corrigidos']}";
+        if (($resultado['ja_corrigidos'] ?? 0) > 0) {
+            $msg .= " | Já corrigidos (pulados): {$resultado['ja_corrigidos']}";
+        }
         if ($resultado['nao_encontrados'] > 0) {
             $msg .= " | Não encontrados: {$resultado['nao_encontrados']}";
         }
@@ -134,6 +137,11 @@ class ImportarPlanilhaShopee extends Page implements HasForms
         } else {
             Notification::make()->title($msg)->warning()->send();
         }
+    }
+
+    public function reprocessarDadosBling(): void
+    {
+        $this->corrigirDadosBling(forcar: true);
     }
 
     public static function canAccess(): bool

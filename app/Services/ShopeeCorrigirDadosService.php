@@ -9,9 +9,9 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ShopeeCorrigirDadosService
 {
-    public static function processar(string $filePath): array
+    public static function processar(string $filePath, bool $forcar = false): array
     {
-        $resultado = ['corrigidos' => 0, 'erros' => 0, 'nao_encontrados' => 0, 'detalhes' => []];
+        $resultado = ['corrigidos' => 0, 'erros' => 0, 'nao_encontrados' => 0, 'ja_corrigidos' => 0, 'detalhes' => []];
 
         try {
             $spreadsheet = IOFactory::load($filePath);
@@ -51,6 +51,11 @@ class ShopeeCorrigirDadosService
             $staging = $stagings[$pedidoId] ?? null;
             if (!$staging) {
                 $resultado['nao_encontrados']++;
+                continue;
+            }
+
+            if (!$forcar && $staging->bling_dados_corrigidos) {
+                $resultado['ja_corrigidos']++;
                 continue;
             }
 
@@ -94,6 +99,7 @@ class ShopeeCorrigirDadosService
                 $staging->update([
                     'cliente_nome' => $nome,
                     'cliente_documento' => $cpf ? self::formatarCpf($cpf) : $staging->cliente_documento,
+                    'bling_dados_corrigidos' => true,
                 ]);
 
                 \App\Models\Venda::where('bling_id', $staging->bling_id)->update([

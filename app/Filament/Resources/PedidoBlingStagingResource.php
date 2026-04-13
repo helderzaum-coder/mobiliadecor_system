@@ -225,7 +225,7 @@ class PedidoBlingStagingResource extends Resource
                 'frete', 'custo_frete', 'nota_fiscal', 'nfe_numero', 'nfe_chave_acesso',
                 'nfe_valor', 'comissao_calculada', 'subsidio_pix', 'base_imposto',
                 'percentual_imposto', 'valor_imposto', 'status', 'planilha_shopee',
-                'estoque_sincronizado', 'dest_cep', 'dest_cidade', 'dest_uf',
+                'estoque_sincronizado', 'bling_dados_corrigidos', 'dest_cep', 'dest_cidade', 'dest_uf',
                 'peso_bruto', 'embalagem_largura', 'embalagem_altura', 'embalagem_comprimento',
                 'ml_tipo_anuncio', 'ml_tipo_frete', 'ml_tem_rebate', 'ml_valor_rebate',
                 'ml_sale_fee', 'ml_frete_custo', 'ml_frete_receita', 'ml_order_id', 'ml_shipping_id',
