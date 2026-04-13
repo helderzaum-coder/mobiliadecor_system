@@ -1,11 +1,13 @@
 <x-filament-panels::page>
     <div class="max-w-2xl">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700 mb-6">
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                Faça upload da planilha de vendas da Shopee para atualizar os valores reais dos pedidos no staging.
-                Os pedidos serão vinculados pelo <strong>ID do Pedido</strong> (coluna A) com o <strong>Nº Pedido Canal</strong>.
-            </p>
-            <p class="text-sm text-yellow-600 dark:text-yellow-400">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Como funciona:</h3>
+            <div class="text-sm text-gray-500 dark:text-gray-400 space-y-2">
+                <p><strong>📊 Processar Planilha</strong> — Importa os valores financeiros da Shopee (comissão, subsídio pix, frete) e vincula aos pedidos no staging pelo ID do Pedido (coluna A).</p>
+                <p><strong>📋 Corrigir Dados no Bling</strong> — Atualiza no Bling o cadastro do cliente (nome, CPF, telefone, endereço) e as observações internas do pedido com os dados da planilha. Pedidos já corrigidos são pulados automaticamente.</p>
+                <p><strong>🔄 Reprocessar Todos</strong> — Força a correção de todos os pedidos da planilha no Bling, inclusive os já processados anteriormente.</p>
+            </div>
+            <p class="text-sm text-yellow-600 dark:text-yellow-400 mt-3">
                 ⚠ Pedidos Shopee só podem ser aprovados após o processamento da planilha.
             </p>
         </div>
