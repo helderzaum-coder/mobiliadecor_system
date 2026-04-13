@@ -205,19 +205,21 @@ class BlingImportService
 
             if ($sku) {
                 $produto = $this->client->getProductBySku($sku);
-                $custo = (float) ($produto['precoCusto'] ?? 0);
-
                 $produtoId = $produto['id'] ?? null;
+
                 if ($produtoId) {
                     $produtoDetalhe = $this->client->getProductById((int) $produtoId);
-                    $dimensoes = $produtoDetalhe['dimensoes'] ?? [];
-                    $largura = (float) ($dimensoes['largura'] ?? 0);
-                    $altura = (float) ($dimensoes['altura'] ?? 0);
-                    $comprimento = (float) ($dimensoes['profundidade'] ?? 0);
+                    if ($produtoDetalhe) {
+                        $custo = (float) ($produtoDetalhe['precoCusto'] ?? 0);
+                        $dimensoes = $produtoDetalhe['dimensoes'] ?? [];
+                        $largura = (float) ($dimensoes['largura'] ?? 0);
+                        $altura = (float) ($dimensoes['altura'] ?? 0);
+                        $comprimento = (float) ($dimensoes['profundidade'] ?? 0);
 
-                    $maiorLargura = max($maiorLargura, $largura);
-                    $maiorAltura = max($maiorAltura, $altura);
-                    $maiorComprimento = max($maiorComprimento, $comprimento);
+                        $maiorLargura = max($maiorLargura, $largura);
+                        $maiorAltura = max($maiorAltura, $altura);
+                        $maiorComprimento = max($maiorComprimento, $comprimento);
+                    }
                 }
             }
 
@@ -553,9 +555,13 @@ class BlingImportService
             }
 
             $produto = $client->getProductBySku($sku);
-            if ($produto && isset($produto['precoCusto'])) {
-                $item['custo'] = (float) $produto['precoCusto'];
-                $atualizados++;
+            $produtoId = $produto['id'] ?? null;
+            if ($produtoId) {
+                $detalhe = $client->getProductById((int) $produtoId);
+                if ($detalhe && isset($detalhe['precoCusto'])) {
+                    $item['custo'] = (float) $detalhe['precoCusto'];
+                    $atualizados++;
+                }
             }
         }
 
