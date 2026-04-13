@@ -555,17 +555,9 @@ class BlingImportService
             }
 
             $produto = $client->getProductBySku($sku);
-            if (!$produto) {
-                continue;
-            }
-
-            $produtoId = $produto['id'] ?? null;
-            if ($produtoId) {
-                $detalhe = $client->getProductById((int) $produtoId);
-                if ($detalhe && isset($detalhe['precoCusto'])) {
-                    $item['custo'] = (float) $detalhe['precoCusto'];
-                    $atualizados++;
-                }
+            if ($produto && isset($produto['precoCusto'])) {
+                $item['custo'] = (float) $produto['precoCusto'];
+                $atualizados++;
             }
         }
 
