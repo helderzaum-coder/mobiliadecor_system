@@ -36,6 +36,11 @@ class AprovacaoVendaService
      */
     public static function aprovar(PedidoBlingStaging $staging): Venda
     {
+        // Garantir que itens esteja carregado (pode não vir no select da listagem)
+        if (!array_key_exists('itens', $staging->getAttributes())) {
+            $staging->itens = PedidoBlingStaging::where('id', $staging->id)->value('itens');
+        }
+
         $canal = CanalVenda::where('nome_canal', $staging->canal)->first();
         $cnpjId = config("bling.accounts.{$staging->bling_account}.cnpj_id");
 
