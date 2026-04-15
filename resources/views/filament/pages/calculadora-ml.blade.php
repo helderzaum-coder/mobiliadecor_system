@@ -17,20 +17,52 @@
 
     <div class="rounded-xl bg-white dark:bg-gray-800 shadow-md p-6 space-y-5">
 
-        {{-- Linha 1: Custo + Preço/Margem --}}
+        {{-- Linha 1: Custo unitário + Quantidade + Peso unitário --}}
         <div style="display:flex;gap:16px;">
-            <div style="flex:1;">
-                <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">Custo do Produto (R$) *</label>
+            <div style="flex:2;">
+                <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">Custo Unitário (R$) *</label>
                 <input type="number" step="0.01" wire:model="custo_produto" placeholder="0,00"
                     style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:16px;">
-                <div style="font-size:10px;color:#6b7280;margin-top:2px;">Quanto você pagou pelo produto</div>
+                <div style="font-size:10px;color:#6b7280;margin-top:2px;">Quanto você pagou por unidade</div>
             </div>
+            <div style="flex:1;">
+                <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">Quantidade *</label>
+                <input type="number" step="1" min="1" wire:model="quantidade" placeholder="1"
+                    style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:16px;">
+                <div style="font-size:10px;color:#6b7280;margin-top:2px;">Unidades no anúncio</div>
+            </div>
+            <div style="flex:1;">
+                <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">Peso por Unidade (kg)</label>
+                <input type="number" step="0.001" wire:model="peso_unitario" placeholder="0,000"
+                    style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:16px;">
+                <div style="font-size:10px;color:#6b7280;margin-top:2px;">Peso de cada unidade em kg</div>
+            </div>
+        </div>
+
+        {{-- Info calculada --}}
+        @if($custo_produto && $quantidade > 0)
+        <div style="display:flex;gap:16px;padding:10px 16px;border-radius:8px;background:#1f2937;">
+            <div style="flex:1;font-size:12px;">
+                <span style="color:#6b7280;">Custo Total:</span>
+                <span style="color:#e5e7eb;font-weight:600;">R$ {{ number_format(($custo_produto ?? 0) * $quantidade, 2, ',', '.') }}</span>
+            </div>
+            @if($peso_unitario)
+            <div style="flex:1;font-size:12px;">
+                <span style="color:#6b7280;">Peso Total:</span>
+                <span style="color:#e5e7eb;font-weight:600;">{{ number_format(($peso_unitario ?? 0) * $quantidade, 3, ',', '.') }} kg</span>
+            </div>
+            @endif
+        </div>
+        @endif
+
+        {{-- Linha 2: Preço/Margem --}}
+        <div style="display:flex;gap:16px;">
             @if($modo === 'margem')
             <div style="flex:1;">
                 <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">Preço de Venda (R$) *</label>
                 <input type="number" step="0.01" wire:model="preco_venda" placeholder="0,00"
                     style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:16px;">
-                <div style="font-size:10px;color:#6b7280;margin-top:2px;">Por quanto você está vendendo</div>
+                <div style="font-size:10px;color:#6b7280;margin-top:2px;">Preço total do anúncio ({{ $quantidade }} un.)</div>
             </div>
             @else
             <div style="flex:1;">
@@ -40,10 +72,6 @@
                 <div style="font-size:10px;color:#6b7280;margin-top:2px;">Ex: 20% de lucro sobre o preço final</div>
             </div>
             @endif
-        </div>
-
-        {{-- Linha 2: Tipo Anúncio + Imposto --}}
-        <div style="display:flex;gap:16px;">
             <div style="flex:1;">
                 <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">Tipo de Anúncio *</label>
                 <select wire:model="tipo_anuncio"
@@ -52,26 +80,15 @@
                     <option value="premium">Premium (16,5%)</option>
                 </select>
             </div>
+        </div>
+
+        {{-- Linha 3: Imposto + Tipo Frete --}}
+        <div style="display:flex;gap:16px;">
             <div style="flex:1;">
                 <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">Imposto (%)</label>
                 <input type="number" step="0.01" wire:model="percentual_imposto" placeholder="0"
                     style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:14px;">
                 <div style="font-size:10px;color:#6b7280;margin-top:2px;">Percentual de imposto sobre o preço</div>
-            </div>
-        </div>
-
-        {{-- Linha 3: Faixa de Peso + Frete Manual --}}
-        <div style="display:flex;gap:16px;">
-            <div style="flex:1;">
-                <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">🚚 Faixa de Peso do Produto</label>
-                <select wire:model="faixa_peso"
-                    style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:14px;">
-                    <option value="">Selecione a faixa de peso...</option>
-                    @foreach(\App\Filament\Pages\CalculadoraML::getFaixasPeso() as $key => $label)
-                        <option value="{{ $key }}">{{ $label }}</option>
-                    @endforeach
-                </select>
-                <div style="font-size:10px;color:#6b7280;margin-top:2px;">Peso do produto para calcular o custo de envio ML automaticamente</div>
             </div>
             <div style="flex:1;">
                 <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">Tipo de Frete</label>
@@ -89,7 +106,6 @@
                 <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">Custo de Frete Manual (R$)</label>
                 <input type="number" step="0.01" wire:model="custo_frete_manual" placeholder="0,00"
                     style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:14px;">
-                <div style="font-size:10px;color:#6b7280;margin-top:2px;">Custo da transportadora para ME1</div>
             </div>
             <div style="flex:1;"></div>
         </div>
@@ -117,14 +133,13 @@
         @else
             @php
                 $r = $resultado;
-                $margemColor = $r['margem'] >= 0 ? '#10b981' : '#ef4444';
-                $statusMsg = $r['margem_pct'] >= 25 ? '🎉 Margem excelente!' : ($r['margem_pct'] >= 15 ? '✅ Margem saudável' : ($r['margem_pct'] >= 5 ? '⚠️ Margem baixa' : '🚨 Margem crítica!'));
-                $statusColor = $r['margem_pct'] >= 25 ? '#10b981' : ($r['margem_pct'] >= 15 ? '#10b981' : ($r['margem_pct'] >= 5 ? '#f59e0b' : '#ef4444'));
+                $mc = $r['margem'] >= 0 ? '#10b981' : '#ef4444';
+                $msg = $r['margem_pct'] >= 25 ? '🎉 Margem excelente!' : ($r['margem_pct'] >= 15 ? '✅ Margem saudável' : ($r['margem_pct'] >= 5 ? '⚠️ Margem baixa' : '🚨 Margem crítica!'));
+                $sc = $r['margem_pct'] >= 15 ? '#10b981' : ($r['margem_pct'] >= 5 ? '#f59e0b' : '#ef4444');
             @endphp
 
-            {{-- Status --}}
-            <div style="margin-top:20px;padding:12px 16px;border-radius:10px;border:2px solid {{ $statusColor }};background:rgba(0,0,0,.1);color:{{ $statusColor }};font-size:14px;font-weight:600;">
-                {{ $statusMsg }}
+            <div style="margin-top:20px;padding:12px 16px;border-radius:10px;border:2px solid {{ $sc }};background:rgba(0,0,0,.1);color:{{ $sc }};font-size:14px;font-weight:600;">
+                {{ $msg }}
             </div>
 
             {{-- Cards KPI --}}
@@ -133,6 +148,7 @@
                 <div style="flex:1;padding:20px;border-radius:12px;background:rgba(16,185,129,.1);border:2px solid #10b981;text-align:center;">
                     <div style="font-size:12px;color:#9ca3af;">Preço Ideal de Venda</div>
                     <div style="font-size:32px;font-weight:800;color:#10b981;">R$ {{ number_format($r['preco_venda'], 2, ',', '.') }}</div>
+                    <div style="font-size:11px;color:#6b7280;">para {{ $r['quantidade'] }} un.</div>
                 </div>
                 @endif
                 <div style="flex:1;padding:20px;border-radius:12px;background:rgba(245,158,11,.1);border:2px solid #f59e0b;text-align:center;">
@@ -140,13 +156,13 @@
                     <div style="font-size:28px;font-weight:800;color:#f59e0b;">R$ {{ number_format($r['recebe'], 2, ',', '.') }}</div>
                     <div style="font-size:11px;color:#6b7280;">do marketplace</div>
                 </div>
-                <div style="flex:1;padding:20px;border-radius:12px;border:2px solid {{ $margemColor }};text-align:center;">
+                <div style="flex:1;padding:20px;border-radius:12px;border:2px solid {{ $mc }};text-align:center;">
                     <div style="font-size:12px;color:#9ca3af;">Margem de Contribuição</div>
-                    <div style="font-size:28px;font-weight:800;color:{{ $margemColor }};">R$ {{ number_format($r['margem'], 2, ',', '.') }}</div>
+                    <div style="font-size:28px;font-weight:800;color:{{ $mc }};">R$ {{ number_format($r['margem'], 2, ',', '.') }}</div>
                 </div>
-                <div style="flex:1;padding:20px;border-radius:12px;border:2px solid {{ $margemColor }};text-align:center;">
+                <div style="flex:1;padding:20px;border-radius:12px;border:2px solid {{ $mc }};text-align:center;">
                     <div style="font-size:12px;color:#9ca3af;">Margem %</div>
-                    <div style="font-size:28px;font-weight:800;color:{{ $margemColor }};">{{ $r['margem_pct'] }}%</div>
+                    <div style="font-size:28px;font-weight:800;color:{{ $mc }};">{{ $r['margem_pct'] }}%</div>
                 </div>
             </div>
 
@@ -155,7 +171,7 @@
                 <div style="font-size:14px;font-weight:700;color:#e5e7eb;margin-bottom:12px;">Detalhamento:</div>
                 <table style="width:100%;font-size:13px;border-collapse:collapse;">
                     <tr style="border-bottom:1px solid #1f2937;">
-                        <td style="padding:8px 0;color:#9ca3af;">Preço de Venda:</td>
+                        <td style="padding:8px 0;color:#9ca3af;">Preço de Venda ({{ $r['quantidade'] }} un.):</td>
                         <td style="padding:8px 0;text-align:right;font-weight:600;color:#e5e7eb;">R$ {{ number_format($r['preco_venda'], 2, ',', '.') }}</td>
                     </tr>
                     <tr style="border-bottom:1px solid #1f2937;">
@@ -164,7 +180,7 @@
                     </tr>
                     @if($r['custo_frete'] > 0)
                     <tr style="border-bottom:1px solid #1f2937;">
-                        <td style="padding:8px 0;color:#9ca3af;">Custo de Envio ({{ $r['faixa_peso_label'] }}):</td>
+                        <td style="padding:8px 0;color:#9ca3af;">Custo de Envio ({{ $r['faixa_peso'] }} — {{ number_format($r['peso_total'], 3, ',', '.') }}kg):</td>
                         <td style="padding:8px 0;text-align:right;color:#ef4444;">- R$ {{ number_format($r['custo_frete'], 2, ',', '.') }}</td>
                     </tr>
                     @endif
@@ -173,8 +189,8 @@
                         <td style="padding:10px 0;text-align:right;font-weight:700;color:#f59e0b;">R$ {{ number_format($r['recebe'], 2, ',', '.') }}</td>
                     </tr>
                     <tr style="border-bottom:1px solid #1f2937;">
-                        <td style="padding:8px 0;color:#9ca3af;">Custo do Produto:</td>
-                        <td style="padding:8px 0;text-align:right;color:#ef4444;">- R$ {{ number_format($r['custo_produto'], 2, ',', '.') }}</td>
+                        <td style="padding:8px 0;color:#9ca3af;">Custo Produto ({{ $r['quantidade'] }} × R$ {{ number_format($r['custo_unitario'], 2, ',', '.') }}):</td>
+                        <td style="padding:8px 0;text-align:right;color:#ef4444;">- R$ {{ number_format($r['custo_total'], 2, ',', '.') }}</td>
                     </tr>
                     @if($r['imposto'] > 0)
                     <tr style="border-bottom:1px solid #1f2937;">
@@ -184,7 +200,7 @@
                     @endif
                     <tr>
                         <td style="padding:10px 0;font-weight:700;color:#e5e7eb;">Margem Final ({{ $r['margem_pct'] }}%):</td>
-                        <td style="padding:10px 0;text-align:right;font-weight:700;font-size:16px;color:{{ $margemColor }};">R$ {{ number_format($r['margem'], 2, ',', '.') }}</td>
+                        <td style="padding:10px 0;text-align:right;font-weight:700;font-size:16px;color:{{ $mc }};">R$ {{ number_format($r['margem'], 2, ',', '.') }}</td>
                     </tr>
                 </table>
             </div>
