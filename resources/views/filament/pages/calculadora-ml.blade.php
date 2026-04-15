@@ -15,7 +15,6 @@
         </button>
     </div>
 
-    {{-- Formulário --}}
     <div class="rounded-xl bg-white dark:bg-gray-800 shadow-md p-6 space-y-5">
 
         {{-- Linha 1: Custo + Preço/Margem --}}
@@ -61,23 +60,40 @@
             </div>
         </div>
 
-        {{-- Linha 3: Tipo Frete + Custo Frete --}}
+        {{-- Linha 3: Faixa de Peso + Frete Manual --}}
         <div style="display:flex;gap:16px;">
+            <div style="flex:1;">
+                <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">🚚 Faixa de Peso do Produto</label>
+                <select wire:model="faixa_peso"
+                    style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:14px;">
+                    <option value="">Selecione a faixa de peso...</option>
+                    @foreach(\App\Filament\Pages\CalculadoraML::getFaixasPeso() as $key => $label)
+                        <option value="{{ $key }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+                <div style="font-size:10px;color:#6b7280;margin-top:2px;">Peso do produto para calcular o custo de envio ML automaticamente</div>
+            </div>
             <div style="flex:1;">
                 <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">Tipo de Frete</label>
                 <select wire:model="tipo_frete"
                     style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:14px;">
-                    <option value="ME2">ME2 / FULL (frete por conta do ML)</option>
-                    <option value="ME1">ME1 (frete por conta do vendedor)</option>
+                    <option value="ME2">ME2 / FULL (frete ML automático)</option>
+                    <option value="ME1">ME1 (informar frete manual)</option>
                 </select>
             </div>
-            <div style="flex:1;">
-                <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">Custo de Frete/Envio (R$)</label>
-                <input type="number" step="0.01" wire:model="custo_frete" placeholder="0,00"
-                    style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:14px;">
-                <div style="font-size:10px;color:#6b7280;margin-top:2px;">Custo de envio cobrado pelo ML (ME2) ou transportadora (ME1)</div>
-            </div>
         </div>
+
+        @if($tipo_frete === 'ME1')
+        <div style="display:flex;gap:16px;">
+            <div style="flex:1;">
+                <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">Custo de Frete Manual (R$)</label>
+                <input type="number" step="0.01" wire:model="custo_frete_manual" placeholder="0,00"
+                    style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:14px;">
+                <div style="font-size:10px;color:#6b7280;margin-top:2px;">Custo da transportadora para ME1</div>
+            </div>
+            <div style="flex:1;"></div>
+        </div>
+        @endif
 
         {{-- Botões --}}
         <div style="display:flex;gap:12px;margin-top:8px;">
@@ -102,10 +118,17 @@
             @php
                 $r = $resultado;
                 $margemColor = $r['margem'] >= 0 ? '#10b981' : '#ef4444';
+                $statusMsg = $r['margem_pct'] >= 25 ? '🎉 Margem excelente!' : ($r['margem_pct'] >= 15 ? '✅ Margem saudável' : ($r['margem_pct'] >= 5 ? '⚠️ Margem baixa' : '🚨 Margem crítica!'));
+                $statusColor = $r['margem_pct'] >= 25 ? '#10b981' : ($r['margem_pct'] >= 15 ? '#10b981' : ($r['margem_pct'] >= 5 ? '#f59e0b' : '#ef4444'));
             @endphp
 
+            {{-- Status --}}
+            <div style="margin-top:20px;padding:12px 16px;border-radius:10px;border:2px solid {{ $statusColor }};background:rgba(0,0,0,.1);color:{{ $statusColor }};font-size:14px;font-weight:600;">
+                {{ $statusMsg }}
+            </div>
+
             {{-- Cards KPI --}}
-            <div style="display:flex;gap:16px;margin-top:20px;">
+            <div style="display:flex;gap:16px;margin-top:16px;">
                 @if($r['modo'] === 'preco_ideal')
                 <div style="flex:1;padding:20px;border-radius:12px;background:rgba(16,185,129,.1);border:2px solid #10b981;text-align:center;">
                     <div style="font-size:12px;color:#9ca3af;">Preço Ideal de Venda</div>
@@ -117,11 +140,11 @@
                     <div style="font-size:28px;font-weight:800;color:#f59e0b;">R$ {{ number_format($r['recebe'], 2, ',', '.') }}</div>
                     <div style="font-size:11px;color:#6b7280;">do marketplace</div>
                 </div>
-                <div style="flex:1;padding:20px;border-radius:12px;background:rgba(16,185,129,.05);border:2px solid {{ $margemColor }};text-align:center;">
+                <div style="flex:1;padding:20px;border-radius:12px;border:2px solid {{ $margemColor }};text-align:center;">
                     <div style="font-size:12px;color:#9ca3af;">Margem de Contribuição</div>
                     <div style="font-size:28px;font-weight:800;color:{{ $margemColor }};">R$ {{ number_format($r['margem'], 2, ',', '.') }}</div>
                 </div>
-                <div style="flex:1;padding:20px;border-radius:12px;background:rgba(16,185,129,.05);border:2px solid {{ $margemColor }};text-align:center;">
+                <div style="flex:1;padding:20px;border-radius:12px;border:2px solid {{ $margemColor }};text-align:center;">
                     <div style="font-size:12px;color:#9ca3af;">Margem %</div>
                     <div style="font-size:28px;font-weight:800;color:{{ $margemColor }};">{{ $r['margem_pct'] }}%</div>
                 </div>
@@ -141,7 +164,7 @@
                     </tr>
                     @if($r['custo_frete'] > 0)
                     <tr style="border-bottom:1px solid #1f2937;">
-                        <td style="padding:8px 0;color:#9ca3af;">Custo de Envio:</td>
+                        <td style="padding:8px 0;color:#9ca3af;">Custo de Envio ({{ $r['faixa_peso_label'] }}):</td>
                         <td style="padding:8px 0;text-align:right;color:#ef4444;">- R$ {{ number_format($r['custo_frete'], 2, ',', '.') }}</td>
                     </tr>
                     @endif

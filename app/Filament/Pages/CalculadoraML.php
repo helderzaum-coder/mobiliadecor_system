@@ -13,18 +13,116 @@ class CalculadoraML extends Page
     protected static string $view = 'filament.pages.calculadora-ml';
     protected static ?int $navigationSort = 10;
 
-    // Inputs
-    public string $modo = 'margem'; // margem ou preco_ideal
+    public string $modo = 'margem';
     public ?float $custo_produto = null;
     public ?float $preco_venda = null;
     public ?float $margem_desejada = null;
     public string $tipo_anuncio = 'classico';
     public ?float $percentual_imposto = null;
     public string $tipo_frete = 'ME2';
-    public ?float $custo_frete = null;
+    public ?float $custo_frete_manual = null;
+    public ?string $faixa_peso = null;
 
-    // Resultado
     public ?array $resultado = null;
+
+    private static array $tabelaFreteML = [
+        '0-0.3'   => [5.65, 6.55, 7.75, 12.35, 14.35, 16.45, 18.45, 20.95],
+        '0.3-0.5' => [5.95, 6.65, 7.85, 13.25, 15.45, 17.65, 19.85, 22.55],
+        '0.5-1'   => [6.05, 6.75, 7.95, 13.85, 16.15, 18.45, 20.75, 23.65],
+        '1-1.5'   => [6.15, 6.85, 8.05, 14.15, 16.45, 18.85, 21.15, 24.65],
+        '1.5-2'   => [6.25, 6.95, 8.15, 14.45, 16.85, 19.25, 21.65, 24.65],
+        '2-3'     => [6.35, 7.95, 8.55, 15.75, 18.35, 21.05, 23.65, 26.25],
+        '3-4'     => [6.45, 8.15, 8.95, 17.05, 19.85, 22.65, 25.55, 28.35],
+        '4-5'     => [6.55, 8.35, 9.75, 18.45, 21.55, 24.65, 27.75, 30.75],
+        '5-6'     => [6.65, 8.55, 9.95, 25.45, 28.55, 32.65, 35.75, 39.75],
+        '6-7'     => [6.75, 8.75, 10.15, 27.05, 31.05, 36.05, 40.05, 44.05],
+        '7-8'     => [6.85, 8.95, 10.35, 28.85, 33.65, 38.45, 43.25, 48.05],
+        '8-9'     => [6.95, 9.15, 10.55, 29.65, 34.55, 39.55, 44.45, 49.35],
+        '9-11'    => [7.05, 9.55, 10.95, 41.25, 48.05, 54.95, 61.75, 68.65],
+        '11-13'   => [7.15, 9.95, 11.35, 42.15, 49.25, 56.25, 63.25, 70.25],
+        '13-15'   => [7.25, 10.15, 11.55, 45.05, 52.45, 59.95, 67.45, 74.95],
+        '15-17'   => [7.35, 10.35, 11.75, 48.55, 56.05, 63.55, 70.75, 78.65],
+        '17-20'   => [7.45, 10.55, 11.95, 54.75, 63.85, 72.95, 82.05, 91.15],
+        '20-25'   => [7.65, 10.95, 12.15, 64.05, 75.05, 84.75, 95.35, 105.95],
+        '25-30'   => [7.75, 11.15, 12.35, 65.95, 75.45, 85.55, 96.25, 106.95],
+        '30-40'   => [7.85, 11.35, 12.55, 67.75, 78.95, 88.95, 99.15, 107.05],
+        '40-50'   => [7.95, 11.55, 12.75, 70.25, 81.05, 92.05, 102.55, 110.75],
+        '50-60'   => [8.05, 11.75, 12.95, 74.95, 86.45, 98.15, 109.35, 118.15],
+        '60-70'   => [8.15, 11.95, 13.15, 80.25, 92.95, 105.05, 117.15, 126.55],
+        '70-80'   => [8.25, 12.15, 13.35, 83.95, 97.05, 109.85, 122.45, 132.25],
+        '80-90'   => [8.35, 12.35, 13.55, 93.25, 107.45, 122.05, 136.05, 146.95],
+        '90-100'  => [8.45, 12.55, 13.75, 106.55, 123.95, 139.55, 155.55, 167.95],
+        '100-125' => [8.55, 12.75, 13.95, 119.25, 138.05, 156.05, 173.95, 187.95],
+        '125-150' => [8.65, 12.75, 14.15, 126.55, 146.15, 165.65, 184.65, 199.45],
+        '150+'    => [8.75, 12.95, 14.35, 166.15, 166.15, 166.15, 166.15, 166.15],
+    ];
+
+    private static array $faixasPreco = [
+        [0, 18.99], [19, 48.99], [49, 78.99], [79, 99.99],
+        [100, 119.99], [120, 149.99], [150, 199.99], [200, 999999],
+    ];
+
+    public static function getFaixasPeso(): array
+    {
+        return [
+            '0-0.3' => 'Até 0,3 kg', '0.3-0.5' => '0,3 a 0,5 kg', '0.5-1' => '0,5 a 1 kg',
+            '1-1.5' => '1 a 1,5 kg', '1.5-2' => '1,5 a 2 kg', '2-3' => '2 a 3 kg',
+            '3-4' => '3 a 4 kg', '4-5' => '4 a 5 kg', '5-6' => '5 a 6 kg',
+            '6-7' => '6 a 7 kg', '7-8' => '7 a 8 kg', '8-9' => '8 a 9 kg',
+            '9-11' => '9 a 11 kg', '11-13' => '11 a 13 kg', '13-15' => '13 a 15 kg',
+            '15-17' => '15 a 17 kg', '17-20' => '17 a 20 kg', '20-25' => '20 a 25 kg',
+            '25-30' => '25 a 30 kg', '30-40' => '30 a 40 kg', '40-50' => '40 a 50 kg',
+            '50-60' => '50 a 60 kg', '60-70' => '60 a 70 kg', '70-80' => '70 a 80 kg',
+            '80-90' => '80 a 90 kg', '90-100' => '90 a 100 kg', '100-125' => '100 a 125 kg',
+            '125-150' => '125 a 150 kg', '150+' => 'Mais de 150 kg',
+        ];
+    }
+
+    private function calcularFreteML(float $preco): float
+    {
+        if ($this->tipo_frete === 'ME1') {
+            return (float) ($this->custo_frete_manual ?? 0);
+        }
+
+        if (!$this->faixa_peso || !isset(self::$tabelaFreteML[$this->faixa_peso])) {
+            return (float) ($this->custo_frete_manual ?? 0);
+        }
+
+        $valores = self::$tabelaFreteML[$this->faixa_peso];
+
+        foreach (self::$faixasPreco as $i => [$min, $max]) {
+            if ($preco >= $min && $preco <= $max) {
+                return $valores[$i] ?? end($valores);
+            }
+        }
+
+        return end($valores);
+    }
+
+    // Para preço ideal, precisamos iterar pois o frete depende do preço
+    private function calcularFreteMLIterativo(float $custoBase, float $comissaoPct, float $impostoPct, float $margemPct): array
+    {
+        if ($this->tipo_frete === 'ME1' || !$this->faixa_peso) {
+            $frete = (float) ($this->custo_frete_manual ?? 0);
+            $divisor = 1 - ($comissaoPct / 100) - ($impostoPct / 100) - ($margemPct / 100);
+            if ($divisor <= 0) return ['erro' => true];
+            $preco = round(($custoBase + $frete) / $divisor, 2);
+            return ['preco' => $preco, 'frete' => $frete];
+        }
+
+        // Iterar: estimar preço, calcular frete, recalcular preço
+        $preco = $custoBase * 2; // estimativa inicial
+        for ($i = 0; $i < 20; $i++) {
+            $frete = $this->calcularFreteML($preco);
+            $divisor = 1 - ($comissaoPct / 100) - ($impostoPct / 100) - ($margemPct / 100);
+            if ($divisor <= 0) return ['erro' => true];
+            $novoPreco = round(($custoBase + $frete) / $divisor, 2);
+            if (abs($novoPreco - $preco) < 0.01) break;
+            $preco = $novoPreco;
+        }
+
+        return ['preco' => $preco, 'frete' => $this->calcularFreteML($preco)];
+    }
 
     public function calcular(): void
     {
@@ -35,16 +133,15 @@ class CalculadoraML extends Page
 
         $comissaoPct = $this->tipo_anuncio === 'premium' ? 16.5 : 11.5;
         $impostoPct = (float) ($this->percentual_imposto ?? 0);
-        $custoFrete = (float) ($this->custo_frete ?? 0);
 
         if ($this->modo === 'margem') {
-            $this->calcularMargem($comissaoPct, $impostoPct, $custoFrete);
+            $this->calcularMargem($comissaoPct, $impostoPct);
         } else {
-            $this->calcularPrecoIdeal($comissaoPct, $impostoPct, $custoFrete);
+            $this->calcularPrecoIdeal($comissaoPct, $impostoPct);
         }
     }
 
-    private function calcularMargem(float $comissaoPct, float $impostoPct, float $custoFrete): void
+    private function calcularMargem(float $comissaoPct, float $impostoPct): void
     {
         if (!$this->preco_venda || $this->preco_venda <= 0) {
             $this->resultado = null;
@@ -53,6 +150,7 @@ class CalculadoraML extends Page
 
         $preco = $this->preco_venda;
         $custo = $this->custo_produto;
+        $custoFrete = $this->calcularFreteML($preco);
 
         $comissao = round($preco * $comissaoPct / 100, 2);
         $imposto = round($preco * $impostoPct / 100, 2);
@@ -69,13 +167,14 @@ class CalculadoraML extends Page
             'imposto_pct' => $impostoPct,
             'imposto' => $imposto,
             'custo_frete' => $custoFrete,
+            'faixa_peso_label' => self::getFaixasPeso()[$this->faixa_peso] ?? 'Manual',
             'recebe' => $recebe,
             'margem' => $margem,
             'margem_pct' => $margemPct,
         ];
     }
 
-    private function calcularPrecoIdeal(float $comissaoPct, float $impostoPct, float $custoFrete): void
+    private function calcularPrecoIdeal(float $comissaoPct, float $impostoPct): void
     {
         if (!$this->margem_desejada) {
             $this->resultado = null;
@@ -83,29 +182,23 @@ class CalculadoraML extends Page
         }
 
         $custo = $this->custo_produto;
-        $margemDesejadaPct = $this->margem_desejada;
+        $margemPct = $this->margem_desejada;
 
-        // Preço = (Custo + Frete + Imposto) / (1 - Comissão% - Margem%)
-        // Imposto = Preço × Imposto%
-        // Comissão = Preço × Comissão%
-        // Margem = Preço × Margem%
-        // Preço = Custo + Comissão + Imposto + Frete + Margem
-        // Preço = Custo + Preço×Comissão% + Preço×Imposto% + Frete + Preço×Margem%
-        // Preço - Preço×(Comissão% + Imposto% + Margem%) = Custo + Frete
-        // Preço × (1 - Comissão% - Imposto% - Margem%) = Custo + Frete
-        $divisor = 1 - ($comissaoPct / 100) - ($impostoPct / 100) - ($margemDesejadaPct / 100);
+        $calc = $this->calcularFreteMLIterativo($custo, $comissaoPct, $impostoPct, $margemPct);
 
-        if ($divisor <= 0) {
+        if (isset($calc['erro'])) {
             $this->resultado = ['erro' => 'Margem + Comissão + Imposto excedem 100%. Reduza a margem desejada.'];
             return;
         }
 
-        $preco = round(($custo + $custoFrete) / $divisor, 2);
+        $preco = $calc['preco'];
+        $custoFrete = $calc['frete'];
+
         $comissao = round($preco * $comissaoPct / 100, 2);
         $imposto = round($preco * $impostoPct / 100, 2);
         $recebe = round($preco - $comissao - $custoFrete, 2);
         $margem = round($recebe - $custo - $imposto, 2);
-        $margemPct = $preco > 0 ? round(($margem / $preco) * 100, 1) : 0;
+        $margemPctReal = $preco > 0 ? round(($margem / $preco) * 100, 1) : 0;
 
         $this->resultado = [
             'modo' => 'preco_ideal',
@@ -116,10 +209,11 @@ class CalculadoraML extends Page
             'imposto_pct' => $impostoPct,
             'imposto' => $imposto,
             'custo_frete' => $custoFrete,
+            'faixa_peso_label' => self::getFaixasPeso()[$this->faixa_peso] ?? 'Manual',
             'recebe' => $recebe,
             'margem' => $margem,
-            'margem_pct' => $margemPct,
-            'margem_desejada' => $margemDesejadaPct,
+            'margem_pct' => $margemPctReal,
+            'margem_desejada' => $margemPct,
         ];
     }
 
@@ -129,14 +223,12 @@ class CalculadoraML extends Page
         $this->preco_venda = null;
         $this->margem_desejada = null;
         $this->percentual_imposto = null;
-        $this->custo_frete = null;
+        $this->custo_frete_manual = null;
+        $this->faixa_peso = null;
         $this->resultado = null;
     }
 
-    public function updatedModo(): void
-    {
-        $this->resultado = null;
-    }
+    public function updatedModo(): void { $this->resultado = null; }
 
     public static function canAccess(): bool
     {
