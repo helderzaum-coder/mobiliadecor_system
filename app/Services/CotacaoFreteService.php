@@ -32,11 +32,15 @@ class CotacaoFreteService
         $cepNumerico = preg_replace('/\D/', '', $destCep);
         $cotacoes = [];
 
-        // Buscar transportadoras ativas que atendem a UF (via UFs cadastradas OU faixas de frete)
+        // Buscar transportadoras ativas que atendem a UF
+        // Prioriza UFs cadastradas; usa tabelaFrete como fallback apenas se não tem UFs cadastradas
         $transportadoras = Transportadora::where('ativo', true)
             ->where(function ($q) use ($destUf) {
                 $q->whereHas('ufsAtendidas', fn ($q2) => $q2->where('uf', $destUf))
-                  ->orWhereHas('tabelaFrete', fn ($q2) => $q2->where('uf', $destUf));
+                  ->orWhere(function ($q3) use ($destUf) {
+                      $q3->whereDoesntHave('ufsAtendidas')
+                         ->whereHas('tabelaFrete', fn ($q4) => $q4->where('uf', $destUf));
+                  });
             })
             ->get();
 
