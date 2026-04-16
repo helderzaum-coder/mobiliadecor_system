@@ -8,11 +8,12 @@ class CalculadoraML extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-calculator';
     protected static ?string $navigationGroup = 'Ferramentas';
-    protected static ?string $navigationLabel = 'Calculadora ML';
-    protected static ?string $title = 'Calculadora de Preço - Mercado Livre';
+    protected static ?string $navigationLabel = 'Calculadora Marketplace';
+    protected static ?string $title = 'Calculadora de Preço - Marketplace';
     protected static string $view = 'filament.pages.calculadora-ml';
     protected static ?int $navigationSort = 10;
 
+    public string $marketplace = 'ml';
     public string $modo = 'margem';
     public ?float $custo_produto = null;
     public ?float $preco_venda = null;
@@ -26,6 +27,7 @@ class CalculadoraML extends Page
 
     public ?array $resultado = null;
 
+    // Tabela ML
     private static array $tabelaFreteML = [
         '0-0.3'   => [5.65, 6.55, 7.75, 12.35, 14.35, 16.45, 18.45, 20.95],
         '0.3-0.5' => [5.95, 6.65, 7.85, 13.25, 15.45, 17.65, 19.85, 22.55],
@@ -63,6 +65,27 @@ class CalculadoraML extends Page
         [100, 119.99], [120, 149.99], [150, 199.99], [200, 999999],
     ];
 
+    // Tabela Shopee
+    private static array $tabelaShopee = [
+        [0, 79.99, 20, 4],
+        [80, 99.99, 14, 16],
+        [100, 199.99, 14, 20],
+        [200, 499.99, 14, 26],
+        [500, 999999, 14, 26],
+    ];
+
+    private function calcularComissaoShopee(float $preco): array
+    {
+        foreach (self::$tabelaShopee as [$min, $max, $pct, $fixo]) {
+            if ($preco >= $min && $preco <= $max) {
+                $comissao = round($preco * $pct / 100 + $fixo, 2);
+                return ['comissao' => $comissao, 'pct' => $pct, 'fixo' => $fixo];
+            }
+        }
+        $last = end(self::$tabelaShopee);
+        return ['comissao' => round($preco * $last[2] / 100 + $last[3], 2), 'pct' => $last[2], 'fixo' => $last[3]];
+    }
+
     private function getPesoTotal(): float
     {
         return round(($this->peso_unitario ?? 0) * $this->quantidade, 3);
@@ -87,12 +110,10 @@ class CalculadoraML extends Page
             '80-90' => [80, 90], '90-100' => [90, 100], '100-125' => [100, 125],
             '125-150' => [125, 150], '150+' => [150, 99999],
         ];
-
         foreach ($faixas as $key => [$min, $max]) {
             if ($peso > $min && $peso <= $max) return $key;
-            if ($key === '0-0.3' && $peso <= 0.3) return $key;
+            if ($key === '0-0.3' && $peso <= 0.3 && $peso > 0) return $key;
         }
-
         return '150+';
     }
 
@@ -115,23 +136,14 @@ class CalculadoraML extends Page
 
     private function calcularFreteML(float $preco, float $pesoTotal): float
     {
-        if ($this->tipo_frete === 'ME1') {
-            return (float) ($this->custo_frete_manual ?? 0);
-        }
-
+        if ($this->tipo_frete === 'ME1') return (float) ($this->custo_frete_manual ?? 0);
         if ($pesoTotal <= 0) return 0;
-
         $faixa = $this->detectarFaixaPeso($pesoTotal);
         if (!$faixa || !isset(self::$tabelaFreteML[$faixa])) return 0;
-
         $valores = self::$tabelaFreteML[$faixa];
-
         foreach (self::$faixasPreco as $i => [$min, $max]) {
-            if ($preco >= $min && $preco <= $max) {
-                return $valores[$i] ?? end($valores);
-            }
+            if ($preco >= $min && $preco <= $max) return $valores[$i] ?? end($valores);
         }
-
         return end($valores);
     }
 
@@ -141,10 +153,8 @@ class CalculadoraML extends Page
             $frete = (float) ($this->custo_frete_manual ?? 0);
             $divisor = 1 - ($comissaoPct / 100) - ($impostoPct / 100) - ($margemPct / 100);
             if ($divisor <= 0) return ['erro' => true];
-            $preco = round(($custoTotal + $frete) / $divisor, 2);
-            return ['preco' => $preco, 'frete' => $frete];
+            return ['preco' => round(($custoTotal + $frete) / $divisor, 2), 'frete' => $frete];
         }
-
         $preco = $custoTotal * 2;
         for ($i = 0; $i < 20; $i++) {
             $frete = $this->calcularFreteML($preco, $pesoTotal);
@@ -154,34 +164,88 @@ class CalculadoraML extends Page
             if (abs($novoPreco - $preco) < 0.01) break;
             $preco = $novoPreco;
         }
-
         return ['preco' => $preco, 'frete' => $this->calcularFreteML($preco, $pesoTotal)];
     }
 
     public function calcular(): void
     {
-        if (!$this->custo_produto || $this->custo_produto <= 0) {
-            $this->resultado = null;
-            return;
-        }
+        if (!$this->custo_produto || $this->custo_produto <= 0) { $this->resultado = null; return; }
 
-        $comissaoPct = $this->tipo_anuncio === 'premium' ? 16.5 : 11.5;
-        $impostoPct = (float) ($this->percentual_imposto ?? 0);
-
-        if ($this->modo === 'margem') {
-            $this->calcularMargem($comissaoPct, $impostoPct);
+        if ($this->marketplace === 'shopee') {
+            $this->calcularShopee();
         } else {
-            $this->calcularPrecoIdeal($comissaoPct, $impostoPct);
+            $comissaoPct = $this->tipo_anuncio === 'premium' ? 16.5 : 11.5;
+            $impostoPct = (float) ($this->percentual_imposto ?? 0);
+            if ($this->modo === 'margem') $this->calcularMargemML($comissaoPct, $impostoPct);
+            else $this->calcularPrecoIdealML($comissaoPct, $impostoPct);
         }
     }
 
-    private function calcularMargem(float $comissaoPct, float $impostoPct): void
+    private function calcularShopee(): void
     {
-        if (!$this->preco_venda || $this->preco_venda <= 0) {
-            $this->resultado = null;
-            return;
-        }
+        $custoTotal = $this->getCustoTotal();
+        $impostoPct = (float) ($this->percentual_imposto ?? 0);
 
+        if ($this->modo === 'margem') {
+            if (!$this->preco_venda || $this->preco_venda <= 0) { $this->resultado = null; return; }
+            $preco = $this->preco_venda;
+            $shopee = $this->calcularComissaoShopee($preco);
+            $imposto = round($preco * $impostoPct / 100, 2);
+            $recebe = round($preco - $shopee['comissao'], 2);
+            $margem = round($recebe - $custoTotal - $imposto, 2);
+            $margemPct = $preco > 0 ? round(($margem / $preco) * 100, 1) : 0;
+
+            $this->resultado = [
+                'modo' => 'margem', 'marketplace' => 'shopee',
+                'preco_venda' => $preco, 'custo_unitario' => $this->custo_produto,
+                'custo_total' => $custoTotal, 'quantidade' => $this->quantidade,
+                'comissao_pct' => $shopee['pct'], 'comissao_fixa' => $shopee['fixo'],
+                'comissao' => $shopee['comissao'],
+                'imposto_pct' => $impostoPct, 'imposto' => $imposto,
+                'custo_frete' => 0, 'recebe' => $recebe,
+                'margem' => $margem, 'margem_pct' => $margemPct,
+            ];
+        } else {
+            if (!$this->margem_desejada) { $this->resultado = null; return; }
+            $margemPct = $this->margem_desejada;
+
+            // Iterar: Shopee tem faixas, o % muda conforme o preço
+            $preco = $custoTotal * 2;
+            for ($i = 0; $i < 30; $i++) {
+                $shopee = $this->calcularComissaoShopee($preco);
+                $imposto = $preco * $impostoPct / 100;
+                // preco = custoTotal + comissao + imposto + margem
+                // preco = custoTotal + preco*pct/100 + fixo + preco*imposto/100 + preco*margem/100
+                $divisor = 1 - ($shopee['pct'] / 100) - ($impostoPct / 100) - ($margemPct / 100);
+                if ($divisor <= 0) { $this->resultado = ['erro' => 'Margem + Comissão + Imposto excedem 100%.']; return; }
+                $novoPreco = round(($custoTotal + $shopee['fixo']) / $divisor, 2);
+                if (abs($novoPreco - $preco) < 0.01) break;
+                $preco = $novoPreco;
+            }
+
+            $shopee = $this->calcularComissaoShopee($preco);
+            $imposto = round($preco * $impostoPct / 100, 2);
+            $recebe = round($preco - $shopee['comissao'], 2);
+            $margem = round($recebe - $custoTotal - $imposto, 2);
+            $margemPctReal = $preco > 0 ? round(($margem / $preco) * 100, 1) : 0;
+
+            $this->resultado = [
+                'modo' => 'preco_ideal', 'marketplace' => 'shopee',
+                'preco_venda' => $preco, 'custo_unitario' => $this->custo_produto,
+                'custo_total' => $custoTotal, 'quantidade' => $this->quantidade,
+                'comissao_pct' => $shopee['pct'], 'comissao_fixa' => $shopee['fixo'],
+                'comissao' => $shopee['comissao'],
+                'imposto_pct' => $impostoPct, 'imposto' => $imposto,
+                'custo_frete' => 0, 'recebe' => $recebe,
+                'margem' => $margem, 'margem_pct' => $margemPctReal,
+                'margem_desejada' => $margemPct,
+            ];
+        }
+    }
+
+    private function calcularMargemML(float $comissaoPct, float $impostoPct): void
+    {
+        if (!$this->preco_venda || $this->preco_venda <= 0) { $this->resultado = null; return; }
         $preco = $this->preco_venda;
         $custoTotal = $this->getCustoTotal();
         $pesoTotal = $this->getPesoTotal();
@@ -195,47 +259,29 @@ class CalculadoraML extends Page
         $margemPct = $preco > 0 ? round(($margem / $preco) * 100, 1) : 0;
 
         $this->resultado = [
-            'modo' => 'margem',
-            'preco_venda' => $preco,
-            'custo_unitario' => $this->custo_produto,
-            'custo_total' => $custoTotal,
-            'quantidade' => $this->quantidade,
-            'peso_unitario' => $this->peso_unitario,
-            'peso_total' => $pesoTotal,
+            'modo' => 'margem', 'marketplace' => 'ml',
+            'preco_venda' => $preco, 'custo_unitario' => $this->custo_produto,
+            'custo_total' => $custoTotal, 'quantidade' => $this->quantidade,
+            'peso_unitario' => $this->peso_unitario, 'peso_total' => $pesoTotal,
             'faixa_peso' => $faixaPeso ? $this->getFaixaPesoLabel($faixaPeso) : 'N/A',
-            'comissao_pct' => $comissaoPct,
-            'comissao' => $comissao,
-            'imposto_pct' => $impostoPct,
-            'imposto' => $imposto,
-            'custo_frete' => $custoFrete,
-            'recebe' => $recebe,
-            'margem' => $margem,
-            'margem_pct' => $margemPct,
+            'comissao_pct' => $comissaoPct, 'comissao' => $comissao,
+            'imposto_pct' => $impostoPct, 'imposto' => $imposto,
+            'custo_frete' => $custoFrete, 'recebe' => $recebe,
+            'margem' => $margem, 'margem_pct' => $margemPct,
         ];
     }
 
-    private function calcularPrecoIdeal(float $comissaoPct, float $impostoPct): void
+    private function calcularPrecoIdealML(float $comissaoPct, float $impostoPct): void
     {
-        if (!$this->margem_desejada) {
-            $this->resultado = null;
-            return;
-        }
-
+        if (!$this->margem_desejada) { $this->resultado = null; return; }
         $custoTotal = $this->getCustoTotal();
         $pesoTotal = $this->getPesoTotal();
-        $margemPct = $this->margem_desejada;
-
-        $calc = $this->calcularFreteMLIterativo($custoTotal, $pesoTotal, $comissaoPct, $impostoPct, $margemPct);
-
-        if (isset($calc['erro'])) {
-            $this->resultado = ['erro' => 'Margem + Comissão + Imposto excedem 100%. Reduza a margem desejada.'];
-            return;
-        }
+        $calc = $this->calcularFreteMLIterativo($custoTotal, $pesoTotal, $comissaoPct, $impostoPct, $this->margem_desejada);
+        if (isset($calc['erro'])) { $this->resultado = ['erro' => 'Margem + Comissão + Imposto excedem 100%.']; return; }
 
         $preco = $calc['preco'];
         $custoFrete = $calc['frete'];
         $faixaPeso = $pesoTotal > 0 ? $this->detectarFaixaPeso($pesoTotal) : null;
-
         $comissao = round($preco * $comissaoPct / 100, 2);
         $imposto = round($preco * $impostoPct / 100, 2);
         $recebe = round($preco - $comissao - $custoFrete, 2);
@@ -243,39 +289,29 @@ class CalculadoraML extends Page
         $margemPctReal = $preco > 0 ? round(($margem / $preco) * 100, 1) : 0;
 
         $this->resultado = [
-            'modo' => 'preco_ideal',
-            'preco_venda' => $preco,
-            'custo_unitario' => $this->custo_produto,
-            'custo_total' => $custoTotal,
-            'quantidade' => $this->quantidade,
-            'peso_unitario' => $this->peso_unitario,
-            'peso_total' => $pesoTotal,
+            'modo' => 'preco_ideal', 'marketplace' => 'ml',
+            'preco_venda' => $preco, 'custo_unitario' => $this->custo_produto,
+            'custo_total' => $custoTotal, 'quantidade' => $this->quantidade,
+            'peso_unitario' => $this->peso_unitario, 'peso_total' => $pesoTotal,
             'faixa_peso' => $faixaPeso ? $this->getFaixaPesoLabel($faixaPeso) : 'N/A',
-            'comissao_pct' => $comissaoPct,
-            'comissao' => $comissao,
-            'imposto_pct' => $impostoPct,
-            'imposto' => $imposto,
-            'custo_frete' => $custoFrete,
-            'recebe' => $recebe,
-            'margem' => $margem,
-            'margem_pct' => $margemPctReal,
-            'margem_desejada' => $margemPct,
+            'comissao_pct' => $comissaoPct, 'comissao' => $comissao,
+            'imposto_pct' => $impostoPct, 'imposto' => $imposto,
+            'custo_frete' => $custoFrete, 'recebe' => $recebe,
+            'margem' => $margem, 'margem_pct' => $margemPctReal,
+            'margem_desejada' => $this->margem_desejada,
         ];
     }
 
     public function limpar(): void
     {
-        $this->custo_produto = null;
-        $this->preco_venda = null;
-        $this->margem_desejada = null;
-        $this->percentual_imposto = null;
-        $this->custo_frete_manual = null;
-        $this->peso_unitario = null;
-        $this->quantidade = 1;
-        $this->resultado = null;
+        $this->custo_produto = null; $this->preco_venda = null;
+        $this->margem_desejada = null; $this->percentual_imposto = null;
+        $this->custo_frete_manual = null; $this->peso_unitario = null;
+        $this->quantidade = 1; $this->resultado = null;
     }
 
     public function updatedModo(): void { $this->resultado = null; }
+    public function updatedMarketplace(): void { $this->resultado = null; }
 
     public static function canAccess(): bool
     {
