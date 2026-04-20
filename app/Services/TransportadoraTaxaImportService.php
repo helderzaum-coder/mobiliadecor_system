@@ -152,8 +152,17 @@ class TransportadoraTaxaImportService
             }
         }
 
-        // Limpar apenas as UFs que estão na planilha (não afeta outros estados)
-        if (!empty($ufsNaPlanilha)) {
+        // Limpar registros existentes
+        if ($limparAntes) {
+            // Limpar TODOS os registros da transportadora
+            $deletados = TransportadoraTabelaFrete::where('id_transportadora', $idTransportadora)->delete();
+            if ($deletados > 0) {
+                $resultado['mensagens'][] = "{$deletados} registro(s) antigos removidos (todas as UFs)";
+            }
+            // Limpar UFs cadastradas também
+            \App\Models\TransportadoraUf::where('id_transportadora', $idTransportadora)->delete();
+        } elseif (!empty($ufsNaPlanilha)) {
+            // Sem limpar: remover apenas as UFs que estão na planilha (para reimportar)
             $deletados = TransportadoraTabelaFrete::where('id_transportadora', $idTransportadora)
                 ->whereIn('uf', array_keys($ufsNaPlanilha))
                 ->delete();
