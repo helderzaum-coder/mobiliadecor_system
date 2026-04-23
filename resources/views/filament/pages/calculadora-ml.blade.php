@@ -123,6 +123,32 @@
             @endif
         </div>
 
+        @if($marketplace === 'ml' && $tipo_frete === 'ME2')
+        <div style="display:flex;gap:16px;align-items:flex-end;">
+            <div style="flex:1;">
+                <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">
+                    Custo de Envio ML (R$)
+                    @if(!$frete_manual_override)
+                        <span style="font-size:10px;color:#10b981;">automático pela tabela</span>
+                    @else
+                        <span style="font-size:10px;color:#f59e0b;">editado manualmente</span>
+                    @endif
+                </label>
+                <input type="number" step="0.01" wire:model="custo_frete_manual" placeholder="0,00"
+                    {{ !$frete_manual_override ? 'readonly' : '' }}
+                    style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid {{ $frete_manual_override ? '#f59e0b' : '#374151' }};background:{{ $frete_manual_override ? '#1a1a2e' : '#111827' }};color:#fff;font-size:14px;">
+                <div style="font-size:10px;color:#6b7280;margin-top:2px;">Valor que o ML cobra de envio. Ative a edição para corrigir manualmente.</div>
+            </div>
+            <div style="margin-bottom:8px;">
+                <button wire:click="$toggle('frete_manual_override')"
+                    style="padding:10px 14px;font-size:12px;border-radius:8px;border:1px solid {{ $frete_manual_override ? '#f59e0b' : '#374151' }};cursor:pointer;
+                    background:{{ $frete_manual_override ? 'rgba(245,158,11,.15)' : 'transparent' }};color:{{ $frete_manual_override ? '#f59e0b' : '#9ca3af' }};">
+                    {{ $frete_manual_override ? '🔓 Editando' : '✏️ Editar' }}
+                </button>
+            </div>
+        </div>
+        @endif
+
         @if($marketplace === 'ml' && $tipo_frete === 'ME1')
         <div style="display:flex;gap:16px;">
             <div style="flex:1;">

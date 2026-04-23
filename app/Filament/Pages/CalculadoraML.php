@@ -24,6 +24,7 @@ class CalculadoraML extends Page
     public ?float $custo_frete_manual = null;
     public ?float $peso_unitario = null;
     public int $quantidade = 1;
+    public bool $frete_manual_override = false;
 
     public ?array $resultado = null;
 
@@ -137,6 +138,7 @@ class CalculadoraML extends Page
     private function calcularFreteML(float $preco, float $pesoTotal): float
     {
         if ($this->tipo_frete === 'ME1') return (float) ($this->custo_frete_manual ?? 0);
+        if ($this->frete_manual_override && $this->custo_frete_manual > 0) return (float) $this->custo_frete_manual;
         if ($pesoTotal <= 0) return 0;
         $faixa = $this->detectarFaixaPeso($pesoTotal);
         if (!$faixa || !isset(self::$tabelaFreteML[$faixa])) return 0;
@@ -252,6 +254,11 @@ class CalculadoraML extends Page
         $custoFrete = $this->calcularFreteML($preco, $pesoTotal);
         $faixaPeso = $pesoTotal > 0 ? $this->detectarFaixaPeso($pesoTotal) : null;
 
+        // Preencher campo de frete para o usuário ver o valor sugerido
+        if (!$this->frete_manual_override && $this->tipo_frete === 'ME2') {
+            $this->custo_frete_manual = $custoFrete;
+        }
+
         $comissao = round($preco * $comissaoPct / 100, 2);
         $imposto = round($preco * $impostoPct / 100, 2);
         $recebe = round($preco - $comissao - $custoFrete, 2);
@@ -282,6 +289,10 @@ class CalculadoraML extends Page
         $preco = $calc['preco'];
         $custoFrete = $calc['frete'];
         $faixaPeso = $pesoTotal > 0 ? $this->detectarFaixaPeso($pesoTotal) : null;
+
+        if (!$this->frete_manual_override && $this->tipo_frete === 'ME2') {
+            $this->custo_frete_manual = $custoFrete;
+        }
         $comissao = round($preco * $comissaoPct / 100, 2);
         $imposto = round($preco * $impostoPct / 100, 2);
         $recebe = round($preco - $comissao - $custoFrete, 2);
@@ -308,6 +319,7 @@ class CalculadoraML extends Page
         $this->margem_desejada = null; $this->percentual_imposto = null;
         $this->custo_frete_manual = null; $this->peso_unitario = null;
         $this->quantidade = 1; $this->resultado = null;
+        $this->frete_manual_override = false;
     }
 
     public function updatedModo(): void { $this->resultado = null; }
