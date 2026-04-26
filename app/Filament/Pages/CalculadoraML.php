@@ -19,6 +19,8 @@ class CalculadoraML extends Page
     public ?float $preco_venda = null;
     public ?float $margem_desejada = null;
     public string $tipo_anuncio = 'classico';
+    public ?float $comissao_manual = null;
+    public bool $comissao_manual_override = false;
     public ?float $percentual_imposto = null;
     public string $tipo_frete = 'ME2';
     public ?float $custo_frete_manual = null;
@@ -176,8 +178,11 @@ class CalculadoraML extends Page
         if ($this->marketplace === 'shopee') {
             $this->calcularShopee();
         } else {
-            $comissaoPct = $this->tipo_anuncio === 'premium' ? 16.5 : 11.5;
+            $comissaoPct = $this->comissao_manual_override && $this->comissao_manual > 0
+                ? $this->comissao_manual
+                : ($this->tipo_anuncio === 'premium' ? 16.5 : 11.5);
             $impostoPct = (float) ($this->percentual_imposto ?? 0);
+            if (!$this->comissao_manual_override) $this->comissao_manual = $comissaoPct;
             if ($this->modo === 'margem') $this->calcularMargemML($comissaoPct, $impostoPct);
             else $this->calcularPrecoIdealML($comissaoPct, $impostoPct);
         }
@@ -320,6 +325,8 @@ class CalculadoraML extends Page
         $this->custo_frete_manual = null; $this->peso_unitario = null;
         $this->quantidade = 1; $this->resultado = null;
         $this->frete_manual_override = false;
+        $this->comissao_manual = null;
+        $this->comissao_manual_override = false;
     }
 
     public function updatedModo(): void { $this->resultado = null; }

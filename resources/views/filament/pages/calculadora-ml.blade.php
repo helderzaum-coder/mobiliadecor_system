@@ -87,8 +87,8 @@
             @if($marketplace === 'ml')
             <div style="flex:1;">
                 <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">Tipo de Anúncio</label>
-                <select wire:model="tipo_anuncio"
-                    style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:14px;">
+                <select wire:model="tipo_anuncio" {{ $comissao_manual_override ? 'disabled' : '' }}
+                    style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:{{ $comissao_manual_override ? '#6b7280' : '#fff' }};font-size:14px;">
                     <option value="classico">Clássico (11,5%)</option>
                     <option value="premium">Premium (16,5%)</option>
                 </select>
@@ -103,6 +103,33 @@
             </div>
             @endif
         </div>
+
+        {{-- Comissão ML editável --}}
+        @if($marketplace === 'ml')
+        <div style="display:flex;gap:16px;align-items:flex-end;">
+            <div style="flex:1;">
+                <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">
+                    Comissão ML (%)
+                    @if(!$comissao_manual_override)
+                        <span style="font-size:10px;color:#10b981;">{{ $tipo_anuncio === 'premium' ? '16,5% (Premium)' : '11,5% (Clássico)' }}</span>
+                    @else
+                        <span style="font-size:10px;color:#f59e0b;">editado manualmente</span>
+                    @endif
+                </label>
+                <input type="number" step="0.1" wire:model="comissao_manual" placeholder="{{ $tipo_anuncio === 'premium' ? '16.5' : '11.5' }}"
+                    {{ !$comissao_manual_override ? 'readonly' : '' }}
+                    style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid {{ $comissao_manual_override ? '#f59e0b' : '#374151' }};background:{{ $comissao_manual_override ? '#1a1a2e' : '#111827' }};color:#fff;font-size:14px;">
+                <div style="font-size:10px;color:#6b7280;margin-top:2px;">Percentual de comissão. Edite se o ML aplicou promoção.</div>
+            </div>
+            <div style="margin-bottom:8px;">
+                <button wire:click="$toggle('comissao_manual_override')"
+                    style="padding:10px 14px;font-size:12px;border-radius:8px;border:1px solid {{ $comissao_manual_override ? '#f59e0b' : '#374151' }};cursor:pointer;
+                    background:{{ $comissao_manual_override ? 'rgba(245,158,11,.15)' : 'transparent' }};color:{{ $comissao_manual_override ? '#f59e0b' : '#9ca3af' }};">
+                    {{ $comissao_manual_override ? '🔓 Editando' : '✏️ Editar' }}
+                </button>
+            </div>
+        </div>
+        @endif
 
         {{-- Imposto + Frete --}}
         <div style="display:flex;gap:16px;">
