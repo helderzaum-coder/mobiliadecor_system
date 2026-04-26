@@ -132,7 +132,7 @@
                 <div style="font-size:10px;color:#6b7280;margin-top:2px;">Edite se o ML aplicou promoção. Use % ou R$ fixo.</div>
             </div>
             <div style="margin-bottom:8px;">
-                <button wire:click="$toggle('comissao_manual_override')"
+                <button wire:click="$set('comissao_manual_override', {{ $comissao_manual_override ? 'false' : 'true' }})"
                     style="padding:10px 14px;font-size:12px;border-radius:8px;border:1px solid {{ $comissao_manual_override ? '#f59e0b' : '#374151' }};cursor:pointer;
                     background:{{ $comissao_manual_override ? 'rgba(245,158,11,.15)' : 'transparent' }};color:{{ $comissao_manual_override ? '#f59e0b' : '#9ca3af' }};">
                     {{ $comissao_manual_override ? '🔓 Editando' : '✏️ Editar' }}
@@ -177,7 +177,7 @@
                 <div style="font-size:10px;color:#6b7280;margin-top:2px;">Valor que o ML cobra de envio. Ative a edição para corrigir manualmente.</div>
             </div>
             <div style="margin-bottom:8px;">
-                <button wire:click="$toggle('frete_manual_override')"
+                <button wire:click="$set('frete_manual_override', {{ $frete_manual_override ? 'false' : 'true' }})"
                     style="padding:10px 14px;font-size:12px;border-radius:8px;border:1px solid {{ $frete_manual_override ? '#f59e0b' : '#374151' }};cursor:pointer;
                     background:{{ $frete_manual_override ? 'rgba(245,158,11,.15)' : 'transparent' }};color:{{ $frete_manual_override ? '#f59e0b' : '#9ca3af' }};">
                     {{ $frete_manual_override ? '🔓 Editando' : '✏️ Editar' }}
