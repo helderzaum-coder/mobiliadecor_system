@@ -109,17 +109,27 @@
         <div style="display:flex;gap:16px;align-items:flex-end;">
             <div style="flex:1;">
                 <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">
-                    Comissão ML (%)
+                    Comissão ML
                     @if(!$comissao_manual_override)
-                        <span style="font-size:10px;color:#10b981;">{{ $tipo_anuncio === 'premium' ? '16,5% (Premium)' : '11,5% (Clássico)' }}</span>
+                        <span style="font-size:10px;color:#10b981;">({{ $tipo_anuncio === 'premium' ? '16,5%' : '11,5%' }} {{ $tipo_anuncio === 'premium' ? 'Premium' : 'Clássico' }})</span>
                     @else
-                        <span style="font-size:10px;color:#f59e0b;">editado manualmente</span>
+                        <span style="font-size:10px;color:#f59e0b;">editado manualmente ({{ $comissao_tipo === 'valor' ? 'R$' : '%' }})</span>
                     @endif
                 </label>
-                <input type="number" step="0.1" wire:model="comissao_manual" placeholder="{{ $tipo_anuncio === 'premium' ? '16.5' : '11.5' }}"
-                    {{ !$comissao_manual_override ? 'readonly' : '' }}
-                    style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid {{ $comissao_manual_override ? '#f59e0b' : '#374151' }};background:{{ $comissao_manual_override ? '#1a1a2e' : '#111827' }};color:#fff;font-size:14px;">
-                <div style="font-size:10px;color:#6b7280;margin-top:2px;">Percentual de comissão. Edite se o ML aplicou promoção.</div>
+                <div style="display:flex;gap:0;">
+                    @if($comissao_manual_override)
+                    <select wire:model="comissao_tipo"
+                        style="padding:10px 8px;border-radius:8px 0 0 8px;border:1px solid #f59e0b;border-right:none;background:#1a1a2e;color:#f59e0b;font-size:13px;font-weight:700;width:65px;">
+                        <option value="percentual">%</option>
+                        <option value="valor">R$</option>
+                    </select>
+                    @endif
+                    <input type="number" step="0.1" wire:model="comissao_manual"
+                        placeholder="{{ $tipo_anuncio === 'premium' ? '16.5' : '11.5' }}"
+                        {{ !$comissao_manual_override ? 'readonly' : '' }}
+                        style="width:100%;padding:10px 14px;border-radius:{{ $comissao_manual_override ? '0 8px 8px 0' : '8px' }};border:1px solid {{ $comissao_manual_override ? '#f59e0b' : '#374151' }};background:{{ $comissao_manual_override ? '#1a1a2e' : '#111827' }};color:#fff;font-size:14px;">
+                </div>
+                <div style="font-size:10px;color:#6b7280;margin-top:2px;">Edite se o ML aplicou promoção. Use % ou R$ fixo.</div>
             </div>
             <div style="margin-bottom:8px;">
                 <button wire:click="$toggle('comissao_manual_override')"
