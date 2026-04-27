@@ -3,9 +3,9 @@
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700 mb-6">
             <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Como baixar a planilha:</h3>
             <div class="text-sm text-gray-500 dark:text-gray-400 space-y-1 mb-4">
-                <p>1. Acesse o portal da Webcontinental</p>
-                <p>2. Exporte a planilha de pedidos do período desejado</p>
-                <p>3. Faça o upload abaixo</p>
+                <p>1. Acesse <a href="https://portal.webcontinental.com.br/#/listar/pedidos" target="_blank" class="text-blue-500 hover:underline">portal.webcontinental.com.br/#/listar/pedidos</a></p>
+                <p>2. Filtre por <strong>Data de aprovação</strong> e selecione o período desejado</p>
+                <p>3. Exporte a planilha e faça o upload abaixo</p>
             </div>
 
             <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">O que o processamento faz:</h3>

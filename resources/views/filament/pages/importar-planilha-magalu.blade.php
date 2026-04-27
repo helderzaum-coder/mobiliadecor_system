@@ -1,16 +1,35 @@
 <x-filament-panels::page>
-    <form wire:submit="processar">
-        {{ $this->form }}
+    <div class="max-w-2xl">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700 mb-6">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Como baixar a planilha:</h3>
+            <div class="text-sm text-gray-500 dark:text-gray-400 space-y-1 mb-4">
+                <p>1. Acesse <a href="https://seller.magalu.com/pedidos/relatorio" target="_blank" class="text-blue-500 hover:underline">seller.magalu.com/pedidos/relatorio</a></p>
+                <p>2. Selecione <strong>Relatório por Período</strong></p>
+                <p>3. Informe o período desejado e exporte</p>
+                <p>4. Faça o upload abaixo</p>
+            </div>
 
-        <div class="mt-4">
-            <x-filament::button type="submit">
-                Processar Planilha
-            </x-filament::button>
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Colunas utilizadas:</h3>
+            <div class="text-sm text-gray-500 dark:text-gray-400">
+                <p>Número do pedido (E), Serviços marketplace (AB), Tarifa fixa (AF), Descontos à vista (AN/AO), Preço Promocional (AP/AQ), Cupom (AR/AS), Valor líquido (AT).</p>
+            </div>
         </div>
-    </form>
 
-    <div class="mt-6 text-sm text-gray-500 dark:text-gray-400">
-        <p>Faça upload da planilha financeira da Magalu (.xlsx).</p>
-        <p class="mt-1">Colunas utilizadas: Número do pedido (E), Serviços marketplace (AB), Tarifa fixa (AF), Descontos à vista (AN/AO), Preço Promocional (AP/AQ), Cupom (AR/AS), Valor líquido (AT).</p>
+        <form wire:submit="processar">
+            {{ $this->form }}
+
+            <div class="mt-4">
+                <x-filament::button type="submit" wire:loading.attr="disabled">
+                    <span wire:loading.remove wire:target="processar">📊 Processar Planilha</span>
+                    <span wire:loading wire:target="processar" class="flex items-center gap-2">
+                        <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        Processando...
+                    </span>
+                </x-filament::button>
+            </div>
+        </form>
     </div>
 </x-filament-panels::page>
