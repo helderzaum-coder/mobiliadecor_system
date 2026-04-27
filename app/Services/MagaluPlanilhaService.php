@@ -70,8 +70,9 @@ class MagaluPlanilhaService
                 $descontoCupomVendedor = abs(self::parseDecimal($sheet->getCell("AS{$i}")->getValue()));
                 $valorLiquido = self::parseDecimal($sheet->getCell("AT{$i}")->getValue());
 
-                // Comissão real = serviços marketplace + tarifa fixa
-                $comissaoReal = round($comissaoServicos + $tarifaFixa, 2);
+                // Comissão real = serviços marketplace + tarifa fixa + descontos pagos pelo seller
+                $descontosVendedor = round($descontoVendedorVista + $descontoVendedorPromo + $descontoCupomVendedor, 2);
+                $comissaoReal = round($comissaoServicos + $tarifaFixa + $descontosVendedor, 2);
 
                 // Subsídio Magalu = valores que a Magalu paga (AN + AP + AR)
                 // Esses valores já estão na base de comissão, mas não no total_pedido do Bling
