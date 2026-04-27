@@ -241,7 +241,7 @@ class DashboardVendas extends Page implements HasForms
                 );
         } elseif ($this->status_filtro === 'falta_planilha') {
             $query->where('planilha_processada', false)
-                ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%')->orWhere('nome_canal', 'like', '%agalu%'));
+                ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%')->orWhere('nome_canal', 'like', '%agalu%')->orWhere('nome_canal', 'like', '%ebcontinental%'));
         } elseif ($this->status_filtro === 'sem_custo') {
             $query->where(fn ($q) => $q->where('custo_produtos', '<=', 0)->orWhereNull('custo_produtos'));
         } elseif ($this->status_filtro === 'completo') {
@@ -253,7 +253,7 @@ class DashboardVendas extends Page implements HasForms
                 )
                 ->where(fn ($q) => $q
                     ->where('planilha_processada', true)
-                    ->orWhereDoesntHave('canal', fn ($q2) => $q2->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%')->orWhere('nome_canal', 'like', '%agalu%'))
+                    ->orWhereDoesntHave('canal', fn ($q2) => $q2->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%')->orWhere('nome_canal', 'like', '%agalu%')->orWhere('nome_canal', 'like', '%ebcontinental%'))
                 );
         }
 

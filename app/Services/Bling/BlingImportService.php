@@ -660,6 +660,9 @@ class BlingImportService
         if ($cnpjLimpo === '47960950000121') {
             return 'Magalu';
         }
+        if ($cnpjLimpo === '04032433000189') {
+            return 'Webcontinental';
+        }
 
         // Identificar pelo nome do intermediador
         if (!empty($nomeUsuario)) {
@@ -669,6 +672,9 @@ class BlingImportService
             }
             if (str_contains($nomeLower, 'shopee')) {
                 return 'Shopee';
+            }
+            if (str_contains($nomeLower, 'webcontinental') || str_contains($nomeLower, 'continental')) {
+                return 'Webcontinental';
             }
             return ucfirst($nomeUsuario);
         }

@@ -140,7 +140,8 @@
                 $isML = str_contains(strtolower($canal), 'mercado');
                 $isShopee = str_contains(strtolower($canal), 'shopee');
                 $isMagalu = str_contains(strtolower($canal), 'magalu');
-                $precisaPlanilha = $isML || $isShopee || $isMagalu;
+                $isWebcontinental = str_contains(strtolower($canal), 'webcontinental');
+                $precisaPlanilha = $isML || $isShopee || $isMagalu || $isWebcontinental;
                 $freteOk = $fretePagoFlag || $isMlMe2Full;
                 $completo = $temNfeChave && $freteOk && (!$precisaPlanilha || $planilhaOk);
 
@@ -359,10 +360,11 @@
                     $isML = str_contains(strtolower($canal), 'mercado');
                     $isShopee = str_contains(strtolower($canal), 'shopee');
                     $isMagalu = str_contains(strtolower($canal), 'magalu');
+                    $isWebcontinental = str_contains(strtolower($canal), 'webcontinental');
                     $temNfe = !empty($venda->nfe_chave_acesso);
                     $fretePagoReal = (bool) $venda->frete_pago;
                     $temPlanilha = (bool) $venda->planilha_processada;
-                    $isMarketplace = $isML || $isShopee || $isMagalu;
+                    $isMarketplace = $isML || $isShopee || $isMagalu || $isWebcontinental;
                     $mlTipoFreteBtn = $venda->ml_tipo_frete ?? null;
                     $isMlMe1 = $mlTipoFreteBtn === 'ME1';
                 @endphp
