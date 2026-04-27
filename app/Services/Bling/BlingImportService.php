@@ -167,7 +167,8 @@ class BlingImportService
 
         // Disparar sincronização de estoque em background
         if ($staging) {
-            SyncEstoquePedidoJob::dispatch($staging->id);
+        // Sync automático desabilitado — usar botão "Espelhar Estoque" na página Bling
+        // SyncEstoquePedidoJob::dispatch($staging->id);
         }
 
         return ['status' => 'importado', 'numero' => $pedido['numero'] ?? $blingId];

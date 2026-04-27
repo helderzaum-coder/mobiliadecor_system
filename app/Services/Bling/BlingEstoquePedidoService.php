@@ -127,30 +127,32 @@ class BlingEstoquePedidoService
         }
         $prodPrimaryId = (int) $prodPrimary['id'];
 
-        // Buscar saldo atual na Primary
-        $saldoPrimary = self::buscarSaldoFisico($clientPrimary, $prodPrimaryId);
-        if ($saldoPrimary === null) {
+        // Buscar saldo total da Primary (Geral + Virtual) para espelhar na Secondary
+        $saldoTotalPrimary = self::buscarSaldoFisico($clientPrimary, $prodPrimaryId, apenasGeral: false);
+        if ($saldoTotalPrimary === null) {
             return ['success' => false, 'msg' => "SKU {$sku}: não foi possível obter saldo na Primary"];
         }
 
-        // Se pedido veio da Secondary, subtrair qtd vendida da Primary
+        // Se pedido veio da Secondary, subtrair qtd vendida do depósito Geral da Primary
         if ($contaOrigem === 'secondary') {
-            $novoSaldo = max(0, $saldoPrimary - $qtdVendida);
+            $saldoGeralPrimary = self::buscarSaldoFisico($clientPrimary, $prodPrimaryId, apenasGeral: true);
+            $novoSaldoGeral = max(0, ($saldoGeralPrimary ?? 0) - $qtdVendida);
 
             $depositoPrimaryId = self::getDepositoGeral($clientPrimary);
             if (!$depositoPrimaryId) {
                 return ['success' => false, 'msg' => "SKU {$sku}: depósito não encontrado na Primary"];
             }
 
-            $res = self::atualizarEstoque($clientPrimary, $prodPrimaryId, $novoSaldo, $depositoPrimaryId);
+            $res = self::atualizarEstoque($clientPrimary, $prodPrimaryId, $novoSaldoGeral, $depositoPrimaryId);
             if (!$res['success']) {
                 return ['success' => false, 'msg' => "SKU {$sku}: erro ao atualizar Primary (HTTP {$res['http_code']})"];
             }
 
-            $saldoPrimary = $novoSaldo;
+            // Recalcular total após subtração
+            $saldoTotalPrimary = $saldoTotalPrimary - $qtdVendida;
         }
 
-        // Espelhar saldo da Primary → Secondary
+        // Espelhar saldo total da Primary (Geral + Virtual) → Secondary
         $prodSecondary = $clientSecondary->getProductBySku($sku);
         if (!$prodSecondary) {
             return ['success' => true, 'msg' => "SKU {$sku}: Primary={$saldoPrimary} (não existe na Secondary)"];
@@ -162,19 +164,22 @@ class BlingEstoquePedidoService
             return ['success' => false, 'msg' => "SKU {$sku}: depósito não encontrado na Secondary"];
         }
 
-        $res = self::atualizarEstoque($clientSecondary, $prodSecondaryId, $saldoPrimary, $depositoSecondaryId);
+        $res = self::atualizarEstoque($clientSecondary, $prodSecondaryId, max(0, $saldoTotalPrimary), $depositoSecondaryId);
         if (!$res['success']) {
             return ['success' => false, 'msg' => "SKU {$sku}: erro ao espelhar na Secondary (HTTP {$res['http_code']})"];
         }
 
-        $sufixo = $contaOrigem === 'secondary' ? " (subtraiu {$qtdVendida})" : '';
-        return ['success' => true, 'msg' => "SKU {$sku}: Primary={$saldoPrimary} → Secondary={$saldoPrimary}{$sufixo}"];
+        $sufixo = $contaOrigem === 'secondary' ? " (subtraiu {$qtdVendida} do Geral)" : '';
+        return ['success' => true, 'msg' => "SKU {$sku}: Primary total={$saldoTotalPrimary} → Secondary{$sufixo}"];
     }
 
-    private static function buscarSaldoFisico(BlingClient $client, int $produtoId): ?int
+    /**
+     * Busca saldo físico de um produto.
+     * - Para espelhar na Secondary: retorna soma de todos os depósitos (Geral + Virtual)
+     * - Para gravar na Primary: usa apenas o depósito Geral (via parâmetro)
+     */
+    private static function buscarSaldoFisico(BlingClient $client, int $produtoId, bool $apenasGeral = false): ?int
     {
-        $depositoGeralId = self::getDepositoGeral($client);
-
         $res = $client->get('/estoques/saldos', ['idsProdutos[]' => $produtoId]);
         if (!$res['success'] || empty($res['body']['data'])) {
             $produto = $client->getProductById($produtoId);
@@ -188,16 +193,22 @@ class BlingEstoquePedidoService
         $dados = $res['body']['data'][0] ?? null;
         if (!$dados) return null;
 
-        // Buscar saldo apenas do depósito Geral, ignorando outros (ex: Estoque Virtual)
-        foreach ($dados['depositos'] ?? [] as $dep) {
-            if ($depositoGeralId && (int) ($dep['deposito']['id'] ?? 0) === $depositoGeralId) {
-                return (int) ($dep['saldoFisico'] ?? 0);
+        if ($apenasGeral) {
+            $depositoGeralId = self::getDepositoGeral($client);
+            foreach ($dados['depositos'] ?? [] as $dep) {
+                if ($depositoGeralId && (int) ($dep['deposito']['id'] ?? 0) === $depositoGeralId) {
+                    return (int) ($dep['saldoFisico'] ?? 0);
+                }
             }
+            return (int) (($dados['depositos'][0] ?? [])['saldoFisico'] ?? 0);
         }
 
-        // Fallback: primeiro depósito
-        $primeiro = $dados['depositos'][0] ?? null;
-        return $primeiro ? (int) ($primeiro['saldoFisico'] ?? 0) : 0;
+        // Soma todos os depósitos (Geral + Virtual)
+        $total = 0;
+        foreach ($dados['depositos'] ?? [] as $dep) {
+            $total += (int) ($dep['saldoFisico'] ?? 0);
+        }
+        return $total;
     }
 
     private static function getDepositoGeral(BlingClient $client): ?int
