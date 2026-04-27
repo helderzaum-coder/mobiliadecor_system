@@ -53,26 +53,68 @@ class WebcontinentalPlanilhaService
                 continue;
             }
 
+            // Coletar todas as chaves possíveis para vincular
             $pedidoErp = trim($row['F'] ?? '');
-            if (empty($pedidoErp) || isset($pedidos[$pedidoErp])) {
+            $pedidoSite = trim($row['E'] ?? '');
+            $pedidoParceiro = trim($row['D'] ?? '');
+
+            if (empty($pedidoErp) && empty($pedidoSite) && empty($pedidoParceiro)) {
                 continue;
             }
 
-            $pedidos[$pedidoErp] = $row;
+            // Usar pedidoErp como chave principal
+            $chave = $pedidoErp ?: $pedidoSite ?: $pedidoParceiro;
+            if (isset($pedidos[$chave])) continue;
+
+            $pedidos[$chave] = $row;
         }
 
         Log::info('WebcontinentalPlanilha: iniciando', [
             'total_pedidos_planilha' => count($pedidos),
         ]);
 
-        // Buscar no staging pelo numero_loja (coluna F = Pedido ERP)
-        $stagings = PedidoBlingStaging::whereIn('numero_loja', array_keys($pedidos))
-            ->whereNotNull('bling_id')
-            ->get()
-            ->keyBy('numero_loja');
+        // Coletar todas as chaves possíveis para busca
+        $chavesPedidoErp = [];
+        $chavesPedidoSite = [];
+        $chavesPedidoParceiro = [];
+        foreach ($pedidos as $row) {
+            $erp = trim($row['F'] ?? '');
+            $site = trim($row['E'] ?? '');
+            $parceiro = trim($row['D'] ?? '');
+            if ($erp) $chavesPedidoErp[$erp] = true;
+            if ($site) $chavesPedidoSite[$site] = true;
+            if ($parceiro) $chavesPedidoParceiro[$parceiro] = true;
+        }
 
-        foreach ($pedidos as $pedidoErp => $row) {
-            $staging = $stagings[$pedidoErp] ?? null;
+        // Buscar no staging por todas as chaves possíveis
+        $stagings = PedidoBlingStaging::where(function ($q) use ($chavesPedidoErp, $chavesPedidoSite, $chavesPedidoParceiro) {
+                if (!empty($chavesPedidoErp)) $q->orWhereIn('numero_loja', array_keys($chavesPedidoErp));
+                if (!empty($chavesPedidoSite)) $q->orWhereIn('numero_loja', array_keys($chavesPedidoSite));
+                if (!empty($chavesPedidoParceiro)) $q->orWhereIn('numero_loja', array_keys($chavesPedidoParceiro));
+                if (!empty($chavesPedidoParceiro)) $q->orWhereIn('numero_pedido', array_keys($chavesPedidoParceiro));
+            })
+            ->whereNotNull('bling_id')
+            ->get();
+
+        // Indexar por todas as chaves possíveis
+        $stagingMap = [];
+        foreach ($stagings as $s) {
+            if ($s->numero_loja) $stagingMap[$s->numero_loja] = $s;
+            if ($s->numero_pedido) $stagingMap[(string) $s->numero_pedido] = $s;
+        }
+
+        Log::info('WebcontinentalPlanilha: stagings encontrados', [
+            'total' => $stagings->count(),
+            'chaves_mapa' => array_keys($stagingMap),
+        ]);
+
+        foreach ($pedidos as $chave => $row) {
+            $pedidoErp = trim($row['F'] ?? '');
+            $pedidoSite = trim($row['E'] ?? '');
+            $pedidoParceiro = trim($row['D'] ?? '');
+
+            // Tentar encontrar por qualquer chave
+            $staging = $stagingMap[$pedidoErp] ?? $stagingMap[$pedidoSite] ?? $stagingMap[$pedidoParceiro] ?? null;
 
             if (!$staging) {
                 $resultado['nao_encontrados']++;
