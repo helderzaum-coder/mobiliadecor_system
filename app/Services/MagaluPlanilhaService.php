@@ -70,9 +70,12 @@ class MagaluPlanilhaService
                 $descontoCupomVendedor = abs(self::parseDecimal($sheet->getCell("AS{$i}")->getValue()));
                 $valorLiquido = self::parseDecimal($sheet->getCell("AT{$i}")->getValue());
 
-                // Comissão real = serviços marketplace + tarifa fixa + descontos pagos pelo seller
+                // Comissão real = serviços marketplace + tarifa fixa
+                $comissaoReal = round($comissaoServicos + $tarifaFixa, 2);
+
+                // Descontos pagos pelo seller (Promo, Vista, Cupom) — informativo
+                // Já estão descontados do valor líquido pela Magalu, não somar na comissão
                 $descontosVendedor = round($descontoVendedorVista + $descontoVendedorPromo + $descontoCupomVendedor, 2);
-                $comissaoReal = round($comissaoServicos + $tarifaFixa + $descontosVendedor, 2);
 
                 // Subsídio Magalu = valores que a Magalu paga (AN + AP + AR)
                 // Esses valores já estão na base de comissão, mas não no total_pedido do Bling
@@ -89,9 +92,17 @@ class MagaluPlanilhaService
 
                 $venda->update([
                     'comissao' => $comissaoReal,
-                    'subsidio_pix' => $subsidiosMagalu, // Subsídio Magalu (usado no cálculo do repasse)
+                    'subsidio_pix' => $subsidiosMagalu,
                     'planilha_processada' => true,
                 ]);
+
+                if ($descontosVendedor > 0) {
+                    $obsAtual = $venda->observacoes ?? '';
+                    $obsDesconto = "Desconto seller Magalu: R$ " . number_format($descontosVendedor, 2, ',', '.');
+                    if (!str_contains($obsAtual, 'Desconto seller Magalu')) {
+                        $venda->update(['observacoes' => trim($obsAtual . "\n" . $obsDesconto)]);
+                    }
+                }
 
                 VendaRecalculoService::recalcularMargens($venda);
                 $resultado['atualizados']++;
