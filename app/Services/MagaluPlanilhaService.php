@@ -86,6 +86,31 @@ class MagaluPlanilhaService
                 $venda = Venda::where('numero_pedido_canal', $numeroPedido)->first();
 
                 if (!$venda) {
+                    // Tentar no staging (pedido ainda não aprovado)
+                    $staging = \App\Models\PedidoBlingStaging::where('numero_loja', $numeroPedido)
+                        ->orWhere('numero_loja', $numeroPedidoRaw)
+                        ->whereNotNull('bling_id')
+                        ->first();
+
+                    if ($staging) {
+                        $staging->update([
+                            'comissao_calculada' => $comissaoReal,
+                            'subsidio_pix' => $subsidiosMagalu,
+                            'planilha_shopee' => true,
+                        ]);
+
+                        if ($descontosVendedor > 0) {
+                            $obsAtual = $staging->observacoes ?? '';
+                            $obsDesconto = "Desconto seller Magalu: R$ " . number_format($descontosVendedor, 2, ',', '.');
+                            if (!str_contains($obsAtual, 'Desconto seller Magalu')) {
+                                $staging->update(['observacoes' => trim($obsAtual . "\n" . $obsDesconto)]);
+                            }
+                        }
+
+                        $resultado['atualizados']++;
+                        continue;
+                    }
+
                     $resultado['nao_encontrados']++;
                     continue;
                 }
