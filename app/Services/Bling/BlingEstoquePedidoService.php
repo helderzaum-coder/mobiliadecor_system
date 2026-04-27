@@ -173,9 +173,10 @@ class BlingEstoquePedidoService
 
     private static function buscarSaldoFisico(BlingClient $client, int $produtoId): ?int
     {
+        $depositoGeralId = self::getDepositoGeral($client);
+
         $res = $client->get('/estoques/saldos', ['idsProdutos[]' => $produtoId]);
         if (!$res['success'] || empty($res['body']['data'])) {
-            // Fallback: buscar do produto
             $produto = $client->getProductById($produtoId);
             if ($produto) {
                 return (int) ($produto['estoque']['saldoFisicoTotal']
@@ -187,12 +188,16 @@ class BlingEstoquePedidoService
         $dados = $res['body']['data'][0] ?? null;
         if (!$dados) return null;
 
-        $total = 0;
+        // Buscar saldo apenas do depósito Geral, ignorando outros (ex: Estoque Virtual)
         foreach ($dados['depositos'] ?? [] as $dep) {
-            $total += (int) ($dep['saldoFisico'] ?? 0);
+            if ($depositoGeralId && (int) ($dep['deposito']['id'] ?? 0) === $depositoGeralId) {
+                return (int) ($dep['saldoFisico'] ?? 0);
+            }
         }
 
-        return $total;
+        // Fallback: primeiro depósito
+        $primeiro = $dados['depositos'][0] ?? null;
+        return $primeiro ? (int) ($primeiro['saldoFisico'] ?? 0) : 0;
     }
 
     private static function getDepositoGeral(BlingClient $client): ?int
