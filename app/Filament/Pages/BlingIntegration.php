@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Services\Bling\BlingOAuthService;
 use App\Jobs\EspelharEstoqueJob;
+use App\Jobs\VariacaoTamposJob;
 use Filament\Pages\Page;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -46,6 +47,21 @@ class BlingIntegration extends Page
                     EspelharEstoqueJob::dispatch();
                     Notification::make()
                         ->title('Espelhamento enviado para processamento')
+                        ->body('Você receberá uma notificação quando concluir.')
+                        ->info()
+                        ->send();
+                }),
+            Action::make('variacao_tampos')
+                ->label('Equalizar Variação de Tampos')
+                ->icon('heroicon-o-squares-2x2')
+                ->color('info')
+                ->requiresConfirmation()
+                ->modalHeading('Variação de Tampos')
+                ->modalDescription('Soma o estoque de todos os produtos que compartilham o mesmo tampo (mesma família + cor) e equaliza para que todos tenham o mesmo saldo. Executar antes de espelhar o estoque.')
+                ->action(function () {
+                    VariacaoTamposJob::dispatch('primary');
+                    Notification::make()
+                        ->title('Equalização enviada para processamento')
                         ->body('Você receberá uma notificação quando concluir.')
                         ->info()
                         ->send();
