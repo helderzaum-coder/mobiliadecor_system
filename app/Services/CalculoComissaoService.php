@@ -91,23 +91,26 @@ class CalculoComissaoService
                 $subsidioPixUnit = $valorItem * (float) $regra->subsidio_pix / 100;
                 $nomeRegra = $regra->nome_regra;
             } else {
-                // Faixas progressivas: cada faixa aplica % sobre a porção do valor dentro dela
-                $valorFixoTotal = 0;
-                $nomes = [];
+                // Faixas exclusivas: usar a faixa onde o valor se encaixa
+                // (a última regra aplicável, que tem o maior faixa_valor_min)
+                $regraSelecionada = null;
                 foreach ($regrasAplicaveis as $regra) {
                     $min = (float) ($regra->faixa_valor_min ?? 0);
                     $max = (float) ($regra->faixa_valor_max ?? PHP_FLOAT_MAX);
-
-                    $baseNaFaixa = min($valorItem, $max) - $min;
-                    if ($baseNaFaixa <= 0) continue;
-
-                    $comissaoUnit += $baseNaFaixa * $regra->percentual / 100;
-                    $subsidioPixUnit += $baseNaFaixa * (float) $regra->subsidio_pix / 100;
-                    $valorFixoTotal += (float) $regra->valor_fixo;
-                    $nomes[] = $regra->nome_regra;
+                    if ($valorItem > $min && $valorItem <= $max) {
+                        $regraSelecionada = $regra;
+                    }
                 }
-                $comissaoUnit += $valorFixoTotal;
-                $nomeRegra = implode(' + ', $nomes);
+                // Fallback: se nenhuma faixa contém o valor exato, usar a última (maior min)
+                if (!$regraSelecionada) {
+                    $regraSelecionada = end($regrasAplicaveis);
+                }
+
+                $min = (float) ($regraSelecionada->faixa_valor_min ?? 0);
+                $baseExcedente = $valorItem - $min;
+                $comissaoUnit = ($baseExcedente * $regraSelecionada->percentual / 100) + (float) $regraSelecionada->valor_fixo;
+                $subsidioPixUnit = $baseExcedente * (float) $regraSelecionada->subsidio_pix / 100;
+                $nomeRegra = $regraSelecionada->nome_regra;
             }
 
             $comissaoItem = $comissaoUnit * $quantidade;
