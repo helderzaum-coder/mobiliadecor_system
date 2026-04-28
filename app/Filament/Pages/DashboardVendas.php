@@ -108,6 +108,72 @@ class DashboardVendas extends Page implements HasForms
         }
     }
 
+    public function buscarNfeLote(): void
+    {
+        $vendas = $this->buildQuery()
+            ->where(fn ($q) => $q->whereNull('nfe_chave_acesso')->orWhere('nfe_chave_acesso', ''))
+            ->get();
+
+        $ok = 0; $falha = 0;
+        foreach ($vendas as $venda) {
+            $result = \App\Services\VendaRecalculoService::buscarNfe($venda);
+            $result['success'] ? $ok++ : $falha++;
+        }
+
+        \Filament\Notifications\Notification::make()
+            ->title("NF-e em lote: {$ok} encontrada(s), {$falha} não encontrada(s)")
+            ->{$ok > 0 ? 'success' : 'warning'}()->send();
+    }
+
+    public function buscarCteLote(): void
+    {
+        $vendas = $this->buildQuery()
+            ->where('frete_pago', false)
+            ->where(fn ($q) => $q->whereNotNull('nfe_chave_acesso')->where('nfe_chave_acesso', '!=', ''))
+            ->where(fn ($q) => $q->whereNull('ml_tipo_frete')->orWhere('ml_tipo_frete', 'ME1'))
+            ->get();
+
+        $ok = 0; $falha = 0;
+        foreach ($vendas as $venda) {
+            $result = \App\Services\VendaRecalculoService::buscarCte($venda);
+            $result['success'] ? $ok++ : $falha++;
+        }
+
+        \Filament\Notifications\Notification::make()
+            ->title("CT-e em lote: {$ok} encontrado(s), {$falha} não encontrado(s)")
+            ->{$ok > 0 ? 'success' : 'warning'}()->send();
+    }
+
+    public function buscarCustosLote(): void
+    {
+        $vendas = $this->buildQuery()
+            ->where(fn ($q) => $q->where('custo_produtos', '<=', 0)->orWhereNull('custo_produtos'))
+            ->get();
+
+        $ok = 0; $falha = 0;
+        foreach ($vendas as $venda) {
+            $staging = \App\Models\PedidoBlingStaging::where('bling_id', $venda->bling_id)->first();
+            if (!$staging) { $falha++; continue; }
+
+            $atualizados = \App\Services\Bling\BlingImportService::buscarCustosProdutos($staging);
+            if ($atualizados > 0) {
+                $custoProdutos = 0;
+                foreach ($staging->fresh()->itens ?? [] as $item) {
+                    $custoProdutos += ((float) ($item['custo'] ?? 0)) * ((int) ($item['quantidade'] ?? 1));
+                }
+                $venda->update(['custo_produtos' => round($custoProdutos, 2)]);
+                \App\Services\VendaRecalculoService::recalcularMargens($venda);
+                $ok++;
+            } else {
+                $falha++;
+            }
+        }
+
+        \Filament\Notifications\Notification::make()
+            ->title("Custos em lote: {$ok} atualizado(s), {$falha} sem custo")
+            ->{$ok > 0 ? 'success' : 'warning'}()->send();
+    }
+
     public function paginaAnterior(): void
     {
         if ($this->pagina > 1) $this->pagina--;

@@ -177,14 +177,6 @@ class VariacaoTamposJob implements ShouldQueue
             }
         }
 
-        Log::warning("VariacaoTampos: depósito Geral {$depositoGeralId} não encontrado nos saldos do produto {$produtoId}", [
-            'depositos_retornados' => array_map(fn($d) => [
-                'id_flat' => $d['id'] ?? null,
-                'id_nested' => $d['deposito']['id'] ?? null,
-                'saldoFisico' => $d['saldoFisico'] ?? null,
-            ], $dados['depositos'] ?? []),
-        ]);
-
         return 0;
     }
 

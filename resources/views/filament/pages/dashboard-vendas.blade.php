@@ -8,6 +8,18 @@
         <button wire:click="$refresh" style="background:#2563eb;color:#fff;padding:8px 14px;font-size:12px;border-radius:8px;border:none;cursor:pointer;margin-bottom:2px;white-space:nowrap;">
             🔄 Atualizar
         </button>
+        <button wire:click="buscarNfeLote" wire:loading.attr="disabled" wire:confirm="Buscar NF-e para todas as vendas sem nota no período filtrado?"
+            style="background:#2563eb;color:#fff;padding:8px 14px;font-size:12px;border-radius:8px;border:none;cursor:pointer;margin-bottom:2px;white-space:nowrap;">
+            📄 NF-e Lote
+        </button>
+        <button wire:click="buscarCteLote" wire:loading.attr="disabled" wire:confirm="Buscar CT-e para todas as vendas sem frete no período filtrado?"
+            style="background:#7c3aed;color:#fff;padding:8px 14px;font-size:12px;border-radius:8px;border:none;cursor:pointer;margin-bottom:2px;white-space:nowrap;">
+            🚚 CT-e Lote
+        </button>
+        <button wire:click="buscarCustosLote" wire:loading.attr="disabled" wire:confirm="Buscar custos para todas as vendas sem custo no período filtrado?"
+            style="background:#d97706;color:#fff;padding:8px 14px;font-size:12px;border-radius:8px;border:none;cursor:pointer;margin-bottom:2px;white-space:nowrap;">
+            💰 Custos Lote
+        </button>
     </div>
 
     {{-- Resumo horizontal compacto --}}
