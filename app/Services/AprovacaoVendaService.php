@@ -80,8 +80,6 @@ class AprovacaoVendaService
             $tipoFrete = $staging->ml_tipo_frete ?? null;
 
             if ($tipoFrete === 'ME2' || $tipoFrete === 'FULL') {
-                // ME2/FULL: vendedor não lida com frete
-                // custo líquido = list_cost - cost (o que o ML reteve)
                 $freteLiquido = $mlFreteCusto > 0 ? round($mlFreteCusto - $mlFreteReceita, 2) : 0;
                 if ($mlSaleFee > 0) {
                     $comissao = $mlSaleFee + $freteLiquido;
@@ -90,19 +88,24 @@ class AprovacaoVendaService
                 $frete = 0;
                 $custoFrete = 0;
             } else {
-                // ME1: frete é cobrado do cliente e repassado ao vendedor
                 if ($mlFreteReceita > 0) {
-                    $frete = $mlFreteReceita; // valor pago pelo comprador
+                    $frete = $mlFreteReceita;
                 }
                 if ($mlFreteCusto > 0) {
-                    $custoFrete = $mlFreteCusto; // custo cobrado pelo ML
+                    $custoFrete = $mlFreteCusto;
                 }
-                // Se temos sale_fee real da API, usar como comissão
                 if ($mlSaleFee > 0) {
                     $comissao = $mlSaleFee;
-                    $valorRebate = 0; // já descontado no sale_fee
+                    $valorRebate = 0;
                 }
             }
+        }
+
+        // TikTokShop: marketplace paga o frete (igual ML ME2/FULL)
+        $isTiktok = str_contains(strtolower($staging->canal ?? ''), 'tiktok');
+        if ($isTiktok) {
+            $frete = 0;
+            $custoFrete = 0;
         }
 
         // Comissão sobre frete (se canal cobra)

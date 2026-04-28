@@ -257,6 +257,13 @@ class VendaRecalculoService
         $custoFrete = (float) $venda->valor_frete_transportadora;
         $comissao = (float) $venda->comissao;
         $subsidioPix = (float) $venda->subsidio_pix;
+
+        // TikTokShop: marketplace paga o frete (igual ML ME2/FULL)
+        $isTiktok = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'tiktok');
+        if ($isTiktok) {
+            $frete = 0;
+            $custoFrete = 0;
+        }
         $valorImposto = (float) $venda->valor_imposto;
         $totalPedido = (float) $venda->valor_total_venda;
         $custoProdutos = (float) $venda->custo_produtos;
