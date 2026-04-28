@@ -93,7 +93,8 @@ class VariacaoTamposJob implements ShouldQueue
                     'sku_config' => $config->sku_produto,
                     'sku_bling' => $skuRetornado,
                     'produto_id' => $produtoId,
-                    'saldo' => $saldo,
+                    'saldo_deposito_geral' => $saldo,
+                    'deposito_id' => $depositoId,
                 ]);
 
                 $produtosInfo[] = [
@@ -114,7 +115,10 @@ class VariacaoTamposJob implements ShouldQueue
                 continue;
             }
 
-            $saldoAlvo = ($maior - $menor) > 10 ? $maior : $menor;
+            // Sempre usar o MENOR: é o único valor confiável
+            // - Venda: menor reflete a venda real
+            // - Primeira equalização: corrigir estoques manualmente ANTES de equalizar
+            $saldoAlvo = $menor;
 
             Log::info("VariacaoTampos: equalizando {$familia}/{$cor}", [
                 'maior' => $maior,
@@ -164,12 +168,14 @@ class VariacaoTamposJob implements ShouldQueue
         $dados = $res['body']['data'][0] ?? null;
         if (!$dados) return 0;
 
-        // Somar todos os depósitos (Geral + Virtual)
-        $total = 0;
+        // Ler APENAS o saldo do depósito Geral (mesmo onde o balanço é escrito)
         foreach ($dados['depositos'] ?? [] as $dep) {
-            $total += (int) ($dep['saldoFisico'] ?? 0);
+            if ((int) ($dep['id'] ?? 0) === $depositoGeralId) {
+                return (int) ($dep['saldoFisico'] ?? 0);
+            }
         }
-        return $total;
+
+        return 0;
     }
 
     private static function getDepositoGeral(BlingClient $client): ?int

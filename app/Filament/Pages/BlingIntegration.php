@@ -57,7 +57,7 @@ class BlingIntegration extends Page
                 ->color('info')
                 ->requiresConfirmation()
                 ->modalHeading('Variação de Tampos')
-                ->modalDescription('Soma o estoque de todos os produtos que compartilham o mesmo tampo (mesma família + cor) e equaliza para que todos tenham o mesmo saldo. Executar antes de espelhar o estoque.')
+                ->modalDescription('Equaliza o estoque de todas as variações de tampo para o MENOR saldo do grupo. Fluxo correto: 1) Ajuste o estoque do produto principal com o valor correto. 2) Clique neste botão para igualar todos os outros.')
                 ->action(function () {
                     VariacaoTamposJob::dispatch('primary');
                     Notification::make()
