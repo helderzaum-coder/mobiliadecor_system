@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 class CorrigirCanalVendas extends Command
 {
     protected $signature = 'vendas:corrigir-canal';
-    protected $description = 'Corrige vendas com id_canal nulo ou canal_nome não vinculado';
+    protected $description = 'Corrige vendas com id_canal nulo ou canal_nome não vinculado e recalcula margens';
 
     public function handle(): int
     {
@@ -31,8 +31,9 @@ class CorrigirCanalVendas extends Command
                     'id_canal' => $canal->id_canal,
                     'canal_nome' => $canal->nome_canal,
                 ]);
+                \App\Services\VendaRecalculoService::recalcularMargens($venda);
                 $corrigidos++;
-                $this->line("Venda #{$venda->id_venda} ({$venda->canal_nome}) → {$canal->nome_canal}");
+                $this->line("Venda #{$venda->id_venda} ({$venda->canal_nome}) → {$canal->nome_canal} [recalculada]");
             }
         }
 
@@ -50,8 +51,21 @@ class CorrigirCanalVendas extends Command
                     'id_canal' => $canal->id_canal,
                     'canal_nome' => $canal->nome_canal,
                 ]);
+                \App\Services\VendaRecalculoService::recalcularMargens($venda);
                 $corrigidos++;
-                $this->line("Venda #{$venda->id_venda} (staging: {$staging->canal}) → {$canal->nome_canal}");
+                $this->line("Venda #{$venda->id_venda} (staging: {$staging->canal}) → {$canal->nome_canal} [recalculada]");
+            }
+        }
+
+        // Vendas com comissão zerada que têm canal vinculado
+        $semComissao = Venda::whereNotNull('id_canal')
+            ->where(fn ($q) => $q->where('comissao', 0)->orWhereNull('comissao'))
+            ->get();
+        foreach ($semComissao as $venda) {
+            \App\Services\VendaRecalculoService::recalcularMargens($venda);
+            if ((float) $venda->fresh()->comissao > 0) {
+                $corrigidos++;
+                $this->line("Venda #{$venda->id_venda} comissão recalculada: R$ " . number_format($venda->fresh()->comissao, 2, ',', '.'));
             }
         }
 

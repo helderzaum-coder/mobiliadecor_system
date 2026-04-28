@@ -211,6 +211,23 @@ class VendaRecalculoService
         $venda->refresh();
 
         $canal = $venda->id_canal ? CanalVenda::find($venda->id_canal) : null;
+
+        // Se comissão está zerada e canal tem regras, recalcular
+        if ((float) $venda->comissao == 0 && $canal) {
+            $staging = PedidoBlingStaging::where('bling_id', $venda->bling_id)->first();
+            $itens = $staging?->itens ?? [];
+            if (!empty($itens)) {
+                $comissaoData = CalculoComissaoService::calcular($canal->id_canal, $itens);
+                if ($comissaoData['comissao_total'] > 0) {
+                    $venda->update([
+                        'comissao' => $comissaoData['comissao_total'],
+                        'subsidio_pix' => $comissaoData['subsidio_pix_total'],
+                    ]);
+                    $venda->refresh();
+                }
+            }
+        }
+
         $totalProdutos = (float) $venda->total_produtos;
         $frete = (float) $venda->valor_frete_cliente;
         $custoFrete = (float) $venda->valor_frete_transportadora;
