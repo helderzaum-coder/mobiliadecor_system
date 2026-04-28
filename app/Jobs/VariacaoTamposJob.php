@@ -73,8 +73,7 @@ class VariacaoTamposJob implements ShouldQueue
             $resultado['grupos']++;
             [$familia, $cor] = explode('|', $chave);
 
-            // Buscar estoque de cada SKU e somar
-            $totalGrupo = 0;
+            // Buscar estoque de cada SKU
             $produtosInfo = [];
 
             foreach ($membros as $config) {
@@ -92,16 +91,26 @@ class VariacaoTamposJob implements ShouldQueue
                     'produto_id' => $produtoId,
                     'saldo_atual' => $saldo,
                 ];
-
-                $totalGrupo += $saldo;
             }
 
-            if (empty($produtosInfo)) continue;
+            if (count($produtosInfo) < 2) continue;
 
-            // Equalizar: todos recebem o total do grupo
+            $saldos = array_column($produtosInfo, 'saldo_atual');
+            $maior = max($saldos);
+            $menor = min($saldos);
+
+            // Lógica:
+            // - Se todos iguais: nada a fazer
+            // - Se diferença pequena (≤10): houve venda, usar o MENOR (reflete a venda)
+            // - Se diferença grande (>10): primeira equalização ou entrada, usar o MAIOR
+            if ($maior === $menor) continue;
+
+            $saldoAlvo = ($maior - $menor) > 10 ? $maior : $menor;
+
+            // Equalizar
             foreach ($produtosInfo as $info) {
-                if ($info['saldo_atual'] === $totalGrupo) {
-                    continue; // Já está correto
+                if ($info['saldo_atual'] === $saldoAlvo) {
+                    continue;
                 }
 
                 $res = $client->post('/estoques', [], [
@@ -110,13 +119,13 @@ class VariacaoTamposJob implements ShouldQueue
                     'operacao' => 'B',
                     'preco' => 0,
                     'custo' => 0,
-                    'quantidade' => max(0, $totalGrupo),
-                    'observacoes' => "Variação Tampos: {$familia}/{$cor} total={$totalGrupo}",
+                    'quantidade' => max(0, $saldoAlvo),
+                    'observacoes' => "Variação Tampos: {$familia}/{$cor} saldo={$saldoAlvo}",
                 ]);
 
                 if ($res['success']) {
                     $resultado['atualizados']++;
-                    $resultado['log'][] = "{$info['config']->sku_produto}: {$info['saldo_atual']} → {$totalGrupo}";
+                    $resultado['log'][] = "{$info['config']->sku_produto}: {$info['saldo_atual']} → {$saldoAlvo}";
                 } else {
                     $resultado['erros']++;
                     $resultado['log'][] = "{$info['config']->sku_produto}: erro HTTP " . ($res['http_code'] ?? '?');
