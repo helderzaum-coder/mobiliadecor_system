@@ -84,7 +84,17 @@ class VariacaoTamposJob implements ShouldQueue
                 }
 
                 $produtoId = (int) $produto['id'];
+                $skuRetornado = $produto['codigo'] ?? '?';
                 $saldo = self::buscarSaldoGeral($client, $produtoId, $depositoId);
+
+                Log::info("VariacaoTampos: leitura", [
+                    'familia' => $familia,
+                    'cor' => $cor,
+                    'sku_config' => $config->sku_produto,
+                    'sku_bling' => $skuRetornado,
+                    'produto_id' => $produtoId,
+                    'saldo' => $saldo,
+                ]);
 
                 $produtosInfo[] = [
                     'config' => $config,
@@ -99,13 +109,20 @@ class VariacaoTamposJob implements ShouldQueue
             $maior = max($saldos);
             $menor = min($saldos);
 
-            // Lógica:
-            // - Se todos iguais: nada a fazer
-            // - Se diferença pequena (≤10): houve venda, usar o MENOR (reflete a venda)
-            // - Se diferença grande (>10): primeira equalização ou entrada, usar o MAIOR
-            if ($maior === $menor) continue;
+            if ($maior === $menor) {
+                Log::info("VariacaoTampos: grupo {$familia}/{$cor} já equalizado em {$maior}");
+                continue;
+            }
 
             $saldoAlvo = ($maior - $menor) > 10 ? $maior : $menor;
+
+            Log::info("VariacaoTampos: equalizando {$familia}/{$cor}", [
+                'maior' => $maior,
+                'menor' => $menor,
+                'diferenca' => $maior - $menor,
+                'saldo_alvo' => $saldoAlvo,
+                'qtd_produtos' => count($produtosInfo),
+            ]);
 
             // Equalizar
             foreach ($produtosInfo as $info) {
