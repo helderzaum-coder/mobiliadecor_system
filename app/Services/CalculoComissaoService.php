@@ -16,8 +16,9 @@ class CalculoComissaoService
      * @param string|null $mlTipoFrete Tipo de frete ML (ME1/ME2/FULL)
      * @return array ['comissao_total', 'subsidio_pix_total', 'detalhes' => [...]]
      */
-    public static function calcular(int $canalId, array $itens, ?string $mlTipoAnuncio = null, ?string $mlTipoFrete = null): array
+    public static function calcular(int $canalId, array $itens, ?string $mlTipoAnuncio = null, ?string $mlTipoFrete = null, float $valorFrete = 0): array
     {
+        $canal = CanalVenda::find($canalId);
         $query = RegraComissao::where('id_canal', $canalId)
             ->where('ativo', true)
             ->orderBy('faixa_valor_min', 'asc');
@@ -49,7 +50,28 @@ class CalculoComissaoService
         $subsidioPixTotal = 0;
         $detalhes = [];
 
-        foreach ($itens as $item) {
+        // Se canal tem faixas e comissao_sobre_frete, calcular sobre o total do pedido
+        $temFaixas = $regras->contains(fn ($r) => $r->faixa_valor_max > 0);
+        $comissaoSobreFrete = (bool) ($canal->comissao_sobre_frete ?? false);
+
+        if ($temFaixas && $comissaoSobreFrete && $valorFrete > 0) {
+            $totalProdutos = array_sum(array_map(
+                fn ($i) => (float) ($i['valor'] ?? 0) * (int) ($i['quantidade'] ?? 1),
+                $itens
+            ));
+            $totalPedido = $totalProdutos + $valorFrete;
+
+            $itensCalculo = [[
+                'descricao' => 'Total do pedido (produtos + frete)',
+                'codigo' => 'TOTAL',
+                'valor' => $totalPedido,
+                'quantidade' => 1,
+            ]];
+        } else {
+            $itensCalculo = $itens;
+        }
+
+        foreach ($itensCalculo as $item) {
             $valorItem = (float) ($item['valor'] ?? 0);
             $quantidade = (int) ($item['quantidade'] ?? 1);
 

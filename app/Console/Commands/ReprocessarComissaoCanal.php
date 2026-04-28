@@ -63,7 +63,8 @@ class ReprocessarComissaoCanal extends Command
             $itens = $staging?->itens ?? [];
 
             if (!empty($itens)) {
-                $comissaoData = CalculoComissaoService::calcular($canalVenda->id_canal, $itens);
+                $frete = (float) ($staging->frete ?? $venda->valor_frete_cliente ?? 0);
+                $comissaoData = CalculoComissaoService::calcular($canalVenda->id_canal, $itens, null, null, $frete);
                 $venda->update([
                     'comissao' => $comissaoData['comissao_total'],
                     'subsidio_pix' => $comissaoData['subsidio_pix_total'],

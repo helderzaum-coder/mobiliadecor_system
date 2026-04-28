@@ -241,7 +241,7 @@ class VendaRecalculoService
             $staging = PedidoBlingStaging::where('bling_id', $venda->bling_id)->first();
             $itens = $staging?->itens ?? [];
             if (!empty($itens)) {
-                $comissaoData = CalculoComissaoService::calcular($canal->id_canal, $itens);
+                $comissaoData = CalculoComissaoService::calcular($canal->id_canal, $itens, null, null, (float) $venda->valor_frete_cliente);
                 if ($comissaoData['comissao_total'] > 0) {
                     $venda->update([
                         'comissao' => $comissaoData['comissao_total'],

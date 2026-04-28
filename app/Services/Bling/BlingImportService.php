@@ -255,7 +255,7 @@ class BlingImportService
 
         $isMlMe2Full = in_array($mlDados['ml_tipo_frete'] ?? null, ['ME2', 'FULL']);
 
-        $comissaoData = $this->preCalcularComissao($canal, $itens, $mlDados['ml_tipo_anuncio'] ?? null, $mlDados['ml_tipo_frete'] ?? null);
+        $comissaoData = $this->preCalcularComissao($canal, $itens, $mlDados['ml_tipo_anuncio'] ?? null, $mlDados['ml_tipo_frete'] ?? null, (float) ($pedido['transporte']['frete'] ?? 0));
 
         // Para ML com dados da API, usar sale_fee real em vez do pré-cálculo
         $mlSaleFee = (float) ($mlDados['ml_sale_fee'] ?? 0);
@@ -702,7 +702,7 @@ class BlingImportService
         return 'Direto';
     }
 
-    private function preCalcularComissao(string $canalNome, array $itens, ?string $mlTipoAnuncio = null, ?string $mlTipoFrete = null): array
+    private function preCalcularComissao(string $canalNome, array $itens, ?string $mlTipoAnuncio = null, ?string $mlTipoFrete = null, float $valorFrete = 0): array
     {
         $canal = \App\Models\CanalVenda::where('nome_canal', $canalNome)->first();
 
@@ -717,7 +717,7 @@ class BlingImportService
             return ['comissao_total' => 0, 'subsidio_pix_total' => 0];
         }
 
-        return \App\Services\CalculoComissaoService::calcular($canal->id_canal, $itens, $mlTipoAnuncio, $mlTipoFrete);
+        return \App\Services\CalculoComissaoService::calcular($canal->id_canal, $itens, $mlTipoAnuncio, $mlTipoFrete, $valorFrete);
     }
 
     private function preCalcularImposto(string $canalNome, float $total, float $frete, string $data): array
