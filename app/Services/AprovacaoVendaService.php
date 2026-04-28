@@ -160,6 +160,7 @@ class AprovacaoVendaService
             'percentual_imposto' => (float) $staging->percentual_imposto,
             'valor_imposto' => $valorImposto,
             'id_canal' => $canal?->id_canal,
+            'canal_nome' => $canal?->nome_canal ?? $staging->canal,
             'id_cnpj' => $cnpjId,
             'data_venda' => $staging->data_pedido,
             'cliente_nome' => $staging->cliente_nome,
