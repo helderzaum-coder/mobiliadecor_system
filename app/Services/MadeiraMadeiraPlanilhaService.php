@@ -11,41 +11,49 @@ class MadeiraMadeiraPlanilhaService
     {
         $resultado = ['processados' => 0, 'nao_encontrados' => 0, 'erros' => 0];
 
-        $handle = fopen($filePath, 'r');
-        if (!$handle) {
+        // Ler arquivo e converter encoding se necessário
+        $content = file_get_contents($filePath);
+        if (!mb_check_encoding($content, 'UTF-8')) {
+            $content = mb_convert_encoding($content, 'UTF-8', 'ISO-8859-1');
+        }
+
+        $lines = explode("\n", $content);
+        if (empty($lines)) {
             return ['processados' => 0, 'nao_encontrados' => 0, 'erros' => 1];
         }
 
         // Header
-        $header = fgetcsv($handle, 0, ';', '"');
-        if (!$header) {
-            fclose($handle);
-            return ['processados' => 0, 'nao_encontrados' => 0, 'erros' => 1];
-        }
+        $headerLine = array_shift($lines);
+        $header = str_getcsv($headerLine, ';', '"');
+        $header = array_map(fn ($h) => trim(preg_replace('/[\x{FEFF}\x{00A0}]/u', '', $h)), $header);
 
-        // Limpar BOM e espaços
-        $header = array_map(fn ($h) => trim(preg_replace('/[\x{FEFF}]/u', '', $h)), $header);
-
+        // Mapear colunas por nome normalizado (sem acentos)
         $colMap = [];
         foreach ($header as $i => $col) {
-            $colMap[mb_strtolower($col)] = $i;
+            $colMap[self::normalizar($col)] = $i;
         }
 
         $iPedido = $colMap['pedido'] ?? null;
         $iValorPedido = $colMap['valor pedido'] ?? null;
-        $iComissao = $colMap['comisso'] ?? $colMap['comissao'] ?? $colMap['comissão'] ?? null;
+        $iComissao = $colMap['comissao'] ?? null;
         $iTipoPagamento = $colMap['tipo pagamento'] ?? null;
         $iValorOriginal = $colMap['valor original'] ?? null;
         $iDesconto = $colMap['% desconto'] ?? null;
         $iValor = $colMap['valor'] ?? null;
 
         if ($iPedido === null || $iComissao === null) {
-            fclose($handle);
-            Log::error('PlanilhaMM: colunas obrigatórias não encontradas', ['header' => $header]);
+            Log::error('PlanilhaMM: colunas obrigatórias não encontradas', [
+                'header_normalizado' => array_keys($colMap),
+            ]);
             return ['processados' => 0, 'nao_encontrados' => 0, 'erros' => 1];
         }
 
-        while (($row = fgetcsv($handle, 0, ';', '"')) !== false) {
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (empty($line)) continue;
+
+            $row = str_getcsv($line, ';', '"');
+
             try {
                 $numeroPedido = trim($row[$iPedido] ?? '');
                 if (empty($numeroPedido)) continue;
@@ -66,7 +74,10 @@ class MadeiraMadeiraPlanilhaService
                         'comissao' => $comissao,
                         'valor_pedido' => $valorPedido,
                         'tipo_pagamento' => $tipoPagamento,
-                        'dados_originais' => array_combine($header, $row),
+                        'dados_originais' => array_combine(
+                            array_slice($header, 0, count($row)),
+                            $row
+                        ),
                     ]
                 );
 
@@ -77,8 +88,15 @@ class MadeiraMadeiraPlanilhaService
             }
         }
 
-        fclose($handle);
         return $resultado;
+    }
+
+    private static function normalizar(string $str): string
+    {
+        $str = mb_strtolower($str);
+        // Remover acentos
+        $str = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $str);
+        return trim($str);
     }
 
     private static function parseDecimal(string $value): float
