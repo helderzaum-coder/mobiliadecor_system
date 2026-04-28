@@ -144,7 +144,10 @@ class AprovacaoVendaService
             ? round(($margemVendaTotal / $totalPedido) * 100, 2)
             : 0;
 
-        $venda = Venda::create([
+        // Evitar duplicata: se já existe venda com este bling_id, atualizar ao invés de criar
+        $vendaExistente = Venda::where('bling_id', $staging->bling_id)->first();
+
+        $dadosVenda = [
             'bling_id' => $staging->bling_id,
             'bling_account' => $staging->bling_account,
             'numero_pedido_canal' => $staging->numero_loja ?? $staging->numero_pedido,
@@ -156,7 +159,7 @@ class AprovacaoVendaService
             'custo_produtos' => round($custoProdutos, 2),
             'valor_frete_cliente' => $frete,
             'valor_frete_transportadora' => $custoFrete,
-            'frete_cotado' => $custoFrete, // Guardar cotação original
+            'frete_cotado' => $custoFrete,
             'comissao' => $comissao,
             'subsidio_pix' => $subsidioPix,
             'base_imposto' => (float) $staging->base_imposto,
@@ -185,7 +188,14 @@ class AprovacaoVendaService
             'ml_order_id' => $staging->ml_order_id,
             'ml_shipping_id' => $staging->ml_shipping_id,
             'planilha_processada' => (float) ($staging->ml_sale_fee ?? 0) > 0,
-        ]);
+        ];
+
+        if ($vendaExistente) {
+            $vendaExistente->update($dadosVenda);
+            $venda = $vendaExistente;
+        } else {
+            $venda = Venda::create($dadosVenda);
+        }
 
         $staging->update(['status' => 'aprovado']);
 
