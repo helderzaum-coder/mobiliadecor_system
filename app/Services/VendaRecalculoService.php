@@ -260,9 +260,14 @@ class VendaRecalculoService
 
         // TikTokShop: marketplace paga o frete (igual ML ME2/FULL)
         $isTiktok = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'tiktok');
-        if ($isTiktok) {
+        if ($isTiktok && ($frete > 0 || $custoFrete > 0)) {
             $frete = 0;
             $custoFrete = 0;
+            $venda->update([
+                'valor_frete_cliente' => 0,
+                'valor_frete_transportadora' => 0,
+                'frete_pago' => true,
+            ]);
         }
         $valorImposto = (float) $venda->valor_imposto;
         $totalPedido = (float) $venda->valor_total_venda;
