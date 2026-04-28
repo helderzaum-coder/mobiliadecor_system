@@ -204,6 +204,30 @@ class VendaRecalculoService
     }
 
     /**
+     * Aplica dados da planilha Madeira Madeira já importada.
+     */
+    public static function aplicarPlanilhaMM(Venda $venda): array
+    {
+        $numeroPedido = $venda->numero_pedido_canal;
+        $dado = \App\Models\PlanilhaMmDado::where('numero_pedido', $numeroPedido)->first();
+
+        if (!$dado) {
+            return ['success' => false, 'msg' => "Planilha MM não encontrada para pedido {$numeroPedido}."];
+        }
+
+        $comissao = (float) $dado->comissao;
+
+        $venda->update([
+            'comissao' => $comissao,
+            'planilha_processada' => true,
+        ]);
+
+        self::recalcularMargens($venda);
+
+        return ['success' => true, 'msg' => "Planilha MM aplicada. Comissão: R$ " . number_format($comissao, 2, ',', '.')];
+    }
+
+    /**
      * Recalcula margens da venda com os dados atuais.
      */
     public static function recalcularMargens(Venda $venda): void

@@ -73,6 +73,15 @@ class DashboardVendas extends Page implements HasForms
             ->{$result['success'] ? 'success' : 'warning'}()->send();
     }
 
+    public function aplicarPlanilhaMM(int $vendaId): void
+    {
+        $venda = Venda::find($vendaId);
+        if (!$venda) return;
+        $result = \App\Services\VendaRecalculoService::aplicarPlanilhaMM($venda);
+        \Filament\Notifications\Notification::make()->title($result['msg'])
+            ->{$result['success'] ? 'success' : 'warning'}()->send();
+    }
+
     public function recalcular(int $vendaId): void
     {
         $venda = Venda::find($vendaId);
@@ -288,7 +297,7 @@ class DashboardVendas extends Page implements HasForms
                 );
         } elseif ($this->status_filtro === 'falta_planilha') {
             $query->where('planilha_processada', false)
-                ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%')->orWhere('nome_canal', 'like', '%agalu%')->orWhere('nome_canal', 'like', '%ebcontinental%'));
+                ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%')->orWhere('nome_canal', 'like', '%agalu%')->orWhere('nome_canal', 'like', '%ebcontinental%')->orWhere('nome_canal', 'like', '%adeira%'));
         } elseif ($this->status_filtro === 'sem_custo') {
             $query->where(fn ($q) => $q->where('custo_produtos', '<=', 0)->orWhereNull('custo_produtos'));
         } elseif ($this->status_filtro === 'completo') {
@@ -300,7 +309,7 @@ class DashboardVendas extends Page implements HasForms
                 )
                 ->where(fn ($q) => $q
                     ->where('planilha_processada', true)
-                    ->orWhereDoesntHave('canal', fn ($q2) => $q2->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%')->orWhere('nome_canal', 'like', '%agalu%')->orWhere('nome_canal', 'like', '%ebcontinental%'))
+                    ->orWhereDoesntHave('canal', fn ($q2) => $q2->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%')->orWhere('nome_canal', 'like', '%agalu%')->orWhere('nome_canal', 'like', '%ebcontinental%')->orWhere('nome_canal', 'like', '%adeira%'))
                 );
         }
 

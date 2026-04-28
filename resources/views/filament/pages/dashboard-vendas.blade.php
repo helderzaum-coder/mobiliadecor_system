@@ -153,7 +153,8 @@
                 $isShopee = str_contains(strtolower($canal), 'shopee');
                 $isMagalu = str_contains(strtolower($canal), 'magalu');
                 $isWebcontinental = str_contains(strtolower($canal), 'webcontinental');
-                $precisaPlanilha = $isML || $isShopee || $isMagalu || $isWebcontinental;
+                $isMadeiraMadeira = str_contains(strtolower($canal), 'madeira');
+                $precisaPlanilha = $isML || $isShopee || $isMagalu || $isWebcontinental || $isMadeiraMadeira;
                 $freteOk = $fretePagoFlag || $isMlMe2Full;
                 $completo = $temNfeChave && $freteOk && (!$precisaPlanilha || $planilhaOk);
 
@@ -376,7 +377,7 @@
                     $temNfe = !empty($venda->nfe_chave_acesso);
                     $fretePagoReal = (bool) $venda->frete_pago;
                     $temPlanilha = (bool) $venda->planilha_processada;
-                    $isMarketplace = $isML || $isShopee || $isMagalu || $isWebcontinental;
+                    $isMarketplace = $isML || $isShopee || $isMagalu || $isWebcontinental || $isMadeiraMadeira;
                     $mlTipoFreteBtn = $venda->ml_tipo_frete ?? null;
                     $isMlMe1 = $mlTipoFreteBtn === 'ME1';
                 @endphp
@@ -404,6 +405,15 @@
                         <button wire:click="aplicarPlanilhaShopee({{ $venda->id_venda }})" wire:loading.attr="disabled"
                             style="background:#ea580c;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
                             📊 Aplicar Planilha Shopee
+                        </button>
+                    @endif
+                    @php
+                        $isMadeiraMadeira = str_contains(strtolower($canal), 'madeira');
+                    @endphp
+                    @if($isMadeiraMadeira && !$temPlanilha)
+                        <button wire:click="aplicarPlanilhaMM({{ $venda->id_venda }})" wire:loading.attr="disabled"
+                            style="background:#b45309;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                            📊 Aplicar Planilha MM
                         </button>
                     @endif
                     <button wire:click="recalcular({{ $venda->id_venda }})" wire:loading.attr="disabled"
