@@ -42,6 +42,13 @@ class AprovacaoVendaService
         }
 
         $canal = CanalVenda::where('nome_canal', $staging->canal)->first();
+
+        // Fallback: busca flexível removendo espaços (ex: "Madeiramadeira" → "Madeira Madeira")
+        if (!$canal) {
+            $canal = CanalVenda::get()->first(
+                fn ($c) => str_replace(' ', '', strtolower($c->nome_canal)) === str_replace(' ', '', strtolower($staging->canal))
+            );
+        }
         $cnpjId = config("bling.accounts.{$staging->bling_account}.cnpj_id");
 
         $totalProdutos = (float) $staging->total_produtos;

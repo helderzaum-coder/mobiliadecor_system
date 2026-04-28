@@ -22,7 +22,7 @@ class BlingImportService
         $this->client = new BlingClient($accountKey);
     }
 
-    public function importarParaStaging(string $dataInicio, string $dataFim): array
+    public function importarParaStaging(string $dataInicio, string $dataFim, ?string $canalFiltro = null): array
     {
         $resultado = [
             'importados' => 0,
@@ -108,6 +108,15 @@ class BlingImportService
                 }
 
                 try {
+                    $canalIdentificado = $this->identificarCanal($pedido);
+
+                    // Filtro de canal: pular se não bate
+                    if ($canalFiltro && str_replace(' ', '', strtolower($canalIdentificado)) !== str_replace(' ', '', strtolower($canalFiltro))) {
+                        $resultado['ignorados']++;
+                        $totalProcessados++;
+                        continue;
+                    }
+
                     $this->salvarNoStaging($pedido);
                     $resultado['importados']++;
                     $totalProcessados++;
@@ -641,8 +650,12 @@ class BlingImportService
     private function identificarCanal(array $pedido): string
     {
         $obs = $pedido['observacoes'] ?? '';
-        if (preg_match('/Via Hub Commerceplus:\s*(\w+)/i', $obs, $matches)) {
-            return ucfirst(strtolower($matches[1]));
+        if (preg_match('/Via Hub Commerceplus:\s*(.+?)\s*$/im', $obs, $matches)) {
+            $canalHub = trim($matches[1]);
+            if (str_contains(strtolower($canalHub), 'madeira')) {
+                return 'Madeira Madeira';
+            }
+            return ucfirst(strtolower($canalHub));
         }
 
         $intermediador = $pedido['intermediador'] ?? [];
@@ -663,6 +676,10 @@ class BlingImportService
         if ($cnpjLimpo === '04032433000189') {
             return 'Webcontinental';
         }
+        // Madeira Madeira
+        if ($cnpjLimpo === '02814497000198') {
+            return 'Madeira Madeira';
+        }
 
         // Identificar pelo nome do intermediador
         if (!empty($nomeUsuario)) {
@@ -676,6 +693,9 @@ class BlingImportService
             if (str_contains($nomeLower, 'webcontinental') || str_contains($nomeLower, 'continental')) {
                 return 'Webcontinental';
             }
+            if (str_contains($nomeLower, 'madeira')) {
+                return 'Madeira Madeira';
+            }
             return ucfirst($nomeUsuario);
         }
 
@@ -685,6 +705,13 @@ class BlingImportService
     private function preCalcularComissao(string $canalNome, array $itens, ?string $mlTipoAnuncio = null, ?string $mlTipoFrete = null): array
     {
         $canal = \App\Models\CanalVenda::where('nome_canal', $canalNome)->first();
+
+        // Fallback: busca flexível removendo espaços
+        if (!$canal) {
+            $canal = \App\Models\CanalVenda::get()->first(
+                fn ($c) => str_replace(' ', '', strtolower($c->nome_canal)) === str_replace(' ', '', strtolower($canalNome))
+            );
+        }
 
         if (!$canal) {
             return ['comissao_total' => 0, 'subsidio_pix_total' => 0];
@@ -696,6 +723,11 @@ class BlingImportService
     private function preCalcularImposto(string $canalNome, float $total, float $frete, string $data): array
     {
         $canal = \App\Models\CanalVenda::where('nome_canal', $canalNome)->first();
+        if (!$canal) {
+            $canal = \App\Models\CanalVenda::get()->first(
+                fn ($c) => str_replace(' ', '', strtolower($c->nome_canal)) === str_replace(' ', '', strtolower($canalNome))
+            );
+        }
         $tipoNota = $canal->tipo_nota ?? 'cheia';
 
         $mes = (int) date('m', strtotime($data));

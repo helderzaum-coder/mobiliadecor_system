@@ -20,6 +20,7 @@ class ImportarPedidos extends Page
     public ?string $account = 'primary';
     public ?string $data_inicio = null;
     public ?string $data_fim = null;
+    public ?string $canal_filtro = null;
     public ?array $resultado = null;
 
     public function form(Form $form): Form
@@ -38,6 +39,11 @@ class ImportarPedidos extends Page
             DatePicker::make('data_fim')
                 ->label('Data Fim')
                 ->required(),
+            Select::make('canal_filtro')
+                ->label('Canal (opcional)')
+                ->options(fn () => \App\Models\CanalVenda::where('ativo', true)->orderBy('nome_canal')->pluck('nome_canal', 'nome_canal')->toArray())
+                ->placeholder('Todos os canais')
+                ->helperText('Filtrar importação por canal específico'),
         ]);
     }
 
@@ -45,11 +51,11 @@ class ImportarPedidos extends Page
     {
         $data = $this->form->getState();
 
-        // Disparar job em background em vez de processar sincronamente
         ImportarPedidosBlingJob::dispatch(
             $data['account'],
             $data['data_inicio'],
-            $data['data_fim']
+            $data['data_fim'],
+            $data['canal_filtro'] ?? null
         );
 
         Notification::make()

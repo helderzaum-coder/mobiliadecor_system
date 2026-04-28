@@ -17,12 +17,14 @@ class ImportarPedidosBlingJob implements ShouldQueue
     private string $account;
     private string $dataInicio;
     private string $dataFim;
+    private ?string $canalFiltro;
 
-    public function __construct(string $account, string $dataInicio, string $dataFim)
+    public function __construct(string $account, string $dataInicio, string $dataFim, ?string $canalFiltro = null)
     {
         $this->account = $account;
         $this->dataInicio = $dataInicio;
         $this->dataFim = $dataFim;
+        $this->canalFiltro = $canalFiltro;
         $this->timeout = 1800;
     }
 
@@ -32,6 +34,7 @@ class ImportarPedidosBlingJob implements ShouldQueue
             'account' => $this->account,
             'data_inicio' => $this->dataInicio,
             'data_fim' => $this->dataFim,
+            'canal_filtro' => $this->canalFiltro,
             'timestamp' => now()->toDateTimeString(),
         ]);
 
@@ -41,7 +44,8 @@ class ImportarPedidosBlingJob implements ShouldQueue
 
             $resultado = $service->importarParaStaging(
                 $this->dataInicio,
-                $this->dataFim
+                $this->dataFim,
+                $this->canalFiltro
             );
 
             $duracao = round(microtime(true) - $inicio, 2);
