@@ -170,10 +170,20 @@ class VariacaoTamposJob implements ShouldQueue
 
         // Ler APENAS o saldo do depósito Geral (mesmo onde o balanço é escrito)
         foreach ($dados['depositos'] ?? [] as $dep) {
-            if ((int) ($dep['id'] ?? 0) === $depositoGeralId) {
+            // API Bling v3: id pode estar em deposito.id (nested) ou id (flat)
+            $depId = (int) ($dep['deposito']['id'] ?? $dep['id'] ?? 0);
+            if ($depId === $depositoGeralId) {
                 return (int) ($dep['saldoFisico'] ?? 0);
             }
         }
+
+        Log::warning("VariacaoTampos: depósito Geral {$depositoGeralId} não encontrado nos saldos do produto {$produtoId}", [
+            'depositos_retornados' => array_map(fn($d) => [
+                'id_flat' => $d['id'] ?? null,
+                'id_nested' => $d['deposito']['id'] ?? null,
+                'saldoFisico' => $d['saldoFisico'] ?? null,
+            ], $dados['depositos'] ?? []),
+        ]);
 
         return 0;
     }
