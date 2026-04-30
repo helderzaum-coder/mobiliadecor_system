@@ -329,6 +329,6 @@ class CalculadoraML extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->hasRole('admin') ?? false;
+        return auth()->user()?->hasAnyRole(['admin', 'marketing']) ?? false;
     }
 }
