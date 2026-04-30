@@ -15,30 +15,27 @@ class CriarUsuarioMarketing extends Command
     {
         Role::firstOrCreate(['name' => 'marketing']);
 
-        $user = User::where('email', 'marketing@mobiliadecor.com.br')->first();
+        $user = User::where('email', 'gptmobilia@gmail.com')->first();
 
         if ($user) {
             $user->update([
                 'name' => 'Lucas',
                 'password' => bcrypt('Lucas@2026'),
             ]);
-            $this->line("Usuário existente atualizado.");
         } else {
             $user = User::create([
                 'name' => 'Lucas',
-                'email' => 'marketing@mobiliadecor.com.br',
+                'email' => 'gptmobilia@gmail.com',
                 'password' => bcrypt('Lucas@2026'),
             ]);
-            $this->line("Usuário criado.");
         }
 
         $user->syncRoles(['marketing']);
 
         $this->info("Pronto!");
-        $this->line("  Email: marketing@mobiliadecor.com.br");
+        $this->line("  Email: gptmobilia@gmail.com");
         $this->line("  Senha: Lucas@2026");
         $this->line("  Role: marketing");
-        $this->warn("⚠ Peça ao Lucas para trocar a senha no primeiro acesso.");
 
         return 0;
     }
