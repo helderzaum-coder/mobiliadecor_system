@@ -689,7 +689,7 @@ class BlingImportService
 
         $cnpjLimpo = preg_replace('/\D/', '', $cnpj);
         if ($cnpjLimpo === '03007331000141') return 'Mercadolivre';
-        if ($cnpjLimpo === '02489951000102') return 'Shopee';
+        if ($cnpjLimpo === '02489951000102' || $cnpjLimpo === '35635824000112') return 'Shopee';
         if ($cnpjLimpo === '47960950000121') return 'Magalu';
         if ($cnpjLimpo === '04032433000189') return 'Webcontinental';
         if ($cnpjLimpo === '02814497000198') return 'Madeira Madeira';
