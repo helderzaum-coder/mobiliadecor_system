@@ -79,7 +79,7 @@ class BlingImportService
                 }
 
                 $existente = PedidoBlingStaging::where('bling_id', $blingId)
-                    ->whereIn('status', ['pendente', 'aprovado'])
+                    ->whereIn('status', ['pendente', 'aprovado', 'cancelado'])
                     ->exists();
 
                 if ($existente || Venda::where('bling_id', $blingId)->exists()) {
@@ -151,7 +151,7 @@ class BlingImportService
     public function importarPedidoPorId(int $blingId): array
     {
         $existente = PedidoBlingStaging::where('bling_id', $blingId)
-            ->whereIn('status', ['pendente', 'aprovado'])
+            ->whereIn('status', ['pendente', 'aprovado', 'cancelado'])
             ->exists();
 
         if ($existente || Venda::where('bling_id', $blingId)->exists()) {

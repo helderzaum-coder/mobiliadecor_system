@@ -326,6 +326,7 @@ class PedidoBlingStagingResource extends Resource
                     ->color(fn (string $state) => match ($state) {
                         'pendente' => 'warning',
                         'aprovado' => 'success',
+                        'cancelado' => 'gray',
                         'rejeitado' => 'danger',
                         default => 'gray',
                     }),
@@ -366,6 +367,7 @@ class PedidoBlingStagingResource extends Resource
                     ->options([
                         'pendente' => 'Pendente',
                         'aprovado' => 'Aprovado',
+                        'cancelado' => 'Cancelado',
                         'rejeitado' => 'Rejeitado',
                     ])
                     ->default('pendente'),
@@ -711,7 +713,19 @@ class PedidoBlingStagingResource extends Resource
                     })
                     ->visible(fn (PedidoBlingStaging $record) => in_array($record->status, ['pendente', 'aprovado'])),
 
-                Tables\Actions\Action::make('desaprovar_reimportar')
+                Tables\Actions\Action::make('cancelar_pedido')
+                    ->label('Cancelar Pedido')
+                    ->icon('heroicon-o-no-symbol')
+                    ->color('gray')
+                    ->requiresConfirmation()
+                    ->modalHeading('Cancelar Pedido')
+                    ->modalDescription('O pedido será marcado como cancelado. A venda será removida da dashboard mas o pedido não volta para a fila de importação.')
+                    ->action(function (PedidoBlingStaging $record) {
+                        \App\Models\Venda::where('bling_id', $record->bling_id)->delete();
+                        $record->update(['status' => 'cancelado']);
+                        Notification::make()->title('Pedido cancelado.')->success()->send();
+                    })
+                    ->visible(fn (PedidoBlingStaging $record) => in_array($record->status, ['pendente', 'aprovado'])),
                     ->label('Desaprovar e Reimportar')
                     ->icon('heroicon-o-arrow-path')
                     ->color('danger')
