@@ -79,7 +79,7 @@ class BlingImportService
                 }
 
                 $existente = PedidoBlingStaging::where('bling_id', $blingId)
-                    ->whereIn('status', ['pendente', 'aprovado', 'cancelado'])
+                    ->whereIn('status', ['pendente', 'aprovado', 'cancelado', 'assistencia'])
                     ->exists();
 
                 if ($existente || Venda::where('bling_id', $blingId)->exists()) {
@@ -151,7 +151,7 @@ class BlingImportService
     public function importarPedidoPorId(int $blingId): array
     {
         $existente = PedidoBlingStaging::where('bling_id', $blingId)
-            ->whereIn('status', ['pendente', 'aprovado', 'cancelado'])
+            ->whereIn('status', ['pendente', 'aprovado', 'cancelado', 'assistencia'])
             ->exists();
 
         if ($existente || Venda::where('bling_id', $blingId)->exists()) {
@@ -326,6 +326,20 @@ class BlingImportService
             || str_starts_with((string) ($pedido['numeroLoja'] ?? ''), '2000')
             || str_contains(strtolower($pedido['intermediador']['nomeUsuario'] ?? ''), 'meli')
             || str_contains(strtolower($pedido['intermediador']['descricao'] ?? ''), 'mercado');
+
+        // Auto-detectar assistência: SKU 90000002
+        $isAssistencia = false;
+        foreach ($itens as $item) {
+            if (($item['codigo'] ?? '') === '90000002') {
+                $isAssistencia = true;
+                break;
+            }
+        }
+        if ($isAssistencia) {
+            $staging->update(['status' => 'assistencia']);
+            Log::info("Assistência detectada: pedido {$staging->numero_pedido} (SKU 90000002)");
+            return $staging;
+        }
 
         if ($isMl) {
             // Se a API do ML já trouxe dados financeiros (net_received_amount > 0),

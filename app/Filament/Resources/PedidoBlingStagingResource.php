@@ -327,6 +327,7 @@ class PedidoBlingStagingResource extends Resource
                         'pendente' => 'warning',
                         'aprovado' => 'success',
                         'cancelado' => 'gray',
+                        'assistencia' => 'info',
                         'rejeitado' => 'danger',
                         default => 'gray',
                     }),
@@ -368,6 +369,7 @@ class PedidoBlingStagingResource extends Resource
                         'pendente' => 'Pendente',
                         'aprovado' => 'Aprovado',
                         'cancelado' => 'Cancelado',
+                        'assistencia' => 'Assistência',
                         'rejeitado' => 'Rejeitado',
                     ])
                     ->default('pendente'),
@@ -724,6 +726,20 @@ class PedidoBlingStagingResource extends Resource
                         \App\Models\Venda::where('bling_id', $record->bling_id)->delete();
                         $record->update(['status' => 'cancelado']);
                         Notification::make()->title('Pedido cancelado.')->success()->send();
+                    })
+                    ->visible(fn (PedidoBlingStaging $record) => in_array($record->status, ['pendente', 'aprovado'])),
+
+                Tables\Actions\Action::make('marcar_assistencia')
+                    ->label('Assistência')
+                    ->icon('heroicon-o-wrench-screwdriver')
+                    ->color('info')
+                    ->requiresConfirmation()
+                    ->modalHeading('Marcar como Assistência')
+                    ->modalDescription('O pedido será marcado como assistência/garantia. Não conta como venda e não volta para importação.')
+                    ->action(function (PedidoBlingStaging $record) {
+                        \App\Models\Venda::where('bling_id', $record->bling_id)->delete();
+                        $record->update(['status' => 'assistencia']);
+                        Notification::make()->title('Pedido marcado como assistência.')->success()->send();
                     })
                     ->visible(fn (PedidoBlingStaging $record) => in_array($record->status, ['pendente', 'aprovado'])),
 
