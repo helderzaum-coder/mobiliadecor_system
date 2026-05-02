@@ -651,55 +651,46 @@ class BlingImportService
     {
         $obs = $pedido['observacoes'] ?? '';
         if (preg_match('/Via Hub Commerceplus:\s*(\w+)/i', $obs, $matches)) {
-            $canalHub = trim($matches[1]);
-            if (str_contains(strtolower($canalHub), 'madeira')) {
-                return 'Madeira Madeira';
-            }
-            return ucfirst(strtolower($canalHub));
+            $canalHub = strtolower(trim($matches[1]));
+            if (str_contains($canalHub, 'madeira')) return 'Madeira Madeira';
+            if (str_contains($canalHub, 'mercado')) return 'Mercadolivre';
+            if (str_contains($canalHub, 'shopee')) return 'Shopee';
+            if (str_contains($canalHub, 'magalu')) return 'Magalu';
+            if (str_contains($canalHub, 'amazon')) return 'Amazon';
+            if (str_contains($canalHub, 'continental')) return 'Webcontinental';
+            if (str_contains($canalHub, 'carrefour')) return 'Carrefour';
+            if (str_contains($canalHub, 'leroy')) return 'Leroy Merlin';
+            if (str_contains($canalHub, 'cnova') || str_contains($canalHub, 'via')) return 'Via (Cnova)';
+            if (str_contains($canalHub, 'tiktok')) return 'Tiktokshop';
+            // Pedidos do site próprio (gateways de pagamento)
+            if (in_array($canalHub, ['pix', 'boleto', 'pagseguro', 'mobiliadecor', 'mobilia'])) return 'Site Mobília';
+            if (preg_match('/^pagseguro/i', $canalHub)) return 'Site Mobília';
+            if (preg_match('/^\d+$/', $canalHub)) return 'Site Mobília';
+            return ucfirst($canalHub);
         }
 
         $intermediador = $pedido['intermediador'] ?? [];
         $cnpj = $intermediador['cnpj'] ?? '';
         $nomeUsuario = $intermediador['nomeUsuario'] ?? '';
 
-        // Identificar pelo CNPJ do intermediador
         $cnpjLimpo = preg_replace('/\D/', '', $cnpj);
-        if ($cnpjLimpo === '03007331000141') {
-            return 'Mercadolivre';
-        }
-        if ($cnpjLimpo === '02489951000102') {
-            return 'Shopee';
-        }
-        if ($cnpjLimpo === '47960950000121') {
-            return 'Magalu';
-        }
-        if ($cnpjLimpo === '04032433000189') {
-            return 'Webcontinental';
-        }
-        // Madeira Madeira
-        if ($cnpjLimpo === '02814497000198') {
-            return 'Madeira Madeira';
-        }
+        if ($cnpjLimpo === '03007331000141') return 'Mercadolivre';
+        if ($cnpjLimpo === '02489951000102') return 'Shopee';
+        if ($cnpjLimpo === '47960950000121') return 'Magalu';
+        if ($cnpjLimpo === '04032433000189') return 'Webcontinental';
+        if ($cnpjLimpo === '02814497000198') return 'Madeira Madeira';
 
-        // Identificar pelo nome do intermediador
         if (!empty($nomeUsuario)) {
             $nomeLower = strtolower($nomeUsuario);
-            if (str_contains($nomeLower, 'mercado') || str_contains($nomeLower, 'meli')) {
-                return 'Mercadolivre';
-            }
-            if (str_contains($nomeLower, 'shopee')) {
-                return 'Shopee';
-            }
-            if (str_contains($nomeLower, 'webcontinental') || str_contains($nomeLower, 'continental')) {
-                return 'Webcontinental';
-            }
-            if (str_contains($nomeLower, 'madeira')) {
-                return 'Madeira Madeira';
-            }
+            if (str_contains($nomeLower, 'mercado') || str_contains($nomeLower, 'meli')) return 'Mercadolivre';
+            if (str_contains($nomeLower, 'shopee')) return 'Shopee';
+            if (str_contains($nomeLower, 'continental')) return 'Webcontinental';
+            if (str_contains($nomeLower, 'madeira')) return 'Madeira Madeira';
+            if (str_contains($nomeLower, 'mobilia') || str_contains($nomeLower, 'decor')) return 'Site Mobília';
             return ucfirst($nomeUsuario);
         }
 
-        return 'Direto';
+        return 'Site Mobília';
     }
 
     private function preCalcularComissao(string $canalNome, array $itens, ?string $mlTipoAnuncio = null, ?string $mlTipoFrete = null, float $valorFrete = 0): array
