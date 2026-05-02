@@ -33,6 +33,10 @@ class SyncEstoqueTampoJob implements ShouldQueue
 
         if (!$config) return;
 
+        // Sempre atualizar na primary (estoque real)
+        // A secondary espelha a primary depois
+        $contaEstoque = 'primary';
+
         // Buscar outras variações do mesmo grupo (mesma familia + cor)
         $outrasVariacoes = TrocaTampoConfig::where('familia_tampo', $config->familia_tampo)
             ->where('cor', $config->cor)
@@ -41,12 +45,17 @@ class SyncEstoqueTampoJob implements ShouldQueue
 
         if ($outrasVariacoes->isEmpty()) return;
 
-        $client = new BlingClient($this->accountKey);
+        $client = new BlingClient($contaEstoque);
         $depositoId = $this->getDepositoGeral($client);
 
         if (!$depositoId) {
             Log::error("SyncEstoqueTampo: depósito Geral não encontrado");
             return;
+        }
+
+        // Se vendeu na secondary, descontar o SKU vendido também na primary
+        if ($this->accountKey === 'secondary') {
+            $this->descontarNaPrimary($client, $depositoId);
         }
 
         foreach ($outrasVariacoes as $variacao) {
@@ -86,6 +95,74 @@ class SyncEstoqueTampoJob implements ShouldQueue
             } catch (\Exception $e) {
                 Log::error("SyncEstoqueTampo: erro {$variacao->sku_produto}: {$e->getMessage()}");
             }
+        }
+
+        // Espelhar saldos atualizados para a secondary
+        $this->espelharParaSecondary($client, $depositoId, $config, $outrasVariacoes);
+    }
+
+    private function espelharParaSecondary(BlingClient $primaryClient, int $primaryDepositoId, TrocaTampoConfig $configVendido, $outrasVariacoes): void
+    {
+        try {
+            $secondaryClient = new BlingClient('secondary');
+            $secondaryDepositoId = $this->getDepositoGeral($secondaryClient);
+            if (!$secondaryDepositoId) return;
+
+            // Todos os SKUs do grupo (vendido + outras variações)
+            $todosSkus = $outrasVariacoes->pluck('sku_produto')->push($this->skuVendido)->unique();
+
+            foreach ($todosSkus as $sku) {
+                $prodPrimary = $primaryClient->getProductBySku($sku);
+                $prodSecondary = $secondaryClient->getProductBySku($sku);
+                if (!$prodPrimary || !$prodSecondary) continue;
+
+                $saldoPrimary = $this->buscarSaldo($primaryClient, (int) $prodPrimary['id'], $primaryDepositoId);
+
+                $secondaryClient->post('/estoques', [], [
+                    'produto' => ['id' => (int) $prodSecondary['id']],
+                    'deposito' => ['id' => $secondaryDepositoId],
+                    'operacao' => 'B',
+                    'preco' => 0,
+                    'custo' => 0,
+                    'quantidade' => $saldoPrimary,
+                    'observacoes' => "Espelho primary: {$sku} = {$saldoPrimary}",
+                ]);
+
+                Log::info("SyncEstoqueTampo: espelho secondary {$sku} = {$saldoPrimary}");
+                usleep(200000);
+            }
+        } catch (\Exception $e) {
+            Log::error("SyncEstoqueTampo: erro espelhar secondary: {$e->getMessage()}");
+        }
+    }
+
+    private function descontarNaPrimary(BlingClient $client, int $depositoId): void
+    {
+        try {
+            $produto = $client->getProductBySku($this->skuVendido);
+            if (!$produto) return;
+
+            $produtoId = (int) $produto['id'];
+            $saldoAtual = $this->buscarSaldo($client, $produtoId, $depositoId);
+            $novoSaldo = max(0, $saldoAtual - $this->quantidadeVendida);
+
+            if ($novoSaldo === $saldoAtual) return;
+
+            $res = $client->post('/estoques', [], [
+                'produto' => ['id' => $produtoId],
+                'deposito' => ['id' => $depositoId],
+                'operacao' => 'B',
+                'preco' => 0,
+                'custo' => 0,
+                'quantidade' => $novoSaldo,
+                'observacoes' => "Venda HES: {$this->skuVendido} x{$this->quantidadeVendida}",
+            ]);
+
+            if ($res['success']) {
+                Log::info("SyncEstoqueTampo: primary {$this->skuVendido} {$saldoAtual} → {$novoSaldo} (venda HES)");
+            }
+        } catch (\Exception $e) {
+            Log::error("SyncEstoqueTampo: erro descontar primary {$this->skuVendido}: {$e->getMessage()}");
         }
     }
 
