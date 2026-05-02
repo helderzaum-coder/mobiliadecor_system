@@ -199,6 +199,16 @@ class AprovacaoVendaService
 
         $staging->update(['status' => 'aprovado']);
 
+        // Sync estoque de tampos: se algum item faz parte de grupo de tampo,
+        // subtrair das outras variações
+        foreach ($staging->itens ?? [] as $item) {
+            $sku = $item['codigo'] ?? '';
+            $qtd = (int) ($item['quantidade'] ?? 1);
+            if ($sku) {
+                \App\Jobs\SyncEstoqueTampoJob::dispatch($sku, $qtd, $staging->bling_account);
+            }
+        }
+
         Log::info("Pedido {$staging->numero_pedido} aprovado -> Venda #{$venda->id_venda}");
 
         return $venda;

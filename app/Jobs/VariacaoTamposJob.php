@@ -109,23 +109,28 @@ class VariacaoTamposJob implements ShouldQueue
             $saldos = array_column($produtosInfo, 'saldo_atual');
             $maior = max($saldos);
             $menor = min($saldos);
+            $numVariacoes = count($produtosInfo);
 
             if ($maior === $menor) {
                 Log::info("VariacaoTampos: grupo {$familia}/{$cor} já equalizado em {$maior}");
                 continue;
             }
 
-            // Sempre usar o MENOR: é o único valor confiável
-            // - Venda: menor reflete a venda real
-            // - Primeira equalização: corrigir estoques manualmente ANTES de equalizar
-            $saldoAlvo = $menor;
+            // Lógica: caixas são intercambiáveis (mesma carcaça, tampo diferente)
+            // Cada venda de qualquer variação consome 1 caixa física
+            // Com sync automático ativo, todos os saldos devem estar iguais
+            // Se não estão, usar soma ÷ variações (média = caixas reais)
+            $somaSaldos = array_sum($saldos);
+            $saldoAlvo = (int) floor($somaSaldos / $numVariacoes);
+            $saldoAlvo = max(0, $saldoAlvo);
 
             Log::info("VariacaoTampos: equalizando {$familia}/{$cor}", [
                 'maior' => $maior,
                 'menor' => $menor,
-                'diferenca' => $maior - $menor,
+                'soma_saldos' => $somaSaldos,
+                'num_variacoes' => $numVariacoes,
+                'vendas_totais' => $somaSaldos - $numVariacoes * $saldoAlvo,
                 'saldo_alvo' => $saldoAlvo,
-                'qtd_produtos' => count($produtosInfo),
             ]);
 
             // Equalizar
