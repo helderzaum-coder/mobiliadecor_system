@@ -650,7 +650,7 @@ class BlingImportService
     private function identificarCanal(array $pedido): string
     {
         $obs = $pedido['observacoes'] ?? '';
-        if (preg_match('/Via Hub Commerceplus:\s*(.+?)\s*$/im', $obs, $matches)) {
+        if (preg_match('/Via Hub Commerceplus:\s*(\w+)/i', $obs, $matches)) {
             $canalHub = trim($matches[1]);
             if (str_contains(strtolower($canalHub), 'madeira')) {
                 return 'Madeira Madeira';
