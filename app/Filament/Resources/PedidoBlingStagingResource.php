@@ -726,6 +726,8 @@ class PedidoBlingStagingResource extends Resource
                         Notification::make()->title('Pedido cancelado.')->success()->send();
                     })
                     ->visible(fn (PedidoBlingStaging $record) => in_array($record->status, ['pendente', 'aprovado'])),
+
+                Tables\Actions\Action::make('desaprovar_reimportar')
                     ->label('Desaprovar e Reimportar')
                     ->icon('heroicon-o-arrow-path')
                     ->color('danger')
