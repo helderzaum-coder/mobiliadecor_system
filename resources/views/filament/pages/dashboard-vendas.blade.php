@@ -155,7 +155,7 @@
                 $isWebcontinental = str_contains(strtolower($canal), 'webcontinental');
                 $isMadeiraMadeira = str_contains(strtolower($canal), 'madeira');
                 $precisaPlanilha = $isML || $isShopee || $isMagalu || $isWebcontinental || $isMadeiraMadeira;
-                $freteOk = $fretePagoFlag || $isMlMe2Full;
+                $freteOk = $fretePagoFlag || $isMlMe2Full || ($freteCliente == 0 && $custoFrete == 0);
                 $completo = $temNfeChave && $freteOk && (!$precisaPlanilha || $planilhaOk);
 
                 $conta = $venda->bling_account === 'primary' ? 'Mobilia' : 'HES';
@@ -191,7 +191,7 @@
                                     <span style="background:#dc2626;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">Falta NF-e</span>
                                 @endif
                             @endif
-                            @if(!$fretePagoFlag && !$isML && !$isMlMe2Full)
+                            @if(!$fretePagoFlag && !$isML && !$isMlMe2Full && $freteCliente > 0)
                                 <span style="background:#d97706;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">Falta Frete</span>
                             @endif
                             @if($precisaPlanilha && !$planilhaOk)

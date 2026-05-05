@@ -306,12 +306,13 @@ class DashboardVendas extends Page implements HasForms
         if ($this->status_filtro === 'falta_nfe') {
             $query->where(fn ($q) => $q->whereNull('nfe_chave_acesso')->orWhere('nfe_chave_acesso', ''));
         } elseif ($this->status_filtro === 'falta_frete') {
-            // Falta frete: frete_pago=false, EXCETO ML ME2/FULL (não precisam de frete)
+            // Falta frete: frete_pago=false, EXCETO ML ME2/FULL e Shopee Xpress (frete=0)
             $query->where('frete_pago', false)
                 ->where(fn ($q) => $q
                     ->whereNull('ml_tipo_frete')
                     ->orWhere('ml_tipo_frete', 'ME1')
-                );
+                )
+                ->where('valor_frete_cliente', '>', 0);
         } elseif ($this->status_filtro === 'falta_planilha') {
             $query->where('planilha_processada', false)
                 ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%')->orWhere('nome_canal', 'like', '%agalu%')->orWhere('nome_canal', 'like', '%ebcontinental%')->orWhere('nome_canal', 'like', '%adeira%'));
@@ -338,6 +339,13 @@ class DashboardVendas extends Page implements HasForms
                 ->orWhere(function ($q2) {
                     $q2->whereNotNull('data_prevista_envio')
                         ->where('custo_produtos', '>', 0);
+                })
+                // OU Shopee Xpress (frete = 0, sem custo frete)
+                ->orWhere(function ($q2) {
+                    $q2->where('valor_frete_cliente', 0)
+                        ->where('valor_frete_transportadora', 0)
+                        ->where(fn ($q3) => $q3->whereNotNull('nfe_chave_acesso')->where('nfe_chave_acesso', '!=', ''))
+                        ->where('planilha_processada', true);
                 });
             });
         }
