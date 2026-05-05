@@ -216,9 +216,14 @@ class ShopeePlanilhaService
         // Subtotal real = Preço produto - Subsídio Pix (pix está embutido no preço U)
         $subtotalReal = $precosProduto - $subsidioPix;
 
-        // Total do pedido = o que o cliente pagou = Subtotal real + Frete do comprador (AM, sem AN)
-        // AN é pago pela Shopee, não pelo cliente
-        $totalPedido = $subtotalReal + $frete - abs(self::parseDecimal($linhas[0]['AN'] ?? 0));
+        // Total do pedido
+        if ($frete == 0) {
+            // Xpress: total = subtotal real (sem frete)
+            $totalPedido = $subtotalReal;
+        } else {
+            // Normal: total = subtotal + frete - desconto frete Shopee (AN)
+            $totalPedido = $subtotalReal + $frete - abs(self::parseDecimal($linhas[0]['AN'] ?? 0));
+        }
 
         return [
             'total_produtos' => round($subtotalReal, 2),
