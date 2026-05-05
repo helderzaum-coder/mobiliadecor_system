@@ -113,6 +113,11 @@ class ShopeePlanilhaService
                     'planilha_shopee' => true,
                 ];
 
+                // Se frete = 0 (Xpress), zerar custo_frete também
+                if ((float) $dados['frete'] == 0) {
+                    $updateData['custo_frete'] = 0;
+                }
+
                 PedidoBlingStaging::where('id', $stagingId)->update($updateData);
                 $resultado['processados']++;
             } catch (\Exception $e) {
@@ -266,6 +271,11 @@ class ShopeePlanilhaService
             'subsidio_pix' => $dados['subsidio_pix'] ?? $staging->subsidio_pix,
             'planilha_shopee' => true,
         ];
+
+        // Se frete = 0 (Xpress), zerar custo_frete também
+        if ((float) ($dados['frete'] ?? 0) == 0) {
+            $updateData['custo_frete'] = 0;
+        }
 
         $staging->update($updateData);
 
