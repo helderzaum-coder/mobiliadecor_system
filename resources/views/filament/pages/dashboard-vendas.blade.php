@@ -185,7 +185,11 @@
                             <span style="background:#059669;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">✅ Completo</span>
                         @else
                             @if(!$temNfeChave)
-                                <span style="background:#dc2626;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">Falta NF-e</span>
+                                @if($venda->data_prevista_envio)
+                                    <span style="background:#7c3aed;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">📦 Envio: {{ $venda->data_prevista_envio->format('d/m') }}</span>
+                                @else
+                                    <span style="background:#dc2626;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">Falta NF-e</span>
+                                @endif
                             @endif
                             @if(!$fretePagoFlag && !$isML && !$isMlMe2Full)
                                 <span style="background:#d97706;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">Falta Frete</span>
@@ -387,6 +391,20 @@
                             style="background:#2563eb;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
                             📄 Buscar NF-e
                         </button>
+                        @if(!$venda->data_prevista_envio)
+                            <button onclick="let d=prompt('Data prevista de envio (YYYY-MM-DD):','{{ now()->addDays(7)->format('Y-m-d') }}');if(d)@this.marcarAguardandoEnvio({{ $venda->id_venda }},d)"
+                                style="background:#7c3aed;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                                📦 Aguardando Envio
+                            </button>
+                        @else
+                            <span style="background:#7c3aed;color:#fff;padding:3px 8px;border-radius:4px;font-size:10px;">
+                                📦 Envio: {{ $venda->data_prevista_envio->format('d/m') }}
+                            </span>
+                            <button wire:click="removerAguardandoEnvio({{ $venda->id_venda }})"
+                                style="background:#374151;color:#9ca3af;padding:3px 8px;font-size:10px;border-radius:5px;border:none;cursor:pointer;">
+                                ✖
+                            </button>
+                        @endif
                     @endif
                     @if($temNfe && !$fretePagoReal && !$isMlMe2Full && (!$isML || $isMlMe1))
                         <button wire:click="buscarCte({{ $venda->id_venda }})" wire:loading.attr="disabled"

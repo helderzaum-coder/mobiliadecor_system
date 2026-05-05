@@ -117,6 +117,22 @@ class DashboardVendas extends Page implements HasForms
         }
     }
 
+    public function marcarAguardandoEnvio(int $vendaId, string $dataPrevista): void
+    {
+        $venda = Venda::find($vendaId);
+        if (!$venda) return;
+        $venda->update(['data_prevista_envio' => $dataPrevista]);
+        \Filament\Notifications\Notification::make()->title('Pedido marcado como aguardando envio até ' . \Carbon\Carbon::parse($dataPrevista)->format('d/m/Y'))->success()->send();
+    }
+
+    public function removerAguardandoEnvio(int $vendaId): void
+    {
+        $venda = Venda::find($vendaId);
+        if (!$venda) return;
+        $venda->update(['data_prevista_envio' => null]);
+        \Filament\Notifications\Notification::make()->title('Data prevista removida.')->success()->send();
+    }
+
     public function buscarNfeLote(): void
     {
         $ids = $this->buildQuery()
@@ -244,6 +260,7 @@ class DashboardVendas extends Page implements HasForms
                         'falta_frete' => '🚚 Falta Frete',
                         'falta_planilha' => '📊 Falta Planilha',
                         'sem_custo' => '💰 Sem Custo Produto',
+                        'aguardando_envio' => '📦 Aguardando Envio',
                         'completo' => '✅ Completo',
                     ])
                     ->placeholder('Todos')
@@ -300,17 +317,29 @@ class DashboardVendas extends Page implements HasForms
                 ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%')->orWhere('nome_canal', 'like', '%agalu%')->orWhere('nome_canal', 'like', '%ebcontinental%')->orWhere('nome_canal', 'like', '%adeira%'));
         } elseif ($this->status_filtro === 'sem_custo') {
             $query->where(fn ($q) => $q->where('custo_produtos', '<=', 0)->orWhereNull('custo_produtos'));
+        } elseif ($this->status_filtro === 'aguardando_envio') {
+            $query->whereNotNull('data_prevista_envio');
         } elseif ($this->status_filtro === 'completo') {
-            // Completo: tem NF-e + (frete_pago OU ML ME2/FULL) + planilha ok
-            $query->where(fn ($q) => $q->whereNotNull('nfe_chave_acesso')->where('nfe_chave_acesso', '!=', ''))
-                ->where(fn ($q) => $q
-                    ->where('frete_pago', true)
-                    ->orWhereIn('ml_tipo_frete', ['ME2', 'FULL'])
-                )
-                ->where(fn ($q) => $q
-                    ->where('planilha_processada', true)
-                    ->orWhereDoesntHave('canal', fn ($q2) => $q2->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%')->orWhere('nome_canal', 'like', '%agalu%')->orWhere('nome_canal', 'like', '%ebcontinental%')->orWhere('nome_canal', 'like', '%adeira%'))
-                );
+            // Completo: (tem NF-e + frete OK + planilha OK) OU (tem data_prevista_envio + custo > 0)
+            $query->where(function ($q) {
+                // Completo normal
+                $q->where(function ($q2) {
+                    $q2->where(fn ($q3) => $q3->whereNotNull('nfe_chave_acesso')->where('nfe_chave_acesso', '!=', ''))
+                        ->where(fn ($q3) => $q3
+                            ->where('frete_pago', true)
+                            ->orWhereIn('ml_tipo_frete', ['ME2', 'FULL'])
+                        )
+                        ->where(fn ($q3) => $q3
+                            ->where('planilha_processada', true)
+                            ->orWhereDoesntHave('canal', fn ($q4) => $q4->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%')->orWhere('nome_canal', 'like', '%agalu%')->orWhere('nome_canal', 'like', '%ebcontinental%')->orWhere('nome_canal', 'like', '%adeira%'))
+                        );
+                })
+                // OU aguardando envio com custo
+                ->orWhere(function ($q2) {
+                    $q2->whereNotNull('data_prevista_envio')
+                        ->where('custo_produtos', '>', 0);
+                });
+            });
         }
 
         return $query;
