@@ -90,8 +90,8 @@
 
                     <div class="mb-3">
                         <label class="text-xs text-gray-500 block mb-1">Data do Recebimento:</label>
-                        <input type="date" wire:model="data_recebimento"
-                            class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm text-gray-800 dark:text-white px-3 py-2">
+                        <input type="date" wire:model="data_recebimento" value="{{ $data_recebimento }}"
+                            style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:14px;">
                     </div>
 
                     <button wire:click="confirmarLote" wire:confirm="Confirmar recebimento de {{ count($lote) }} pedido(s) totalizando R$ {{ number_format($this->totalLote, 2, ',', '.') }}?"
