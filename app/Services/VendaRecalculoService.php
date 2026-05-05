@@ -8,6 +8,7 @@ use App\Models\PlanilhaMlDado;
 use App\Models\PlanilhaShopeeDado;
 use App\Models\Venda;
 use App\Services\Bling\BlingClient;
+use App\Services\ContaReceberService;
 use Illuminate\Support\Facades\Log;
 
 class VendaRecalculoService
@@ -322,5 +323,8 @@ class VendaRecalculoService
             'margem_venda_total' => round($margemVendaTotal, 2),
             'margem_contribuicao' => round($margemContribuicao, 2),
         ]);
+
+        // Gerar conta a receber se venda ficou completa
+        ContaReceberService::gerarSeCompleta($venda->fresh());
     }
 }

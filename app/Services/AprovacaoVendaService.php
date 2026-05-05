@@ -199,7 +199,8 @@ class AprovacaoVendaService
 
         $staging->update(['status' => 'aprovado']);
 
-        // Sync estoque de tampos: se algum item faz parte de grupo de tampo,
+        // Gerar conta a receber se venda já está completa
+        \App\Services\ContaReceberService::gerarSeCompleta($venda);
         // subtrair das outras variações
         foreach ($staging->itens ?? [] as $item) {
             $sku = $item['codigo'] ?? '';
