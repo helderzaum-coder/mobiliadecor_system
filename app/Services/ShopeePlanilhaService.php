@@ -192,10 +192,18 @@ class ShopeePlanilhaService
 
             // Frete: calcular apenas uma vez (é por pedido, não por item)
             if (!$freteCalculado) {
-                // Frete recebido = Taxa de envio paga pelo comprador (AM) + Desconto de Frete da Shopee (AN)
-                $taxaEnvioComprador = self::parseDecimal($row['AM'] ?? 0);
-                $descontoFrete = self::parseDecimal($row['AN'] ?? 0);
-                $frete = $taxaEnvioComprador + abs($descontoFrete);
+                // Verificar se é Shopee Xpress (coluna G)
+                $opcaoEnvio = strtolower(trim($row['G'] ?? ''));
+                $isXpress = str_contains($opcaoEnvio, 'xpress') || str_contains($opcaoEnvio, 'express');
+
+                if ($isXpress) {
+                    $frete = 0;
+                } else {
+                    // Frete recebido = Taxa de envio paga pelo comprador (AM) + Desconto de Frete da Shopee (AN)
+                    $taxaEnvioComprador = self::parseDecimal($row['AM'] ?? 0);
+                    $descontoFrete = self::parseDecimal($row['AN'] ?? 0);
+                    $frete = $taxaEnvioComprador + abs($descontoFrete);
+                }
                 $freteCalculado = true;
             }
         }
