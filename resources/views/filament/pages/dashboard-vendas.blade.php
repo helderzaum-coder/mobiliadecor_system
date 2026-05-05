@@ -388,7 +388,7 @@
                             📄 Buscar NF-e
                         </button>
                     @endif
-                    @if($temNfe && !$fretePagoReal && (!$isML || $isMlMe1))
+                    @if($temNfe && !$fretePagoReal && !$isMlMe2Full && (!$isML || $isMlMe1))
                         <button wire:click="buscarCte({{ $venda->id_venda }})" wire:loading.attr="disabled"
                             style="background:#7c3aed;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
                             🚚 Buscar CT-e
