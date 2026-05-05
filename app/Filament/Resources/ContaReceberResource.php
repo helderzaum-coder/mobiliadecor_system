@@ -141,9 +141,21 @@ class ContaReceberResource extends Resource
                             ->options([
                                 'este_mes' => 'Este mês',
                                 'mes_passado' => 'Mês passado',
+                                'selecionar_mes' => 'Selecionar mês',
                                 'customizado' => 'Customizado',
                             ])
                             ->reactive(),
+                        Forms\Components\Select::make('mes_selecionado')
+                            ->label('Mês')
+                            ->options(function () {
+                                $options = [];
+                                for ($i = 0; $i < 12; $i++) {
+                                    $d = now()->subMonths($i)->startOfMonth();
+                                    $options[$d->format('Y-m')] = ucfirst($d->locale('pt_BR')->isoFormat('MMMM [de] YYYY'));
+                                }
+                                return $options;
+                            })
+                            ->visible(fn ($get) => $get('periodo_rapido') === 'selecionar_mes'),
                         Forms\Components\DatePicker::make('data_inicio')
                             ->label('De')
                             ->visible(fn ($get) => $get('periodo_rapido') === 'customizado'),
@@ -157,6 +169,12 @@ class ContaReceberResource extends Resource
                         return match ($periodo) {
                             'este_mes' => $query->whereHas('venda', fn ($q) => $q->whereBetween('data_venda', [now()->startOfMonth(), now()->endOfMonth()])),
                             'mes_passado' => $query->whereHas('venda', fn ($q) => $q->whereBetween('data_venda', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()])),
+                            'selecionar_mes' => isset($data['mes_selecionado']) && $data['mes_selecionado']
+                                ? $query->whereHas('venda', fn ($q) => $q->whereBetween('data_venda', [
+                                    now()->createFromFormat('Y-m', $data['mes_selecionado'])->startOfMonth(),
+                                    now()->createFromFormat('Y-m', $data['mes_selecionado'])->endOfMonth(),
+                                ]))
+                                : $query,
                             'customizado' => $query->whereHas('venda', fn ($q) => $q
                                 ->when($data['data_inicio'] ?? null, fn ($q2) => $q2->whereDate('data_venda', '>=', $data['data_inicio']))
                                 ->when($data['data_fim'] ?? null, fn ($q2) => $q2->whereDate('data_venda', '<=', $data['data_fim']))
