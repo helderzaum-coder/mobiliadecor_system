@@ -444,6 +444,10 @@
                             💰 Buscar Custos
                         </button>
                     @endif
+                    <a href="/vendas/{{ $venda->id_venda }}/edit"
+                        style="background:#374151;color:#e5e7eb;padding:3px 10px;font-size:11px;border-radius:5px;text-decoration:none;display:inline-block;">
+                        ✏️ Editar
+                    </a>
                 </div>
 
                 {{-- Itens do pedido --}}
