@@ -36,13 +36,6 @@ class BlingOAuthService
 
     public function exchangeCodeForToken(string $code): ?BlingToken
     {
-        $jwt = $this->gerarJwt();
-
-        Log::info("Bling OAuth [{$this->accountKey}]: Trocando code por token", [
-            'code_prefix' => substr($code, 0, 10) . '...',
-            'redirect_uri' => route('bling.callback'),
-        ]);
-
         $response = Http::withBasicAuth(
             $this->accountConfig['client_id'],
             $this->accountConfig['client_secret']
@@ -146,34 +139,5 @@ class BlingOAuthService
     public function getAccountName(): string
     {
         return $this->accountConfig['name'] ?? $this->accountKey;
-    }
-
-    private function gerarJwt(): string
-    {
-        $clientId = $this->accountConfig['client_id'];
-        $clientSecret = $this->accountConfig['client_secret'];
-        $tokenUrl = config('bling.oauth_token');
-
-        $header = $this->base64url(json_encode(['alg' => 'HS256', 'typ' => 'JWT']));
-
-        $now = time();
-        $payload = $this->base64url(json_encode([
-            'iss' => $clientId,
-            'sub' => $clientId,
-            'aud' => $tokenUrl,
-            'iat' => $now,
-            'exp' => $now + 60,
-        ]));
-
-        $signature = $this->base64url(
-            hash_hmac('sha256', "{$header}.{$payload}", $clientSecret, true)
-        );
-
-        return "{$header}.{$payload}.{$signature}";
-    }
-
-    private function base64url(string $data): string
-    {
-        return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
     }
 }
