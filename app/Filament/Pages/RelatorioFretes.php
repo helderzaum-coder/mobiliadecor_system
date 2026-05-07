@@ -137,7 +137,24 @@ class RelatorioFretes extends Page implements HasForms
 
     public function getVendasProperty(): \Illuminate\Support\Collection
     {
-        return $this->buildQuery()->limit(100)->get();
+        $vendas = $this->buildQuery()->limit(100)->get();
+
+        // Carregar cidade/UF do staging
+        $blingIds = $vendas->pluck('bling_id')->filter()->toArray();
+        if (!empty($blingIds)) {
+            $stagings = \App\Models\PedidoBlingStaging::whereIn('bling_id', $blingIds)
+                ->select('bling_id', 'dest_cidade', 'dest_uf')
+                ->get()
+                ->keyBy('bling_id');
+
+            foreach ($vendas as $venda) {
+                $staging = $stagings[$venda->bling_id] ?? null;
+                $venda->staging_cidade = $staging?->dest_cidade;
+                $venda->staging_uf = $staging?->dest_uf;
+            }
+        }
+
+        return $vendas;
     }
 
     public function getResumoProperty(): array
