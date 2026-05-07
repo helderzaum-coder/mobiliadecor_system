@@ -20,6 +20,10 @@
             style="background:#d97706;color:#fff;padding:8px 14px;font-size:12px;border-radius:8px;border:none;cursor:pointer;margin-bottom:2px;white-space:nowrap;">
             💰 Custos Lote
         </button>
+        <button wire:click="encontrarDivergencia" wire:loading.attr="disabled"
+            style="background:#6b7280;color:#fff;padding:8px 14px;font-size:12px;border-radius:8px;border:none;cursor:pointer;margin-bottom:2px;white-space:nowrap;">
+            🔍 Divergência
+        </button>
     </div>
 
     {{-- Resumo horizontal compacto --}}

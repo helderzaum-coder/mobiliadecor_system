@@ -108,6 +108,40 @@ class DashboardVendas extends Page implements HasForms
         \Filament\Notifications\Notification::make()->title('Margens recalculadas.')->success()->send();
     }
 
+    public function encontrarDivergencia(): void
+    {
+        $todos = $this->buildQuery()->pluck('id_venda')->toArray();
+
+        // Replicar filtro completo
+        $completos = $this->buildQuery()->where(function ($q) {
+            $q->where(function ($q2) {
+                $q2->where(fn ($q3) => $q3->whereNotNull('nfe_chave_acesso')->where('nfe_chave_acesso', '!=', ''))
+                    ->where(fn ($q3) => $q3->where('frete_pago', true)->orWhereIn('ml_tipo_frete', ['ME2', 'FULL']))
+                    ->where(fn ($q3) => $q3->where('planilha_processada', true)
+                        ->orWhereDoesntHave('canal', fn ($q4) => $q4->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%')->orWhere('nome_canal', 'like', '%agalu%')->orWhere('nome_canal', 'like', '%ebcontinental%')->orWhere('nome_canal', 'like', '%adeira%'))
+                    );
+            })
+            ->orWhere(function ($q2) {
+                $q2->whereNotNull('data_prevista_envio')->where('custo_produtos', '>', 0);
+            })
+            ->orWhere(function ($q2) {
+                $q2->where('valor_frete_cliente', 0)->where('valor_frete_transportadora', 0)
+                    ->where(fn ($q3) => $q3->whereNotNull('nfe_chave_acesso')->where('nfe_chave_acesso', '!=', ''))
+                    ->where('planilha_processada', true);
+            });
+        })->pluck('id_venda')->toArray();
+
+        $divergentes = array_diff($todos, $completos);
+        $vendas = Venda::whereIn('id_venda', $divergentes)->get();
+
+        $msg = count($divergentes) . " pedido(s) divergente(s):\n";
+        foreach ($vendas as $v) {
+            $msg .= "#{$v->numero_pedido_canal} ({$v->canal_nome}) - NF:" . ($v->nfe_chave_acesso ? 'OK' : 'NÃO') . " Frete:" . ($v->frete_pago ? 'OK' : 'NÃO') . " Plan:" . ($v->planilha_processada ? 'OK' : 'NÃO') . "\n";
+        }
+
+        \Filament\Notifications\Notification::make()->title('Divergência encontrada')->body($msg)->warning()->persistent()->send();
+    }
+
     public function marcarFreteEnvias(int $vendaId): void
     {
         $venda = Venda::find($vendaId);
