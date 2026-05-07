@@ -416,11 +416,23 @@
                             style="background:#7c3aed;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
                             🚚 Buscar CT-e
                         </button>
-                        <button wire:click="marcarFreteEnvias({{ $venda->id_venda }})" wire:loading.attr="disabled"
-                            wire:confirm="Marcar como Envias? Frete será zerado (marketplace paga)."
-                            style="background:#0891b2;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
-                            📦 Frete Envias
-                        </button>
+                        @php
+                            $isViaCnova = str_contains(strtolower($canal), 'via') || str_contains(strtolower($canal), 'cnova');
+                        @endphp
+                        @if($isViaCnova)
+                            <button wire:click="marcarFreteEnvias({{ $venda->id_venda }})" wire:loading.attr="disabled"
+                                wire:confirm="Marcar como Envias? Frete será zerado (marketplace paga)."
+                                style="background:#0891b2;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                                📦 Frete Envias
+                            </button>
+                        @endif
+                        @if($isShopee)
+                            <button wire:click="marcarFreteEnvias({{ $venda->id_venda }})" wire:loading.attr="disabled"
+                                wire:confirm="Marcar como Shopee Xpress? Frete será zerado."
+                                style="background:#ea580c;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                                📦 Shopee Xpress
+                            </button>
+                        @endif
                     @endif
                     @if($isML && !$temPlanilha)
                         <button wire:click="aplicarPlanilhaML({{ $venda->id_venda }})" wire:loading.attr="disabled"

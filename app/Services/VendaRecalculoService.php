@@ -369,6 +369,12 @@ class VendaRecalculoService
                 'frete_pago' => true,
             ]);
         }
+
+        // Shopee com frete=0 (Xpress): marcar frete como pago
+        $isShopeeCanal = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'shopee');
+        if ($isShopeeCanal && $frete == 0 && $custoFrete == 0 && !(bool) $venda->frete_pago) {
+            $venda->update(['frete_pago' => true]);
+        }
         $valorImposto = (float) $venda->valor_imposto;
         $totalPedido = (float) $venda->valor_total_venda;
         $custoProdutos = (float) $venda->custo_produtos;
