@@ -85,37 +85,35 @@ class ContaReceberService
     }
 
     /**
-     * Regenera a conta a receber de uma venda (deleta e recria com valor atualizado).
+     * Regenera a conta a receber de uma venda quando comissao_afiliado muda.
+     * Subtrai o afiliado do valor existente, ou recria se não existe.
      */
     public static function regenerar(Venda $venda): bool
     {
-        ContaReceber::where('id_venda', $venda->id_venda)
+        $contaExistente = ContaReceber::where('id_venda', $venda->id_venda)
             ->where('status', 'pendente')
-            ->delete();
+            ->first();
 
-        // Calcular repasse
-        $canal = $venda->canal;
-        $isMagalu = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
+        $afiliado = (float) ($venda->comissao_afiliado ?? 0);
 
-        if ($isMagalu) {
-            $repasse = (float) $venda->valor_total_venda - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0) + (float) $venda->subsidio_pix;
-        } else {
-            $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
+        if ($contaExistente) {
+            // Recalcular: repasse original (sem afiliado) - afiliado
+            $canal = $venda->canal;
+            $isMagalu = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
+
+            if ($isMagalu) {
+                $repasseBase = (float) $venda->valor_total_venda - (float) $venda->comissao + (float) $venda->subsidio_pix;
+            } else {
+                $repasseBase = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao;
+            }
+
+            $repasse = round($repasseBase - $afiliado, 2);
+            $contaExistente->update(['valor_parcela' => $repasse]);
+            return true;
         }
 
-        ContaReceber::create([
-            'id_venda' => $venda->id_venda,
-            'valor_parcela' => round($repasse, 2),
-            'data_vencimento' => $venda->data_venda,
-            'status' => 'pendente',
-            'numero_parcela' => 1,
-            'total_parcelas' => 1,
-            'forma_pagamento' => $canal?->nome_canal ?? 'Marketplace',
-            'observacoes' => "Repasse #{$venda->numero_pedido_canal}",
-            'lancamento_manual' => false,
-        ]);
-
-        return true;
+        // Se não existe, gerar normalmente
+        return self::gerarSeCompleta($venda);
     }
 
     /**

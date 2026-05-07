@@ -40,25 +40,24 @@ class RecalcularContasReceber extends Command
             $venda = $conta->venda;
             if (!$venda) continue;
 
-            $canal = $venda->canal;
-            $isMagalu = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
+            // Para vendas com afiliado, o repasse correto = valor atual - comissao_afiliado
+            // (o valor original já estava correto, só faltava deduzir o afiliado)
+            $afiliado = (float) ($venda->comissao_afiliado ?? 0);
+            if ($afiliado <= 0) continue;
 
-            if ($isMagalu) {
-                $repasseCorreto = (float) $venda->valor_total_venda - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0) + (float) $venda->subsidio_pix;
-            } else {
-                $repasseCorreto = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
-            }
-            $repasseCorreto = round($repasseCorreto, 2);
+            $repasseCorreto = round((float) $conta->valor_parcela - $afiliado, 2);
+
+            // Verificar se já foi deduzido (evitar deduzir duas vezes)
+            // Se a diferença entre valor atual e (valor - afiliado) é exatamente o afiliado, precisa corrigir
             $valorAtual = round((float) $conta->valor_parcela, 2);
 
             if (abs($valorAtual - $repasseCorreto) > 0.01) {
                 $divergentes++;
-                $diff = $repasseCorreto - $valorAtual;
                 $this->line(
                     "#{$venda->numero_pedido_canal} ({$canal?->nome_canal}): "
                     . "R$ " . number_format($valorAtual, 2, ',', '.')
                     . " → R$ " . number_format($repasseCorreto, 2, ',', '.')
-                    . " (" . ($diff > 0 ? '+' : '') . number_format($diff, 2, ',', '.') . ")"
+                    . " (afiliado: -" . number_format($afiliado, 2, ',', '.') . ")"
                 );
 
                 if (!$dryRun) {
