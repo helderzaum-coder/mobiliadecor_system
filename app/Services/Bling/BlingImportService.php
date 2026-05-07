@@ -592,6 +592,11 @@ class BlingImportService
 
     private static function buscarPercentualImposto(PedidoBlingStaging $staging): float
     {
+        return self::buscarPercentualImpostoPublic($staging);
+    }
+
+    public static function buscarPercentualImpostoPublic(PedidoBlingStaging $staging): float
+    {
         $cnpjId = config("bling.accounts.{$staging->bling_account}.cnpj_id");
         $cnpj = \App\Models\Cnpj::find($cnpjId);
 

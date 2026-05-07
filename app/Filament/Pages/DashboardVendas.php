@@ -46,6 +46,15 @@ class DashboardVendas extends Page implements HasForms
             ->{$result['success'] ? 'success' : 'warning'}()->send();
     }
 
+    public function buscarNfePorNumero(int $vendaId, string $numero): void
+    {
+        $venda = Venda::find($vendaId);
+        if (!$venda) return;
+        $result = \App\Services\VendaRecalculoService::buscarNfePorNumero($venda, $numero);
+        \Filament\Notifications\Notification::make()->title($result['msg'])
+            ->{$result['success'] ? 'success' : 'warning'}()->send();
+    }
+
     public function buscarCte(int $vendaId): void
     {
         $venda = Venda::find($vendaId);

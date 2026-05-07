@@ -391,6 +391,12 @@
                             style="background:#2563eb;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
                             📄 Buscar NF-e
                         </button>
+                    @else
+                        <button onclick="let n=prompt('Número da NF-e correta:');if(n)@this.buscarNfePorNumero({{ $venda->id_venda }},n)"
+                            style="background:#374151;color:#e5e7eb;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                            🔄 Trocar NF-e
+                        </button>
+                    @endif
                         @if(!$venda->data_prevista_envio)
                             <button onclick="let d=prompt('Data prevista de envio (YYYY-MM-DD):','{{ now()->addDays(7)->format('Y-m-d') }}');if(d)@this.marcarAguardandoEnvio({{ $venda->id_venda }},d)"
                                 style="background:#7c3aed;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">

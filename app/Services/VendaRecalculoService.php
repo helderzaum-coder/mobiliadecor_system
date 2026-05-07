@@ -43,6 +43,78 @@ class VendaRecalculoService
     }
 
     /**
+     * Busca NF-e por número específico no Bling e atualiza a venda.
+     * Usado quando a NF original foi cancelada e outra foi emitida.
+     */
+    public static function buscarNfePorNumero(Venda $venda, string $numeroNfe): array
+    {
+        $account = $venda->bling_account ?? 'primary';
+        $client = new \App\Services\Bling\BlingClient($account);
+
+        // Buscar NF-e por número na API
+        $pagina = 1;
+        $nfeEncontrada = null;
+
+        do {
+            $res = $client->get('/nfe', ['pagina' => $pagina, 'limite' => 100, 'numero' => $numeroNfe]);
+            if (!$res['success']) break;
+
+            $nfes = $res['body']['data'] ?? [];
+            foreach ($nfes as $nfeResumo) {
+                $numero = (string) ($nfeResumo['numero'] ?? '');
+                if ($numero === $numeroNfe) {
+                    $detalhe = $client->getNfe((int) $nfeResumo['id']);
+                    if ($detalhe['success']) {
+                        $nfeEncontrada = $detalhe['body']['data'] ?? null;
+                        break 2;
+                    }
+                }
+            }
+            $pagina++;
+        } while (count($nfes) >= 100);
+
+        if (!$nfeEncontrada) {
+            return ['success' => false, 'msg' => "NF-e {$numeroNfe} não encontrada no Bling."];
+        }
+
+        $valorNota = (float) ($nfeEncontrada['valorNota'] ?? 0);
+        $chaveAcesso = $nfeEncontrada['chaveAcesso'] ?? '';
+
+        // Buscar percentual de imposto
+        $staging = PedidoBlingStaging::where('bling_id', $venda->bling_id)->first();
+        $percentual = $staging ? \App\Services\Bling\BlingImportService::buscarPercentualImpostoPublic($staging) : (float) $venda->percentual_imposto;
+        $valorImposto = round($valorNota * ($percentual / 100), 2);
+
+        // Atualizar staging
+        if ($staging) {
+            $staging->update([
+                'nota_fiscal' => $nfeEncontrada['numero'] ?? '',
+                'nfe_numero' => $nfeEncontrada['numero'] ?? '',
+                'nfe_chave_acesso' => $chaveAcesso,
+                'nfe_valor' => $valorNota,
+                'base_imposto' => $valorNota,
+                'percentual_imposto' => $percentual,
+                'valor_imposto' => $valorImposto,
+            ]);
+        }
+
+        // Atualizar venda
+        $venda->update([
+            'numero_nota_fiscal' => $nfeEncontrada['numero'] ?? '',
+            'nfe_chave_acesso' => $chaveAcesso,
+            'nfe_valor' => $valorNota,
+            'base_imposto' => $valorNota,
+            'percentual_imposto' => $percentual,
+            'valor_imposto' => $valorImposto,
+            'frete_pago' => false,
+        ]);
+
+        self::recalcularMargens($venda);
+
+        return ['success' => true, 'msg' => "NF-e {$numeroNfe} vinculada (chave: ..." . substr($chaveAcesso, -10) . "). Imposto recalculado. Busque o CT-e novamente."];
+    }
+
+    /**
      * Busca CT-e no banco e aplica na venda.
      */
     public static function buscarCte(Venda $venda): array
