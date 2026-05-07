@@ -431,6 +431,6 @@ class VendaRecalculoService
         ]);
 
         // Gerar conta a receber se venda ficou completa
-        ContaReceberService::gerarSeCompleta($venda->fresh());
+        ContaReceberService::regenerar($venda->fresh());
     }
 }

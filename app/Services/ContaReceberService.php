@@ -30,9 +30,9 @@ class ContaReceberService
         $isMlMe2Full = in_array($venda->ml_tipo_frete, ['ME2', 'FULL']);
 
         if ($isMagalu) {
-            $repasse = (float) $venda->valor_total_venda - (float) $venda->comissao + (float) $venda->subsidio_pix;
+            $repasse = (float) $venda->valor_total_venda - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0) + (float) $venda->subsidio_pix;
         } else {
-            $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao;
+            $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
         }
 
         ContaReceber::create([
@@ -75,6 +75,45 @@ class ContaReceberService
         if (($isML || $isShopee) && !$venda->planilha_processada) {
             return false;
         }
+
+        // Planilha afiliado processada? (Shopee precisa)
+        if ($isShopee && !$venda->planilha_afiliado_processada) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Regenera a conta a receber de uma venda (deleta e recria com valor atualizado).
+     */
+    public static function regenerar(Venda $venda): bool
+    {
+        ContaReceber::where('id_venda', $venda->id_venda)
+            ->where('status', 'pendente')
+            ->delete();
+
+        // Calcular repasse
+        $canal = $venda->canal;
+        $isMagalu = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
+
+        if ($isMagalu) {
+            $repasse = (float) $venda->valor_total_venda - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0) + (float) $venda->subsidio_pix;
+        } else {
+            $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
+        }
+
+        ContaReceber::create([
+            'id_venda' => $venda->id_venda,
+            'valor_parcela' => round($repasse, 2),
+            'data_vencimento' => $venda->data_venda,
+            'status' => 'pendente',
+            'numero_parcela' => 1,
+            'total_parcelas' => 1,
+            'forma_pagamento' => $canal?->nome_canal ?? 'Marketplace',
+            'observacoes' => "Repasse #{$venda->numero_pedido_canal}",
+            'lancamento_manual' => false,
+        ]);
 
         return true;
     }
