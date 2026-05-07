@@ -324,7 +324,8 @@ class DashboardVendas extends Page implements HasForms
                 ->where('valor_frete_cliente', '>', 0);
         } elseif ($this->status_filtro === 'falta_planilha') {
             $query->where('planilha_processada', false)
-                ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%')->orWhere('nome_canal', 'like', '%agalu%')->orWhere('nome_canal', 'like', '%ebcontinental%')->orWhere('nome_canal', 'like', '%adeira%'));
+                ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%')->orWhere('nome_canal', 'like', '%agalu%')->orWhere('nome_canal', 'like', '%ebcontinental%')->orWhere('nome_canal', 'like', '%adeira%'))
+                ->where(fn ($q) => $q->whereNull('ml_sale_fee')->orWhere('ml_sale_fee', '<=', 0));
         } elseif ($this->status_filtro === 'sem_custo') {
             $query->where(fn ($q) => $q->where('custo_produtos', '<=', 0)->orWhereNull('custo_produtos'));
         } elseif ($this->status_filtro === 'aguardando_envio') {

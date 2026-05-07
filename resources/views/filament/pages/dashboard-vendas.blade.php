@@ -413,11 +413,10 @@
                         </button>
                     @endif
                     @if($isML && !$temPlanilha)
-                        {{-- Botão oculto: dados ML já são obtidos via API na importação --}}
-                        {{-- <button wire:click="aplicarPlanilhaML({{ $venda->id_venda }})" wire:loading.attr="disabled"
+                        <button wire:click="aplicarPlanilhaML({{ $venda->id_venda }})" wire:loading.attr="disabled"
                             style="background:#d97706;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
-                            📊 Aplicar Planilha ML
-                        </button> --}}
+                            📊 Buscar Dados ML
+                        </button>
                     @endif
                     @if($isShopee && !$temPlanilha)
                         <button wire:click="aplicarPlanilhaShopee({{ $venda->id_venda }})" wire:loading.attr="disabled"

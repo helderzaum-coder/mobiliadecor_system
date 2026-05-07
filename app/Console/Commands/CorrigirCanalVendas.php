@@ -69,6 +69,16 @@ class CorrigirCanalVendas extends Command
             }
         }
 
+        // Vendas ML com sale_fee mas planilha_processada=false
+        $mlSemFlag = Venda::where('planilha_processada', false)
+            ->where('ml_sale_fee', '>', 0)
+            ->get();
+        foreach ($mlSemFlag as $venda) {
+            $venda->update(['planilha_processada' => true]);
+            $corrigidos++;
+            $this->line("Venda #{$venda->id_venda} ML: marcada planilha_processada=true (sale_fee já existia)");
+        }
+
         $this->info("{$corrigidos} venda(s) corrigida(s).");
         return 0;
     }
