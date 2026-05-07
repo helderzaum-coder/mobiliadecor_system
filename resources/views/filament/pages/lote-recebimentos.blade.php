@@ -64,18 +64,18 @@
             @else
                 <div class="space-y-2 max-h-96 overflow-y-auto">
                     @foreach($this->loteItens as $conta)
-                        <div class="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-700/30 text-sm">
+                        <div class="flex items-center justify-between p-3 rounded-lg bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm">
                             <div>
-                                <span class="font-mono text-xs text-gray-800 dark:text-gray-200">{{ $conta->venda?->numero_pedido_canal }}</span>
+                                <span class="font-mono text-xs text-gray-800 dark:text-gray-100 font-semibold">{{ $conta->venda?->numero_pedido_canal }}</span>
                                 <span class="text-gray-400 mx-1">·</span>
-                                <span class="text-xs text-gray-500">{{ $conta->forma_pagamento }}</span>
+                                <span class="text-xs text-gray-600 dark:text-gray-300">{{ $conta->forma_pagamento }}</span>
                                 <span class="text-gray-400 mx-1">·</span>
-                                <span class="text-xs text-gray-500">{{ $conta->venda?->data_venda?->format('d/m') }}</span>
+                                <span class="text-xs text-gray-600 dark:text-gray-300">{{ $conta->venda?->data_venda?->format('d/m') }}</span>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <span class="font-semibold text-green-600 text-sm">R$ {{ number_format($conta->valor_parcela, 2, ',', '.') }}</span>
+                            <div class="flex items-center gap-3">
+                                <span class="font-semibold text-green-500 text-sm">R$ {{ number_format($conta->valor_parcela, 2, ',', '.') }}</span>
                                 <button wire:click="removerDoLote({{ $conta->id_conta_receber }})"
-                                    style="color:#ef4444;font-size:14px;cursor:pointer;background:none;border:none;">✕</button>
+                                    style="color:#ef4444;font-size:16px;cursor:pointer;background:none;border:none;font-weight:bold;">✕</button>
                             </div>
                         </div>
                     @endforeach
