@@ -76,7 +76,27 @@ class CorrigirCanalVendas extends Command
         foreach ($mlSemFlag as $venda) {
             $venda->update(['planilha_processada' => true]);
             $corrigidos++;
-            $this->line("Venda #{$venda->id_venda} ML: marcada planilha_processada=true (sale_fee já existia)");
+            $this->line("Venda #{$venda->id_venda} ML: marcada planilha_processada=true");
+        }
+
+        // Vendas com canal_nome inválido (contém número de pedido)
+        $invalidos = Venda::where(function ($q) {
+            $q->where('canal_nome', 'like', '%- id cp:%')
+              ->orWhere('canal_nome', 'like', '%2000%')
+              ->orWhereRaw('LENGTH(canal_nome) > 30');
+        })->get();
+        foreach ($invalidos as $venda) {
+            $staging = \App\Models\PedidoBlingStaging::where('bling_id', $venda->bling_id)->first();
+            $canalNome = $staging->canal ?? null;
+            $canal = $canalNome ? $canais->first(
+                fn ($c) => str_replace(' ', '', strtolower($c->nome_canal)) === str_replace(' ', '', strtolower($canalNome))
+            ) : null;
+
+            if ($canal) {
+                $venda->update(['id_canal' => $canal->id_canal, 'canal_nome' => $canal->nome_canal]);
+                $corrigidos++;
+                $this->line("Venda #{$venda->id_venda} canal_nome corrigido: {$venda->canal_nome} → {$canal->nome_canal}");
+            }
         }
 
         $this->info("{$corrigidos} venda(s) corrigida(s).");

@@ -454,7 +454,7 @@ class DashboardVendas extends Page implements HasForms
 
     public function getVendasPorCanalProperty(): array
     {
-        return $this->buildQuery()
+        $dados = $this->buildQuery()
             ->reorder()
             ->selectRaw('COALESCE(canal_nome, "Outros") as canal, COUNT(*) as qtd, SUM(valor_total_venda) as total, SUM(margem_venda_total) as lucro')
             ->groupBy('canal_nome')
@@ -467,6 +467,26 @@ class DashboardVendas extends Page implements HasForms
                 'lucro' => round((float) $r->lucro, 2),
             ])
             ->toArray();
+
+        // Agrupar canais com apenas 1 venda ou nomes inválidos em "Outros"
+        $principais = [];
+        $outros = ['canal' => 'Outros', 'qtd' => 0, 'total' => 0, 'lucro' => 0];
+
+        foreach ($dados as $d) {
+            if ($d['qtd'] >= 2 && strlen($d['canal']) <= 30) {
+                $principais[] = $d;
+            } else {
+                $outros['qtd'] += $d['qtd'];
+                $outros['total'] += $d['total'];
+                $outros['lucro'] += $d['lucro'];
+            }
+        }
+
+        if ($outros['qtd'] > 0) {
+            $principais[] = $outros;
+        }
+
+        return $principais;
     }
 
     public static function canAccess(): bool
