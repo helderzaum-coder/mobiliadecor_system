@@ -24,6 +24,8 @@ class RelatorioFretes extends Page implements HasForms
     public ?string $canal = null;
     public ?string $conta = null;
     public ?string $filtro_frete = null;
+    public ?string $filtro_uf = null;
+    public ?string $filtro_cidade = null;
     public ?string $data_inicio = null;
     public ?string $data_fim = null;
 
@@ -35,7 +37,7 @@ class RelatorioFretes extends Page implements HasForms
     public function form(Forms\Form $form): Forms\Form
     {
         return $form->schema([
-            Forms\Components\Grid::make(7)->schema([
+            Forms\Components\Grid::make(9)->schema([
                 Forms\Components\Select::make('periodo')
                     ->label('Período')
                     ->options([
@@ -87,6 +89,32 @@ class RelatorioFretes extends Page implements HasForms
                     ])
                     ->placeholder('Todos')
                     ->reactive(),
+                Forms\Components\Select::make('filtro_uf')
+                    ->label('Estado')
+                    ->options(fn () => \App\Models\PedidoBlingStaging::whereNotNull('dest_uf')
+                        ->where('dest_uf', '!=', '')
+                        ->distinct()
+                        ->orderBy('dest_uf')
+                        ->pluck('dest_uf', 'dest_uf')
+                        ->toArray())
+                    ->placeholder('Todos')
+                    ->searchable()
+                    ->reactive()
+                    ->afterStateUpdated(fn ($set) => $set('filtro_cidade', null)),
+                Forms\Components\Select::make('filtro_cidade')
+                    ->label('Cidade')
+                    ->options(function ($get) {
+                        $query = \App\Models\PedidoBlingStaging::whereNotNull('dest_cidade')
+                            ->where('dest_cidade', '!=', '');
+                        if ($get('filtro_uf')) {
+                            $query->where('dest_uf', $get('filtro_uf'));
+                        }
+                        return $query->distinct()->orderBy('dest_cidade')->pluck('dest_cidade', 'dest_cidade')->toArray();
+                    })
+                    ->placeholder('Todas')
+                    ->searchable()
+                    ->reactive()
+                    ->visible(fn ($get) => filled($get('filtro_uf'))),
             ]),
         ]);
     }
@@ -118,6 +146,17 @@ class RelatorioFretes extends Page implements HasForms
         }
         if ($this->conta) {
             $query->where('bling_account', $this->conta);
+        }
+
+        // Filtro por UF/Cidade (dados no staging)
+        if ($this->filtro_uf) {
+            $query->whereIn('bling_id', function ($sub) {
+                $sub->select('bling_id')->from('pedidos_bling_staging')
+                    ->where('dest_uf', $this->filtro_uf);
+                if ($this->filtro_cidade) {
+                    $sub->where('dest_cidade', $this->filtro_cidade);
+                }
+            });
         }
 
         if ($this->filtro_frete === 'prejuizo') {
