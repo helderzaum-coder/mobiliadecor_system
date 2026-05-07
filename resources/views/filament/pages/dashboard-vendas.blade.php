@@ -115,6 +115,7 @@
             </div>
         </div>
     </div>
+    <div id="chartDataHolder" class="hidden" data-grafico='@json($grafico)' data-canais='@json($porCanal)'></div>
 
     {{-- Cards de Vendas --}}
     <div class="mt-6 space-y-3">
@@ -536,11 +537,12 @@
         function doInitCharts() {
             const barEl = document.getElementById('chartVendasDiarias');
             const donutEl = document.getElementById('chartCanais');
-            if (!barEl || !donutEl) return;
+            const holder = document.getElementById('chartDataHolder');
+            if (!barEl || !donutEl || !holder) return;
 
             try {
-                const grafico = @json($grafico);
-                const porCanal = @json($porCanal);
+                const grafico = JSON.parse(holder.dataset.grafico);
+                const porCanal = JSON.parse(holder.dataset.canais);
                 const cores = ['#3b82f6','#f59e0b','#10b981','#8b5cf6','#ef4444','#06b6d4','#ec4899','#6366f1'];
                 const isDark = document.documentElement.classList.contains('dark');
                 const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
