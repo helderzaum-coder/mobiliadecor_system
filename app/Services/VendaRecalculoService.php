@@ -431,6 +431,11 @@ class VendaRecalculoService
         ]);
 
         // Gerar conta a receber se venda ficou completa
-        ContaReceberService::regenerar($venda->fresh());
+        // Regenerar conta a receber se comissao_afiliado mudou
+        if ((float) ($venda->comissao_afiliado ?? 0) > 0) {
+            ContaReceberService::regenerar($venda->fresh());
+        } else {
+            ContaReceberService::gerarSeCompleta($venda->fresh());
+        }
     }
 }

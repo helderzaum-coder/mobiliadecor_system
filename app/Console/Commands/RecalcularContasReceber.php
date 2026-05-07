@@ -21,7 +21,7 @@ class RecalcularContasReceber extends Command
         $mes = $this->option('mes');
 
         $query = ContaReceber::where('status', 'pendente')
-            ->whereHas('venda');
+            ->whereHas('venda', fn ($q) => $q->where('comissao_afiliado', '>', 0));
 
         if ($mes) {
             $query->whereHas('venda', fn ($q) => $q
