@@ -60,8 +60,10 @@ class VendaResource extends Resource
                 Forms\Components\DatePicker::make('data_venda')
                     ->label('Data')->required(),
                 Forms\Components\TextInput::make('cliente_nome')
-                    ->label('Cliente')->disabled(),
-            ])->columns(3),
+                    ->label('Cliente'),
+                Forms\Components\TextInput::make('cliente_documento')
+                    ->label('CPF/CNPJ'),
+            ])->columns(4),
 
             Forms\Components\Section::make('Valores')->schema([
                 Forms\Components\TextInput::make('total_produtos')

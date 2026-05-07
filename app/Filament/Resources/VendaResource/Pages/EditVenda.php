@@ -21,6 +21,14 @@ class EditVenda extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('salvar_voltar')
+                ->label('Salvar e Voltar')
+                ->icon('heroicon-o-check')
+                ->color('success')
+                ->action(function () {
+                    $this->save();
+                    $this->redirect(VendaResource::getUrl());
+                }),
             Actions\Action::make('recalcular')
                 ->label('Recalcular Margens')
                 ->icon('heroicon-o-calculator')
