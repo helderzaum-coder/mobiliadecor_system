@@ -354,21 +354,21 @@ class DashboardVendas extends Page implements HasForms
         } elseif ($this->status_filtro === 'aguardando_envio') {
             $query->whereNotNull('data_prevista_envio');
         } elseif ($this->status_filtro === 'incompleto') {
-            // Incompleto: NOT completo (falta NF-e OU falta frete OU falta planilha)
+            // Incompleto: tudo que NÃO é completo
             $query->where(function ($q) {
                 $q->where(fn ($q2) => $q2->whereNull('nfe_chave_acesso')->orWhere('nfe_chave_acesso', ''))
                   ->orWhere(function ($q2) {
                       $q2->where('frete_pago', false)
-                         ->whereNotIn('ml_tipo_frete', ['ME2', 'FULL'])
-                         ->where('valor_frete_cliente', '>', 0);
+                         ->where(fn ($q3) => $q3->whereNull('ml_tipo_frete')->orWhereNotIn('ml_tipo_frete', ['ME2', 'FULL']))
+                         ->where('valor_frete_cliente', '>', 0)
+                         ->where('valor_frete_transportadora', '<=', 0);
                   })
                   ->orWhere(function ($q2) {
                       $q2->where('planilha_processada', false)
-                         ->whereHas('canal', fn ($q3) => $q3->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%')->orWhere('nome_canal', 'like', '%agalu%')->orWhere('nome_canal', 'like', '%ebcontinental%')->orWhere('nome_canal', 'like', '%adeira%'))
-                         ->where(fn ($q3) => $q3->whereNull('ml_sale_fee')->orWhere('ml_sale_fee', '<=', 0));
+                         ->where(fn ($q3) => $q3->whereNull('ml_sale_fee')->orWhere('ml_sale_fee', '<=', 0))
+                         ->whereHas('canal', fn ($q3) => $q3->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%')->orWhere('nome_canal', 'like', '%agalu%')->orWhere('nome_canal', 'like', '%ebcontinental%')->orWhere('nome_canal', 'like', '%adeira%'));
                   });
-            })
-            ->whereNull('data_prevista_envio');
+            });
         } elseif ($this->status_filtro === 'completo') {
             // Completo: (tem NF-e + frete OK + planilha OK) OU (tem data_prevista_envio + custo > 0)
             $query->where(function ($q) {
