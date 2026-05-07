@@ -7,7 +7,7 @@
         $resumo = $this->resumo;
     @endphp
 
-    {{-- KPIs --}}
+    {{-- KPIs - Linha 1: Receita e Custos --}}
     <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;">
         <div style="flex:1;min-width:150px;background:var(--kpi-bg,#fff);border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:3px solid #3b82f6;">
             <div style="font-size:11px;color:#6b7280;text-transform:uppercase;">Pedidos com Frete</div>
@@ -18,21 +18,39 @@
             <div style="font-size:24px;font-weight:800;color:#059669;">R$ {{ number_format($resumo['total_cobrado'], 2, ',', '.') }}</div>
         </div>
         <div style="flex:1;min-width:150px;background:var(--kpi-bg,#fff);border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:3px solid #f59e0b;">
-            <div style="font-size:11px;color:#6b7280;text-transform:uppercase;">Frete Pago</div>
+            <div style="font-size:11px;color:#6b7280;text-transform:uppercase;">Transportadora</div>
             <div style="font-size:24px;font-weight:800;color:#d97706;">R$ {{ number_format($resumo['total_pago'], 2, ',', '.') }}</div>
         </div>
+        <div style="flex:1;min-width:150px;background:var(--kpi-bg,#fff);border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:3px solid #8b5cf6;">
+            <div style="font-size:11px;color:#6b7280;text-transform:uppercase;">Comissão s/ Frete</div>
+            <div style="font-size:24px;font-weight:800;color:#7c3aed;">R$ {{ number_format($resumo['comissao_frete'], 2, ',', '.') }}</div>
+        </div>
+        <div style="flex:1;min-width:150px;background:var(--kpi-bg,#fff);border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:3px solid #ec4899;">
+            <div style="font-size:11px;color:#6b7280;text-transform:uppercase;">Imposto s/ Frete</div>
+            <div style="font-size:24px;font-weight:800;color:#db2777;">R$ {{ number_format($resumo['imposto_frete'], 2, ',', '.') }}</div>
+        </div>
+    </div>
+
+    {{-- KPIs - Linha 2: Resultado --}}
+    <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:12px;">
         <div style="flex:1;min-width:150px;background:var(--kpi-bg,#fff);border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:3px solid {{ $resumo['margem_frete'] >= 0 ? '#10b981' : '#ef4444' }};">
             <div style="font-size:11px;color:#6b7280;text-transform:uppercase;">Margem Frete Total</div>
             <div style="font-size:24px;font-weight:800;color:{{ $resumo['margem_frete'] >= 0 ? '#059669' : '#dc2626' }};">R$ {{ number_format($resumo['margem_frete'], 2, ',', '.') }}</div>
+            <div style="font-size:10px;color:#9ca3af;margin-top:2px;">Cobrado - Transp. - Comissão - Imposto</div>
         </div>
         <div style="flex:1;min-width:150px;background:var(--kpi-bg,#fff);border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:3px solid #ef4444;">
             <div style="font-size:11px;color:#6b7280;text-transform:uppercase;">Com Prejuízo</div>
             <div style="font-size:24px;font-weight:800;color:#dc2626;">{{ $resumo['com_prejuizo'] }}</div>
-            <div style="font-size:11px;color:#9ca3af;">R$ {{ number_format($resumo['total_prejuizo'], 2, ',', '.') }} perdidos</div>
+            <div style="font-size:10px;color:#9ca3af;margin-top:2px;">R$ {{ number_format($resumo['total_prejuizo'], 2, ',', '.') }} perdidos</div>
         </div>
         <div style="flex:1;min-width:150px;background:var(--kpi-bg,#fff);border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:3px solid #f59e0b;">
             <div style="font-size:11px;color:#6b7280;text-transform:uppercase;">Acima do Cotado</div>
             <div style="font-size:24px;font-weight:800;color:#d97706;">{{ $resumo['acima_cotado'] }}</div>
+        </div>
+        <div style="flex:1;min-width:150px;background:var(--kpi-bg,#fff);border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:3px solid #6b7280;">
+            <div style="font-size:11px;color:#6b7280;text-transform:uppercase;">Custo Total Frete</div>
+            <div style="font-size:24px;font-weight:800;color:var(--kpi-text,#1f2937);">R$ {{ number_format($resumo['total_pago'] + $resumo['comissao_frete'] + $resumo['imposto_frete'], 2, ',', '.') }}</div>
+            <div style="font-size:10px;color:#9ca3af;margin-top:2px;">Transp. + Comissão + Imposto</div>
         </div>
     </div>
     <style>

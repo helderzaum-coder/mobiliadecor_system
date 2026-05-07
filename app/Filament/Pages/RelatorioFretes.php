@@ -203,25 +203,48 @@ class RelatorioFretes extends Page implements HasForms
         $totalCobrado = (clone $query)->sum('valor_frete_cliente');
         $totalPago = (clone $query)->sum('valor_frete_transportadora');
         $totalCotado = (clone $query)->whereNotNull('frete_cotado')->where('frete_cotado', '>', 0)->sum('frete_cotado');
+        $totalMargemFrete = (clone $query)->sum('margem_frete');
         $count = (clone $query)->count();
 
-        $comPrejuizo = (clone $query)->whereRaw('valor_frete_transportadora > valor_frete_cliente')->count();
-        $totalPrejuizo = (clone $query)->whereRaw('valor_frete_transportadora > valor_frete_cliente')
-            ->selectRaw('SUM(valor_frete_transportadora - valor_frete_cliente) as prejuizo')
-            ->value('prejuizo') ?? 0;
+        $comPrejuizo = (clone $query)->where('margem_frete', '<', 0)->count();
+        $totalPrejuizo = abs((float) ((clone $query)->where('margem_frete', '<', 0)->sum('margem_frete')));
 
         $acimaCotado = (clone $query)->whereNotNull('frete_cotado')->where('frete_cotado', '>', 0)
             ->whereRaw('valor_frete_transportadora > frete_cotado')->count();
+
+        // Calcular comissão e imposto sobre frete (aproximado via margem)
+        $totalComissaoFrete = (float) $totalCobrado - (float) $totalPago - (float) $totalMargemFrete;
+        // Detalhar: buscar vendas com canal que cobra comissão/imposto sobre frete
+        $vendasComFrete = (clone $query)->get();
+        $somaComissaoFrete = 0;
+        $somaImpostoFrete = 0;
+        foreach ($vendasComFrete as $v) {
+            $canal = $v->canal;
+            $cobrado = (float) $v->valor_frete_cliente;
+            if (!$canal || $cobrado <= 0) continue;
+
+            if ((bool) ($canal->comissao_sobre_frete ?? false)) {
+                $regra = $canal->regrasComissao()->where('ativo', true)->first();
+                if ($regra) {
+                    $somaComissaoFrete += round($cobrado * (float) $regra->percentual / 100, 2);
+                }
+            }
+            if ((bool) ($canal->imposto_sobre_frete ?? false) && (float) $v->percentual_imposto > 0) {
+                $somaImpostoFrete += round($cobrado * (float) $v->percentual_imposto / 100, 2);
+            }
+        }
 
         return [
             'count' => $count,
             'total_cobrado' => (float) $totalCobrado,
             'total_pago' => (float) $totalPago,
             'total_cotado' => (float) $totalCotado,
-            'margem_frete' => (float) $totalCobrado - (float) $totalPago,
+            'margem_frete' => (float) $totalMargemFrete,
             'com_prejuizo' => $comPrejuizo,
-            'total_prejuizo' => (float) $totalPrejuizo,
+            'total_prejuizo' => $totalPrejuizo,
             'acima_cotado' => $acimaCotado,
+            'comissao_frete' => $somaComissaoFrete,
+            'imposto_frete' => $somaImpostoFrete,
         ];
     }
 
