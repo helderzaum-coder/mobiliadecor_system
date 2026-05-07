@@ -53,7 +53,8 @@
                     <th class="p-3 text-right text-gray-600 dark:text-gray-300">Cobrado</th>
                     <th class="p-3 text-right text-gray-600 dark:text-gray-300">Cotado</th>
                     <th class="p-3 text-right text-gray-600 dark:text-gray-300">Pago</th>
-                    <th class="p-3 text-right text-gray-600 dark:text-gray-300">Diferença</th>
+                    <th class="p-3 text-right text-gray-600 dark:text-gray-300">Comissão Frete</th>
+                    <th class="p-3 text-right text-gray-600 dark:text-gray-300">Imposto Frete</th>
                     <th class="p-3 text-right text-gray-600 dark:text-gray-300">Margem Frete</th>
                 </tr>
             </thead>
@@ -63,31 +64,44 @@
                         $cobrado = (float) $venda->valor_frete_cliente;
                         $pago = (float) $venda->valor_frete_transportadora;
                         $cotado = (float) ($venda->frete_cotado ?? 0);
-                        $diff = $pago - $cobrado;
-                        $diffCotado = $cotado > 0 ? $pago - $cotado : 0;
                         $margem = (float) $venda->margem_frete;
+
+                        // Calcular comissão e imposto sobre frete
+                        $canalVenda = $venda->canal;
+                        $comissaoSobreFrete = (bool) ($canalVenda->comissao_sobre_frete ?? false);
+                        $impostoSobreFrete = (bool) ($canalVenda->imposto_sobre_frete ?? false);
+                        $pctImposto = (float) $venda->percentual_imposto;
+
+                        $comissaoFrete = 0;
+                        if ($comissaoSobreFrete && $cobrado > 0 && $canalVenda) {
+                            $regraCanal = $canalVenda->regrasComissao()->where('ativo', true)->first();
+                            if ($regraCanal) {
+                                $comissaoFrete = round($cobrado * (float) $regraCanal->percentual / 100, 2);
+                            }
+                        }
+                        $impostoFrete = ($impostoSobreFrete && $cobrado > 0 && $pctImposto > 0)
+                            ? round($cobrado * $pctImposto / 100, 2) : 0;
                     @endphp
-                    <tr class="border-t border-gray-200 dark:border-gray-700 {{ $diff > 0 ? 'bg-red-50 dark:bg-red-900/10' : '' }}">
+                    <tr class="border-t border-gray-200 dark:border-gray-700 {{ $margem < 0 ? 'bg-red-50 dark:bg-red-900/10' : '' }}">
                         <td class="p-3 font-mono font-semibold text-gray-800 dark:text-white">{{ $venda->numero_pedido_canal }}</td>
                         <td class="p-3 text-gray-600 dark:text-gray-300">{{ $venda->canal?->nome_canal ?? '-' }}</td>
                         <td class="p-3 text-gray-500">{{ $venda->data_venda?->format('d/m/Y') }}</td>
                         <td class="p-3 text-gray-600 dark:text-gray-300">{{ \Illuminate\Support\Str::limit($venda->cliente_nome, 25) }}</td>
                         <td class="p-3 text-gray-500">{{ $venda->staging_cidade ? $venda->staging_cidade . '/' . $venda->staging_uf : '-' }}</td>
                         <td class="p-3 text-right text-gray-800 dark:text-white">R$ {{ number_format($cobrado, 2, ',', '.') }}</td>
-                        <td class="p-3 text-right {{ $diffCotado > 0 ? 'text-yellow-600' : 'text-gray-500' }}">
+                        <td class="p-3 text-right {{ $cotado > 0 && $pago > $cotado ? 'text-yellow-600' : 'text-gray-500' }}">
                             {{ $cotado > 0 ? 'R$ ' . number_format($cotado, 2, ',', '.') : '-' }}
                         </td>
                         <td class="p-3 text-right font-semibold text-gray-800 dark:text-white">R$ {{ number_format($pago, 2, ',', '.') }}</td>
-                        <td class="p-3 text-right font-bold {{ $diff > 0 ? 'text-red-600' : 'text-green-600' }}">
-                            {{ $diff > 0 ? '+' : '' }}R$ {{ number_format($diff, 2, ',', '.') }}
-                        </td>
+                        <td class="p-3 text-right {{ $comissaoFrete > 0 ? 'text-orange-600' : 'text-gray-400' }}">{{ $comissaoFrete > 0 ? 'R$ ' . number_format($comissaoFrete, 2, ',', '.') : '-' }}</td>
+                        <td class="p-3 text-right {{ $impostoFrete > 0 ? 'text-orange-600' : 'text-gray-400' }}">{{ $impostoFrete > 0 ? 'R$ ' . number_format($impostoFrete, 2, ',', '.') : '-' }}</td>
                         <td class="p-3 text-right font-bold {{ $margem >= 0 ? 'text-green-600' : 'text-red-600' }}">
                             R$ {{ number_format($margem, 2, ',', '.') }}
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="10" class="p-6 text-center text-gray-500">Nenhum registro encontrado.</td>
+                        <td colspan="11" class="p-6 text-center text-gray-500">Nenhum registro encontrado.</td>
                     </tr>
                 @endforelse
             </tbody>
