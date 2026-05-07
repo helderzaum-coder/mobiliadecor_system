@@ -43,12 +43,13 @@ class BlingOAuthService
             'redirect_uri' => route('bling.callback'),
         ]);
 
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $jwt,
-        ])->withOptions(['verify' => false])->asForm()->post(config('bling.oauth_token'), [
+        $response = Http::withOptions(['verify' => false])->asForm()->post(config('bling.oauth_token'), [
             'grant_type' => 'authorization_code',
             'code' => $code,
             'redirect_uri' => route('bling.callback'),
+            'client_id' => $this->accountConfig['client_id'],
+            'client_assertion_type' => 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+            'client_assertion' => $jwt,
         ]);
 
         if ($response->failed()) {
@@ -108,11 +109,12 @@ class BlingOAuthService
 
     private function refreshAccessToken(BlingToken $token): ?string
     {
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->gerarJwt(),
-        ])->withOptions(['verify' => false])->asForm()->post(config('bling.oauth_token'), [
+        $response = Http::withOptions(['verify' => false])->asForm()->post(config('bling.oauth_token'), [
             'grant_type' => 'refresh_token',
             'refresh_token' => $token->refresh_token,
+            'client_id' => $this->accountConfig['client_id'],
+            'client_assertion_type' => 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+            'client_assertion' => $this->gerarJwt(),
         ]);
 
         if ($response->failed()) {
