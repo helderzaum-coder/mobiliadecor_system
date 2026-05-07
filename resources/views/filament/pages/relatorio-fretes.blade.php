@@ -1,7 +1,15 @@
 <x-filament-panels::page>
-    <form wire:submit.prevent="">
-        {{ $this->form }}
-    </form>
+    <div style="display:flex;align-items:center;gap:12px;">
+        <div style="flex:1;">
+            <form wire:submit.prevent="">
+                {{ $this->form }}
+            </form>
+        </div>
+        <button wire:click="exportar" wire:loading.attr="disabled"
+            style="background:#059669;color:#fff;padding:8px 14px;font-size:12px;border-radius:8px;border:none;cursor:pointer;white-space:nowrap;">
+            📁 Exportar CSV
+        </button>
+    </div>
 
     @php
         $resumo = $this->resumo;

@@ -34,6 +34,73 @@ class RelatorioFretes extends Page implements HasForms
         $this->mes_selecionado = now()->format('Y-m');
     }
 
+    public function exportar()
+    {
+        $vendas = $this->buildQuery()->limit(5000)->get();
+
+        // Carregar cidade/UF do staging
+        $blingIds = $vendas->pluck('bling_id')->filter()->toArray();
+        $stagings = [];
+        if (!empty($blingIds)) {
+            $stagings = \App\Models\PedidoBlingStaging::whereIn('bling_id', $blingIds)
+                ->select('bling_id', 'dest_cidade', 'dest_uf')
+                ->get()
+                ->keyBy('bling_id');
+        }
+
+        $filename = 'relatorio_fretes_' . now()->format('Y-m-d_His') . '.csv';
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename={$filename}",
+        ];
+
+        $callback = function () use ($vendas, $stagings) {
+            $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM UTF-8
+
+            fputcsv($file, [
+                'Pedido', 'Canal', 'Data', 'Cliente', 'Cidade', 'UF',
+                'Frete Cobrado', 'Frete Cotado', 'Frete Pago',
+                'Comissão Frete', 'Imposto Frete', 'Margem Frete',
+            ], ';');
+
+            foreach ($vendas as $venda) {
+                $staging = $stagings[$venda->bling_id] ?? null;
+                $canal = $venda->canal;
+                $cobrado = (float) $venda->valor_frete_cliente;
+
+                $comissaoFrete = 0;
+                if ($canal && (bool) ($canal->comissao_sobre_frete ?? false) && $cobrado > 0) {
+                    $regra = $canal->regrasComissao()->where('ativo', true)->first();
+                    if ($regra) $comissaoFrete = round($cobrado * (float) $regra->percentual / 100, 2);
+                }
+                $impostoFrete = 0;
+                if ($canal && (bool) ($canal->imposto_sobre_frete ?? false) && $cobrado > 0 && (float) $venda->percentual_imposto > 0) {
+                    $impostoFrete = round($cobrado * (float) $venda->percentual_imposto / 100, 2);
+                }
+
+                fputcsv($file, [
+                    $venda->numero_pedido_canal,
+                    $canal?->nome_canal ?? '-',
+                    $venda->data_venda?->format('d/m/Y'),
+                    $venda->cliente_nome,
+                    $staging?->dest_cidade ?? '',
+                    $staging?->dest_uf ?? '',
+                    number_format((float) $venda->valor_frete_cliente, 2, ',', ''),
+                    number_format((float) ($venda->frete_cotado ?? 0), 2, ',', ''),
+                    number_format((float) $venda->valor_frete_transportadora, 2, ',', ''),
+                    number_format($comissaoFrete, 2, ',', ''),
+                    number_format($impostoFrete, 2, ',', ''),
+                    number_format((float) $venda->margem_frete, 2, ',', ''),
+                ], ';');
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
     public function form(Forms\Form $form): Forms\Form
     {
         return $form->schema([
