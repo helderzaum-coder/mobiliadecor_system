@@ -58,7 +58,6 @@ class ShopeeAfiliadosService
                 if (empty($pedidoId)) continue;
 
                 $despesa = abs(self::parseDecimal($row[$idxDespesas] ?? '0'));
-                if ($despesa <= 0) continue;
 
                 if (!isset($pedidosDespesas[$pedidoId])) {
                     $pedidosDespesas[$pedidoId] = 0;
@@ -89,8 +88,12 @@ class ShopeeAfiliadosService
                 // Recalcular margens
                 VendaRecalculoService::recalcularMargens($venda);
 
-                $resultado['atualizados']++;
-                $resultado['detalhes'][] = "{$pedidoId}: R$ " . number_format($despesa, 2, ',', '.');
+                if ($despesa > 0) {
+                    $resultado['atualizados']++;
+                    $resultado['detalhes'][] = "{$pedidoId}: R$ " . number_format($despesa, 2, ',', '.');
+                } else {
+                    $resultado['sem_valor']++;
+                }
             }
 
         } catch (\Exception $e) {
