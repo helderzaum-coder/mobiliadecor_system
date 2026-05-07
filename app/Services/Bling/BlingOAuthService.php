@@ -36,8 +36,15 @@ class BlingOAuthService
 
     public function exchangeCodeForToken(string $code): ?BlingToken
     {
+        $jwt = $this->gerarJwt();
+
+        Log::info("Bling OAuth [{$this->accountKey}]: Trocando code por token", [
+            'code_prefix' => substr($code, 0, 10) . '...',
+            'redirect_uri' => route('bling.callback'),
+        ]);
+
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->gerarJwt(),
+            'Authorization' => 'Bearer ' . $jwt,
         ])->withOptions(['verify' => false])->asForm()->post(config('bling.oauth_token'), [
             'grant_type' => 'authorization_code',
             'code' => $code,

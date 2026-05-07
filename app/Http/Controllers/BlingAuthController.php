@@ -36,11 +36,22 @@ class BlingAuthController extends Controller
     {
         $code = $request->get('code');
         $accountKey = $request->get('state');
+        $error = $request->get('error');
         $dashboardRoute = Route::has('filament.helder.pages.dashboard')
             ? route('filament.helder.pages.dashboard')
             : url('/');
 
+        if ($error) {
+            \Illuminate\Support\Facades\Log::error("Bling OAuth callback: erro do Bling", [
+                'error' => $error,
+                'error_description' => $request->get('error_description'),
+            ]);
+            return redirect($dashboardRoute)
+                ->with('error', "Erro do Bling: {$error}");
+        }
+
         if (!$code || !$accountKey) {
+            \Illuminate\Support\Facades\Log::error("Bling OAuth callback: code ou state ausente", $request->all());
             return redirect($dashboardRoute)
                 ->with('error', 'Autorização cancelada ou inválida.');
         }
