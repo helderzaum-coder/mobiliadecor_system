@@ -36,10 +36,9 @@ class BlingOAuthService
 
     public function exchangeCodeForToken(string $code): ?BlingToken
     {
-        $response = Http::withBasicAuth(
-            $this->accountConfig['client_id'],
-            $this->accountConfig['client_secret']
-        )->withOptions(['verify' => false])->asForm()->post(config('bling.oauth_token'), [
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $this->gerarJwt(),
+        ])->withOptions(['verify' => false])->asForm()->post(config('bling.oauth_token'), [
             'grant_type' => 'authorization_code',
             'code' => $code,
             'redirect_uri' => route('bling.callback'),
@@ -102,10 +101,9 @@ class BlingOAuthService
 
     private function refreshAccessToken(BlingToken $token): ?string
     {
-        $response = Http::withBasicAuth(
-            $this->accountConfig['client_id'],
-            $this->accountConfig['client_secret']
-        )->withOptions(['verify' => false])->asForm()->post(config('bling.oauth_token'), [
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $this->gerarJwt(),
+        ])->withOptions(['verify' => false])->asForm()->post(config('bling.oauth_token'), [
             'grant_type' => 'refresh_token',
             'refresh_token' => $token->refresh_token,
         ]);
@@ -139,5 +137,34 @@ class BlingOAuthService
     public function getAccountName(): string
     {
         return $this->accountConfig['name'] ?? $this->accountKey;
+    }
+
+    private function gerarJwt(): string
+    {
+        $clientId = $this->accountConfig['client_id'];
+        $clientSecret = $this->accountConfig['client_secret'];
+        $tokenUrl = config('bling.oauth_token');
+
+        $header = $this->base64url(json_encode(['alg' => 'HS256', 'typ' => 'JWT']));
+
+        $now = time();
+        $payload = $this->base64url(json_encode([
+            'iss' => $clientId,
+            'sub' => $clientId,
+            'aud' => $tokenUrl,
+            'iat' => $now,
+            'exp' => $now + 60,
+        ]));
+
+        $signature = $this->base64url(
+            hash_hmac('sha256', "{$header}.{$payload}", $clientSecret, true)
+        );
+
+        return "{$header}.{$payload}.{$signature}";
+    }
+
+    private function base64url(string $data): string
+    {
+        return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
     }
 }
