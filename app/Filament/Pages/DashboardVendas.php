@@ -108,6 +108,19 @@ class DashboardVendas extends Page implements HasForms
         \Filament\Notifications\Notification::make()->title('Margens recalculadas.')->success()->send();
     }
 
+    public function marcarFreteEnvias(int $vendaId): void
+    {
+        $venda = Venda::find($vendaId);
+        if (!$venda) return;
+        $venda->update([
+            'valor_frete_cliente' => 0,
+            'valor_frete_transportadora' => 0,
+            'frete_pago' => true,
+        ]);
+        \App\Services\VendaRecalculoService::recalcularMargens($venda);
+        \Filament\Notifications\Notification::make()->title('Frete zerado (Envias). Margens recalculadas.')->success()->send();
+    }
+
     public function buscarCustos(int $vendaId): void
     {
         $venda = Venda::find($vendaId);
