@@ -21,6 +21,8 @@ class ImportarShopeeAfiliados extends Page implements HasForms
     protected static string $view = 'filament.pages.importar-shopee-afiliados';
 
     public ?array $data = [];
+    public ?string $data_inicio_marcar = null;
+    public ?string $data_fim_marcar = null;
 
     public function form(Form $form): Form
     {
@@ -80,5 +82,20 @@ class ImportarShopeeAfiliados extends Page implements HasForms
     public static function canAccess(): bool
     {
         return auth()->user()?->hasRole('admin') ?? false;
+    }
+
+    public function marcarPeriodo(): void
+    {
+        if (!$this->data_inicio_marcar || !$this->data_fim_marcar) {
+            Notification::make()->title('Informe o período.')->warning()->send();
+            return;
+        }
+
+        $atualizados = \App\Models\Venda::where('planilha_afiliado_processada', false)
+            ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%hopee%'))
+            ->whereBetween('data_venda', [$this->data_inicio_marcar, $this->data_fim_marcar])
+            ->update(['planilha_afiliado_processada' => true]);
+
+        Notification::make()->title("{$atualizados} venda(s) Shopee marcadas como processadas (sem afiliado).")->success()->send();
     }
 }

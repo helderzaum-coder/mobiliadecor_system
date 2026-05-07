@@ -407,7 +407,8 @@ class VendaRecalculoService
         $impostoProduto = $valorImposto - $impostoFrete;
         $margemFrete = $frete - $custoFrete - $comissaoFrete - $impostoFrete;
         $comissaoProduto = $comissao - $comissaoFrete;
-        $margemProduto = $totalProdutos - $custoProdutos - $comissaoProduto - $impostoProduto + $valorRebate;
+        $comissaoAfiliado = (float) ($venda->comissao_afiliado ?? 0);
+        $margemProduto = $totalProdutos - $custoProdutos - $comissaoProduto - $comissaoAfiliado - $impostoProduto + $valorRebate;
 
         // Subsídio pix / descontos:
         // - Shopee: já descontado do subtotal, não somar

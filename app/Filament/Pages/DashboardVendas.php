@@ -324,6 +324,7 @@ class DashboardVendas extends Page implements HasForms
                         'falta_nfe' => '⚠ Falta NF-e',
                         'falta_frete' => '🚚 Falta Frete',
                         'falta_planilha' => '📊 Falta Planilha',
+                        'falta_afiliado' => '👥 Falta Afiliado (Shopee)',
                         'sem_custo' => '💰 Sem Custo Produto',
                         'aguardando_envio' => '📦 Aguardando Envio',
                         'incompleto' => '❌ Incompleto',
@@ -383,6 +384,9 @@ class DashboardVendas extends Page implements HasForms
             $query->where('planilha_processada', false)
                 ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%')->orWhere('nome_canal', 'like', '%agalu%')->orWhere('nome_canal', 'like', '%ebcontinental%')->orWhere('nome_canal', 'like', '%adeira%'))
                 ->where(fn ($q) => $q->whereNull('ml_sale_fee')->orWhere('ml_sale_fee', '<=', 0));
+        } elseif ($this->status_filtro === 'falta_afiliado') {
+            $query->where('planilha_afiliado_processada', false)
+                ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%hopee%'));
         } elseif ($this->status_filtro === 'sem_custo') {
             $query->where(fn ($q) => $q->where('custo_produtos', '<=', 0)->orWhereNull('custo_produtos'));
         } elseif ($this->status_filtro === 'aguardando_envio') {
@@ -416,6 +420,10 @@ class DashboardVendas extends Page implements HasForms
                         ->where(fn ($q3) => $q3
                             ->where('planilha_processada', true)
                             ->orWhereDoesntHave('canal', fn ($q4) => $q4->where('nome_canal', 'like', '%hopee%')->orWhere('nome_canal', 'like', '%ercado%')->orWhere('nome_canal', 'like', '%agalu%')->orWhere('nome_canal', 'like', '%ebcontinental%')->orWhere('nome_canal', 'like', '%adeira%'))
+                        )
+                        ->where(fn ($q3) => $q3
+                            ->where('planilha_afiliado_processada', true)
+                            ->orWhereDoesntHave('canal', fn ($q4) => $q4->where('nome_canal', 'like', '%hopee%'))
                         );
                 })
                 // OU aguardando envio com custo

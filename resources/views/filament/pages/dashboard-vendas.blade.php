@@ -160,8 +160,10 @@
                 $isWebcontinental = str_contains(strtolower($canal), 'webcontinental');
                 $isMadeiraMadeira = str_contains(strtolower($canal), 'madeira');
                 $precisaPlanilha = $isML || $isShopee || $isMagalu || $isWebcontinental || $isMadeiraMadeira;
+                $precisaAfiliado = $isShopee;
+                $afiliadoOk = (bool) $venda->planilha_afiliado_processada;
                 $freteOk = $fretePagoFlag || $isMlMe2Full || ($freteCliente == 0 && $custoFrete == 0);
-                $completo = $temNfeChave && $freteOk && (!$precisaPlanilha || $planilhaOk);
+                $completo = $temNfeChave && $freteOk && (!$precisaPlanilha || $planilhaOk) && (!$precisaAfiliado || $afiliadoOk);
 
                 $conta = $venda->bling_account === 'primary' ? 'Mobilia' : 'HES';
                 $canal = $venda->canal?->nome_canal ?? '-';
@@ -202,6 +204,9 @@
                             @if($precisaPlanilha && !$planilhaOk)
                                 <span style="background:#7c3aed;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">Falta Planilha</span>
                             @endif
+                            @if($precisaAfiliado && !$afiliadoOk)
+                                <span style="background:#db2777;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">Falta Afiliado</span>
+                            @endif
                         @endif
                     </div>
                 </div>
@@ -235,7 +240,11 @@
                     </div>
                     <div>
                         <div class="text-gray-500">Comissão</div>
-                        <div class="font-semibold text-gray-800 dark:text-white">R$ {{ number_format($comissao, 2, ',', '.') }}</div>
+                        <div class="font-semibold text-gray-800 dark:text-white">R$ {{ number_format($comissao, 2, ',', '.') }}
+                            @if((float) ($venda->comissao_afiliado ?? 0) > 0)
+                                <span style="font-size:10px;color:#db2777;">+ R$ {{ number_format((float) $venda->comissao_afiliado, 2, ',', '.') }} afiliado</span>
+                            @endif
+                        </div>
                         @php
                             $mlSaleFee = (float) ($venda->ml_sale_fee ?? 0);
                             $mlFreteCusto = (float) ($venda->ml_frete_custo ?? 0);

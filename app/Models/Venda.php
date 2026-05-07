@@ -25,6 +25,7 @@ class Venda extends Model
         'valor_frete_transportadora',
         'frete_cotado',
         'comissao',
+        'comissao_afiliado',
         'subsidio_pix',
         'base_imposto',
         'percentual_imposto',
@@ -55,6 +56,7 @@ class Venda extends Model
         'ml_order_id',
         'ml_shipping_id',
         'planilha_processada',
+        'planilha_afiliado_processada',
     ];
 
     protected $casts = [
@@ -65,6 +67,7 @@ class Venda extends Model
         'valor_frete_transportadora' => 'decimal:2',
         'frete_cotado' => 'decimal:2',
         'comissao' => 'decimal:2',
+        'comissao_afiliado' => 'decimal:2',
         'subsidio_pix' => 'decimal:2',
         'base_imposto' => 'decimal:2',
         'percentual_imposto' => 'decimal:2',
@@ -84,6 +87,7 @@ class Venda extends Model
         'ml_frete_custo' => 'decimal:2',
         'ml_frete_receita' => 'decimal:2',
         'planilha_processada' => 'boolean',
+        'planilha_afiliado_processada' => 'boolean',
     ];
 
     public function canal(): BelongsTo

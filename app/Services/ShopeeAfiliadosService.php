@@ -80,15 +80,17 @@ class ShopeeAfiliadosService
                     continue;
                 }
 
-                // Somar despesa de afiliados na comissão
-                $novaComissao = round((float) $venda->comissao + $despesa, 2);
-                $venda->update(['comissao' => $novaComissao]);
+                // Gravar no campo separado (não soma mais no comissao)
+                $venda->update([
+                    'comissao_afiliado' => $despesa,
+                    'planilha_afiliado_processada' => true,
+                ]);
 
                 // Recalcular margens
                 VendaRecalculoService::recalcularMargens($venda);
 
                 $resultado['atualizados']++;
-                $resultado['detalhes'][] = "{$pedidoId}: +R$ " . number_format($despesa, 2, ',', '.');
+                $resultado['detalhes'][] = "{$pedidoId}: R$ " . number_format($despesa, 2, ',', '.');
             }
 
         } catch (\Exception $e) {
