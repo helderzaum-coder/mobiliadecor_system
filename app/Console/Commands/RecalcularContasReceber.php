@@ -46,15 +46,13 @@ class RecalcularContasReceber extends Command
             if ($afiliado <= 0) continue;
 
             $repasseCorreto = round((float) $conta->valor_parcela - $afiliado, 2);
-
-            // Verificar se já foi deduzido (evitar deduzir duas vezes)
-            // Se a diferença entre valor atual e (valor - afiliado) é exatamente o afiliado, precisa corrigir
             $valorAtual = round((float) $conta->valor_parcela, 2);
 
             if (abs($valorAtual - $repasseCorreto) > 0.01) {
                 $divergentes++;
+                $canalNome = $venda->canal?->nome_canal ?? '-';
                 $this->line(
-                    "#{$venda->numero_pedido_canal} ({$canal?->nome_canal}): "
+                    "#{$venda->numero_pedido_canal} ({$canalNome}): "
                     . "R$ " . number_format($valorAtual, 2, ',', '.')
                     . " → R$ " . number_format($repasseCorreto, 2, ',', '.')
                     . " (afiliado: -" . number_format($afiliado, 2, ',', '.') . ")"
