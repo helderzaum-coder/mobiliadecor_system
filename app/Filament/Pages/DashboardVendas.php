@@ -82,6 +82,15 @@ class DashboardVendas extends Page implements HasForms
             ->{$result['success'] ? 'success' : 'warning'}()->send();
     }
 
+    public function aplicarPlanilhaWC(int $vendaId): void
+    {
+        $venda = Venda::find($vendaId);
+        if (!$venda) return;
+        $result = \App\Services\VendaRecalculoService::aplicarPlanilhaWC($venda);
+        \Filament\Notifications\Notification::make()->title($result['msg'])
+            ->{$result['success'] ? 'success' : 'warning'}()->send();
+    }
+
     public function recalcular(int $vendaId): void
     {
         $venda = Venda::find($vendaId);

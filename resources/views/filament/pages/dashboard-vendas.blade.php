@@ -434,6 +434,12 @@
                             📊 Aplicar Planilha MM
                         </button>
                     @endif
+                    @if($isWebcontinental && !$temPlanilha)
+                        <button wire:click="aplicarPlanilhaWC({{ $venda->id_venda }})" wire:loading.attr="disabled"
+                            style="background:#7c2d12;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                            📊 Aplicar Planilha WC
+                        </button>
+                    @endif
                     <button wire:click="recalcular({{ $venda->id_venda }})" wire:loading.attr="disabled"
                         style="background:#059669;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
                         🔄 Recalcular

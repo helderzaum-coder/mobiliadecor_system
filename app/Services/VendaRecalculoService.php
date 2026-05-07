@@ -229,6 +229,33 @@ class VendaRecalculoService
     }
 
     /**
+     * Aplica dados da planilha Webcontinental já importada (via staging).
+     */
+    public static function aplicarPlanilhaWC(Venda $venda): array
+    {
+        $staging = PedidoBlingStaging::where('bling_id', $venda->bling_id)->first();
+        if (!$staging) {
+            return ['success' => false, 'msg' => 'Staging não encontrado.'];
+        }
+
+        if (!$staging->planilha_shopee) {
+            return ['success' => false, 'msg' => 'Planilha Webcontinental ainda não foi importada para este pedido.'];
+        }
+
+        $venda->update([
+            'total_produtos' => (float) $staging->total_produtos,
+            'valor_total_venda' => (float) $staging->total_pedido,
+            'valor_frete_cliente' => (float) $staging->frete,
+            'comissao' => (float) $staging->comissao_calculada,
+            'planilha_processada' => true,
+        ]);
+
+        self::recalcularMargens($venda);
+
+        return ['success' => true, 'msg' => "Planilha WC aplicada. Comissão: R$ " . number_format($staging->comissao_calculada, 2, ',', '.')];
+    }
+
+    /**
      * Recalcula margens da venda com os dados atuais.
      */
     public static function recalcularMargens(Venda $venda): void
