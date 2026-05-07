@@ -62,7 +62,15 @@ class VendaResource extends Resource
                 Forms\Components\TextInput::make('cliente_nome')
                     ->label('Cliente'),
                 Forms\Components\TextInput::make('cliente_documento')
-                    ->label('CPF/CNPJ'),
+                    ->label('CPF/CNPJ')
+                    ->afterStateHydrated(function ($state, $set, $record) {
+                        if (empty($state) && $record) {
+                            $staging = \App\Models\PedidoBlingStaging::where('bling_id', $record->bling_id)->first();
+                            if ($staging && $staging->cliente_documento) {
+                                $set('cliente_documento', $staging->cliente_documento);
+                            }
+                        }
+                    }),
             ])->columns(4),
 
             Forms\Components\Section::make('Valores')->schema([
