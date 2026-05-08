@@ -205,19 +205,32 @@ class DashboardVendas extends Page implements HasForms
         $venda = Venda::find($vendaId);
         if (!$venda) return;
 
-        // Marcar conta a receber como estorno pendente
-        $contaReceber = \App\Models\ContaReceber::where('id_venda', $venda->id_venda)->first();
-        if ($contaReceber) {
-            $contaReceber->update(['estorno_pendente' => true]);
-        }
-
-        // Criar conta a pagar com o valor do estorno
         $canal = $venda->canal?->nome_canal ?? 'Marketplace';
         $isMagalu = str_contains(strtolower($canal), 'magalu');
         $repasse = $isMagalu
             ? (float) $venda->valor_total_venda - (float) $venda->comissao + (float) $venda->subsidio_pix
             : (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao;
 
+        // Gerar conta a receber se não existe (forçar mesmo sem NF-e)
+        $contaReceber = \App\Models\ContaReceber::where('id_venda', $venda->id_venda)->first();
+        if (!$contaReceber) {
+            $contaReceber = \App\Models\ContaReceber::create([
+                'id_venda' => $venda->id_venda,
+                'valor_parcela' => round(abs($repasse), 2),
+                'data_vencimento' => $venda->data_venda,
+                'status' => 'pendente',
+                'numero_parcela' => 1,
+                'total_parcelas' => 1,
+                'forma_pagamento' => $canal,
+                'observacoes' => "Antecipação #{$venda->numero_pedido_canal} (cancelado com estorno)",
+                'lancamento_manual' => false,
+                'estorno_pendente' => true,
+            ]);
+        } else {
+            $contaReceber->update(['estorno_pendente' => true]);
+        }
+
+        // Criar conta a pagar com o valor do estorno
         \App\Models\ContaPagar::create([
             'valor_parcela' => round(abs($repasse), 2),
             'data_vencimento' => now()->toDateString(),
