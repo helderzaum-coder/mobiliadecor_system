@@ -111,6 +111,10 @@ class ContaReceberResource extends Resource
                         'atrasado' => 'danger',
                         'cancelado' => 'gray',
                         default => 'gray',
+                    })
+                    ->formatStateUsing(function ($state, $record) {
+                        if ($record->estorno_pendente) return $state . ' ⚠️ Estorno';
+                        return $state;
                     }),
             ])
             ->defaultSort('data_vencimento', 'asc')

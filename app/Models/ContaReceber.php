@@ -21,6 +21,7 @@ class ContaReceber extends Model
         'forma_pagamento',
         'observacoes',
         'lancamento_manual',
+        'estorno_pendente',
     ];
 
     protected $casts = [
@@ -28,6 +29,7 @@ class ContaReceber extends Model
         'data_vencimento' => 'date',
         'data_recebimento' => 'date',
         'lancamento_manual' => 'boolean',
+        'estorno_pendente' => 'boolean',
     ];
 
     public function venda(): BelongsTo

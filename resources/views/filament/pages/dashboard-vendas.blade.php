@@ -489,6 +489,12 @@
                         style="background:#374151;color:#e5e7eb;padding:3px 10px;font-size:11px;border-radius:5px;text-decoration:none;display:inline-block;">
                         ✏️ Editar
                     </a>
+                    <button wire:click="cancelarComEstorno({{ $venda->id_venda }})"
+                        wire:confirm="Cancelar pedido e registrar estorno? Isso cria uma conta a pagar com o valor do repasse."
+                        wire:loading.attr="disabled"
+                        style="background:#991b1b;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                        ↩️ Estorno
+                    </button>
                 </div>
 
                 {{-- Itens do pedido --}}

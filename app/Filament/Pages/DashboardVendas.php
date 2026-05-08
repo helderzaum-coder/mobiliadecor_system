@@ -200,6 +200,43 @@ class DashboardVendas extends Page implements HasForms
         \Filament\Notifications\Notification::make()->title('Data prevista removida.')->success()->send();
     }
 
+    public function cancelarComEstorno(int $vendaId): void
+    {
+        $venda = Venda::find($vendaId);
+        if (!$venda) return;
+
+        // Marcar conta a receber como estorno pendente
+        $contaReceber = \App\Models\ContaReceber::where('id_venda', $venda->id_venda)->first();
+        if ($contaReceber) {
+            $contaReceber->update(['estorno_pendente' => true]);
+        }
+
+        // Criar conta a pagar com o valor do estorno
+        $canal = $venda->canal?->nome_canal ?? 'Marketplace';
+        $isMagalu = str_contains(strtolower($canal), 'magalu');
+        $repasse = $isMagalu
+            ? (float) $venda->valor_total_venda - (float) $venda->comissao + (float) $venda->subsidio_pix
+            : (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao;
+
+        \App\Models\ContaPagar::create([
+            'valor_parcela' => round(abs($repasse), 2),
+            'data_vencimento' => now()->toDateString(),
+            'status' => 'pendente',
+            'numero_parcela' => 1,
+            'total_parcelas' => 1,
+            'forma_pagamento' => 'Estorno',
+            'observacoes' => "Estorno {$canal} - Pedido #{$venda->numero_pedido_canal}. Valor antecipado ser\u00e1 estornado.",
+            'lancamento_manual' => true,
+        ]);
+
+        // Marcar pedido no staging como cancelado
+        \App\Models\PedidoBlingStaging::where('bling_id', $venda->bling_id)->update(['status' => 'cancelado']);
+
+        \Filament\Notifications\Notification::make()
+            ->title("Pedido cancelado. Estorno de R$ " . number_format(abs($repasse), 2, ',', '.') . " registrado.")
+            ->success()->send();
+    }
+
     public function buscarNfeLote(): void
     {
         $ids = $this->buildQuery()
