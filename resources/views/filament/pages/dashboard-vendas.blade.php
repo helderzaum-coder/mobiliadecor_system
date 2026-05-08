@@ -489,14 +489,22 @@
                         style="background:#374151;color:#e5e7eb;padding:3px 10px;font-size:11px;border-radius:5px;text-decoration:none;display:inline-block;">
                         ✏️ Editar
                     </a>
-                    <button onclick="let d=prompt('Data do estorno (YYYY-MM-DD):','{{ now()->format('Y-m-d') }}');if(d)@this.cancelarComEstorno({{ $venda->id_venda }},d)"
-                        style="background:#991b1b;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
-                        ↩️ Estorno
-                    </button>
-                    <button onclick="let d=prompt('Data do reembolso (YYYY-MM-DD):','{{ now()->format('Y-m-d') }}');if(d)@this.registrarReembolso({{ $venda->id_venda }},d)"
-                        style="background:#7f1d1d;color:#fca5a5;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
-                        🔄 Reembolso
-                    </button>
+                    <span x-data="{showEstorno:false,dataEstorno:'{{ now()->format('Y-m-d') }}'}" class="inline">
+                        <button @click="showEstorno=!showEstorno" style="background:#991b1b;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">↩️ Estorno</button>
+                        <span x-show="showEstorno" x-cloak style="display:inline-flex;align-items:center;gap:4px;margin-left:4px;">
+                            <input type="date" x-model="dataEstorno" style="padding:2px 6px;font-size:11px;border-radius:4px;border:1px solid #374151;background:#111827;color:#fff;">
+                            <button @click="$wire.cancelarComEstorno({{ $venda->id_venda }},dataEstorno);showEstorno=false" style="background:#dc2626;color:#fff;padding:2px 8px;font-size:10px;border-radius:4px;border:none;cursor:pointer;">Confirmar</button>
+                            <button @click="showEstorno=false" style="color:#9ca3af;font-size:10px;cursor:pointer;background:none;border:none;">✖</button>
+                        </span>
+                    </span>
+                    <span x-data="{showReembolso:false,dataReembolso:'{{ now()->format('Y-m-d') }}'}" class="inline">
+                        <button @click="showReembolso=!showReembolso" style="background:#7f1d1d;color:#fca5a5;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">🔄 Reembolso</button>
+                        <span x-show="showReembolso" x-cloak style="display:inline-flex;align-items:center;gap:4px;margin-left:4px;">
+                            <input type="date" x-model="dataReembolso" style="padding:2px 6px;font-size:11px;border-radius:4px;border:1px solid #374151;background:#111827;color:#fff;">
+                            <button @click="$wire.registrarReembolso({{ $venda->id_venda }},dataReembolso);showReembolso=false" style="background:#dc2626;color:#fff;padding:2px 8px;font-size:10px;border-radius:4px;border:none;cursor:pointer;">Confirmar</button>
+                            <button @click="showReembolso=false" style="color:#9ca3af;font-size:10px;cursor:pointer;background:none;border:none;">✖</button>
+                        </span>
+                    </span>
                 </div>
 
                 {{-- Itens do pedido --}}
