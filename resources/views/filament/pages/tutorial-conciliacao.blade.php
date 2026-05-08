@@ -55,6 +55,22 @@
                         <li>Quando o ML debitar, confirme o pagamento em <strong>Contas a Pagar</strong></li>
                     </ul>
                 </div>
+
+                <div class="rounded-lg bg-red-900/20 border border-red-700 p-4">
+                    <h3 style="font-weight:700;color:#ef4444;margin-bottom:8px;">🔄 Reembolsos (Refund)</h3>
+                    <p>Na planilha de liberações, registros com:</p>
+                    <ul style="list-style:disc;padding-left:20px;margin-top:8px;">
+                        <li><strong>Coluna D (RECORD_TYPE)</strong> = <code style="background:#374151;padding:2px 6px;border-radius:4px;">release</code></li>
+                        <li><strong>Coluna E (DESCRIPTION)</strong> = <code style="background:#374151;padding:2px 6px;border-radius:4px;">refund</code></li>
+                    </ul>
+                    <p class="mt-2">Representam <strong>reembolsos</strong> ao comprador. O ML debita o valor do vendedor.</p>
+                    <p class="mt-2">No sistema:</p>
+                    <ul style="list-style:disc;padding-left:20px;margin-top:4px;">
+                        <li>Na Dashboard, clique <strong>"🔄 Reembolso"</strong> no pedido já recebido</li>
+                        <li>O sistema cria uma <strong>conta a pagar</strong> com o valor do reembolso</li>
+                        <li>Quando o ML debitar, confirme em <strong>Contas a Pagar</strong></li>
+                    </ul>
+                </div>
             </div>
         </div>
 

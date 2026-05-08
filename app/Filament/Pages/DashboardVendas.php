@@ -250,6 +250,38 @@ class DashboardVendas extends Page implements HasForms
             ->success()->send();
     }
 
+    public function registrarReembolso(int $vendaId): void
+    {
+        $venda = Venda::find($vendaId);
+        if (!$venda) return;
+
+        $canal = $venda->canal?->nome_canal ?? 'Marketplace';
+        $isMagalu = str_contains(strtolower($canal), 'magalu');
+        $repasse = $isMagalu
+            ? (float) $venda->valor_total_venda - (float) $venda->comissao + (float) $venda->subsidio_pix
+            : (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao;
+
+        $contaReceber = \App\Models\ContaReceber::where('id_venda', $venda->id_venda)->first();
+        if ($contaReceber) {
+            $contaReceber->update(['estorno_pendente' => true]);
+        }
+
+        \App\Models\ContaPagar::create([
+            'valor_parcela' => round(abs($repasse), 2),
+            'data_vencimento' => now()->toDateString(),
+            'status' => 'pendente',
+            'numero_parcela' => 1,
+            'total_parcelas' => 1,
+            'forma_pagamento' => 'Reembolso',
+            'observacoes' => "Reembolso {$canal} - Pedido #{$venda->numero_pedido_canal}. Valor debitado pelo marketplace.",
+            'lancamento_manual' => true,
+        ]);
+
+        \Filament\Notifications\Notification::make()
+            ->title("Reembolso de R$ " . number_format(abs($repasse), 2, ',', '.') . " registrado.")
+            ->success()->send();
+    }
+
     public function buscarNfeLote(): void
     {
         $ids = $this->buildQuery()

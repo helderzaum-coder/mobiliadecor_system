@@ -495,6 +495,12 @@
                         style="background:#991b1b;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
                         ↩️ Estorno
                     </button>
+                    <button wire:click="registrarReembolso({{ $venda->id_venda }})"
+                        wire:confirm="Registrar reembolso? Isso cria uma conta a pagar com o valor do repasse (para pedidos já recebidos que foram devolvidos)."
+                        wire:loading.attr="disabled"
+                        style="background:#7f1d1d;color:#fca5a5;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                        🔄 Reembolso
+                    </button>
                 </div>
 
                 {{-- Itens do pedido --}}
