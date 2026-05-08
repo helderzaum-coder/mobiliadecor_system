@@ -489,15 +489,11 @@
                         style="background:#374151;color:#e5e7eb;padding:3px 10px;font-size:11px;border-radius:5px;text-decoration:none;display:inline-block;">
                         ✏️ Editar
                     </a>
-                    <button wire:click="cancelarComEstorno({{ $venda->id_venda }})"
-                        wire:confirm="Cancelar pedido e registrar estorno? Isso cria uma conta a pagar com o valor do repasse."
-                        wire:loading.attr="disabled"
+                    <button onclick="let d=prompt('Data do estorno (YYYY-MM-DD):','{{ now()->format('Y-m-d') }}');if(d)@this.cancelarComEstorno({{ $venda->id_venda }},d)"
                         style="background:#991b1b;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
                         ↩️ Estorno
                     </button>
-                    <button wire:click="registrarReembolso({{ $venda->id_venda }})"
-                        wire:confirm="Registrar reembolso? Isso cria uma conta a pagar com o valor do repasse (para pedidos já recebidos que foram devolvidos)."
-                        wire:loading.attr="disabled"
+                    <button onclick="let d=prompt('Data do reembolso (YYYY-MM-DD):','{{ now()->format('Y-m-d') }}');if(d)@this.registrarReembolso({{ $venda->id_venda }},d)"
                         style="background:#7f1d1d;color:#fca5a5;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
                         🔄 Reembolso
                     </button>

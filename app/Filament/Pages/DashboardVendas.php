@@ -200,7 +200,7 @@ class DashboardVendas extends Page implements HasForms
         \Filament\Notifications\Notification::make()->title('Data prevista removida.')->success()->send();
     }
 
-    public function cancelarComEstorno(int $vendaId): void
+    public function cancelarComEstorno(int $vendaId, string $data = ''): void
     {
         $venda = Venda::find($vendaId);
         if (!$venda) return;
@@ -233,7 +233,7 @@ class DashboardVendas extends Page implements HasForms
         // Criar conta a pagar com o valor do estorno
         \App\Models\ContaPagar::create([
             'valor_parcela' => round(abs($repasse), 2),
-            'data_vencimento' => now()->toDateString(),
+            'data_vencimento' => $data ? $data : now()->toDateString(),
             'status' => 'pendente',
             'numero_parcela' => 1,
             'total_parcelas' => 1,
@@ -250,7 +250,7 @@ class DashboardVendas extends Page implements HasForms
             ->success()->send();
     }
 
-    public function registrarReembolso(int $vendaId): void
+    public function registrarReembolso(int $vendaId, string $data = ''): void
     {
         $venda = Venda::find($vendaId);
         if (!$venda) return;
@@ -268,7 +268,7 @@ class DashboardVendas extends Page implements HasForms
 
         \App\Models\ContaPagar::create([
             'valor_parcela' => round(abs($repasse), 2),
-            'data_vencimento' => now()->toDateString(),
+            'data_vencimento' => $data ? $data : now()->toDateString(),
             'status' => 'pendente',
             'numero_parcela' => 1,
             'total_parcelas' => 1,
