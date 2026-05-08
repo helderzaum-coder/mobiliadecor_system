@@ -269,10 +269,9 @@
                         <div class="text-gray-500">Repasse</div>
                         @php
                             $isMagaluRepasse = str_contains(strtolower($canal), 'magalu');
-                            $comissaoAfiliado = (float) ($venda->comissao_afiliado ?? 0);
                             $repasse = $isMagaluRepasse
-                                ? $total - $comissao - $comissaoAfiliado + $subsidio
-                                : $totalProd + $freteCliente - $comissao - $comissaoAfiliado;
+                                ? $total - $comissao + $subsidio
+                                : $totalProd + $freteCliente - $comissao;
                         @endphp
                         <div class="font-semibold text-blue-600 dark:text-blue-400">R$ {{ number_format($repasse, 2, ',', '.') }}</div>
                     </div>
