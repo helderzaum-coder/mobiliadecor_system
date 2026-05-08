@@ -6,6 +6,7 @@ use App\Filament\Resources\ContaPagarResource\Pages;
 use App\Models\ContaPagar;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -21,60 +22,103 @@ class ContaPagarResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Select::make('id_fatura')
-                ->label('Fatura')
-                ->relationship('fatura', 'numero_fatura')
-                ->required()
-                ->searchable()
-                ->preload(),
-            Forms\Components\TextInput::make('valor_parcela')
-                ->label('Valor da Parcela')
-                ->required()
-                ->numeric()
-                ->prefix('R$'),
-            Forms\Components\DatePicker::make('data_vencimento')
-                ->label('Vencimento')
-                ->required(),
-            Forms\Components\DatePicker::make('data_pagamento')
-                ->label('Pagamento'),
-            Forms\Components\Select::make('status')
-                ->label('Status')
-                ->options([
-                    'pendente' => 'Pendente',
-                    'pago' => 'Pago',
-                    'atrasado' => 'Atrasado',
-                    'cancelado' => 'Cancelado',
-                ])
-                ->required(),
-            Forms\Components\TextInput::make('numero_parcela')
-                ->label('Nº Parcela')
-                ->required()
-                ->numeric(),
-            Forms\Components\TextInput::make('total_parcelas')
-                ->label('Total Parcelas')
-                ->required()
-                ->numeric(),
-            Forms\Components\TextInput::make('forma_pagamento')
-                ->label('Forma de Pagamento')
-                ->required()
-                ->maxLength(50),
-            Forms\Components\Textarea::make('observacoes')
-                ->label('Observações')
-                ->columnSpanFull(),
-            Forms\Components\Toggle::make('lancamento_manual')
-                ->label('Lançamento Manual'),
+            Forms\Components\Section::make('Dados do Pagamento')->schema([
+                Forms\Components\Select::make('id_fatura')
+                    ->label('Fatura (Transportadora)')
+                    ->relationship('fatura', 'numero_fatura')
+                    ->searchable()
+                    ->preload()
+                    ->placeholder('Nenhuma (lançamento avulso)'),
+                Forms\Components\TextInput::make('valor_parcela')
+                    ->label('Valor')
+                    ->required()
+                    ->numeric()
+                    ->prefix('R$'),
+                Forms\Components\TextInput::make('forma_pagamento')
+                    ->label('Categoria / Tipo')
+                    ->required()
+                    ->maxLength(50)
+                    ->placeholder('Ex: Estorno, Frete, Fornecedor...'),
+                Forms\Components\Select::make('status')
+                    ->label('Status')
+                    ->options([
+                        'pendente' => 'Pendente',
+                        'pago' => 'Pago',
+                        'atrasado' => 'Atrasado',
+                        'cancelado' => 'Cancelado',
+                    ])
+                    ->required()
+                    ->default('pendente'),
+            ])->columns(2),
+
+            Forms\Components\Section::make('Datas')->schema([
+                Forms\Components\DatePicker::make('data_vencimento')
+                    ->label('Vencimento')
+                    ->required(),
+                Forms\Components\DatePicker::make('data_pagamento')
+                    ->label('Data do Pagamento'),
+            ])->columns(2),
+
+            Forms\Components\Section::make('Parcelas')->schema([
+                Forms\Components\TextInput::make('numero_parcela')
+                    ->label('Nº Parcela')
+                    ->numeric()
+                    ->default(1),
+                Forms\Components\TextInput::make('total_parcelas')
+                    ->label('Total Parcelas')
+                    ->numeric()
+                    ->default(1),
+            ])->columns(2),
+
+            Forms\Components\Section::make('Observações')->schema([
+                Forms\Components\Textarea::make('observacoes')
+                    ->label('Observações / Descrição')
+                    ->columnSpanFull()
+                    ->rows(3),
+                Forms\Components\Toggle::make('lancamento_manual')
+                    ->label('Lançamento Manual'),
+            ]),
         ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
+            ->defaultPaginationPageOption(25)
             ->columns([
-                Tables\Columns\TextColumn::make('fatura.numero_fatura')->label('Fatura')->searchable(),
-                Tables\Columns\TextColumn::make('valor_parcela')->label('Valor')->money('BRL'),
-                Tables\Columns\TextColumn::make('data_vencimento')->label('Vencimento')->date('d/m/Y')->sortable(),
-                Tables\Columns\TextColumn::make('data_pagamento')->label('Pagamento')->date('d/m/Y'),
-                Tables\Columns\TextColumn::make('status')->label('Status')->badge()
+                Tables\Columns\TextColumn::make('observacoes')
+                    ->label('Descrição')
+                    ->limit(50)
+                    ->searchable()
+                    ->tooltip(fn ($record) => $record->observacoes),
+                Tables\Columns\TextColumn::make('forma_pagamento')
+                    ->label('Categoria')
+                    ->badge()
+                    ->color(fn (string $state) => match (strtolower($state)) {
+                        'estorno' => 'danger',
+                        'frete' => 'info',
+                        default => 'gray',
+                    }),
+                Tables\Columns\TextColumn::make('fatura.numero_fatura')
+                    ->label('Fatura')
+                    ->placeholder('-')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('valor_parcela')
+                    ->label('Valor')
+                    ->money('BRL')
+                    ->sortable()
+                    ->summarize(Tables\Columns\Summarizers\Sum::make()->money('BRL')->label('Total')),
+                Tables\Columns\TextColumn::make('data_vencimento')
+                    ->label('Vencimento')
+                    ->date('d/m/Y')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('data_pagamento')
+                    ->label('Pago em')
+                    ->date('d/m/Y')
+                    ->placeholder('-'),
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Status')
+                    ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'pago' => 'success',
                         'pendente' => 'warning',
@@ -82,9 +126,9 @@ class ContaPagarResource extends Resource
                         'cancelado' => 'gray',
                         default => 'gray',
                     }),
-                Tables\Columns\TextColumn::make('numero_parcela')->label('Parcela')
+                Tables\Columns\TextColumn::make('numero_parcela')
+                    ->label('Parcela')
                     ->formatStateUsing(fn ($record) => "{$record->numero_parcela}/{$record->total_parcelas}"),
-                Tables\Columns\TextColumn::make('forma_pagamento')->label('Pagamento'),
             ])
             ->defaultSort('data_vencimento', 'asc')
             ->filters([
@@ -94,16 +138,95 @@ class ContaPagarResource extends Resource
                         'pago' => 'Pago',
                         'atrasado' => 'Atrasado',
                         'cancelado' => 'Cancelado',
-                    ]),
+                    ])
+                    ->default('pendente'),
+                Tables\Filters\SelectFilter::make('forma_pagamento')
+                    ->label('Categoria')
+                    ->options(fn () => ContaPagar::distinct()->whereNotNull('forma_pagamento')->pluck('forma_pagamento', 'forma_pagamento')->toArray()),
+                Tables\Filters\Filter::make('periodo')
+                    ->form([
+                        Forms\Components\Select::make('periodo_rapido')
+                            ->label('Período')
+                            ->options([
+                                'este_mes' => 'Este mês',
+                                'mes_passado' => 'Mês passado',
+                                'customizado' => 'Customizado',
+                            ])
+                            ->reactive(),
+                        Forms\Components\DatePicker::make('data_inicio')
+                            ->label('De')
+                            ->visible(fn ($get) => $get('periodo_rapido') === 'customizado'),
+                        Forms\Components\DatePicker::make('data_fim')
+                            ->label('Até')
+                            ->visible(fn ($get) => $get('periodo_rapido') === 'customizado'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        $periodo = $data['periodo_rapido'] ?? null;
+                        if (!$periodo) return $query;
+                        return match ($periodo) {
+                            'este_mes' => $query->whereBetween('data_vencimento', [now()->startOfMonth(), now()->endOfMonth()]),
+                            'mes_passado' => $query->whereBetween('data_vencimento', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()]),
+                            'customizado' => $query
+                                ->when($data['data_inicio'] ?? null, fn ($q) => $q->whereDate('data_vencimento', '>=', $data['data_inicio']))
+                                ->when($data['data_fim'] ?? null, fn ($q) => $q->whereDate('data_vencimento', '<=', $data['data_fim'])),
+                            default => $query,
+                        };
+                    }),
             ])
+            ->filtersFormColumns(3)
             ->actions([
+                Tables\Actions\Action::make('confirmar_pagamento')
+                    ->label('Pagar')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->form([
+                        Forms\Components\DatePicker::make('data_pagamento')
+                            ->label('Data do Pagamento')
+                            ->default(now())
+                            ->required(),
+                    ])
+                    ->action(function (ContaPagar $record, array $data) {
+                        $record->update([
+                            'status' => 'pago',
+                            'data_pagamento' => $data['data_pagamento'],
+                        ]);
+                        Notification::make()->title('Pagamento confirmado.')->success()->send();
+                    })
+                    ->visible(fn (ContaPagar $record) => $record->status === 'pendente'),
+                Tables\Actions\Action::make('desfazer_pagamento')
+                    ->label('Desfazer')
+                    ->icon('heroicon-o-arrow-uturn-left')
+                    ->color('gray')
+                    ->requiresConfirmation()
+                    ->action(function (ContaPagar $record) {
+                        $record->update(['status' => 'pendente', 'data_pagamento' => null]);
+                        Notification::make()->title('Pagamento desfeito.')->success()->send();
+                    })
+                    ->visible(fn (ContaPagar $record) => $record->status === 'pago'),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                Tables\Actions\BulkAction::make('pagar_selecionados')
+                    ->label('Confirmar Pagamento')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->form([
+                        Forms\Components\DatePicker::make('data_pagamento')
+                            ->label('Data do Pagamento')
+                            ->default(now())
+                            ->required(),
+                    ])
+                    ->action(function ($records, array $data) {
+                        $count = 0;
+                        foreach ($records as $record) {
+                            if ($record->status !== 'pendente') continue;
+                            $record->update(['status' => 'pago', 'data_pagamento' => $data['data_pagamento']]);
+                            $count++;
+                        }
+                        Notification::make()->title("{$count} pagamento(s) confirmado(s).")->success()->send();
+                    }),
+                Tables\Actions\DeleteBulkAction::make(),
             ]);
     }
 
