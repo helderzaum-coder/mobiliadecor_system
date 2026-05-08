@@ -20,6 +20,7 @@ class LoteRecebimentos extends Page
     public string $busca_multipla = '';
     public array $lote = []; // array de id_conta_receber
     public string $data_recebimento = '';
+    public string $identificador_lote = '';
 
     public function mount(): void
     {
@@ -121,6 +122,7 @@ class LoteRecebimentos extends Page
             $conta->update([
                 'status' => 'recebido',
                 'data_recebimento' => $this->data_recebimento,
+                'observacoes' => $this->identificador_lote ?: $conta->observacoes,
             ]);
 
             if ($conta->venda) {

@@ -94,6 +94,12 @@
                             style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:14px;">
                     </div>
 
+                    <div class="mb-3">
+                        <label class="text-xs text-gray-500 block mb-1">Identificador do Lote (opcional):</label>
+                        <input type="text" wire:model="identificador_lote" placeholder="Ex: Antecipação ML 30/04 #1"
+                            style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:14px;">
+                    </div>
+
                     <button wire:click="confirmarLote" wire:confirm="Confirmar recebimento de {{ count($lote) }} pedido(s) totalizando R$ {{ number_format($this->totalLote, 2, ',', '.') }}?"
                         style="width:100%;padding:12px;font-size:14px;font-weight:700;border-radius:10px;border:none;cursor:pointer;background:#10b981;color:#fff;">
                         ✅ Confirmar Recebimento do Lote
