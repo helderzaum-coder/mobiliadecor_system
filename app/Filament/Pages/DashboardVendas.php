@@ -187,6 +187,8 @@ class DashboardVendas extends Page implements HasForms
         $venda = Venda::find($vendaId);
         if (!$venda) return;
         $venda->update(['data_prevista_envio' => $dataPrevista]);
+        // Gerar conta a receber se tiver custo
+        \App\Services\ContaReceberService::gerarSeCompleta($venda->fresh());
         \Filament\Notifications\Notification::make()->title('Pedido marcado como aguardando envio até ' . \Carbon\Carbon::parse($dataPrevista)->format('d/m/Y'))->success()->send();
     }
 

@@ -19,8 +19,8 @@ class ContaReceberService
             return false;
         }
 
-        // Verificar se está completa
-        if (!self::vendaCompleta($venda)) {
+        // Verificar se está completa OU aguardando envio com custo
+        if (!self::vendaCompleta($venda) && !self::vendaAguardandoEnvio($venda)) {
             return false;
         }
 
@@ -85,6 +85,15 @@ class ContaReceberService
     }
 
     /**
+     * Verifica se a venda está aguardando envio (com custo > 0).
+     * Permite gerar conta a receber mesmo sem NF-e.
+     */
+    private static function vendaAguardandoEnvio(Venda $venda): bool
+    {
+        return !empty($venda->data_prevista_envio) && (float) $venda->custo_produtos > 0;
+    }
+
+    /**
      * Regenera a conta a receber de uma venda quando comissao_afiliado muda.
      * Subtrai o afiliado do valor existente, ou recria se não existe.
      */
@@ -122,8 +131,10 @@ class ContaReceberService
     public static function gerarEmMassa(): array
     {
         $vendas = Venda::with('canal')
-            ->whereNotNull('nfe_chave_acesso')
-            ->where('nfe_chave_acesso', '!=', '')
+            ->where(function ($q) {
+                $q->where(fn ($q2) => $q2->whereNotNull('nfe_chave_acesso')->where('nfe_chave_acesso', '!=', ''))
+                  ->orWhere(fn ($q2) => $q2->whereNotNull('data_prevista_envio')->where('custo_produtos', '>', 0));
+            })
             ->whereDoesntHave('contasReceber')
             ->get();
 
