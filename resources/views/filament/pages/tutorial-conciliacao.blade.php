@@ -71,6 +71,33 @@
                         <li>Quando o ML debitar, confirme em <strong>Contas a Pagar</strong></li>
                     </ul>
                 </div>
+
+                <div class="rounded-lg bg-blue-900/20 border border-blue-700 p-4">
+                    <h3 style="font-weight:700;color:#3b82f6;margin-bottom:8px;">💸 Payout (Transferências / Pix)</h3>
+                    <p>Na planilha de liberações, registros com:</p>
+                    <ul style="list-style:disc;padding-left:20px;margin-top:8px;">
+                        <li><strong>Coluna E (DESCRIPTION)</strong> = <code style="background:#374151;padding:2px 6px;border-radius:4px;">payout</code></li>
+                    </ul>
+                    <p class="mt-2">Representam <strong>Pix ou transferências</strong> que você fez da conta do Mercado Pago para alguém (saídas manuais).</p>
+                    <p class="mt-2" style="color:#9ca3af;">💡 Não são vendas nem estornos — são movimentações financeiras avulsas.</p>
+                </div>
+
+                <div class="rounded-lg bg-gray-700/30 p-4">
+                    <h3 style="font-weight:700;color:#e5e7eb;margin-bottom:8px;">🔄 Reservas (reserve_for_debt_payment / reserve_for_payment)</h3>
+                    <p>Na planilha de liberações, registros com:</p>
+                    <ul style="list-style:disc;padding-left:20px;margin-top:8px;">
+                        <li><code style="background:#374151;padding:2px 6px;border-radius:4px;">reserve_for_debt_payment</code></li>
+                        <li><code style="background:#374151;padding:2px 6px;border-radius:4px;">reserve_for_payment</code></li>
+                    </ul>
+                    <p class="mt-2">Esses dois registros <strong>devem se anular</strong> (um é débito e outro é crédito da mesma operação).</p>
+                    <p class="mt-2" style="color:#f59e0b;">✅ <strong>Validação:</strong> Filtre pelos dois e confira se a soma final dá <strong>R$ 0,00</strong>. Se não der zero, investigue.</p>
+                </div>
+
+                <div class="rounded-lg bg-gray-700/30 p-4">
+                    <h3 style="font-weight:700;color:#e5e7eb;margin-bottom:8px;">💡 Dica: Payment que sobra</h3>
+                    <p>O <code style="background:#374151;padding:2px 6px;border-radius:4px;">payment</code> aparece tanto nas liberações de vendas quanto em compras feitas com saldo.</p>
+                    <p class="mt-2">Ao conciliar os recebimentos (vendas), se sobrar algum <code>payment</code> que não bate com nenhum pedido, provavelmente é uma <strong>compra feita com o saldo</strong> da conta do Mercado Pago.</p>
+                </div>
             </div>
         </div>
 
