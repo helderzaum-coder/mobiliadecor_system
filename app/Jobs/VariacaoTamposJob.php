@@ -57,6 +57,7 @@ class VariacaoTamposJob implements ShouldQueue
         // Agrupar por cor + familia_tampo
         $configs = TrocaTampoConfig::where('familia_tampo', '!=', '')
             ->whereNotNull('familia_tampo')
+            ->where('equalizacao_ativa', true)
             ->get();
 
         $grupos = $configs->groupBy(fn ($c) => $c->familia_tampo . '|' . $c->cor);

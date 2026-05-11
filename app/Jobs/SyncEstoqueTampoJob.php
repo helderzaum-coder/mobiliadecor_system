@@ -29,6 +29,7 @@ class SyncEstoqueTampoJob implements ShouldQueue
         $config = TrocaTampoConfig::where('sku_produto', $this->skuVendido)
             ->whereNotNull('familia_tampo')
             ->where('familia_tampo', '!=', '')
+            ->where('equalizacao_ativa', true)
             ->first();
 
         if (!$config) return;
@@ -41,6 +42,7 @@ class SyncEstoqueTampoJob implements ShouldQueue
         $outrasVariacoes = TrocaTampoConfig::where('familia_tampo', $config->familia_tampo)
             ->where('cor', $config->cor)
             ->where('sku_produto', '!=', $this->skuVendido)
+            ->where('equalizacao_ativa', true)
             ->get();
 
         if ($outrasVariacoes->isEmpty()) return;

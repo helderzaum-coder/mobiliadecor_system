@@ -18,5 +18,10 @@ class TrocaTampoConfig extends Model
         'nome_tampo',
         'cor_tampo',
         'familia_tampo',
+        'equalizacao_ativa',
+    ];
+
+    protected $casts = [
+        'equalizacao_ativa' => 'boolean',
     ];
 }

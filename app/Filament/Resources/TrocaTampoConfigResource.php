@@ -79,6 +79,10 @@ class TrocaTampoConfigResource extends Resource
                     ->required()
                     ->helperText('Grupos que compartilham tampos. Ex: alana, elisa_jade')
                     ->maxLength(50),
+                Forms\Components\Toggle::make('equalizacao_ativa')
+                    ->label('Equalização Ativa')
+                    ->default(true)
+                    ->helperText('Desative para pausar a equalização automática deste produto'),
             ])->columns(3),
         ]);
     }
@@ -103,10 +107,19 @@ class TrocaTampoConfigResource extends Resource
                 Tables\Columns\TextColumn::make('nome_tampo')->label('Tampo'),
                 Tables\Columns\TextColumn::make('cor_tampo')->label('Cor Tampo'),
                 Tables\Columns\TextColumn::make('familia_tampo')->label('Família')->badge(),
+                Tables\Columns\IconColumn::make('equalizacao_ativa')->label('Equaliz.')
+                    ->boolean()
+                    ->sortable(),
             ])
             ->defaultSort('grupo')
             ->filters([])
             ->actions([
+                Tables\Actions\Action::make('toggleEqualizacao')
+                    ->label(fn ($record) => $record->equalizacao_ativa ? 'Desativar' : 'Ativar')
+                    ->icon(fn ($record) => $record->equalizacao_ativa ? 'heroicon-o-pause' : 'heroicon-o-play')
+                    ->color(fn ($record) => $record->equalizacao_ativa ? 'warning' : 'success')
+                    ->requiresConfirmation()
+                    ->action(fn ($record) => $record->update(['equalizacao_ativa' => !$record->equalizacao_ativa])),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])
