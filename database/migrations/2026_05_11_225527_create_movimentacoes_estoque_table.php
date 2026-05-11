@@ -10,14 +10,14 @@ return new class extends Migration
     {
         Schema::create('movimentacoes_estoque', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('produto_estoque_id')->constrained('produtos_estoque')->cascadeOnDelete();
+            $table->unsignedBigInteger('produto_estoque_id');
             $table->enum('tipo', ['entrada', 'saida', 'balanco']);
             $table->integer('quantidade');
             $table->integer('saldo_anterior');
             $table->integer('saldo_posterior');
             $table->string('origem', 50)->comment('manual, venda_primary, venda_secondary, importacao, sync');
             $table->string('referencia')->nullable()->comment('Nº pedido, obs, etc');
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->unsignedBigInteger('user_id')->nullable();
             $table->timestamps();
 
             $table->index(['produto_estoque_id', 'created_at']);

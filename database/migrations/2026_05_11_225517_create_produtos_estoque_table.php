@@ -22,8 +22,8 @@ return new class extends Migration
         // Componentes de kits
         Schema::create('produto_estoque_componentes', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('kit_id')->constrained('produtos_estoque')->cascadeOnDelete();
-            $table->foreignId('componente_id')->constrained('produtos_estoque')->cascadeOnDelete();
+            $table->unsignedBigInteger('kit_id');
+            $table->unsignedBigInteger('componente_id');
             $table->integer('quantidade')->default(1);
             $table->timestamps();
 
