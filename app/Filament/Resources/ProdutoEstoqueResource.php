@@ -52,6 +52,10 @@ class ProdutoEstoqueResource extends Resource
                         'E', 'C' => 'warning',
                         default => 'gray',
                     }),
+                Tables\Columns\TextColumn::make('componentes_count')
+                    ->label('Comp.')
+                    ->counts('componentes')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('saldo')->label('Saldo')
                     ->sortable()
                     ->color(fn ($record) => $record->saldo <= $record->saldo_minimo ? 'danger' : 'success')
@@ -69,6 +73,15 @@ class ProdutoEstoqueResource extends Resource
                     ->query(fn ($query) => $query->whereColumn('saldo', '<=', 'saldo_minimo')),
             ])
             ->actions([
+                Tables\Actions\Action::make('ver_componentes')
+                    ->label('Componentes')
+                    ->icon('heroicon-o-queue-list')
+                    ->color('gray')
+                    ->visible(fn ($record) => $record->isKit())
+                    ->modalHeading(fn ($record) => "Componentes: {$record->nome}")
+                    ->modalContent(fn ($record) => view('filament.components.componentes-kit', ['produto' => $record]))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fechar'),
                 Tables\Actions\Action::make('entrada')
                     ->label('Entrada')
                     ->icon('heroicon-o-arrow-down-tray')
