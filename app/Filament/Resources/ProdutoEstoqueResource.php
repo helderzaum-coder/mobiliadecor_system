@@ -82,6 +82,15 @@ class ProdutoEstoqueResource extends Resource
                     ->modalContent(fn ($record) => view('filament.components.componentes-kit', ['produto' => $record]))
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Fechar'),
+                Tables\Actions\Action::make('ver_kits')
+                    ->label('Kits')
+                    ->icon('heroicon-o-rectangle-group')
+                    ->color('gray')
+                    ->visible(fn ($record) => !$record->isKit() && $record->kits()->exists())
+                    ->modalHeading(fn ($record) => "Kits que contêm: {$record->nome}")
+                    ->modalContent(fn ($record) => view('filament.components.kits-do-produto', ['produto' => $record]))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fechar'),
                 Tables\Actions\Action::make('entrada')
                     ->label('Entrada')
                     ->icon('heroicon-o-arrow-down-tray')
