@@ -3,50 +3,48 @@
 namespace App\Services\Bling;
 
 use App\Models\PedidoBlingStaging;
-use Illuminate\Support\Facades\Cache;
+use App\Models\ProdutoEstoque;
+use App\Services\EstoqueService;
 use Illuminate\Support\Facades\Log;
 
 class BlingEstoquePedidoService
 {
     /**
-     * Sincroniza estoque de um pedido entre contas.
+     * Sincroniza estoque de um pedido.
      *
-     * Primary: espelha saldo absoluto Primary → Secondary
-     * Secondary: subtrai qtd vendida da Primary, depois espelha Primary → Secondary
+     * Novo fluxo: o sistema é a fonte da verdade.
+     * - Desconta do estoque interno (desmembrando kits)
+     * - O EstoqueService dispara o saldo para AMBOS os Blings automaticamente
      */
     public static function sincronizar(PedidoBlingStaging $pedido): array
     {
         $origem = $pedido->bling_account;
-        $destino = $origem === 'primary' ? 'secondary' : 'primary';
-
-        $clientOrigem = new BlingClient($origem);
-        $clientPrimary = new BlingClient('primary');
-        $clientSecondary = new BlingClient('secondary');
-
         $itens = $pedido->itens ?? [];
         $log = [];
         $erros = 0;
 
         foreach ($itens as $item) {
             $sku = $item['codigo'] ?? '';
-            $qtdVendida = (int) ($item['quantidade'] ?? 1);
-
+            $qtd = (int) ($item['quantidade'] ?? 1);
             if (empty($sku)) continue;
 
-            // Identificar estrutura do produto na conta de origem
-            $skusParaSincronizar = self::resolverSkus($clientOrigem, $sku, $qtdVendida);
+            // Resolver SKUs (desmembrar kits usando cadastro interno)
+            $skusParaDescontar = self::resolverSkusInterno($sku, $qtd, $origem);
 
-            foreach ($skusParaSincronizar as $skuInfo) {
-                $resultado = self::sincronizarSku(
+            foreach ($skusParaDescontar as $skuInfo) {
+                $res = EstoqueService::saida(
                     $skuInfo['sku'],
                     $skuInfo['quantidade'],
-                    $origem,
-                    $clientPrimary,
-                    $clientSecondary
+                    "venda_{$origem}",
+                    "Pedido #{$pedido->numero_pedido}"
                 );
 
-                $log[] = $resultado['msg'];
-                if (!$resultado['success']) $erros++;
+                if ($res['success']) {
+                    $log[] = "{$skuInfo['sku']}: -{$skuInfo['quantidade']} → saldo {$res['saldo']}";
+                } else {
+                    $erros++;
+                    $log[] = "{$skuInfo['sku']}: ERRO - " . ($res['erro'] ?? '?');
+                }
             }
         }
 
@@ -67,204 +65,98 @@ class BlingEstoquePedidoService
     }
 
     /**
-     * Resolve SKUs: se kit, retorna componentes. Se simples/variação, retorna o próprio.
+     * Resolve SKUs usando o cadastro interno.
+     * Se é kit, retorna os componentes. Se simples, retorna o próprio.
+     * Se não encontrar no cadastro interno, tenta resolver via API do Bling.
      */
-    private static function resolverSkus(BlingClient $client, string $sku, int $qtdPedido): array
+    private static function resolverSkusInterno(string $sku, int $qtdPedido, string $account): array
     {
+        $produto = ProdutoEstoque::where('sku', $sku)->where('ativo', true)->first();
+
+        if ($produto && $produto->isKit()) {
+            $componentes = $produto->componentes;
+            if ($componentes->isNotEmpty()) {
+                return $componentes->map(fn ($comp) => [
+                    'sku' => $comp->sku,
+                    'quantidade' => $comp->pivot->quantidade * $qtdPedido,
+                ])->toArray();
+            }
+        }
+
+        // Se encontrou como simples, ou não é kit, retorna o próprio
+        if ($produto) {
+            return [['sku' => $sku, 'quantidade' => $qtdPedido]];
+        }
+
+        // Não encontrou no cadastro interno — tentar resolver via Bling e cadastrar
+        return self::resolverViaBling($sku, $qtdPedido, $account);
+    }
+
+    /**
+     * Fallback: resolve via API do Bling e cadastra o produto no sistema.
+     */
+    private static function resolverViaBling(string $sku, int $qtdPedido, string $account): array
+    {
+        $client = new BlingClient($account);
         $produto = $client->getProductBySku($sku);
+
         if (!$produto) {
+            // Cadastrar mesmo sem encontrar no Bling (para não perder a movimentação)
+            ProdutoEstoque::firstOrCreate(
+                ['sku' => $sku],
+                ['nome' => "SKU {$sku} (auto)", 'formato' => 'S', 'saldo' => 0]
+            );
             return [['sku' => $sku, 'quantidade' => $qtdPedido]];
         }
 
         $formato = strtoupper($produto['formato'] ?? 'S');
+        $nome = $produto['nome'] ?? $sku;
 
-        // Kit: desmembrar nos componentes
+        // Cadastrar no sistema
+        $produtoEstoque = ProdutoEstoque::firstOrCreate(
+            ['sku' => $sku],
+            ['nome' => $nome, 'formato' => $formato, 'saldo' => 0]
+        );
+
+        // Se é kit, resolver componentes
         if (in_array($formato, ['E', 'C'])) {
             $detalhe = $client->getProductById((int) $produto['id']);
             $componentes = $detalhe['estrutura']['componentes'] ?? [];
 
-            if (empty($componentes)) {
-                return [['sku' => $sku, 'quantidade' => $qtdPedido]];
-            }
+            if (!empty($componentes)) {
+                $skus = [];
+                $syncData = [];
 
-            $skus = [];
-            foreach ($componentes as $comp) {
-                $compId = $comp['produto']['id'] ?? null;
-                if (!$compId) continue;
+                foreach ($componentes as $comp) {
+                    $compId = $comp['produto']['id'] ?? null;
+                    if (!$compId) continue;
 
-                $compDetalhe = $client->getProductById((int) $compId);
-                $compSku = $compDetalhe['codigo'] ?? null;
-                if (!$compSku) continue;
+                    $compDetalhe = $client->getProductById((int) $compId);
+                    $compSku = $compDetalhe['codigo'] ?? null;
+                    if (!$compSku) continue;
 
-                $qtdComponente = (int) ($comp['quantidade'] ?? 1);
-                $skus[] = [
-                    'sku' => $compSku,
-                    'quantidade' => $qtdComponente * $qtdPedido,
-                ];
-            }
+                    $qtdComponente = (int) ($comp['quantidade'] ?? 1);
 
-            return !empty($skus) ? $skus : [['sku' => $sku, 'quantidade' => $qtdPedido]];
-        }
+                    // Cadastrar componente
+                    $compEstoque = ProdutoEstoque::firstOrCreate(
+                        ['sku' => $compSku],
+                        ['nome' => $compDetalhe['nome'] ?? $compSku, 'formato' => 'S', 'saldo' => 0]
+                    );
 
-        // Simples ou Variação: retorna o próprio
-        return [['sku' => $sku, 'quantidade' => $qtdPedido]];
-    }
+                    $syncData[$compEstoque->id] = ['quantidade' => $qtdComponente];
+                    $skus[] = ['sku' => $compSku, 'quantidade' => $qtdComponente * $qtdPedido];
+                }
 
-    /**
-     * Sincroniza um SKU individual entre contas.
-     */
-    private static function sincronizarSku(
-        string $sku,
-        int $qtdVendida,
-        string $contaOrigem,
-        BlingClient $clientPrimary,
-        BlingClient $clientSecondary
-    ): array {
-        // Buscar produto na Primary
-        $prodPrimary = $clientPrimary->getProductBySku($sku);
-        if (!$prodPrimary) {
-            return ['success' => false, 'msg' => "SKU {$sku}: não encontrado na Primary"];
-        }
-        $prodPrimaryId = (int) $prodPrimary['id'];
+                if (!empty($syncData)) {
+                    $produtoEstoque->componentes()->sync($syncData);
+                }
 
-        // Buscar saldo total da Primary (Geral + Virtual) para espelhar na Secondary
-        $saldoTotalPrimary = self::buscarSaldoFisico($clientPrimary, $prodPrimaryId, apenasGeral: false);
-        if ($saldoTotalPrimary === null) {
-            return ['success' => false, 'msg' => "SKU {$sku}: não foi possível obter saldo na Primary"];
-        }
-
-        // Se pedido veio da Secondary, subtrair qtd vendida do depósito Geral da Primary
-        if ($contaOrigem === 'secondary') {
-            $saldoGeralPrimary = self::buscarSaldoFisico($clientPrimary, $prodPrimaryId, apenasGeral: true);
-            $novoSaldoGeral = max(0, ($saldoGeralPrimary ?? 0) - $qtdVendida);
-
-            $depositoPrimaryId = self::getDepositoGeral($clientPrimary);
-            if (!$depositoPrimaryId) {
-                return ['success' => false, 'msg' => "SKU {$sku}: depósito não encontrado na Primary"];
-            }
-
-            $res = self::atualizarEstoque($clientPrimary, $prodPrimaryId, $novoSaldoGeral, $depositoPrimaryId);
-            if (!$res['success']) {
-                return ['success' => false, 'msg' => "SKU {$sku}: erro ao atualizar Primary (HTTP {$res['http_code']})"];
-            }
-
-            // Recalcular total após subtração
-            $saldoTotalPrimary = $saldoTotalPrimary - $qtdVendida;
-        }
-
-        // Espelhar saldo total da Primary (Geral + Virtual) → Secondary
-        $prodSecondary = $clientSecondary->getProductBySku($sku);
-        if (!$prodSecondary) {
-            return ['success' => true, 'msg' => "SKU {$sku}: Primary={$saldoPrimary} (não existe na Secondary)"];
-        }
-        $prodSecondaryId = (int) $prodSecondary['id'];
-
-        $depositoSecondaryId = self::getDepositoGeral($clientSecondary);
-        if (!$depositoSecondaryId) {
-            return ['success' => false, 'msg' => "SKU {$sku}: depósito não encontrado na Secondary"];
-        }
-
-        $res = self::atualizarEstoque($clientSecondary, $prodSecondaryId, max(0, $saldoTotalPrimary), $depositoSecondaryId);
-        if (!$res['success']) {
-            return ['success' => false, 'msg' => "SKU {$sku}: erro ao espelhar na Secondary (HTTP {$res['http_code']})"];
-        }
-
-        $sufixo = $contaOrigem === 'secondary' ? " (subtraiu {$qtdVendida} do Geral)" : '';
-        return ['success' => true, 'msg' => "SKU {$sku}: Primary total={$saldoTotalPrimary} → Secondary{$sufixo}"];
-    }
-
-    /**
-     * Busca saldo físico de um produto.
-     * - Para espelhar na Secondary: retorna soma de todos os depósitos (Geral + Virtual)
-     * - Para gravar na Primary: usa apenas o depósito Geral (via parâmetro)
-     */
-    private static function buscarSaldoFisico(BlingClient $client, int $produtoId, bool $apenasGeral = false): ?int
-    {
-        $res = $client->get('/estoques/saldos', ['idsProdutos[]' => $produtoId]);
-        if (!$res['success'] || empty($res['body']['data'])) {
-            $produto = $client->getProductById($produtoId);
-            if ($produto) {
-                return (int) ($produto['estoque']['saldoFisicoTotal']
-                    ?? $produto['estoque']['saldoVirtualTotal'] ?? 0);
-            }
-            return null;
-        }
-
-        $dados = $res['body']['data'][0] ?? null;
-        if (!$dados) return null;
-
-        if ($apenasGeral) {
-            $depositoGeralId = self::getDepositoGeral($client);
-            foreach ($dados['depositos'] ?? [] as $dep) {
-                if ($depositoGeralId && (int) ($dep['deposito']['id'] ?? 0) === $depositoGeralId) {
-                    return (int) ($dep['saldoFisico'] ?? 0);
+                if (!empty($skus)) {
+                    return $skus;
                 }
             }
-            return (int) (($dados['depositos'][0] ?? [])['saldoFisico'] ?? 0);
         }
 
-        // Soma todos os depósitos (Geral + Virtual)
-        $total = 0;
-        foreach ($dados['depositos'] ?? [] as $dep) {
-            $total += (int) ($dep['saldoFisico'] ?? 0);
-        }
-        return $total;
-    }
-
-    private static function getDepositoGeral(BlingClient $client): ?int
-    {
-        $accountKey = spl_object_id($client);
-        $cacheKey = "bling_deposito_geral_{$accountKey}";
-
-        $cached = Cache::get($cacheKey);
-        if ($cached) return (int) $cached;
-
-        $res = $client->get('/depositos', ['limite' => 100]);
-        if (!$res['success']) return null;
-
-        foreach ($res['body']['data'] ?? [] as $d) {
-            $nome = strtolower(trim($d['descricao'] ?? ''));
-            if (str_contains($nome, 'geral')) {
-                Cache::put($cacheKey, $d['id'], now()->addDay());
-                return (int) $d['id'];
-            }
-        }
-
-        // Fallback: primeiro depósito
-        $primeiro = $res['body']['data'][0] ?? null;
-        if ($primeiro) {
-            Cache::put($cacheKey, $primeiro['id'], now()->addDay());
-            return (int) $primeiro['id'];
-        }
-
-        return null;
-    }
-
-    private static function atualizarEstoque(BlingClient $client, int $produtoId, int $quantidade, int $depositoId): array
-    {
-        $res = $client->post('/estoques', [], [
-            'produto' => ['id' => $produtoId],
-            'deposito' => ['id' => $depositoId],
-            'operacao' => 'B',
-            'preco' => 0,
-            'custo' => 0,
-            'quantidade' => $quantidade,
-            'observacoes' => 'Sync automático via pedido',
-        ]);
-
-        if (!$res['success'] && in_array((int) ($res['http_code'] ?? 0), [429, 500, 502, 503, 504])) {
-            sleep(2);
-            $res = $client->post('/estoques', [], [
-                'produto' => ['id' => $produtoId],
-                'deposito' => ['id' => $depositoId],
-                'operacao' => 'B',
-                'preco' => 0,
-                'custo' => 0,
-                'quantidade' => $quantidade,
-                'observacoes' => 'Sync automático via pedido (retry)',
-            ]);
-        }
-
-        return $res;
+        return [['sku' => $sku, 'quantidade' => $qtdPedido]];
     }
 }
