@@ -41,7 +41,7 @@ class ProdutoEstoqueResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('sku')->label('SKU')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('nome')->label('Nome')->searchable()->sortable()->limit(40),
+                Tables\Columns\TextColumn::make('nome')->label('Nome')->searchable()->sortable()->limit(40)->tooltip(fn ($record) => $record->nome),
                 Tables\Columns\TextColumn::make('formato')->label('Tipo')
                     ->badge()
                     ->formatStateUsing(fn (string $state) => match ($state) {
