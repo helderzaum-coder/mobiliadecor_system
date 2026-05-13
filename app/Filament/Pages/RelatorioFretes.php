@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Helpers\TransportadoraHelper;
 use App\Models\Venda;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -186,21 +187,7 @@ class RelatorioFretes extends Page implements HasForms
                     ->visible(fn ($get) => filled($get('filtro_uf'))),
                 Forms\Components\Select::make('filtro_transportadora')
                     ->label('Transportadora')
-                    ->options(function () {
-                        $fromStaging = \App\Models\PedidoBlingStaging::whereNotNull('transportadora')
-                            ->where('transportadora', '!=', '')
-                            ->distinct()
-                            ->pluck('transportadora');
-                        $fromCte = \App\Models\Cte::whereNotNull('transportadora')
-                            ->where('transportadora', '!=', '')
-                            ->distinct()
-                            ->pluck('transportadora');
-                        $fromVenda = \App\Models\Venda::whereNotNull('transportadora_manual')
-                            ->where('transportadora_manual', '!=', '')
-                            ->distinct()
-                            ->pluck('transportadora_manual');
-                        return $fromStaging->merge($fromCte)->merge($fromVenda)->unique()->sort()->mapWithKeys(fn ($t) => [$t => $t])->toArray();
-                    })
+                    ->options(fn () => TransportadoraHelper::listarUnicas())
                     ->placeholder('Todas')
                     ->searchable()
                     ->reactive()
@@ -263,18 +250,44 @@ class RelatorioFretes extends Page implements HasForms
         }
 
         if ($this->filtro_transportadora) {
-            $query->where(function ($q) {
-                $q->whereIn('bling_id', function ($sub) {
-                    $sub->select('bling_id')->from('pedidos_bling_staging')
-                        ->where('transportadora', $this->filtro_transportadora);
-                })->orWhereIn('nfe_chave_acesso', function ($sub) {
-                    $sub->select('chave_nfe')->from('ctes')
-                        ->where('transportadora', $this->filtro_transportadora);
-                })->orWhereIn('id_venda', function ($sub) {
-                    $sub->select('venda_id')->from('ctes')
-                        ->where('transportadora', $this->filtro_transportadora)
-                        ->whereNotNull('venda_id');
-                })->orWhere('transportadora_manual', $this->filtro_transportadora);
+            // Buscar nomes raw que correspondem ao filtro normalizado
+            $filtroNorm = $this->filtro_transportadora;
+
+            $nomesCte = \App\Models\Cte::whereNotNull('transportadora')
+                ->where('transportadora', '!=', '')
+                ->distinct()->pluck('transportadora')
+                ->filter(fn ($t) => TransportadoraHelper::normalizar($t) === $filtroNorm)->values();
+
+            $nomesStaging = \App\Models\PedidoBlingStaging::whereNotNull('transportadora')
+                ->where('transportadora', '!=', '')
+                ->distinct()->pluck('transportadora')
+                ->filter(fn ($t) => TransportadoraHelper::normalizar($t) === $filtroNorm)->values();
+
+            $nomesVenda = \App\Models\Venda::whereNotNull('transportadora_manual')
+                ->where('transportadora_manual', '!=', '')
+                ->distinct()->pluck('transportadora_manual')
+                ->filter(fn ($t) => TransportadoraHelper::normalizar($t) === $filtroNorm)->values();
+
+            $query->where(function ($q) use ($nomesStaging, $nomesCte, $nomesVenda) {
+                if ($nomesStaging->isNotEmpty()) {
+                    $q->orWhereIn('bling_id', function ($sub) use ($nomesStaging) {
+                        $sub->select('bling_id')->from('pedidos_bling_staging')
+                            ->whereIn('transportadora', $nomesStaging);
+                    });
+                }
+                if ($nomesCte->isNotEmpty()) {
+                    $q->orWhereIn('nfe_chave_acesso', function ($sub) use ($nomesCte) {
+                        $sub->select('chave_nfe')->from('ctes')
+                            ->whereIn('transportadora', $nomesCte);
+                    })->orWhereIn('id_venda', function ($sub) use ($nomesCte) {
+                        $sub->select('venda_id')->from('ctes')
+                            ->whereIn('transportadora', $nomesCte)
+                            ->whereNotNull('venda_id');
+                    });
+                }
+                if ($nomesVenda->isNotEmpty()) {
+                    $q->orWhereIn('transportadora_manual', $nomesVenda);
+                }
             });
         }
 
@@ -335,6 +348,14 @@ class RelatorioFretes extends Page implements HasForms
                     $venda->staging_transportadora = $venda->transportadora_manual;
                 }
             }
+        }
+
+        // Normalizar nomes para exibição uniforme
+        foreach ($vendas as $venda) {
+            if (empty($venda->staging_transportadora) && $venda->transportadora_manual) {
+                $venda->staging_transportadora = $venda->transportadora_manual;
+            }
+            $venda->staging_transportadora = TransportadoraHelper::normalizar($venda->staging_transportadora);
         }
 
         return $vendas;
