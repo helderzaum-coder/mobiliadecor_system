@@ -13,9 +13,9 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
  * ║                                                                    ║
  * ║  Este serviço processa a planilha da Shopee e atualiza APENAS      ║
  * ║  dados financeiros no staging:                                     ║
- * ║  - Comissão (colunas AQ + AS)                                      ║
+ * ║  - Comissão (colunas AT + AV)                                      ║
  * ║  - Subsídio Pix (colunas AE + Y)                                   ║
- * ║  - Frete (coluna AM/AN, com lógica Xpress = 0)                    ║
+ * ║  - Frete (coluna AO/AP, com lógica Xpress = 0)                    ║
  * ║  - Total produtos (coluna R × S)                                   ║
  * ║  - Total pedido (coluna AU)                                        ║
  * ║                                                                    ║
@@ -137,13 +137,13 @@ class ShopeePlanilhaService
      *
      * ⚠️ NÃO ALTERAR COLUNAS SEM VERIFICAR PLANILHA REAL:
      *  - R = Preço acordado (já inclui subsídio pix), S = Quantidade
-     *  - AQ = Taxa de comissão bruta, AS = Taxa de serviço bruta
+     *  - AT = Taxa de comissão líquida, AV = Taxa de serviço líquida
      *  - AE = Cupom Shopee (subsídio marketplace)
      *  - Y = Ajuste por pagamento via PIX (subsídio pix) — embutido no preço R
-     *        e também embutido nas taxas AQ+AS. Deve ser subtraído de ambos.
+     *        e também embutido nas taxas AT+AV. Deve ser subtraído de ambos.
      *  - AU = Total global do pedido (renda líquida)
      *  - G = Opção de envio (Xpress → frete = 0)
-     *  - AM = Taxa envio comprador, AN = Desconto frete
+     *  - AO = Taxa envio comprador, AP = Desconto frete
      *
      * Lógica de exibição (conforme tela Shopee):
      *  - Subtotal Produtos = (R × S) - Y  (preço real sem subsídio pix)
@@ -191,9 +191,9 @@ class ShopeePlanilhaService
                 'valor' => round($precoProduto, 2),
             ];
 
-            // Taxa de comissão líquida (coluna AR) + Taxa de serviço líquida (coluna AT)
-            $comissao += abs(self::parseDecimal($row['AR'] ?? 0));
+            // Taxa de comissão líquida (coluna AT) + Taxa de serviço líquida (coluna AV)
             $comissao += abs(self::parseDecimal($row['AT'] ?? 0));
+            $comissao += abs(self::parseDecimal($row['AV'] ?? 0));
 
             // Frete: calcular apenas uma vez (é por pedido, não por item)
             if (!$freteCalculado) {
@@ -204,9 +204,9 @@ class ShopeePlanilhaService
                 if ($isXpress) {
                     $frete = 0;
                 } else {
-                    // Frete recebido = Taxa de envio paga pelo comprador (AM) + Desconto de Frete da Shopee (AN)
-                    $taxaEnvioComprador = self::parseDecimal($row['AM'] ?? 0);
-                    $descontoFrete = self::parseDecimal($row['AN'] ?? 0);
+                    // Frete recebido = Taxa de envio paga pelo comprador (AO) + Desconto de Frete da Shopee (AP)
+                    $taxaEnvioComprador = self::parseDecimal($row['AO'] ?? 0);
+                    $descontoFrete = self::parseDecimal($row['AP'] ?? 0);
                     $frete = $taxaEnvioComprador + abs($descontoFrete);
                 }
                 $freteCalculado = true;
