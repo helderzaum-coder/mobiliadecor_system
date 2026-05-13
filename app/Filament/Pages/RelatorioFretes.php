@@ -186,12 +186,17 @@ class RelatorioFretes extends Page implements HasForms
                     ->visible(fn ($get) => filled($get('filtro_uf'))),
                 Forms\Components\Select::make('filtro_transportadora')
                     ->label('Transportadora')
-                    ->options(fn () => \App\Models\PedidoBlingStaging::whereNotNull('transportadora')
-                        ->where('transportadora', '!=', '')
-                        ->distinct()
-                        ->orderBy('transportadora')
-                        ->pluck('transportadora', 'transportadora')
-                        ->toArray())
+                    ->options(function () {
+                        $fromStaging = \App\Models\PedidoBlingStaging::whereNotNull('transportadora')
+                            ->where('transportadora', '!=', '')
+                            ->distinct()
+                            ->pluck('transportadora');
+                        $fromCte = \App\Models\Cte::whereNotNull('transportadora')
+                            ->where('transportadora', '!=', '')
+                            ->distinct()
+                            ->pluck('transportadora');
+                        return $fromStaging->merge($fromCte)->unique()->sort()->mapWithKeys(fn ($t) => [$t => $t])->toArray();
+                    })
                     ->placeholder('Todas')
                     ->searchable()
                     ->reactive()
@@ -203,8 +208,19 @@ class RelatorioFretes extends Page implements HasForms
     private function buildQuery()
     {
         $query = Venda::with('canal')
-            ->where('frete_pago', true)
-            ->where('valor_frete_transportadora', '>', 0)
+            ->where(function ($q) {
+                // Pedidos com CT-e vinculado
+                $q->whereIn('id_venda', function ($sub) {
+                    $sub->select('venda_id')->from('ctes')->whereNotNull('venda_id');
+                })->orWhereIn('nfe_chave_acesso', function ($sub) {
+                    $sub->select('chave_nfe')->from('ctes')->whereNotNull('chave_nfe');
+                });
+            })
+            ->where(function ($q) {
+                // Excluir ME2/FULL (frete custo = 0)
+                $q->whereNull('ml_tipo_frete')
+                    ->orWhereNotIn('ml_tipo_frete', ['me2', 'full']);
+            })
             ->orderByRaw('(valor_frete_transportadora - valor_frete_cliente) DESC');
 
         $query = match ($this->periodo) {
@@ -241,9 +257,18 @@ class RelatorioFretes extends Page implements HasForms
         }
 
         if ($this->filtro_transportadora) {
-            $query->whereIn('bling_id', function ($sub) {
-                $sub->select('bling_id')->from('pedidos_bling_staging')
-                    ->where('transportadora', $this->filtro_transportadora);
+            $query->where(function ($q) {
+                $q->whereIn('bling_id', function ($sub) {
+                    $sub->select('bling_id')->from('pedidos_bling_staging')
+                        ->where('transportadora', $this->filtro_transportadora);
+                })->orWhereIn('nfe_chave_acesso', function ($sub) {
+                    $sub->select('chave_nfe')->from('ctes')
+                        ->where('transportadora', $this->filtro_transportadora);
+                })->orWhereIn('id_venda', function ($sub) {
+                    $sub->select('venda_id')->from('ctes')
+                        ->where('transportadora', $this->filtro_transportadora)
+                        ->whereNotNull('venda_id');
+                });
             });
         }
 
@@ -254,9 +279,9 @@ class RelatorioFretes extends Page implements HasForms
                 ->where('frete_cotado', '>', 0)
                 ->whereRaw('valor_frete_transportadora > frete_cotado');
         } elseif ($this->filtro_frete === 'sem_frete') {
-            $query->where('frete_pago', false)->orWhere('valor_frete_transportadora', '<=', 0);
+            $query->where('valor_frete_transportadora', '<=', 0);
         } elseif ($this->filtro_frete === 'todos_pagos') {
-            // já filtrado acima
+            $query->where('valor_frete_transportadora', '>', 0);
         }
 
         return $query;
@@ -279,6 +304,26 @@ class RelatorioFretes extends Page implements HasForms
                 $venda->staging_cidade = $staging?->dest_cidade;
                 $venda->staging_uf = $staging?->dest_uf;
                 $venda->staging_transportadora = $staging?->transportadora;
+            }
+        }
+
+        // Carregar transportadora do CT-e (mais confiável)
+        $nfeChaves = $vendas->pluck('nfe_chave_acesso')->filter()->toArray();
+        $vendaIds = $vendas->pluck('id_venda')->toArray();
+        if (!empty($nfeChaves) || !empty($vendaIds)) {
+            $ctes = \App\Models\Cte::where(function ($q) use ($nfeChaves, $vendaIds) {
+                if (!empty($nfeChaves)) $q->whereIn('chave_nfe', $nfeChaves);
+                if (!empty($vendaIds)) $q->orWhereIn('venda_id', $vendaIds);
+            })->get();
+
+            $cteByNfe = $ctes->keyBy('chave_nfe');
+            $cteByVenda = $ctes->keyBy('venda_id');
+
+            foreach ($vendas as $venda) {
+                $cte = $cteByNfe[$venda->nfe_chave_acesso] ?? $cteByVenda[$venda->id_venda] ?? null;
+                if ($cte) {
+                    $venda->staging_transportadora = $cte->transportadora ?? $venda->staging_transportadora;
+                }
             }
         }
 
