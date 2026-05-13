@@ -3,7 +3,6 @@
 namespace App\Helpers;
 
 use App\Models\Transportadora;
-use Illuminate\Support\Facades\Cache;
 
 class TransportadoraHelper
 {
@@ -12,26 +11,23 @@ class TransportadoraHelper
      */
     public static function mapaAliases(): array
     {
-        return Cache::remember('transportadora_aliases_map', 300, function () {
-            $mapa = [];
-            $transportadoras = Transportadora::where('ativo', true)->get();
+        $mapa = [];
+        $transportadoras = Transportadora::all();
 
-            foreach ($transportadoras as $t) {
-                $nome = $t->nome_transportadora;
-                $mapa[mb_strtolower(trim($nome))] = $nome;
+        foreach ($transportadoras as $t) {
+            $nome = $t->nome_transportadora;
+            $mapa[mb_strtolower(trim($nome))] = $nome;
 
-                foreach ($t->aliases ?? [] as $alias) {
-                    $mapa[mb_strtolower(trim($alias))] = $nome;
-                }
+            foreach ($t->aliases ?? [] as $alias) {
+                $mapa[mb_strtolower(trim($alias))] = $nome;
             }
+        }
 
-            return $mapa;
-        });
+        return $mapa;
     }
 
     /**
      * Resolve o nome raw para o nome agrupado.
-     * Comparação case-insensitive.
      */
     public static function resolver(?string $nomeRaw): ?string
     {
@@ -70,10 +66,10 @@ class TransportadoraHelper
     }
 
     /**
-     * Limpa cache de aliases.
+     * Limpa cache (mantido por compatibilidade, agora é no-op).
      */
     public static function limparCache(): void
     {
-        Cache::forget('transportadora_aliases_map');
+        // sem cache
     }
 }
