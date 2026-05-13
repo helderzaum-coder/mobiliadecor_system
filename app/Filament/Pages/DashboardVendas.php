@@ -353,7 +353,7 @@ class DashboardVendas extends Page implements HasForms
     {
         $ids = $this->buildQuery()
             ->where('planilha_processada', false)
-            ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%shopee%'))
+            ->where('canal_nome', 'like', '%shopee%')
             ->pluck('id_venda')->toArray();
 
         if (empty($ids)) {

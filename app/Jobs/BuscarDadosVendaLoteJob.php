@@ -98,6 +98,10 @@ class BuscarDadosVendaLoteJob implements ShouldQueue
 
     private function processarShopee(Venda $venda): bool
     {
-        return VendaRecalculoService::aplicarPlanilhaShopee($venda)['success'];
+        $result = VendaRecalculoService::aplicarPlanilhaShopee($venda);
+        if (!$result['success']) {
+            Log::info("ShopeeLote falha: pedido={$venda->numero_pedido_canal} bling_id={$venda->bling_id} msg={$result['msg']}");
+        }
+        return $result['success'];
     }
 }

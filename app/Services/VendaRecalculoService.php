@@ -237,8 +237,16 @@ class VendaRecalculoService
      */
     public static function aplicarPlanilhaShopee(Venda $venda): array
     {
-        $numeroPedido = $venda->numero_pedido_canal;
+        $numeroPedido = trim((string) $venda->numero_pedido_canal);
         $dado = PlanilhaShopeeDado::where('numero_pedido', $numeroPedido)->first();
+
+        // Fallback: buscar pelo numero_loja do staging
+        if (!$dado && $venda->bling_id) {
+            $staging = \App\Models\PedidoBlingStaging::where('bling_id', $venda->bling_id)->first();
+            if ($staging && $staging->numero_loja) {
+                $dado = PlanilhaShopeeDado::where('numero_pedido', trim($staging->numero_loja))->first();
+            }
+        }
 
         if (!$dado) {
             return ['success' => false, 'msg' => "Planilha Shopee não encontrada para pedido {$numeroPedido}."];
