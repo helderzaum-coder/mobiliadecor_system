@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Helpers\TransportadoraHelper;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -10,9 +11,16 @@ class Transportadora extends Model
     protected $table = 'transportadoras';
     protected $primaryKey = 'id_transportadora';
 
+    protected static function booted(): void
+    {
+        static::saved(fn () => TransportadoraHelper::limparCache());
+        static::deleted(fn () => TransportadoraHelper::limparCache());
+    }
+
     protected $fillable = [
         'nome_transportadora',
         'cnpj',
+        'aliases',
         'ativo',
         'aplica_icms',
         'cobertura_completa',
@@ -30,6 +38,7 @@ class Transportadora extends Model
     ];
 
     protected $casts = [
+        'aliases' => 'array',
         'ativo' => 'boolean',
         'aplica_icms' => 'boolean',
         'cobertura_completa' => 'boolean',

@@ -37,6 +37,10 @@ class TransportadoraResource extends Resource
                     ->required()
                     ->maxLength(18)
                     ->mask('99.999.999/9999-99'),
+                Forms\Components\TagsInput::make('aliases')
+                    ->label('Aliases (nomes alternativos)')
+                    ->helperText('Nomes que aparecem no CT-e/Bling e devem ser agrupados sob esta transportadora')
+                    ->columnSpanFull(),
                 Forms\Components\Toggle::make('ativo')
                     ->label('Ativo')
                     ->default(true),
