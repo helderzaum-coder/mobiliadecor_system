@@ -26,6 +26,7 @@ class RelatorioFretes extends Page implements HasForms
     public ?string $filtro_frete = null;
     public ?string $filtro_uf = null;
     public ?string $filtro_cidade = null;
+    public ?string $filtro_transportadora = null;
     public ?string $data_inicio = null;
     public ?string $data_fim = null;
 
@@ -43,7 +44,7 @@ class RelatorioFretes extends Page implements HasForms
         $stagings = [];
         if (!empty($blingIds)) {
             $stagings = \App\Models\PedidoBlingStaging::whereIn('bling_id', $blingIds)
-                ->select('bling_id', 'dest_cidade', 'dest_uf')
+                ->select('bling_id', 'dest_cidade', 'dest_uf', 'transportadora')
                 ->get()
                 ->keyBy('bling_id');
         }
@@ -59,7 +60,7 @@ class RelatorioFretes extends Page implements HasForms
             fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM UTF-8
 
             fputcsv($file, [
-                'Pedido', 'Canal', 'Data', 'Cliente', 'Cidade', 'UF',
+                'Pedido', 'Canal', 'Data', 'Cliente', 'Cidade', 'UF', 'Transportadora',
                 'Frete Cobrado', 'Frete Cotado', 'Frete Pago',
                 'Comissão Frete', 'Imposto Frete', 'Margem Frete',
             ], ';');
@@ -86,6 +87,7 @@ class RelatorioFretes extends Page implements HasForms
                     $venda->cliente_nome,
                     $staging?->dest_cidade ?? '',
                     $staging?->dest_uf ?? '',
+                    $staging?->transportadora ?? '',
                     number_format((float) $venda->valor_frete_cliente, 2, ',', ''),
                     number_format((float) ($venda->frete_cotado ?? 0), 2, ',', ''),
                     number_format((float) $venda->valor_frete_transportadora, 2, ',', ''),
@@ -182,6 +184,17 @@ class RelatorioFretes extends Page implements HasForms
                     ->searchable()
                     ->reactive()
                     ->visible(fn ($get) => filled($get('filtro_uf'))),
+                Forms\Components\Select::make('filtro_transportadora')
+                    ->label('Transportadora')
+                    ->options(fn () => \App\Models\PedidoBlingStaging::whereNotNull('transportadora')
+                        ->where('transportadora', '!=', '')
+                        ->distinct()
+                        ->orderBy('transportadora')
+                        ->pluck('transportadora', 'transportadora')
+                        ->toArray())
+                    ->placeholder('Todas')
+                    ->searchable()
+                    ->reactive(),
             ]),
         ]);
     }
@@ -226,6 +239,13 @@ class RelatorioFretes extends Page implements HasForms
             });
         }
 
+        if ($this->filtro_transportadora) {
+            $query->whereIn('bling_id', function ($sub) {
+                $sub->select('bling_id')->from('pedidos_bling_staging')
+                    ->where('transportadora', $this->filtro_transportadora);
+            });
+        }
+
         if ($this->filtro_frete === 'prejuizo') {
             $query->whereRaw('valor_frete_transportadora > valor_frete_cliente');
         } elseif ($this->filtro_frete === 'acima_cotado') {
@@ -249,7 +269,7 @@ class RelatorioFretes extends Page implements HasForms
         $blingIds = $vendas->pluck('bling_id')->filter()->toArray();
         if (!empty($blingIds)) {
             $stagings = \App\Models\PedidoBlingStaging::whereIn('bling_id', $blingIds)
-                ->select('bling_id', 'dest_cidade', 'dest_uf')
+                ->select('bling_id', 'dest_cidade', 'dest_uf', 'transportadora')
                 ->get()
                 ->keyBy('bling_id');
 
@@ -257,6 +277,7 @@ class RelatorioFretes extends Page implements HasForms
                 $staging = $stagings[$venda->bling_id] ?? null;
                 $venda->staging_cidade = $staging?->dest_cidade;
                 $venda->staging_uf = $staging?->dest_uf;
+                $venda->staging_transportadora = $staging?->transportadora;
             }
         }
 

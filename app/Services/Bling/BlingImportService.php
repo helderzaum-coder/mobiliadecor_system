@@ -192,6 +192,7 @@ class BlingImportService
         $destCidade = $etiqueta['municipio'] ?? null;
         $destUf = $etiqueta['uf'] ?? null;
         $pesoBruto = (float) ($pedido['transporte']['pesoBruto'] ?? 0);
+        $transportadora = $pedido['transporte']['contato']['nome'] ?? null;
 
         if (empty($destCep) && !empty($pedido['contato']['id'])) {
             $contatoRes = $this->client->get("/contatos/{$pedido['contato']['id']}");
@@ -307,6 +308,7 @@ class BlingImportService
             'dest_cep' => $destCep,
             'dest_cidade' => $destCidade,
             'dest_uf' => $destUf,
+            'transportadora' => $transportadora,
             'peso_bruto' => $pesoBruto > 0 ? $pesoBruto : null,
             'embalagem_largura' => $maiorLargura > 0 ? $maiorLargura : null,
             'embalagem_altura' => $maiorAltura > 0 ? $maiorAltura : null,
@@ -524,6 +526,11 @@ class BlingImportService
             $updates['dest_cep'] = $destCep;
             $updates['dest_cidade'] = $destCidade;
             $updates['dest_uf'] = $destUf;
+        }
+
+        $transportadora = $pedido['transporte']['contato']['nome'] ?? null;
+        if ($transportadora && !$staging->transportadora) {
+            $updates['transportadora'] = $transportadora;
         }
 
         $pesoBruto = (float) ($pedido['transporte']['pesoBruto'] ?? 0);

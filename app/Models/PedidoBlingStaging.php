@@ -53,6 +53,7 @@ class PedidoBlingStaging extends Model
         'dest_cep',
         'dest_cidade',
         'dest_uf',
+        'transportadora',
         'peso_bruto',
         'embalagem_largura',
         'embalagem_altura',

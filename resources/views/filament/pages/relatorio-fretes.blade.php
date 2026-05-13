@@ -76,6 +76,7 @@
                     <th class="p-3 text-left text-gray-600 dark:text-gray-300">Data</th>
                     <th class="p-3 text-left text-gray-600 dark:text-gray-300">Cliente</th>
                     <th class="p-3 text-left text-gray-600 dark:text-gray-300">Destino</th>
+                    <th class="p-3 text-left text-gray-600 dark:text-gray-300">Transportadora</th>
                     <th class="p-3 text-right text-gray-600 dark:text-gray-300">Cobrado</th>
                     <th class="p-3 text-right text-gray-600 dark:text-gray-300">Cotado</th>
                     <th class="p-3 text-right text-gray-600 dark:text-gray-300">Pago</th>
@@ -114,6 +115,7 @@
                         <td class="p-3 text-gray-500">{{ $venda->data_venda?->format('d/m/Y') }}</td>
                         <td class="p-3 text-gray-600 dark:text-gray-300">{{ \Illuminate\Support\Str::limit($venda->cliente_nome, 25) }}</td>
                         <td class="p-3 text-gray-500">{{ $venda->staging_cidade ? $venda->staging_cidade . '/' . $venda->staging_uf : '-' }}</td>
+                        <td class="p-3 text-gray-500">{{ $venda->staging_transportadora ?? '-' }}</td>
                         <td class="p-3 text-right text-gray-800 dark:text-white">R$ {{ number_format($cobrado, 2, ',', '.') }}</td>
                         <td class="p-3 text-right {{ $cotado > 0 && $pago > $cotado ? 'text-yellow-600' : 'text-gray-500' }}">
                             {{ $cotado > 0 ? 'R$ ' . number_format($cotado, 2, ',', '.') : '-' }}
@@ -127,7 +129,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="11" class="p-6 text-center text-gray-500">Nenhum registro encontrado.</td>
+                        <td colspan="12" class="p-6 text-center text-gray-500">Nenhum registro encontrado.</td>
                     </tr>
                 @endforelse
             </tbody>
