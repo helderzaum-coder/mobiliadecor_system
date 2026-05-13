@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProdutoEstoqueResource\Pages;
+use App\Jobs\EspelharEstoqueJob;
 use App\Models\ProdutoEstoque;
 use App\Services\EstoqueService;
 use Filament\Forms;
@@ -157,6 +158,21 @@ class ProdutoEstoqueResource extends Resource
                     ->action(function () {
                         \App\Jobs\ImportarProdutosBlingJob::dispatch();
                         Notification::make()->title('Importação iniciada em background.')->info()->send();
+                    }),
+                Tables\Actions\Action::make('espelhar_estoque')
+                    ->label('Espelhar Estoque Primary → Secondary')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('Espelhar Estoque')
+                    ->modalDescription('Isso vai copiar o saldo de TODOS os produtos da Primary (Geral + Virtual) para a Secondary. Pode demorar alguns minutos. Você receberá uma notificação ao concluir.')
+                    ->action(function () {
+                        EspelharEstoqueJob::dispatch();
+                        Notification::make()
+                            ->title('Espelhamento enviado para processamento')
+                            ->body('Você receberá uma notificação quando concluir.')
+                            ->info()
+                            ->send();
                     }),
             ]);
     }

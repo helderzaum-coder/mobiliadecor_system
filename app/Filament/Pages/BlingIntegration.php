@@ -3,7 +3,6 @@
 namespace App\Filament\Pages;
 
 use App\Services\Bling\BlingOAuthService;
-use App\Jobs\EspelharEstoqueJob;
 use App\Jobs\VariacaoTamposJob;
 use Filament\Pages\Page;
 use Filament\Actions\Action;
@@ -36,21 +35,6 @@ class BlingIntegration extends Page
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('espelhar_estoque')
-                ->label('Espelhar Estoque Primary → Secondary')
-                ->icon('heroicon-o-arrow-path')
-                ->color('warning')
-                ->requiresConfirmation()
-                ->modalHeading('Espelhar Estoque')
-                ->modalDescription('Isso vai copiar o saldo de TODOS os produtos da Primary (Geral + Virtual) para a Secondary. Pode demorar alguns minutos. Você receberá uma notificação ao concluir.')
-                ->action(function () {
-                    EspelharEstoqueJob::dispatch();
-                    Notification::make()
-                        ->title('Espelhamento enviado para processamento')
-                        ->body('Você receberá uma notificação quando concluir.')
-                        ->info()
-                        ->send();
-                }),
             Action::make('variacao_tampos')
                 ->label('Equalizar Variação de Tampos')
                 ->icon('heroicon-o-squares-2x2')
