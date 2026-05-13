@@ -250,18 +250,19 @@ class RelatorioFretes extends Page implements HasForms
         }
 
         if ($this->filtro_transportadora) {
-            // Buscar todos os nomes raw originais que correspondem ao agrupamento
-            $allCte = \App\Models\Cte::whereNotNull('transportadora')
-                ->where('transportadora', '!=', '')->distinct()->pluck('transportadora');
-            $allStaging = \App\Models\PedidoBlingStaging::whereNotNull('transportadora')
-                ->where('transportadora', '!=', '')->distinct()->pluck('transportadora');
-            $allVenda = \App\Models\Venda::whereNotNull('transportadora_manual')
-                ->where('transportadora_manual', '!=', '')->distinct()->pluck('transportadora_manual');
-
             $filtro = $this->filtro_transportadora;
-            $nomesCte = $allCte->filter(fn ($t) => TransportadoraHelper::resolver($t) === $filtro)->values();
-            $nomesStaging = $allStaging->filter(fn ($t) => TransportadoraHelper::resolver($t) === $filtro)->values();
-            $nomesVenda = $allVenda->filter(fn ($t) => TransportadoraHelper::resolver($t) === $filtro)->values();
+
+            $nomesCte = \App\Models\Cte::whereNotNull('transportadora')
+                ->where('transportadora', '!=', '')->distinct()->pluck('transportadora')
+                ->filter(fn ($t) => TransportadoraHelper::resolver($t) === $filtro)->values();
+
+            $nomesStaging = \App\Models\PedidoBlingStaging::whereNotNull('transportadora')
+                ->where('transportadora', '!=', '')->distinct()->pluck('transportadora')
+                ->filter(fn ($t) => TransportadoraHelper::resolver($t) === $filtro)->values();
+
+            $nomesVenda = \App\Models\Venda::whereNotNull('transportadora_manual')
+                ->where('transportadora_manual', '!=', '')->distinct()->pluck('transportadora_manual')
+                ->filter(fn ($t) => TransportadoraHelper::resolver($t) === $filtro)->values();
 
             $query->where(function ($q) use ($nomesStaging, $nomesCte, $nomesVenda) {
                 if ($nomesStaging->isNotEmpty()) {
