@@ -95,6 +95,7 @@ class ProdutoEstoqueResource extends Resource
                     ->label('Entrada')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
+                    ->modalHeading(fn ($record) => "Entrada: {$record->sku} - {$record->nome}")
                     ->form([
                         Forms\Components\TextInput::make('quantidade')->label('Quantidade')->numeric()->required()->minValue(1),
                         Forms\Components\TextInput::make('referencia')->label('Referência/Obs')->maxLength(255),
@@ -111,6 +112,7 @@ class ProdutoEstoqueResource extends Resource
                     ->label('Saída')
                     ->icon('heroicon-o-arrow-up-tray')
                     ->color('danger')
+                    ->modalHeading(fn ($record) => "Saída: {$record->sku} - {$record->nome}")
                     ->form([
                         Forms\Components\TextInput::make('quantidade')->label('Quantidade')->numeric()->required()->minValue(1),
                         Forms\Components\TextInput::make('referencia')->label('Referência/Obs')->maxLength(255),
@@ -127,6 +129,7 @@ class ProdutoEstoqueResource extends Resource
                     ->label('Balanço')
                     ->icon('heroicon-o-scale')
                     ->color('warning')
+                    ->modalHeading(fn ($record) => "Balanço: {$record->sku} - {$record->nome}")
                     ->form([
                         Forms\Components\TextInput::make('novo_saldo')->label('Novo Saldo')->numeric()->required()->minValue(0),
                         Forms\Components\TextInput::make('referencia')->label('Referência/Obs')->maxLength(255),
