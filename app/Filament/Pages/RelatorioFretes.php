@@ -195,7 +195,11 @@ class RelatorioFretes extends Page implements HasForms
                             ->where('transportadora', '!=', '')
                             ->distinct()
                             ->pluck('transportadora');
-                        return $fromStaging->merge($fromCte)->unique()->sort()->mapWithKeys(fn ($t) => [$t => $t])->toArray();
+                        $fromVenda = \App\Models\Venda::whereNotNull('transportadora_manual')
+                            ->where('transportadora_manual', '!=', '')
+                            ->distinct()
+                            ->pluck('transportadora_manual');
+                        return $fromStaging->merge($fromCte)->merge($fromVenda)->unique()->sort()->mapWithKeys(fn ($t) => [$t => $t])->toArray();
                     })
                     ->placeholder('Todas')
                     ->searchable()
@@ -214,12 +218,14 @@ class RelatorioFretes extends Page implements HasForms
                     $sub->select('venda_id')->from('ctes')->whereNotNull('venda_id');
                 })->orWhereIn('nfe_chave_acesso', function ($sub) {
                     $sub->select('chave_nfe')->from('ctes')->whereNotNull('chave_nfe');
-                });
+                })
+                // OU frete pago manualmente
+                ->orWhere('frete_pago', true);
             })
             ->where(function ($q) {
                 // Excluir ME2/FULL (frete custo = 0)
                 $q->whereNull('ml_tipo_frete')
-                    ->orWhereNotIn('ml_tipo_frete', ['me2', 'full']);
+                    ->orWhereNotIn('ml_tipo_frete', ['me2', 'full', 'ME2', 'FULL']);
             })
             ->orderByRaw('(valor_frete_transportadora - valor_frete_cliente) DESC');
 
@@ -268,7 +274,7 @@ class RelatorioFretes extends Page implements HasForms
                     $sub->select('venda_id')->from('ctes')
                         ->where('transportadora', $this->filtro_transportadora)
                         ->whereNotNull('venda_id');
-                });
+                })->orWhere('transportadora_manual', $this->filtro_transportadora);
             });
         }
 
@@ -323,6 +329,10 @@ class RelatorioFretes extends Page implements HasForms
                 $cte = $cteByNfe[$venda->nfe_chave_acesso] ?? $cteByVenda[$venda->id_venda] ?? null;
                 if ($cte) {
                     $venda->staging_transportadora = $cte->transportadora ?? $venda->staging_transportadora;
+                }
+                // Fallback: transportadora_manual da venda
+                if (empty($venda->staging_transportadora) && $venda->transportadora_manual) {
+                    $venda->staging_transportadora = $venda->transportadora_manual;
                 }
             }
         }

@@ -155,6 +155,26 @@ class DashboardVendas extends Page implements HasForms
         \Filament\Notifications\Notification::make()->title('Frete zerado (Envias). Margens recalculadas.')->success()->send();
     }
 
+    public function lancarFreteManual(int $vendaId, string $valor, string $transportadora): void
+    {
+        $venda = Venda::find($vendaId);
+        if (!$venda) return;
+        $valorFrete = (float) str_replace(',', '.', $valor);
+        if ($valorFrete <= 0) {
+            \Filament\Notifications\Notification::make()->title('Valor inválido.')->warning()->send();
+            return;
+        }
+        $venda->update([
+            'valor_frete_transportadora' => round($valorFrete, 2),
+            'frete_pago' => true,
+            'transportadora_manual' => trim($transportadora) ?: null,
+        ]);
+        \App\Services\VendaRecalculoService::recalcularMargens($venda);
+        \Filament\Notifications\Notification::make()
+            ->title('Frete manual lançado: R$ ' . number_format($valorFrete, 2, ',', '.') . ($transportadora ? " ({$transportadora})" : ''))
+            ->success()->send();
+    }
+
     public function buscarCustos(int $vendaId): void
     {
         $venda = Venda::find($vendaId);

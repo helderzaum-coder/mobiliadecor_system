@@ -37,6 +37,7 @@ class Venda extends Model
         'cliente_nome',
         'cliente_documento',
         'frete_pago',
+        'transportadora_manual',
         'repasse_recebido',
         'data_recebimento',
         'data_prevista_envio',

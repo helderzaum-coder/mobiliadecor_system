@@ -447,6 +447,18 @@
                                 📦 Shopee Xpress
                             </button>
                         @endif
+                        <div x-data="{ open: false, valor: '', transp: '' }" style="display:inline-block;">
+                            <button @click="open = !open" type="button"
+                                style="background:#065f46;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                                ✏️ Frete Manual
+                            </button>
+                            <div x-show="open" x-cloak style="margin-top:4px;display:flex;gap:4px;align-items:center;">
+                                <input x-model="valor" type="text" placeholder="Valor" style="width:80px;padding:3px 6px;font-size:11px;border-radius:4px;border:1px solid #4b5563;background:#1f2937;color:#fff;">
+                                <input x-model="transp" type="text" placeholder="Transportadora" style="width:120px;padding:3px 6px;font-size:11px;border-radius:4px;border:1px solid #4b5563;background:#1f2937;color:#fff;">
+                                <button @click="if(valor) { $wire.lancarFreteManual({{ $venda->id_venda }}, valor, transp); open=false; }" type="button"
+                                    style="background:#059669;color:#fff;padding:3px 8px;font-size:11px;border-radius:4px;border:none;cursor:pointer;">✓</button>
+                            </div>
+                        </div>
                     @endif
                     @if($isML && !$temPlanilha)
                         <button wire:click="aplicarPlanilhaML({{ $venda->id_venda }})" wire:loading.attr="disabled"
