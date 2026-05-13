@@ -518,7 +518,7 @@
                                 $qtd = $item['quantidade'] ?? 1;
                             @endphp
                             @if($sku || $desc)
-                            <span class="text-gray-600 dark:text-gray-400">
+                            <span class="text-gray-600 dark:text-gray-400" title="{{ $desc }}">
                                 @if($sku)<span class="font-mono text-gray-800 dark:text-gray-200">{{ $sku }}</span>@endif
                                 {{ $desc }}
                                 <span class="font-semibold">x{{ $qtd }}</span>
