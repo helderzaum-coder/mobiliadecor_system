@@ -106,7 +106,7 @@ class RelatorioFretes extends Page implements HasForms
     public function form(Forms\Form $form): Forms\Form
     {
         return $form->schema([
-            Forms\Components\Grid::make(9)->schema([
+            Forms\Components\Grid::make(10)->schema([
                 Forms\Components\Select::make('periodo')
                     ->label('Período')
                     ->options([
@@ -194,7 +194,8 @@ class RelatorioFretes extends Page implements HasForms
                         ->toArray())
                     ->placeholder('Todas')
                     ->searchable()
-                    ->reactive(),
+                    ->reactive()
+                    ->columnSpan(2),
             ]),
         ]);
     }
