@@ -3,10 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Services\Bling\BlingOAuthService;
-use App\Jobs\VariacaoTamposJob;
 use Filament\Pages\Page;
-use Filament\Actions\Action;
-use Filament\Notifications\Notification;
 
 class BlingIntegration extends Page
 {
@@ -34,23 +31,7 @@ class BlingIntegration extends Page
 
     protected function getHeaderActions(): array
     {
-        return [
-            Action::make('variacao_tampos')
-                ->label('Equalizar Variação de Tampos')
-                ->icon('heroicon-o-squares-2x2')
-                ->color('info')
-                ->requiresConfirmation()
-                ->modalHeading('Variação de Tampos')
-                ->modalDescription('Equaliza o estoque de todas as variações de tampo para o MENOR saldo do grupo. Fluxo correto: 1) Ajuste o estoque do produto principal com o valor correto. 2) Clique neste botão para igualar todos os outros.')
-                ->action(function () {
-                    VariacaoTamposJob::dispatch('primary');
-                    Notification::make()
-                        ->title('Equalização enviada para processamento')
-                        ->body('Você receberá uma notificação quando concluir.')
-                        ->info()
-                        ->send();
-                }),
-        ];
+        return [];
     }
 
     public static function canAccess(): bool
