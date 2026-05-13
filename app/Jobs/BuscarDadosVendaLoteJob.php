@@ -41,6 +41,7 @@ class BuscarDadosVendaLoteJob implements ShouldQueue
                 'nfe' => $this->processarNfe($venda),
                 'cte' => $this->processarCte($venda),
                 'custos' => $this->processarCustos($venda),
+                'shopee' => $this->processarShopee($venda),
                 default => false,
             };
 
@@ -51,6 +52,7 @@ class BuscarDadosVendaLoteJob implements ShouldQueue
             'nfe' => 'NF-e',
             'cte' => 'CT-e',
             'custos' => 'Custos',
+            'shopee' => 'Planilha Shopee',
             default => $this->tipo,
         };
 
@@ -92,5 +94,10 @@ class BuscarDadosVendaLoteJob implements ShouldQueue
         $venda->update(['custo_produtos' => round($custoProdutos, 2)]);
         VendaRecalculoService::recalcularMargens($venda);
         return true;
+    }
+
+    private function processarShopee(Venda $venda): bool
+    {
+        return VendaRecalculoService::aplicarPlanilhaShopee($venda)['success'];
     }
 }

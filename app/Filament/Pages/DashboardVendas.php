@@ -349,6 +349,22 @@ class DashboardVendas extends Page implements HasForms
         \Filament\Notifications\Notification::make()->title(count($ids) . ' venda(s) enviadas para busca de custos.')->info()->send();
     }
 
+    public function aplicarPlanilhaShopeeLote(): void
+    {
+        $ids = $this->buildQuery()
+            ->where('planilha_processada', false)
+            ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%shopee%'))
+            ->pluck('id_venda')->toArray();
+
+        if (empty($ids)) {
+            \Filament\Notifications\Notification::make()->title('Nenhuma venda Shopee sem planilha no período.')->warning()->send();
+            return;
+        }
+
+        \App\Jobs\BuscarDadosVendaLoteJob::dispatch('shopee', $ids, auth()->id());
+        \Filament\Notifications\Notification::make()->title(count($ids) . ' venda(s) Shopee enviadas para aplicar planilha.')->info()->send();
+    }
+
     public function paginaAnterior(): void
     {
         if ($this->pagina > 1) $this->pagina--;
