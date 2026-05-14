@@ -447,6 +447,7 @@ class DashboardVendas extends Page implements HasForms
                         'falta_afiliado' => '👥 Falta Afiliado (Shopee)',
                         'sem_custo' => '💰 Sem Custo Produto',
                         'aguardando_envio' => '📦 Aguardando Envio',
+                        'me2_full' => '📦 ME2/FULL',
                         'incompleto' => '❌ Incompleto',
                         'completo' => '✅ Completo',
                     ])
@@ -511,6 +512,8 @@ class DashboardVendas extends Page implements HasForms
             $query->where(fn ($q) => $q->where('custo_produtos', '<=', 0)->orWhereNull('custo_produtos'));
         } elseif ($this->status_filtro === 'aguardando_envio') {
             $query->whereNotNull('data_prevista_envio');
+        } elseif ($this->status_filtro === 'me2_full') {
+            $query->whereIn('ml_tipo_frete', ['ME2', 'FULL']);
         } elseif ($this->status_filtro === 'incompleto') {
             // Incompleto: tudo que NÃO é completo
             $query->where(function ($q) {
