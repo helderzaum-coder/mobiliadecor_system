@@ -60,6 +60,13 @@
             <div style="font-size:24px;font-weight:800;color:var(--kpi-text,#1f2937);">R$ {{ number_format($resumo['total_pago'] + $resumo['comissao_frete'] + $resumo['imposto_frete'], 2, ',', '.') }}</div>
             <div style="font-size:10px;color:#9ca3af;margin-top:2px;">Transp. + Comissão + Imposto</div>
         </div>
+        @if($resumo['ctes_orfaos'] > 0)
+        <div style="flex:1;min-width:150px;background:var(--kpi-bg,#fff);border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:3px solid #f97316;">
+            <div style="font-size:11px;color:#6b7280;text-transform:uppercase;">CT-es sem Pedido</div>
+            <div style="font-size:24px;font-weight:800;color:#f97316;">{{ $resumo['ctes_orfaos'] }}</div>
+            <div style="font-size:10px;color:#9ca3af;margin-top:2px;">R$ {{ number_format($resumo['ctes_orfaos_valor'], 2, ',', '.') }} — <a href="{{ url('/admin/consulta-ctes') }}" style="color:#f97316;text-decoration:underline;">Ver CT-es</a></div>
+        </div>
+        @endif
     </div>
     <style>
         .dark { --kpi-bg: #1f2937; --kpi-text: #f9fafb; }

@@ -402,6 +402,10 @@ class RelatorioFretes extends Page implements HasForms
         $acimaCotado = (clone $query)->whereNotNull('frete_cotado')->where('frete_cotado', '>', 0)
             ->whereRaw('valor_frete_transportadora > frete_cotado')->count();
 
+        // CT-es órfãos (não vinculados a nenhuma venda)
+        $ctesOrfaos = \App\Models\Cte::where('utilizado', false)->count();
+        $ctesOrfaosValor = (float) \App\Models\Cte::where('utilizado', false)->sum('valor_frete');
+
         // Calcular comissão e imposto sobre frete (aproximado via margem)
         $totalComissaoFrete = (float) $totalCobrado - (float) $totalPago - (float) $totalMargemFrete;
         // Detalhar: buscar vendas com canal que cobra comissão/imposto sobre frete
@@ -435,6 +439,8 @@ class RelatorioFretes extends Page implements HasForms
             'acima_cotado' => $acimaCotado,
             'comissao_frete' => $somaComissaoFrete,
             'imposto_frete' => $somaImpostoFrete,
+            'ctes_orfaos' => $ctesOrfaos,
+            'ctes_orfaos_valor' => $ctesOrfaosValor,
         ];
     }
 
