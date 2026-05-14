@@ -448,6 +448,8 @@ class DashboardVendas extends Page implements HasForms
                         'sem_custo' => '💰 Sem Custo Produto',
                         'aguardando_envio' => '📦 Aguardando Envio',
                         'me2_full' => '📦 ME2/FULL',
+                        'shopee_xpress' => '🚚 Shopee Xpress',
+                        'envias' => '🚚 Envias',
                         'incompleto' => '❌ Incompleto',
                         'completo' => '✅ Completo',
                     ])
@@ -514,6 +516,14 @@ class DashboardVendas extends Page implements HasForms
             $query->whereNotNull('data_prevista_envio');
         } elseif ($this->status_filtro === 'me2_full') {
             $query->whereIn('ml_tipo_frete', ['ME2', 'FULL']);
+        } elseif ($this->status_filtro === 'shopee_xpress') {
+            $query->where('canal_nome', 'like', '%shopee%')
+                ->where('valor_frete_cliente', 0)
+                ->where('valor_frete_transportadora', 0);
+        } elseif ($this->status_filtro === 'envias') {
+            $query->where(fn ($q) => $q->where('canal_nome', 'like', '%via%')->orWhere('canal_nome', 'like', '%cnova%'))
+                ->where('valor_frete_cliente', 0)
+                ->where('valor_frete_transportadora', 0);
         } elseif ($this->status_filtro === 'incompleto') {
             // Incompleto: tudo que NÃO é completo
             $query->where(function ($q) {
