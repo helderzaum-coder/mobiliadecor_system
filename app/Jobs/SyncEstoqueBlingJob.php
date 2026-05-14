@@ -21,7 +21,8 @@ class SyncEstoqueBlingJob implements ShouldQueue
 
     public function __construct(
         private readonly string $sku,
-        private readonly int $saldo
+        private readonly int $saldo,
+        private readonly ?string $observacao = null
     ) {}
 
     public function handle(): void
@@ -58,7 +59,7 @@ class SyncEstoqueBlingJob implements ShouldQueue
             'preco' => 0,
             'custo' => 0,
             'quantidade' => max(0, $this->saldo),
-            'observacoes' => "Sistema: SKU {$this->sku} = {$this->saldo}",
+            'observacoes' => $this->observacao ?: "Sistema: SKU {$this->sku} = {$this->saldo}",
         ]);
 
         if ($res['success']) {

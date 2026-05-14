@@ -77,7 +77,9 @@ class EstoqueService
         });
 
         if ($syncBling) {
-            SyncEstoqueBlingJob::dispatch($produto->sku, $novoSaldo);
+            $obs = "Balanço (={$novoSaldo})";
+            if ($referencia) $obs .= " - {$referencia}";
+            SyncEstoqueBlingJob::dispatch($produto->sku, $novoSaldo, $obs);
         }
 
         return ['success' => true, 'saldo' => $novoSaldo];
@@ -156,7 +158,9 @@ class EstoqueService
         });
 
         if ($syncBling) {
-            SyncEstoqueBlingJob::dispatch($produto->sku, $saldoPosterior);
+            $obs = $tipo === 'entrada' ? "Entrada (+{$quantidade})" : "Saída (-{$quantidade})";
+            if ($referencia) $obs .= " - {$referencia}";
+            SyncEstoqueBlingJob::dispatch($produto->sku, $saldoPosterior, $obs);
         }
 
         Log::info("Estoque: {$tipo} SKU {$sku} qtd={$quantidade} | {$saldoAnterior} → {$saldoPosterior} | {$origem}");
