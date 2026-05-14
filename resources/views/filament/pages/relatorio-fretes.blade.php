@@ -123,7 +123,7 @@
                         <td class="p-3 text-right font-semibold text-gray-800 dark:text-white">R$ {{ number_format($pago, 2, ',', '.') }}</td>
                         <td class="p-3 text-right {{ $comissaoFrete > 0 ? 'text-orange-600' : 'text-gray-400' }}">{{ $comissaoFrete > 0 ? 'R$ ' . number_format($comissaoFrete, 2, ',', '.') : '-' }}</td>
                         <td class="p-3 text-right {{ $impostoFrete > 0 ? 'text-orange-600' : 'text-gray-400' }}">{{ $impostoFrete > 0 ? 'R$ ' . number_format($impostoFrete, 2, ',', '.') : '-' }}</td>
-                        <td class="p-3 text-right font-bold {{ $margem >= 0 ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400' }}">
+                        <td class="p-3 text-right font-bold" style="color: {{ $margem >= 0 ? '#22c55e' : '#ef4444' }}">
                             R$ {{ number_format($margem, 2, ',', '.') }}
                         </td>
                     </tr>
