@@ -10,11 +10,20 @@ class ProdutoEstoque extends Model
 {
     protected $table = 'produtos_estoque';
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $produto) {
+            $produto->saldo = $produto->saldo_fisico + $produto->saldo_virtual;
+        });
+    }
+
     protected $fillable = [
         'sku',
         'nome',
         'formato',
         'saldo',
+        'saldo_fisico',
+        'saldo_virtual',
         'saldo_secondary',
         'saldo_minimo',
         'ativo',
@@ -23,9 +32,20 @@ class ProdutoEstoque extends Model
     protected $casts = [
         'ativo' => 'boolean',
         'saldo' => 'integer',
+        'saldo_fisico' => 'integer',
+        'saldo_virtual' => 'integer',
         'saldo_secondary' => 'integer',
         'saldo_minimo' => 'integer',
     ];
+
+    /**
+     * Recalcula saldo total a partir de físico + virtual.
+     */
+    public function recalcularSaldo(): int
+    {
+        $this->saldo = $this->saldo_fisico + $this->saldo_virtual;
+        return $this->saldo;
+    }
 
     public function movimentacoes(): HasMany
     {

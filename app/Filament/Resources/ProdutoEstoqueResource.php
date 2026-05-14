@@ -31,7 +31,10 @@ class ProdutoEstoqueResource extends Resource
                 'S' => 'Simples',
                 'E' => 'Kit/Estrutura',
             ])->default('S')->required(),
-            Forms\Components\TextInput::make('saldo')->label('Saldo')->numeric()->default(0),
+            Forms\Components\TextInput::make('saldo_fisico')->label('Saldo Físico')->numeric()->default(0),
+            Forms\Components\TextInput::make('saldo_virtual')->label('Saldo Virtual (Dropshipping)')->numeric()->default(0),
+            Forms\Components\TextInput::make('saldo')->label('Saldo Total')->numeric()->default(0)->disabled()->dehydrated(false)
+                ->helperText('Calculado automaticamente: físico + virtual'),
             Forms\Components\TextInput::make('saldo_minimo')->label('Saldo Mínimo')->numeric()->default(0),
             Forms\Components\Toggle::make('ativo')->label('Ativo')->default(true),
         ]);
@@ -57,10 +60,19 @@ class ProdutoEstoqueResource extends Resource
                     ->label('Comp.')
                     ->counts('componentes')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('saldo')->label('Saldo')
+                Tables\Columns\TextColumn::make('saldo_fisico')->label('Físico')
+                    ->sortable()
+                    ->color('info')
+                    ->alignCenter(),
+                Tables\Columns\TextColumn::make('saldo_virtual')->label('Virtual')
+                    ->sortable()
+                    ->color('purple')
+                    ->alignCenter(),
+                Tables\Columns\TextColumn::make('saldo')->label('Total')
                     ->sortable()
                     ->color(fn ($record) => $record->saldo <= $record->saldo_minimo ? 'danger' : 'success')
-                    ->weight('bold'),
+                    ->weight('bold')
+                    ->alignCenter(),
                 Tables\Columns\TextColumn::make('saldo_minimo')->label('Mín.')->sortable(),
                 Tables\Columns\IconColumn::make('ativo')->label('Ativo')->boolean(),
             ])
@@ -98,14 +110,17 @@ class ProdutoEstoqueResource extends Resource
                     ->color('success')
                     ->modalHeading(fn ($record) => "Entrada: {$record->sku} - {$record->nome}")
                     ->form([
+                        Forms\Components\Select::make('tipo_estoque')->label('Tipo de Estoque')
+                            ->options(['fisico' => 'Físico', 'virtual' => 'Virtual (Dropshipping)'])
+                            ->default('virtual')->required(),
                         Forms\Components\TextInput::make('quantidade')->label('Quantidade')->numeric()->required()->minValue(1),
                         Forms\Components\TextInput::make('referencia')->label('Referência/Obs')->maxLength(255),
                     ])
                     ->action(function ($record, array $data) {
-                        $res = EstoqueService::entrada($record->sku, (int) $data['quantidade'], 'manual', $data['referencia'] ?? null, auth()->id());
+                        $res = EstoqueService::entrada($record->sku, (int) $data['quantidade'], 'manual', $data['referencia'] ?? null, auth()->id(), true, $data['tipo_estoque']);
                         if ($res['success']) {
-                            $obs = $data['referencia'] ? " - {$data['referencia']}" : '';
-                            Notification::make()->title("Entrada (+{$data['quantidade']}) {$record->sku} → saldo {$res['saldo']}{$obs}")->success()->send();
+                            $tipo = $data['tipo_estoque'] === 'fisico' ? 'físico' : 'virtual';
+                            Notification::make()->title("Entrada {$tipo} (+{$data['quantidade']}) {$record->sku} → total {$res['saldo']}")->success()->send();
                         } else {
                             Notification::make()->title($res['erro'] ?? 'Erro')->danger()->send();
                         }
@@ -116,14 +131,17 @@ class ProdutoEstoqueResource extends Resource
                     ->color('danger')
                     ->modalHeading(fn ($record) => "Saída: {$record->sku} - {$record->nome}")
                     ->form([
+                        Forms\Components\Select::make('tipo_estoque')->label('Tipo de Estoque')
+                            ->options(['fisico' => 'Físico', 'virtual' => 'Virtual (Dropshipping)'])
+                            ->default('virtual')->required(),
                         Forms\Components\TextInput::make('quantidade')->label('Quantidade')->numeric()->required()->minValue(1),
                         Forms\Components\TextInput::make('referencia')->label('Referência/Obs')->maxLength(255),
                     ])
                     ->action(function ($record, array $data) {
-                        $res = EstoqueService::saida($record->sku, (int) $data['quantidade'], 'manual', $data['referencia'] ?? null, auth()->id());
+                        $res = EstoqueService::saida($record->sku, (int) $data['quantidade'], 'manual', $data['referencia'] ?? null, auth()->id(), true, $data['tipo_estoque']);
                         if ($res['success']) {
-                            $obs = $data['referencia'] ? " - {$data['referencia']}" : '';
-                            Notification::make()->title("Saída (-{$data['quantidade']}) {$record->sku} → saldo {$res['saldo']}{$obs}")->success()->send();
+                            $tipo = $data['tipo_estoque'] === 'fisico' ? 'físico' : 'virtual';
+                            Notification::make()->title("Saída {$tipo} (-{$data['quantidade']}) {$record->sku} → total {$res['saldo']}")->success()->send();
                         } else {
                             Notification::make()->title($res['erro'] ?? 'Erro')->danger()->send();
                         }
@@ -134,14 +152,17 @@ class ProdutoEstoqueResource extends Resource
                     ->color('warning')
                     ->modalHeading(fn ($record) => "Balanço: {$record->sku} - {$record->nome}")
                     ->form([
+                        Forms\Components\Select::make('tipo_estoque')->label('Tipo de Estoque')
+                            ->options(['fisico' => 'Físico', 'virtual' => 'Virtual (Dropshipping)'])
+                            ->default('virtual')->required(),
                         Forms\Components\TextInput::make('novo_saldo')->label('Novo Saldo')->numeric()->required()->minValue(0),
                         Forms\Components\TextInput::make('referencia')->label('Referência/Obs')->maxLength(255),
                     ])
                     ->action(function ($record, array $data) {
-                        $res = EstoqueService::balanco($record->sku, (int) $data['novo_saldo'], 'manual', $data['referencia'] ?? null, auth()->id());
+                        $res = EstoqueService::balanco($record->sku, (int) $data['novo_saldo'], 'manual', $data['referencia'] ?? null, auth()->id(), true, $data['tipo_estoque']);
                         if ($res['success']) {
-                            $obs = $data['referencia'] ? " - {$data['referencia']}" : '';
-                            Notification::make()->title("Balanço (={$data['novo_saldo']}) {$record->sku} → saldo {$res['saldo']}{$obs}")->success()->send();
+                            $tipo = $data['tipo_estoque'] === 'fisico' ? 'físico' : 'virtual';
+                            Notification::make()->title("Balanço {$tipo} (={$data['novo_saldo']}) {$record->sku} → total {$res['saldo']}")->success()->send();
                         } else {
                             Notification::make()->title($res['erro'] ?? 'Erro')->danger()->send();
                         }
