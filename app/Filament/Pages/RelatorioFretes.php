@@ -50,6 +50,20 @@ class RelatorioFretes extends Page implements HasForms
                 ->keyBy('bling_id');
         }
 
+        // Carregar transportadora do CT-e
+        $nfeChaves = $vendas->pluck('nfe_chave_acesso')->filter()->toArray();
+        $vendaIds = $vendas->pluck('id_venda')->toArray();
+        $cteByNfe = collect();
+        $cteByVenda = collect();
+        if (!empty($nfeChaves) || !empty($vendaIds)) {
+            $ctes = \App\Models\Cte::where(function ($q) use ($nfeChaves, $vendaIds) {
+                if (!empty($nfeChaves)) $q->whereIn('chave_nfe', $nfeChaves);
+                if (!empty($vendaIds)) $q->orWhereIn('venda_id', $vendaIds);
+            })->get();
+            $cteByNfe = $ctes->keyBy('chave_nfe');
+            $cteByVenda = $ctes->keyBy('venda_id');
+        }
+
         $filename = 'relatorio_fretes_' . now()->format('Y-m-d_His') . '.csv';
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
@@ -81,6 +95,10 @@ class RelatorioFretes extends Page implements HasForms
                     $impostoFrete = round($cobrado * (float) $venda->percentual_imposto / 100, 2);
                 }
 
+                $cte = $cteByNfe[$venda->nfe_chave_acesso] ?? $cteByVenda[$venda->id_venda] ?? null;
+                $transp = $cte->transportadora ?? $staging?->transportadora ?? $venda->transportadora_manual ?? '';
+                $transp = TransportadoraHelper::resolver($transp) ?? '';
+
                 fputcsv($file, [
                     $venda->numero_pedido_canal,
                     $canal?->nome_canal ?? '-',
@@ -88,7 +106,7 @@ class RelatorioFretes extends Page implements HasForms
                     $venda->cliente_nome,
                     $staging?->dest_cidade ?? '',
                     $staging?->dest_uf ?? '',
-                    $staging?->transportadora ?? '',
+                    $transp,
                     number_format((float) $venda->valor_frete_cliente, 2, ',', ''),
                     number_format((float) ($venda->frete_cotado ?? 0), 2, ',', ''),
                     number_format((float) $venda->valor_frete_transportadora, 2, ',', ''),
