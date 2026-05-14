@@ -108,6 +108,7 @@ class ProdutoEstoqueResource extends Resource
                     ->label('Entrada')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
+                    ->visible(fn ($record) => !$record->isKit())
                     ->modalHeading(fn ($record) => "Entrada: {$record->sku} - {$record->nome}")
                     ->form([
                         Forms\Components\Select::make('tipo_estoque')->label('Tipo de Estoque')
@@ -129,6 +130,7 @@ class ProdutoEstoqueResource extends Resource
                     ->label('Saída')
                     ->icon('heroicon-o-arrow-up-tray')
                     ->color('danger')
+                    ->visible(fn ($record) => !$record->isKit())
                     ->modalHeading(fn ($record) => "Saída: {$record->sku} - {$record->nome}")
                     ->form([
                         Forms\Components\Select::make('tipo_estoque')->label('Tipo de Estoque')
@@ -150,6 +152,7 @@ class ProdutoEstoqueResource extends Resource
                     ->label('Balanço')
                     ->icon('heroicon-o-scale')
                     ->color('warning')
+                    ->visible(fn ($record) => !$record->isKit())
                     ->modalHeading(fn ($record) => "Balanço: {$record->sku} - {$record->nome}")
                     ->form([
                         Forms\Components\Select::make('tipo_estoque')->label('Tipo de Estoque')
@@ -173,6 +176,69 @@ class ProdutoEstoqueResource extends Resource
                 Tables\Actions\DeleteBulkAction::make(),
             ])
             ->headerActions([
+                Tables\Actions\Action::make('exportar_csv')
+                    ->label('Exportar CSV')
+                    ->icon('heroicon-o-arrow-down-on-square')
+                    ->color('gray')
+                    ->action(function () {
+                        $produtos = ProdutoEstoque::where('ativo', true)
+                            ->whereNotIn('formato', ['E', 'C'])
+                            ->orderBy('sku')
+                            ->get(['sku', 'nome', 'saldo_fisico', 'saldo_virtual']);
+
+                        $csv = "sku;nome;saldo_fisico;saldo_virtual\n";
+                        foreach ($produtos as $p) {
+                            $csv .= "{$p->sku};" . str_replace(';', ',', $p->nome) . ";{$p->saldo_fisico};{$p->saldo_virtual}\n";
+                        }
+
+                        $path = storage_path('app/public/estoque_export.csv');
+                        file_put_contents($path, $csv);
+
+                        Notification::make()->title("Exportados {$produtos->count()} produtos simples.")->success()->send();
+                        return response()->download($path, 'estoque_' . now()->format('Y-m-d') . '.csv');
+                    }),
+                Tables\Actions\Action::make('importar_csv')
+                    ->label('Importar CSV')
+                    ->icon('heroicon-o-arrow-up-on-square')
+                    ->color('info')
+                    ->form([
+                        Forms\Components\FileUpload::make('arquivo')
+                            ->label('Arquivo CSV (separador ;)')
+                            ->acceptedFileTypes(['text/csv', 'text/plain', 'application/vnd.ms-excel'])
+                            ->required()
+                            ->disk('public')
+                            ->directory('imports'),
+                        Forms\Components\Toggle::make('sync_bling')
+                            ->label('Sincronizar com Bling após importar')
+                            ->default(true),
+                    ])
+                    ->action(function (array $data) {
+                        $path = storage_path('app/public/' . $data['arquivo']);
+                        $lines = array_filter(explode("\n", file_get_contents($path)));
+                        array_shift($lines); // remove header
+
+                        $atualizados = 0;
+                        foreach ($lines as $line) {
+                            $cols = str_getcsv($line, ';');
+                            if (count($cols) < 4) continue;
+
+                            [$sku, $nome, $fisico, $virtual] = $cols;
+                            $produto = ProdutoEstoque::where('sku', trim($sku))->where('ativo', true)->first();
+                            if (!$produto || $produto->isKit()) continue;
+
+                            $produto->saldo_fisico = max(0, (int) $fisico);
+                            $produto->saldo_virtual = max(0, (int) $virtual);
+                            $produto->save();
+
+                            if ($data['sync_bling']) {
+                                \App\Jobs\SyncEstoqueBlingJob::dispatch($produto->sku, $produto->saldo, "Importação CSV", 'B');
+                            }
+                            $atualizados++;
+                        }
+
+                        @unlink($path);
+                        Notification::make()->title("{$atualizados} produtos atualizados via CSV.")->success()->send();
+                    }),
                 Tables\Actions\Action::make('importar_bling')
                     ->label('Importar do Bling')
                     ->icon('heroicon-o-cloud-arrow-down')
