@@ -358,13 +358,15 @@ class RelatorioFretes extends Page implements HasForms
                 if (!empty($vendaIds)) $q->orWhereIn('venda_id', $vendaIds);
             })->get();
 
-            $cteByNfe = $ctes->keyBy('chave_nfe');
-            $cteByVenda = $ctes->keyBy('venda_id');
+            // Agrupar por venda para contar múltiplos CT-es
+            $ctesByNfe = $ctes->groupBy('chave_nfe');
+            $ctesByVenda = $ctes->groupBy('venda_id');
 
             foreach ($vendas as $venda) {
-                $cte = $cteByNfe[$venda->nfe_chave_acesso] ?? $cteByVenda[$venda->id_venda] ?? null;
-                if ($cte) {
-                    $venda->staging_transportadora = $cte->transportadora ?? $venda->staging_transportadora;
+                $ctesVenda = $ctesByNfe[$venda->nfe_chave_acesso] ?? $ctesByVenda[$venda->id_venda] ?? collect();
+                $venda->qtd_ctes = $ctesVenda->count();
+                if ($ctesVenda->isNotEmpty()) {
+                    $venda->staging_transportadora = $ctesVenda->first()->transportadora ?? $venda->staging_transportadora;
                 }
                 // Fallback: transportadora_manual da venda
                 if (empty($venda->staging_transportadora) && $venda->transportadora_manual) {
