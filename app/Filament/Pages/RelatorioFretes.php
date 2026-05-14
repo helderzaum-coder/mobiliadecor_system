@@ -96,7 +96,7 @@ class RelatorioFretes extends Page implements HasForms
                 }
 
                 $cte = $cteByNfe[$venda->nfe_chave_acesso] ?? $cteByVenda[$venda->id_venda] ?? null;
-                $transp = $cte->transportadora ?? $staging?->transportadora ?? $venda->transportadora_manual ?? '';
+                $transp = $cte?->transportadora ?? $staging?->transportadora ?? $venda->transportadora_manual ?? '';
                 $transp = TransportadoraHelper::resolver($transp) ?? '';
 
                 fputcsv($file, [
