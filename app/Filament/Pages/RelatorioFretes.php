@@ -30,6 +30,7 @@ class RelatorioFretes extends Page implements HasForms
     public ?string $filtro_transportadora = null;
     public ?string $data_inicio = null;
     public ?string $data_fim = null;
+    public bool $incluir_frete_zerado = false;
 
     public function mount(): void
     {
@@ -210,6 +211,10 @@ class RelatorioFretes extends Page implements HasForms
                     ->searchable()
                     ->reactive()
                     ->columnSpan(2),
+                Forms\Components\Toggle::make('incluir_frete_zerado')
+                    ->label('Incluir frete zerado')
+                    ->default(false)
+                    ->reactive(),
             ]),
         ]);
     }
@@ -314,6 +319,10 @@ class RelatorioFretes extends Page implements HasForms
         } elseif ($this->filtro_frete === 'sem_frete') {
             $query->where('valor_frete_transportadora', '<=', 0);
         } elseif ($this->filtro_frete === 'todos_pagos') {
+            $query->where('valor_frete_transportadora', '>', 0);
+        }
+
+        if (!$this->incluir_frete_zerado) {
             $query->where('valor_frete_transportadora', '>', 0);
         }
 
