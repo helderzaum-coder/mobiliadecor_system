@@ -26,6 +26,12 @@ class MovimentacaoEstoqueResource extends Resource
                 Tables\Columns\TextColumn::make('produto.nome')->label('Produto')->limit(30)->searchable(),
                 Tables\Columns\TextColumn::make('tipo')->label('Tipo')
                     ->badge()
+                    ->formatStateUsing(fn (string $state, $record) => match ($state) {
+                        'entrada' => "Entrada (+{$record->quantidade})",
+                        'saida' => "Saída (-{$record->quantidade})",
+                        'balanco' => "Balanço (={$record->saldo_posterior})",
+                        default => $state,
+                    })
                     ->color(fn (string $state) => match ($state) {
                         'entrada' => 'success',
                         'saida' => 'danger',
@@ -36,7 +42,7 @@ class MovimentacaoEstoqueResource extends Resource
                 Tables\Columns\TextColumn::make('saldo_anterior')->label('Antes'),
                 Tables\Columns\TextColumn::make('saldo_posterior')->label('Depois'),
                 Tables\Columns\TextColumn::make('origem')->label('Origem')->badge(),
-                Tables\Columns\TextColumn::make('referencia')->label('Ref.')->limit(30),
+                Tables\Columns\TextColumn::make('referencia')->label('Observação')->limit(50)->wrap(),
                 Tables\Columns\TextColumn::make('user.name')->label('Usuário'),
             ])
             ->defaultSort('created_at', 'desc')
