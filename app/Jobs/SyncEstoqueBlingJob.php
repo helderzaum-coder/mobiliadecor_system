@@ -39,35 +39,68 @@ class SyncEstoqueBlingJob implements ShouldQueue
 
         $produto = $client->getProductBySku($this->sku);
         if (!$produto) {
-            Log::warning("SyncEstoqueBling: SKU {$this->sku} não encontrado na {$account}");
+            Log::warning("SyncEstoqueBling: SKU {$this->sku} nao encontrado na {$account}");
             return;
         }
 
         $produtoId = (int) $produto['id'];
         $depositoId = $this->getDepositoGeral($client);
         if (!$depositoId) {
-            Log::error("SyncEstoqueBling: depósito não encontrado na {$account}");
+            Log::error("SyncEstoqueBling: deposito nao encontrado na {$account}");
             return;
         }
 
-        // Evitar loop: marcar que esta atualização veio do sistema
         Cache::put("bling_sync_loop_{$account}_{$produtoId}", true, 60);
 
-        $res = $client->post('/estoques', [], [
+        $res = $this->operacao === 'B'
+            ? $this->balancoEstoque($client, $produtoId, $depositoId)
+            : $this->movimentarEstoque($client, $produtoId, $depositoId);
+
+        if ($res['success']) {
+            Log::info("SyncEstoqueBling: {$account} SKU {$this->sku} {$this->operacao} {$this->saldo}");
+        } else {
+            Log::warning("SyncEstoqueBling: erro {$account} SKU {$this->sku}", ['http' => $res['http_code'] ?? null]);
+        }
+    }
+
+    private function movimentarEstoque(BlingClient $client, int $produtoId, int $depositoId): array
+    {
+        $payload = [
             'produto' => ['id' => $produtoId],
             'deposito' => ['id' => $depositoId],
-            'operacao' => $this->operacao,
+            'tipo' => $this->operacao,
+            'quantidade' => max(0, $this->saldo),
+            'observacao' => $this->observacao ?: "Sistema: SKU {$this->sku} {$this->operacao} {$this->saldo}",
+        ];
+
+        $res = $client->post('/estoques/movimentacoes', [], $payload);
+
+        if (!$res['success'] && ($res['http_code'] ?? null) === 404) {
+            $res = $client->post('/estoques', [], [
+                'produto' => ['id' => $produtoId],
+                'deposito' => ['id' => $depositoId],
+                'operacao' => $this->operacao,
+                'preco' => 0,
+                'custo' => 0,
+                'quantidade' => max(0, $this->saldo),
+                'observacoes' => $this->observacao ?: "Sistema: SKU {$this->sku} {$this->operacao} {$this->saldo}",
+            ]);
+        }
+
+        return $res;
+    }
+
+    private function balancoEstoque(BlingClient $client, int $produtoId, int $depositoId): array
+    {
+        return $client->post('/estoques', [], [
+            'produto' => ['id' => $produtoId],
+            'deposito' => ['id' => $depositoId],
+            'operacao' => 'B',
             'preco' => 0,
             'custo' => 0,
             'quantidade' => max(0, $this->saldo),
             'observacoes' => $this->observacao ?: "Sistema: SKU {$this->sku} = {$this->saldo}",
         ]);
-
-        if ($res['success']) {
-            Log::info("SyncEstoqueBling: {$account} SKU {$this->sku} → {$this->saldo}");
-        } else {
-            Log::warning("SyncEstoqueBling: erro {$account} SKU {$this->sku}", ['http' => $res['http_code'] ?? null]);
-        }
     }
 
     private function getDepositoGeral(BlingClient $client): ?int
