@@ -150,16 +150,27 @@ class ConsultaCtes extends Page
 
     private function aplicarFiltroPeriodo($query): void
     {
-        match ($this->periodo) {
-            'hoje' => $query->whereRaw('COALESCE(data_emissao, DATE(created_at)) = ?', [today()->toDateString()]),
-            'esta_semana' => $query->whereRaw('COALESCE(data_emissao, DATE(created_at)) BETWEEN ? AND ?', [now()->startOfWeek()->toDateString(), now()->endOfWeek()->toDateString()]),
-            'este_mes' => $query->whereRaw('COALESCE(data_emissao, DATE(created_at)) BETWEEN ? AND ?', [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()]),
-            'mes_passado' => $query->whereRaw('COALESCE(data_emissao, DATE(created_at)) BETWEEN ? AND ?', [now()->subMonth()->startOfMonth()->toDateString(), now()->subMonth()->endOfMonth()->toDateString()]),
-            'customizado' => $query
-                ->when($this->data_inicio, fn ($q) => $q->whereRaw('COALESCE(data_emissao, DATE(created_at)) >= ?', [$this->data_inicio]))
-                ->when($this->data_fim, fn ($q) => $q->whereRaw('COALESCE(data_emissao, DATE(created_at)) <= ?', [$this->data_fim])),
+        $datas = match ($this->periodo) {
+            'hoje' => [today()->toDateString(), today()->toDateString()],
+            'esta_semana' => [now()->startOfWeek()->toDateString(), now()->endOfWeek()->toDateString()],
+            'este_mes' => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
+            'mes_passado' => [now()->subMonth()->startOfMonth()->toDateString(), now()->subMonth()->endOfMonth()->toDateString()],
+            'customizado' => [$this->data_inicio, $this->data_fim],
             default => null,
         };
+
+        if (!$datas) return;
+
+        $query->where(function ($q) use ($datas) {
+            // CT-es com data_emissao no período
+            $q->where(function ($sub) use ($datas) {
+                $sub->whereNotNull('data_emissao');
+                if ($datas[0]) $sub->where('data_emissao', '>=', $datas[0]);
+                if ($datas[1]) $sub->where('data_emissao', '<=', $datas[1]);
+            });
+            // OU CT-es sem data_emissao (sempre mostrar, pois não temos a data real)
+            $q->orWhereNull('data_emissao');
+        });
     }
 
     public static function canAccess(): bool

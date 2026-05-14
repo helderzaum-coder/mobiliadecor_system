@@ -55,6 +55,7 @@ class CteService
                     'remetente' => $dados['remetente'],
                     'destinatario' => $dados['destinatario'],
                     'transportadora' => $dados['transportadora'],
+                    'data_emissao' => $dados['data_emissao'],
                     'arquivo' => basename($arquivo),
                 ]);
 
