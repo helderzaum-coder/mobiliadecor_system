@@ -84,6 +84,10 @@
     <style>
         .dark { --kpi-bg: #1f2937; --kpi-text: #f9fafb; }
         :root { --kpi-bg: #fff; --kpi-text: #1f2937; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
     </style>
 
     {{-- Gráficos --}}
@@ -283,17 +287,44 @@
                         @php
                             $fretePago = (bool) $venda->frete_pago;
                             $freteCotado = (float) ($venda->frete_cotado ?? 0);
+                            // Alerta 1: CT-e diferente da cotação (>5%)
+                            $alertaCte = false;
+                            $diffCtePercent = 0;
+                            if ($fretePago && $freteCotado > 0 && $custoFrete > 0 && $freteCotado != $custoFrete) {
+                                $diffCtePercent = round((($custoFrete - $freteCotado) / $freteCotado) * 100, 1);
+                                $alertaCte = abs($diffCtePercent) > 5;
+                            }
+                            // Alerta 2: Cobrado do cliente vs cotação (>5%)
+                            $alertaCobrado = false;
+                            $diffCobradoPercent = 0;
+                            if ($freteCotado > 0 && $freteCliente > 0 && $freteCotado != $freteCliente) {
+                                $diffCobradoPercent = round((($freteCliente - $freteCotado) / $freteCotado) * 100, 1);
+                                $alertaCobrado = abs($diffCobradoPercent) > 5;
+                            }
                         @endphp
                         <div class="text-gray-500">Frete (cobrado → {{ $fretePago ? 'pago' : ($custoFrete > 0 ? 'cotado' : '-') }})</div>
                         <div class="font-semibold text-gray-800 dark:text-white">
                             R$ {{ number_format($freteCliente, 2, ',', '.') }} → R$ {{ number_format($custoFrete, 2, ',', '.') }}
-                            @if($fretePago && $freteCotado > 0 && $freteCotado != $custoFrete)
-                                <span style="color:#6b7280;font-size:10px;">(cotado: R$ {{ number_format($freteCotado, 2, ',', '.') }})</span>
-                            @endif
                             @if($custoFrete > 0 && !$fretePago)
                                 <span style="color:#d97706;font-size:10px;">⚠ estimado</span>
                             @endif
                         </div>
+                        @if($alertaCte)
+                            <div style="margin-top:4px;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;animation:pulse 1.5s infinite;
+                                {{ $diffCtePercent > 0 ? 'background:#fef2f2;border:2px solid #ef4444;color:#dc2626;' : 'background:#fffbeb;border:2px solid #f59e0b;color:#d97706;' }}">
+                                🚨 CT-e {{ $diffCtePercent > 0 ? 'ACIMA' : 'ABAIXO' }}: {{ $diffCtePercent > 0 ? '+' : '' }}{{ $diffCtePercent }}%
+                                (Cotado: R$ {{ number_format($freteCotado, 2, ',', '.') }} | CT-e: R$ {{ number_format($custoFrete, 2, ',', '.') }})
+                            </div>
+                        @elseif($fretePago && $freteCotado > 0 && $freteCotado != $custoFrete)
+                            <span style="color:#6b7280;font-size:10px;">(cotado: R$ {{ number_format($freteCotado, 2, ',', '.') }})</span>
+                        @endif
+                        @if($alertaCobrado)
+                            <div style="margin-top:4px;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;animation:pulse 1.5s infinite;
+                                {{ $diffCobradoPercent > 0 ? 'background:#ecfdf5;border:2px solid #10b981;color:#059669;' : 'background:#fef2f2;border:2px solid #ef4444;color:#dc2626;' }}">
+                                💰 Cobrado {{ $diffCobradoPercent > 0 ? 'ACIMA' : 'ABAIXO' }} da cotação: {{ $diffCobradoPercent > 0 ? '+' : '' }}{{ $diffCobradoPercent }}%
+                                (Cotado: R$ {{ number_format($freteCotado, 2, ',', '.') }} | Cobrado: R$ {{ number_format($freteCliente, 2, ',', '.') }})
+                            </div>
+                        @endif
                     </div>
                     @if($subsidio > 0)
                     <div>
