@@ -120,6 +120,8 @@ class EspelharEstoqueJob implements ShouldQueue
 
                 if ($res['success']) {
                     $resultado['atualizados']++;
+                    // Atualizar saldo_secondary local
+                    \App\Models\ProdutoEstoque::where('sku', $sku)->update(['saldo_secondary' => max(0, $saldoPrimary)]);
                 } else {
                     $resultado['erros']++;
                     $resultado['log'][] = "SKU {$sku}: erro HTTP " . ($res['http_code'] ?? '?');

@@ -15,6 +15,7 @@ class ProdutoEstoque extends Model
         'nome',
         'formato',
         'saldo',
+        'saldo_secondary',
         'saldo_minimo',
         'ativo',
     ];
@@ -22,6 +23,7 @@ class ProdutoEstoque extends Model
     protected $casts = [
         'ativo' => 'boolean',
         'saldo' => 'integer',
+        'saldo_secondary' => 'integer',
         'saldo_minimo' => 'integer',
     ];
 
