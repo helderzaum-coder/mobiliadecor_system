@@ -301,7 +301,7 @@ class PedidoBlingStagingResource extends Resource
                                         }
                                     }),
                                 Forms\Components\TextInput::make('valor_frete')
-                                    ->label('Valor do Frete')
+                                    ->label('Valor da Cotação')
                                     ->numeric()
                                     ->prefix('R$')
                                     ->required()
@@ -312,7 +312,7 @@ class PedidoBlingStagingResource extends Resource
                                 $record->update(['custo_frete' => round($valorFrete, 2)]);
                                 try {
                                     AprovacaoVendaService::aprovar($record);
-                                    Notification::make()->title("Frete R$ " . number_format($valorFrete, 2, ',', '.') . " — Aprovado!")->success()->send();
+                                    Notification::make()->title("Cotação R$ " . number_format($valorFrete, 2, ',', '.') . " — Aprovado!")->success()->send();
                                 } catch (\Throwable $e) {
                                     Notification::make()->title("Erro ao aprovar: " . $e->getMessage())->danger()->send();
                                 }
@@ -701,7 +701,7 @@ class PedidoBlingStagingResource extends Resource
                                 }
                             }),
                         Forms\Components\TextInput::make('valor_frete')
-                            ->label('Valor do Frete')
+                            ->label('Valor da Cotação')
                             ->numeric()
                             ->prefix('R$')
                             ->required()
@@ -714,11 +714,11 @@ class PedidoBlingStagingResource extends Resource
                         try {
                             $venda = AprovacaoVendaService::aprovar($record);
                             Notification::make()
-                                ->title("Frete R$ " . number_format($valorFrete, 2, ',', '.') . " — Pedido aprovado!")
+                                ->title("Cotação R$ " . number_format($valorFrete, 2, ',', '.') . " — Pedido aprovado!")
                                 ->success()->send();
                         } catch (\Throwable $e) {
                             Notification::make()
-                                ->title("Frete aplicado, mas erro ao aprovar: " . $e->getMessage())
+                                ->title("Cotação aplicada, mas erro ao aprovar: " . $e->getMessage())
                                 ->danger()->send();
                         }
                     })
