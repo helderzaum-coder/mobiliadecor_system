@@ -22,7 +22,8 @@ class SyncEstoqueBlingJob implements ShouldQueue
     public function __construct(
         private readonly string $sku,
         private readonly int $saldo,
-        private readonly ?string $observacao = null
+        private readonly ?string $observacao = null,
+        private readonly string $operacao = 'B'
     ) {}
 
     public function handle(): void
@@ -55,7 +56,7 @@ class SyncEstoqueBlingJob implements ShouldQueue
         $res = $client->post('/estoques', [], [
             'produto' => ['id' => $produtoId],
             'deposito' => ['id' => $depositoId],
-            'operacao' => 'B',
+            'operacao' => $this->operacao,
             'preco' => 0,
             'custo' => 0,
             'quantidade' => max(0, $this->saldo),
