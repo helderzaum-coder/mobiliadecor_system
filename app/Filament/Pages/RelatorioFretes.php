@@ -70,7 +70,7 @@ class RelatorioFretes extends Page implements HasForms
             'Content-Disposition' => "attachment; filename={$filename}",
         ];
 
-        $callback = function () use ($vendas, $stagings) {
+        $callback = function () use ($vendas, $stagings, $cteByNfe, $cteByVenda) {
             $file = fopen('php://output', 'w');
             fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM UTF-8
 
