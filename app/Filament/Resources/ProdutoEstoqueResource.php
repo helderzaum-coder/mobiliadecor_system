@@ -104,7 +104,8 @@ class ProdutoEstoqueResource extends Resource
                     ->action(function ($record, array $data) {
                         $res = EstoqueService::entrada($record->sku, (int) $data['quantidade'], 'manual', $data['referencia'] ?? null, auth()->id());
                         if ($res['success']) {
-                            Notification::make()->title("Entrada: {$record->sku} → saldo {$res['saldo']}")->success()->send();
+                            $obs = $data['referencia'] ? " - {$data['referencia']}" : '';
+                            Notification::make()->title("Entrada (+{$data['quantidade']}) {$record->sku} → saldo {$res['saldo']}{$obs}")->success()->send();
                         } else {
                             Notification::make()->title($res['erro'] ?? 'Erro')->danger()->send();
                         }
@@ -121,7 +122,8 @@ class ProdutoEstoqueResource extends Resource
                     ->action(function ($record, array $data) {
                         $res = EstoqueService::saida($record->sku, (int) $data['quantidade'], 'manual', $data['referencia'] ?? null, auth()->id());
                         if ($res['success']) {
-                            Notification::make()->title("Saída: {$record->sku} → saldo {$res['saldo']}")->success()->send();
+                            $obs = $data['referencia'] ? " - {$data['referencia']}" : '';
+                            Notification::make()->title("Saída (-{$data['quantidade']}) {$record->sku} → saldo {$res['saldo']}{$obs}")->success()->send();
                         } else {
                             Notification::make()->title($res['erro'] ?? 'Erro')->danger()->send();
                         }
@@ -138,7 +140,8 @@ class ProdutoEstoqueResource extends Resource
                     ->action(function ($record, array $data) {
                         $res = EstoqueService::balanco($record->sku, (int) $data['novo_saldo'], 'manual', $data['referencia'] ?? null, auth()->id());
                         if ($res['success']) {
-                            Notification::make()->title("Balanço: {$record->sku} → saldo {$res['saldo']}")->success()->send();
+                            $obs = $data['referencia'] ? " - {$data['referencia']}" : '';
+                            Notification::make()->title("Balanço (={$data['novo_saldo']}) {$record->sku} → saldo {$res['saldo']}{$obs}")->success()->send();
                         } else {
                             Notification::make()->title($res['erro'] ?? 'Erro')->danger()->send();
                         }
