@@ -72,21 +72,27 @@ class ImportarProdutosBlingJob implements ShouldQueue
                 $nome = $produto['nome'] ?? $sku;
                 $formato = strtoupper($produto['formato'] ?? 'S');
 
-                // Buscar saldo
-                $saldo = 0;
-                if ($depositoId && !in_array($formato, ['E', 'C'])) {
-                    $saldo = self::buscarSaldo($client, (int) $produto['id'], $depositoId);
-                }
+                $produtoEstoque = ProdutoEstoque::where('sku', $sku)->first();
 
-                $produtoEstoque = ProdutoEstoque::updateOrCreate(
-                    ['sku' => $sku],
-                    ['nome' => $nome, 'formato' => $formato, 'saldo' => $saldo]
-                );
-
-                if ($produtoEstoque->wasRecentlyCreated) {
-                    $resultado['criados']++;
-                } else {
+                if ($produtoEstoque) {
+                    // Já existe: atualiza apenas nome e formato, NÃO mexe no saldo
+                    $produtoEstoque->update(['nome' => $nome, 'formato' => $formato]);
                     $resultado['atualizados']++;
+                } else {
+                    // Novo: buscar saldo do Bling e colocar como virtual
+                    $saldo = 0;
+                    if ($depositoId && !in_array($formato, ['E', 'C'])) {
+                        $saldo = self::buscarSaldo($client, (int) $produto['id'], $depositoId);
+                    }
+
+                    $produtoEstoque = ProdutoEstoque::create([
+                        'sku' => $sku,
+                        'nome' => $nome,
+                        'formato' => $formato,
+                        'saldo_virtual' => $saldo,
+                        'saldo_fisico' => 0,
+                    ]);
+                    $resultado['criados']++;
                 }
 
                 // Se é kit, importar componentes
