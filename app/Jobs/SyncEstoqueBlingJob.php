@@ -65,29 +65,15 @@ class SyncEstoqueBlingJob implements ShouldQueue
 
     private function movimentarEstoque(BlingClient $client, int $produtoId, int $depositoId): array
     {
-        $payload = [
+        return $client->post('/estoques', [], [
             'produto' => ['id' => $produtoId],
             'deposito' => ['id' => $depositoId],
-            'tipo' => $this->operacao,
+            'operacao' => $this->operacao,
+            'preco' => 0,
+            'custo' => 0,
             'quantidade' => max(0, $this->saldo),
-            'observacao' => $this->observacao ?: "Sistema: SKU {$this->sku} {$this->operacao} {$this->saldo}",
-        ];
-
-        $res = $client->post('/estoques/movimentacoes', [], $payload);
-
-        if (!$res['success'] && ($res['http_code'] ?? null) === 404) {
-            $res = $client->post('/estoques', [], [
-                'produto' => ['id' => $produtoId],
-                'deposito' => ['id' => $depositoId],
-                'operacao' => $this->operacao,
-                'preco' => 0,
-                'custo' => 0,
-                'quantidade' => max(0, $this->saldo),
-                'observacoes' => $this->observacao ?: "Sistema: SKU {$this->sku} {$this->operacao} {$this->saldo}",
-            ]);
-        }
-
-        return $res;
+            'observacoes' => $this->observacao ?: "Sistema: SKU {$this->sku} {$this->operacao} {$this->saldo}",
+        ]);
     }
 
     private function balancoEstoque(BlingClient $client, int $produtoId, int $depositoId): array
