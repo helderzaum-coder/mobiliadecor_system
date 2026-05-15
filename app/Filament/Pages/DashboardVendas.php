@@ -584,8 +584,6 @@ class DashboardVendas extends Page implements HasForms
                         ->where('planilha_processada', true);
                 });
             });
-        }
-
         } elseif ($this->status_filtro === 'cancelados') {
             $query->where('cancelada', true);
         }
