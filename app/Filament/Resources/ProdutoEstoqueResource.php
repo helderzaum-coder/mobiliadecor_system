@@ -26,6 +26,7 @@ class ProdutoEstoqueResource extends Resource
     {
         return $form->schema([
             Forms\Components\TextInput::make('sku')->label('SKU')->required()->unique(ignoreRecord: true),
+            Forms\Components\TextInput::make('codigo_barras')->label('Código de Barras')->maxLength(255),
             Forms\Components\TextInput::make('nome')->label('Nome')->required(),
             Forms\Components\Select::make('formato')->label('Formato')->options([
                 'S' => 'Simples',
@@ -45,6 +46,7 @@ class ProdutoEstoqueResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('sku')->label('SKU')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('codigo_barras')->label('Cód. Barras')->searchable()->sortable()->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('nome')->label('Nome')->searchable()->sortable()->limit(40)->tooltip(fn ($record) => $record->nome),
                 Tables\Columns\TextColumn::make('formato')->label('Tipo')
                     ->badge()
