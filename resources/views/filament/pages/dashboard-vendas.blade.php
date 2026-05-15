@@ -174,9 +174,10 @@
 
                 $conta = $venda->bling_account === 'primary' ? 'Mobilia' : 'HES';
                 $canal = $venda->canal?->nome_canal ?? '-';
+                $isCancelada = (bool) $venda->cancelada;
             @endphp
 
-            <div class="rounded-xl bg-white dark:bg-gray-800 shadow border-l-4 {{ $borderColor }} p-4">
+            <div class="rounded-xl shadow border-l-4 {{ $borderColor }} p-4 {{ $isCancelada ? 'bg-red-50 dark:bg-red-950/40' : 'bg-white dark:bg-gray-800' }}">
                 {{-- Header --}}
                 <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
                     <div class="flex items-center gap-3">
@@ -195,6 +196,9 @@
                             </span>
                         @endif
                         <span class="text-xs text-gray-500 dark:text-gray-400">{{ $venda->data_venda?->format('d/m/Y') }}</span>
+                        @if($isCancelada)
+                            <span style="background:#dc2626;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">🚫 Cancelado</span>
+                        @endif
                         @if($completo)
                             <span style="background:#059669;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">✅ Completo</span>
                         @else
