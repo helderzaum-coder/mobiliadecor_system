@@ -537,7 +537,7 @@
                         ✏️ Editar
                     </a>
                     <span x-data="{showEstorno:false,dataEstorno:'{{ now()->format('Y-m-d') }}'}" class="inline">
-                        <button @click="showEstorno=!showEstorno" style="background:#991b1b;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">↩️ Estorno</button>
+                        <button @click="showEstorno=!showEstorno" title="Pedido CANCELADO antes do pagamento. O marketplace vai descontar o valor antecipado do próximo repasse." style="background:#991b1b;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">↩️ Estorno</button>
                         <span x-show="showEstorno" x-cloak style="display:inline-flex;align-items:center;gap:4px;margin-left:4px;">
                             <input type="date" x-model="dataEstorno" style="padding:2px 6px;font-size:11px;border-radius:4px;border:1px solid #374151;background:#111827;color:#fff;">
                             <button @click="$wire.cancelarComEstorno({{ $venda->id_venda }},dataEstorno);showEstorno=false" style="background:#dc2626;color:#fff;padding:2px 8px;font-size:10px;border-radius:4px;border:none;cursor:pointer;">Confirmar</button>
@@ -545,7 +545,7 @@
                         </span>
                     </span>
                     <span x-data="{showReembolso:false,dataReembolso:'{{ now()->format('Y-m-d') }}'}" class="inline">
-                        <button @click="showReembolso=!showReembolso" style="background:#7f1d1d;color:#fca5a5;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">🔄 Reembolso</button>
+                        <button @click="showReembolso=!showReembolso" title="Pedido DEVOLVIDO ou disputa perdida. A venda existiu mas o marketplace vai debitar o valor do próximo repasse." style="background:#7f1d1d;color:#fca5a5;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">🔄 Reembolso</button>
                         <span x-show="showReembolso" x-cloak style="display:inline-flex;align-items:center;gap:4px;margin-left:4px;">
                             <input type="date" x-model="dataReembolso" style="padding:2px 6px;font-size:11px;border-radius:4px;border:1px solid #374151;background:#111827;color:#fff;">
                             <button @click="$wire.registrarReembolso({{ $venda->id_venda }},dataReembolso);showReembolso=false" style="background:#dc2626;color:#fff;padding:2px 8px;font-size:10px;border-radius:4px;border:none;cursor:pointer;">Confirmar</button>
