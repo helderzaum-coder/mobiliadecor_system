@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Models\ProdutoEstoque;
+use App\Models\TrocaTampoConfig;
 use App\Services\EstoqueService;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -17,7 +18,7 @@ class ContagemEstoque extends Page
     protected static string $view = 'filament.pages.contagem-estoque';
 
     public string $codigoInput = '';
-    public array $itensContados = []; // ['codigo_barras' => ['sku' => ..., 'nome' => ..., 'quantidade' => ...]]
+    public array $itensContados = [];
     public bool $contagemFinalizada = false;
     public array $divergencias = [];
 
@@ -28,7 +29,6 @@ class ContagemEstoque extends Page
 
         if (empty($codigo)) return;
 
-        // Buscar por codigo_barras OU sku
         $produto = ProdutoEstoque::where('codigo_barras', $codigo)
             ->orWhere('sku', $codigo)
             ->where('ativo', true)
@@ -44,6 +44,10 @@ class ContagemEstoque extends Page
 
         $key = $produto->sku;
 
+        // Verificar se pertence a grupo de troca de tampo
+        $grupoTampo = TrocaTampoConfig::where('sku_produto', $produto->sku)->first();
+        $grupoLabel = $grupoTampo ? "{$grupoTampo->grupo} {$grupoTampo->cor}" : null;
+
         if (isset($this->itensContados[$key])) {
             $this->itensContados[$key]['quantidade']++;
         } else {
@@ -53,12 +57,18 @@ class ContagemEstoque extends Page
                 'nome' => $produto->nome,
                 'quantidade' => 1,
                 'saldo_sistema' => $produto->saldo_fisico,
+                'grupo_tampo' => $grupoLabel,
             ];
+        }
+
+        $body = "Qtd: {$this->itensContados[$key]['quantidade']}";
+        if ($grupoLabel) {
+            $body .= " (Grupo: {$grupoLabel})";
         }
 
         Notification::make()
             ->title("{$produto->sku} — {$produto->nome}")
-            ->body("Qtd: {$this->itensContados[$key]['quantidade']}")
+            ->body($body)
             ->success()
             ->duration(2000)
             ->send();
@@ -90,35 +100,92 @@ class ContagemEstoque extends Page
         $this->divergencias = [];
         $atualizados = 0;
         $semAlteracao = 0;
+        $gruposProcessados = [];
 
         foreach ($this->itensContados as $item) {
             $produto = ProdutoEstoque::where('sku', $item['sku'])->where('ativo', true)->first();
             if (!$produto) continue;
 
-            $saldoAtual = $produto->saldo_fisico;
-            $novoSaldo = $item['quantidade'];
+            // Verificar se pertence a grupo de troca de tampo
+            $config = TrocaTampoConfig::where('sku_produto', $item['sku'])->first();
 
-            $this->divergencias[] = [
-                'sku' => $item['sku'],
-                'nome' => $item['nome'],
-                'saldo_sistema' => $saldoAtual,
-                'contagem' => $novoSaldo,
-                'diferenca' => $novoSaldo - $saldoAtual,
-            ];
+            if ($config) {
+                $grupoKey = $config->grupo . '|' . $config->cor;
 
-            if ($novoSaldo !== $saldoAtual) {
-                EstoqueService::balanco(
-                    $item['sku'],
-                    $novoSaldo,
-                    'contagem',
-                    'Contagem de estoque por leitor',
-                    auth()->id(),
-                    true,
-                    'fisico'
-                );
-                $atualizados++;
+                // Acumular quantidade do grupo (somar todos os SKUs do mesmo grupo+cor)
+                if (!isset($gruposProcessados[$grupoKey])) {
+                    $gruposProcessados[$grupoKey] = [
+                        'total' => 0,
+                        'configs' => TrocaTampoConfig::where('grupo', $config->grupo)
+                            ->where('cor', $config->cor)
+                            ->get(),
+                    ];
+                }
+                $gruposProcessados[$grupoKey]['total'] += $item['quantidade'];
             } else {
-                $semAlteracao++;
+                // Produto normal: balanço individual
+                $saldoAtual = $produto->saldo_fisico;
+                $novoSaldo = $item['quantidade'];
+
+                $this->divergencias[] = [
+                    'sku' => $item['sku'],
+                    'nome' => $item['nome'],
+                    'saldo_sistema' => $saldoAtual,
+                    'contagem' => $novoSaldo,
+                    'diferenca' => $novoSaldo - $saldoAtual,
+                    'grupo_tampo' => null,
+                ];
+
+                if ($novoSaldo !== $saldoAtual) {
+                    EstoqueService::balanco(
+                        $item['sku'],
+                        $novoSaldo,
+                        'contagem',
+                        'Contagem de estoque por leitor',
+                        auth()->id(),
+                        true,
+                        'fisico'
+                    );
+                    $atualizados++;
+                } else {
+                    $semAlteracao++;
+                }
+            }
+        }
+
+        // Processar grupos de troca de tampo: distribuir total para todos os SKUs do grupo
+        foreach ($gruposProcessados as $grupoKey => $dados) {
+            $totalGrupo = $dados['total'];
+
+            foreach ($dados['configs'] as $config) {
+                $produto = ProdutoEstoque::where('sku', $config->sku_produto)->where('ativo', true)->first();
+                if (!$produto) continue;
+
+                $saldoAtual = $produto->saldo_fisico;
+
+                $this->divergencias[] = [
+                    'sku' => $config->sku_produto,
+                    'nome' => $config->nome_produto,
+                    'saldo_sistema' => $saldoAtual,
+                    'contagem' => $totalGrupo,
+                    'diferenca' => $totalGrupo - $saldoAtual,
+                    'grupo_tampo' => "{$config->grupo} {$config->cor}",
+                ];
+
+                if ($totalGrupo !== $saldoAtual) {
+                    EstoqueService::balanco(
+                        $config->sku_produto,
+                        $totalGrupo,
+                        'contagem',
+                        "Contagem grupo {$config->grupo} {$config->cor} (total carcaças)",
+                        auth()->id(),
+                        true,
+                        'fisico'
+                    );
+                    $atualizados++;
+                } else {
+                    $semAlteracao++;
+                }
             }
         }
 
@@ -128,6 +195,7 @@ class ContagemEstoque extends Page
             'atualizados' => $atualizados,
             'sem_alteracao' => $semAlteracao,
             'total_itens' => count($this->itensContados),
+            'grupos_tampo' => count($gruposProcessados),
         ]);
 
         Notification::make()
