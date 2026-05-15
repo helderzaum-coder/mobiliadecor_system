@@ -584,9 +584,19 @@ class BlingImportService
                 continue;
             }
 
+            // Tentar da listagem primeiro
             $produto = $client->getProductBySku($sku);
-            if ($produto && isset($produto['precoCusto'])) {
-                $item['custo'] = (float) $produto['precoCusto'];
+            $custo = (float) ($produto['precoCusto'] ?? 0);
+
+            // Se listagem retornou 0, tentar no detalhe
+            if ($custo <= 0 && $produto && !empty($produto['id'])) {
+                $detalhe = $client->getProductById((int) $produto['id']);
+                $custo = (float) ($detalhe['precoCusto'] ?? 0);
+            }
+
+            // Só atualizar se encontrou custo > 0
+            if ($custo > 0) {
+                $item['custo'] = $custo;
                 $atualizados++;
             }
         }
