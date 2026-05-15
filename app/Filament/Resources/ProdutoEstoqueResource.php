@@ -244,7 +244,7 @@ class ProdutoEstoqueResource extends Resource
                     ->icon('heroicon-o-cloud-arrow-down')
                     ->color('info')
                     ->requiresConfirmation()
-                    ->modalDescription('Importa todos os produtos e saldos do Bling Primary. Produtos existentes terão saldo atualizado.')
+                    ->modalDescription('Importa o cadastro de produtos do Bling Primary (SKU, nome, código de barras). Produtos existentes NÃO terão saldo alterado.')
                     ->action(function () {
                         \App\Jobs\ImportarProdutosBlingJob::dispatch();
                         Notification::make()->title('Importação iniciada em background.')->info()->send();
