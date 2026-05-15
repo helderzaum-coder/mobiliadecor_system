@@ -67,11 +67,11 @@ class ShopeeCorrigirDadosService
                 continue;
             }
 
-            $nome = trim($row['AX'] ?? '');
+            $nome = trim($row['AZ'] ?? '');
             if (empty($nome)) {
                 $resultado['erros']++;
-                $resultado['detalhes'][] = "{$pedidoId}: nome vazio na coluna AX";
-                Log::warning("ShopeeCorrigir: pedido {$pedidoId} com nome vazio na coluna AX");
+                $resultado['detalhes'][] = "{$pedidoId}: nome vazio na coluna AZ";
+                Log::warning("ShopeeCorrigir: pedido {$pedidoId} com nome vazio na coluna AZ");
                 continue;
             }
 
@@ -105,7 +105,7 @@ class ShopeeCorrigirDadosService
                 self::atualizarObservacoesPedido($client, $staging, $pedidoId, $row, $pedidoData);
 
                 // ── PASSO 4: Atualiza banco local ────────────────────────────────────
-                $cpf = preg_replace('/\D/', '', trim($row['AZ'] ?? ''));
+                $cpf = preg_replace('/\D/', '', trim($row['BB'] ?? ''));
 
                 $staging->update([
                     'cliente_nome' => $nome,
@@ -138,14 +138,14 @@ class ShopeeCorrigirDadosService
     // ════════════════════════════════════════════════════════════════════════
     private static function atualizarContato(BlingClient $client, string $pedidoId, int $contatoId, array $row): void
     {
-        $nome = trim($row['AX'] ?? '');
-        $telefone = trim($row['AY'] ?? '');
-        $cpf = preg_replace('/\D/', '', trim($row['AZ'] ?? ''));
-        $endereco = trim($row['BA'] ?? '');
-        $bairro = trim($row['BC'] ?? '');
-        $cidade = trim($row['BB'] ?? '') ?: trim($row['BD'] ?? '');
-        $uf = trim($row['BE'] ?? '');
-        $cep = preg_replace('/\D/', '', trim($row['BG'] ?? ''));
+        $nome = trim($row['AZ'] ?? '');
+        $telefone = trim($row['BA'] ?? '');
+        $cpf = preg_replace('/\D/', '', trim($row['BB'] ?? ''));
+        $endereco = trim($row['BC'] ?? '');
+        $bairro = trim($row['BE'] ?? '');
+        $cidade = trim($row['BD'] ?? '') ?: trim($row['BF'] ?? '');
+        $uf = trim($row['BG'] ?? '');
+        $cep = preg_replace('/\D/', '', trim($row['BI'] ?? ''));
 
         $tipoPessoa = strlen($cpf) > 11 ? 'J' : 'F';
 
@@ -181,7 +181,7 @@ class ShopeeCorrigirDadosService
         }
 
         // Monta texto do endereço completo para observação - usa coluna BA diretamente
-        $enderecoCompletoBA = trim($row['BA'] ?? '');
+        $enderecoCompletoBA = trim($row['BC'] ?? '');
         $ufSigla = self::ufParaSigla($uf);
         $obsTexto = $enderecoCompletoBA ?: (implode(', ', array_filter([$endereco, $bairro, $cidade, $ufSigla, $cep])));
 
@@ -259,8 +259,8 @@ class ShopeeCorrigirDadosService
             $precoU = self::parseDecimalValue($row['U'] ?? 0);
             $subsidioY = abs(self::parseDecimalValue($row['Y'] ?? 0));
             $subtotal = $precoU - $subsidioY;
-            $taxaEnvio = self::parseDecimalValue($row['AM'] ?? 0);
-            $descontoFrete = abs(self::parseDecimalValue($row['AN'] ?? 0));
+            $taxaEnvio = self::parseDecimalValue($row['AO'] ?? 0);
+            $descontoFrete = abs(self::parseDecimalValue($row['AP'] ?? 0));
             $frete = $taxaEnvio + $descontoFrete;
             $faturar = round($subtotal / 2, 2);
 
