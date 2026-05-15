@@ -97,12 +97,19 @@ class ListTrocaTampoConfigs extends ListRecords
 
                     // Atualizar estoque interno também
                     foreach ($configs as $config) {
+                        // Garantir que o produto existe no estoque interno
+                        \App\Models\ProdutoEstoque::firstOrCreate(
+                            ['sku' => $config->sku_produto],
+                            ['nome' => $config->nome_produto, 'formato' => 'S', 'saldo' => 0, 'saldo_fisico' => 0, 'saldo_virtual' => 0]
+                        );
+
                         \App\Services\EstoqueService::balanco(
                             $config->sku_produto,
                             $saldo,
                             'manual',
                             "Lançamento tampo: {$grupo}/{$cor} saldo={$saldo}",
-                            auth()->id()
+                            auth()->id(),
+                            false // syncBling = false, já atualizou direto acima
                         );
                     }
 
