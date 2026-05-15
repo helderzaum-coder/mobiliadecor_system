@@ -74,12 +74,17 @@ class ImportarProdutosBlingJob implements ShouldQueue
 
                 $produtoEstoque = ProdutoEstoque::where('sku', $sku)->first();
 
+                // Buscar código de barras do detalhe do produto
+                $codigoBarras = null;
+                $detalhe = $client->getProductById((int) $produto['id']);
+                if ($detalhe) {
+                    $codigoBarras = $detalhe['gtin'] ?? $detalhe['codigoBarras'] ?? null;
+                }
+
                 if ($produtoEstoque) {
-                    // Já existe: atualiza apenas nome e formato, NÃO mexe no saldo
-                    $produtoEstoque->update(['nome' => $nome, 'formato' => $formato]);
+                    $produtoEstoque->update(['nome' => $nome, 'formato' => $formato, 'codigo_barras' => $codigoBarras ?? $produtoEstoque->codigo_barras]);
                     $resultado['atualizados']++;
                 } else {
-                    // Novo: buscar saldo do Bling e colocar como virtual
                     $saldo = 0;
                     if ($depositoId && !in_array($formato, ['E', 'C'])) {
                         $saldo = self::buscarSaldo($client, (int) $produto['id'], $depositoId);
@@ -87,6 +92,7 @@ class ImportarProdutosBlingJob implements ShouldQueue
 
                     $produtoEstoque = ProdutoEstoque::create([
                         'sku' => $sku,
+                        'codigo_barras' => $codigoBarras,
                         'nome' => $nome,
                         'formato' => $formato,
                         'saldo_virtual' => $saldo,

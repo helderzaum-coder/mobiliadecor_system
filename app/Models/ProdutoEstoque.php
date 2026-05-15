@@ -19,6 +19,7 @@ class ProdutoEstoque extends Model
 
     protected $fillable = [
         'sku',
+        'codigo_barras',
         'nome',
         'formato',
         'saldo',
