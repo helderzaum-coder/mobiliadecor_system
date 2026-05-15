@@ -217,10 +217,15 @@ class BlingImportService
                 $produto = $this->client->getProductBySku($sku);
                 $produtoId = $produto['id'] ?? null;
 
+                // Custo: tentar da listagem primeiro, depois do detalhe
+                $custo = (float) ($produto['precoCusto'] ?? 0);
+
                 if ($produtoId) {
                     $produtoDetalhe = $this->client->getProductById((int) $produtoId);
                     if ($produtoDetalhe) {
-                        $custo = (float) ($produtoDetalhe['precoCusto'] ?? 0);
+                        if ($custo <= 0) {
+                            $custo = (float) ($produtoDetalhe['precoCusto'] ?? 0);
+                        }
                         $dimensoes = $produtoDetalhe['dimensoes'] ?? [];
                         $largura = (float) ($dimensoes['largura'] ?? 0);
                         $altura = (float) ($dimensoes['altura'] ?? 0);
