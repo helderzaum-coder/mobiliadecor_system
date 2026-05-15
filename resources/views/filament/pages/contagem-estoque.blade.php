@@ -66,8 +66,8 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                @foreach($this->itensContados as $sku => $item)
-                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                                @foreach(array_reverse($this->itensContados, true) as $sku => $item)
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                         <td class="px-4 py-2 font-mono text-xs text-gray-700 dark:text-gray-200">{{ $item['sku'] }}</td>
                                         <td class="px-4 py-2 font-mono text-xs text-gray-500 dark:text-gray-400">{{ $item['codigo_barras'] ?? '-' }}</td>
                                         <td class="px-4 py-2 text-gray-700 dark:text-gray-200">{{ \Illuminate\Support\Str::limit($item['nome'], 50) }}</td>
@@ -126,7 +126,7 @@
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                         @foreach($this->divergencias as $div)
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                 <td class="px-4 py-2 font-mono text-xs text-gray-700 dark:text-gray-200">{{ $div['sku'] }}</td>
                                 <td class="px-4 py-2 text-gray-700 dark:text-gray-200">{{ \Illuminate\Support\Str::limit($div['nome'], 50) }}</td>
                                 <td class="px-4 py-2">

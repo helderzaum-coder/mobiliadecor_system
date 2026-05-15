@@ -36,6 +36,7 @@ class HelderPanelProvider extends PanelProvider
                     . '.fi-ta-table-wrapper { overflow-x: auto; max-height: calc(100vh - 320px); overflow-y: auto; }'
                     . '.fi-ta-table-wrapper thead { position: sticky; top: 0; z-index: 10; background: rgb(var(--gray-50)); }'
                     . '.dark .fi-ta-table-wrapper thead { background: rgb(var(--gray-900)); }'
+                    . '.dark tr:hover td, .dark tbody tr:hover td, .dark .hover\\:bg-gray-50:hover { background: rgb(55 65 81 / 0.5) !important; color: inherit !important; }'
                     . '</style>'
             )
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
