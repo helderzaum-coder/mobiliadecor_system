@@ -95,6 +95,7 @@ class EstoqueService
 
     /**
      * Processa saída por venda (desmembra kits automaticamente).
+     * Prioridade: desconta do físico. Se físico = 0, desconta do virtual.
      */
     public static function saidaPorVenda(array $itens, string $contaOrigem, ?string $referencia = null): array
     {
@@ -112,15 +113,16 @@ class EstoqueService
                 continue;
             }
 
-            // Se é kit, descontar dos componentes
             if ($produto->isKit()) {
                 foreach ($produto->componentes as $comp) {
                     $qtdComp = $comp->pivot->quantidade * $qtd;
-                    $res = self::saida($comp->sku, $qtdComp, $origem, $referencia);
+                    $tipoEstoque = $comp->saldo_fisico > 0 ? 'fisico' : 'virtual';
+                    $res = self::saida($comp->sku, $qtdComp, $origem, $referencia, null, true, $tipoEstoque);
                     $resultados[] = array_merge($res, ['sku' => $comp->sku, 'kit_de' => $sku]);
                 }
             } else {
-                $res = self::saida($sku, $qtd, $origem, $referencia);
+                $tipoEstoque = $produto->saldo_fisico > 0 ? 'fisico' : 'virtual';
+                $res = self::saida($sku, $qtd, $origem, $referencia, null, true, $tipoEstoque);
                 $resultados[] = array_merge($res, ['sku' => $sku]);
             }
         }

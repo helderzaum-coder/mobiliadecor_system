@@ -32,11 +32,16 @@ class BlingEstoquePedidoService
             $skusParaDescontar = self::resolverSkusInterno($sku, $qtd, $origem);
 
             foreach ($skusParaDescontar as $skuInfo) {
+                $prod = ProdutoEstoque::where('sku', $skuInfo['sku'])->where('ativo', true)->first();
+                $tipoEstoque = ($prod && $prod->saldo_fisico > 0) ? 'fisico' : 'virtual';
                 $res = EstoqueService::saida(
                     $skuInfo['sku'],
                     $skuInfo['quantidade'],
                     "venda_{$origem}",
-                    "Pedido #{$pedido->numero_pedido}"
+                    "Pedido #{$pedido->numero_pedido}",
+                    null,
+                    true,
+                    $tipoEstoque
                 );
 
                 if ($res['success']) {
