@@ -1,29 +1,32 @@
 <x-filament-panels::page>
-    <div style="display:flex;align-items:flex-end;gap:12px;">
-        <div style="flex:1;">
-            <form wire:submit.prevent="">
-                {{ $this->form }}
-            </form>
-        </div>
-        <button wire:click="$refresh" style="background:#2563eb;color:#fff;padding:8px 14px;font-size:12px;border-radius:8px;border:none;cursor:pointer;margin-bottom:2px;white-space:nowrap;">
+    {{-- Botões de ação ao lado do título --}}
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:-40px;margin-bottom:16px;justify-content:flex-end;">
+        <button wire:click="$refresh" style="background:#2563eb;color:#fff;padding:6px 12px;font-size:11px;border-radius:6px;border:none;cursor:pointer;white-space:nowrap;">
             🔄 Atualizar
         </button>
         <button wire:click="buscarNfeLote" wire:loading.attr="disabled" wire:confirm="Buscar NF-e para todas as vendas sem nota no período filtrado?"
-            style="background:#2563eb;color:#fff;padding:8px 14px;font-size:12px;border-radius:8px;border:none;cursor:pointer;margin-bottom:2px;white-space:nowrap;">
+            style="background:#2563eb;color:#fff;padding:6px 12px;font-size:11px;border-radius:6px;border:none;cursor:pointer;white-space:nowrap;">
             📄 NF-e Lote
         </button>
         <button wire:click="buscarCteLote" wire:loading.attr="disabled" wire:confirm="Buscar CT-e para todas as vendas sem frete no período filtrado?"
-            style="background:#7c3aed;color:#fff;padding:8px 14px;font-size:12px;border-radius:8px;border:none;cursor:pointer;margin-bottom:2px;white-space:nowrap;">
+            style="background:#7c3aed;color:#fff;padding:6px 12px;font-size:11px;border-radius:6px;border:none;cursor:pointer;white-space:nowrap;">
             🚚 CT-e Lote
         </button>
         <button wire:click="buscarCustosLote" wire:loading.attr="disabled" wire:confirm="Buscar custos para todas as vendas sem custo no período filtrado?"
-            style="background:#d97706;color:#fff;padding:8px 14px;font-size:12px;border-radius:8px;border:none;cursor:pointer;margin-bottom:2px;white-space:nowrap;">
+            style="background:#d97706;color:#fff;padding:6px 12px;font-size:11px;border-radius:6px;border:none;cursor:pointer;white-space:nowrap;">
             💰 Custos Lote
         </button>
         <button wire:click="aplicarPlanilhaShopeeLote" wire:loading.attr="disabled" wire:confirm="Aplicar planilha Shopee para todas as vendas Shopee sem planilha no período?"
-            style="background:#ea580c;color:#fff;padding:8px 14px;font-size:12px;border-radius:8px;border:none;cursor:pointer;margin-bottom:2px;white-space:nowrap;">
+            style="background:#ea580c;color:#fff;padding:6px 12px;font-size:11px;border-radius:6px;border:none;cursor:pointer;white-space:nowrap;">
             📊 Shopee Lote
         </button>
+    </div>
+
+    {{-- Filtros ocupando toda a largura --}}
+    <div>
+        <form wire:submit.prevent="">
+            {{ $this->form }}
+        </form>
     </div>
 
     {{-- Resumo horizontal compacto --}}
