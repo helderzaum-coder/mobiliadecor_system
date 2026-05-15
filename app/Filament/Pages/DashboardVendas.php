@@ -265,6 +265,9 @@ class DashboardVendas extends Page implements HasForms
         // Marcar pedido no staging como cancelado
         \App\Models\PedidoBlingStaging::where('bling_id', $venda->bling_id)->update(['status' => 'cancelado']);
 
+        // Marcar venda como cancelada
+        $venda->update(['cancelada' => true]);
+
         \Filament\Notifications\Notification::make()
             ->title("Pedido cancelado. Estorno de R$ " . number_format(abs($repasse), 2, ',', '.') . " registrado.")
             ->success()->send();
@@ -296,6 +299,9 @@ class DashboardVendas extends Page implements HasForms
             'observacoes' => "Reembolso {$canal} - Pedido #{$venda->numero_pedido_canal}. Valor debitado pelo marketplace.",
             'lancamento_manual' => true,
         ]);
+
+        // Marcar venda como cancelada
+        $venda->update(['cancelada' => true]);
 
         \Filament\Notifications\Notification::make()
             ->title("Reembolso de R$ " . number_format(abs($repasse), 2, ',', '.') . " registrado.")
@@ -452,6 +458,7 @@ class DashboardVendas extends Page implements HasForms
                         'envias' => '🚚 Envias',
                         'incompleto' => '❌ Incompleto',
                         'completo' => '✅ Completo',
+                        'cancelados' => '🚫 Cancelados/Estornos',
                     ])
                     ->placeholder('Todos')
                     ->reactive(),
@@ -464,6 +471,11 @@ class DashboardVendas extends Page implements HasForms
     private function buildQuery()
     {
         $query = Venda::with('canal')->orderBy('data_venda', 'desc');
+
+        // Excluir canceladas por padrão, exceto quando filtro é 'cancelados'
+        if ($this->status_filtro !== 'cancelados') {
+            $query->where(fn ($q) => $q->where('cancelada', false)->orWhereNull('cancelada'));
+        }
 
         $query = match ($this->periodo) {
             'hoje' => $query->whereDate('data_venda', today()),
@@ -572,6 +584,10 @@ class DashboardVendas extends Page implements HasForms
                         ->where('planilha_processada', true);
                 });
             });
+        }
+
+        } elseif ($this->status_filtro === 'cancelados') {
+            $query->where('cancelada', true);
         }
 
         return $query;

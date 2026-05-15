@@ -58,6 +58,7 @@ class Venda extends Model
         'ml_shipping_id',
         'planilha_processada',
         'planilha_afiliado_processada',
+        'cancelada',
     ];
 
     protected $casts = [
@@ -89,6 +90,7 @@ class Venda extends Model
         'ml_frete_receita' => 'decimal:2',
         'planilha_processada' => 'boolean',
         'planilha_afiliado_processada' => 'boolean',
+        'cancelada' => 'boolean',
     ];
 
     public function canal(): BelongsTo
