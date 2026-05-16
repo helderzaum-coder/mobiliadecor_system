@@ -25,6 +25,7 @@ class Recebimentos extends Page implements HasForms
     public ?string $conta = null;
     public ?string $filtro_status = null;
     public ?string $agrupar_por = 'data_venda';
+    public ?string $busca_pedido = null;
     public int $pagina = 1;
     public int $porPagina = 20;
 
@@ -36,7 +37,12 @@ class Recebimentos extends Page implements HasForms
     public function form(Forms\Form $form): Forms\Form
     {
         return $form->schema([
-            Forms\Components\Grid::make(6)->schema([
+            Forms\Components\Grid::make(7)->schema([
+                Forms\Components\TextInput::make('busca_pedido')
+                    ->label('Nº Pedido')
+                    ->placeholder('Buscar pedido...')
+                    ->reactive()
+                    ->debounce(500),
                 Forms\Components\Select::make('periodo')
                     ->label('Período')
                     ->options([
@@ -148,6 +154,9 @@ class Recebimentos extends Page implements HasForms
             default => $query,
         };
 
+        if (!empty($this->busca_pedido)) {
+            $query->where('numero_pedido_canal', 'like', '%' . $this->busca_pedido . '%');
+        }
         if ($this->canal) {
             $query->whereHas('canal', fn ($q) => $q->where('nome_canal', $this->canal));
         }
@@ -203,6 +212,7 @@ class Recebimentos extends Page implements HasForms
     public function updatedConta(): void { $this->pagina = 1; }
     public function updatedFiltroStatus(): void { $this->pagina = 1; }
     public function updatedAgruparPor(): void { $this->pagina = 1; }
+    public function updatedBuscaPedido(): void { $this->pagina = 1; }
 
     public static function canAccess(): bool
     {
