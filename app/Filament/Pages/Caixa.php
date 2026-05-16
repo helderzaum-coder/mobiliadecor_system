@@ -6,9 +6,11 @@ use App\Models\CategoriaFinanceira;
 use App\Models\ContaBancaria;
 use App\Models\ContaPagar;
 use App\Models\ContaReceber;
+use Filament\Actions;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
 
@@ -296,5 +298,81 @@ class Caixa extends Page implements HasForms
     public static function canAccess(): bool
     {
         return auth()->user()?->hasRole('admin') ?? false;
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\Action::make('transferencia')
+                ->label('Transferência')
+                ->icon('heroicon-o-arrows-right-left')
+                ->color('info')
+                ->form([
+                    Forms\Components\Select::make('conta_origem_id')
+                        ->label('Conta Origem')
+                        ->options(fn () => ContaBancaria::where('ativo', true)->orderBy('nome')->pluck('nome', 'id')->toArray())
+                        ->required()
+                        ->reactive(),
+                    Forms\Components\Select::make('conta_destino_id')
+                        ->label('Conta Destino')
+                        ->options(fn ($get) => ContaBancaria::where('ativo', true)
+                            ->when($get('conta_origem_id'), fn ($q, $id) => $q->where('id', '!=', $id))
+                            ->orderBy('nome')->pluck('nome', 'id')->toArray())
+                        ->required(),
+                    Forms\Components\TextInput::make('valor')
+                        ->label('Valor')
+                        ->numeric()
+                        ->prefix('R$')
+                        ->required()
+                        ->minValue(0.01),
+                    Forms\Components\DatePicker::make('data')
+                        ->label('Data')
+                        ->default(now())
+                        ->required(),
+                    Forms\Components\TextInput::make('descricao')
+                        ->label('Descrição (opcional)')
+                        ->placeholder('Ex: Transferência para pagar fornecedor'),
+                ])
+                ->action(function (array $data) {
+                    $origem = ContaBancaria::find($data['conta_origem_id']);
+                    $destino = ContaBancaria::find($data['conta_destino_id']);
+                    $valor = round((float) $data['valor'], 2);
+                    $desc = $data['descricao'] ?: "Transferência {$origem->nome} → {$destino->nome}";
+
+                    // Saída na conta origem
+                    ContaPagar::create([
+                        'valor_parcela' => $valor,
+                        'data_vencimento' => $data['data'],
+                        'data_pagamento' => $data['data'],
+                        'status' => 'pago',
+                        'numero_parcela' => 1,
+                        'total_parcelas' => 1,
+                        'forma_pagamento' => 'Transferência',
+                        'observacoes' => "↗ {$desc}",
+                        'lancamento_manual' => true,
+                        'conta_bancaria_id' => $data['conta_origem_id'],
+                    ]);
+
+                    // Entrada na conta destino
+                    ContaReceber::create([
+                        'valor_parcela' => $valor,
+                        'data_vencimento' => $data['data'],
+                        'data_recebimento' => $data['data'],
+                        'status' => 'recebido',
+                        'numero_parcela' => 1,
+                        'total_parcelas' => 1,
+                        'forma_pagamento' => 'Transferência',
+                        'observacoes' => "↙ {$desc}",
+                        'lancamento_manual' => true,
+                        'conta_bancaria_id' => $data['conta_destino_id'],
+                    ]);
+
+                    Notification::make()
+                        ->title("Transferência de R$ " . number_format($valor, 2, ',', '.') . " realizada")
+                        ->body("{$origem->nome} → {$destino->nome}")
+                        ->success()
+                        ->send();
+                }),
+        ];
     }
 }
