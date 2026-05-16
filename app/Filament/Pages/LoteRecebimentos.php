@@ -21,6 +21,7 @@ class LoteRecebimentos extends Page
     public array $lote = [];
     public string $data_recebimento = '';
     public string $identificador_lote = '';
+    public ?string $conta_bancaria_id = null;
     public array $descontos = [];
     public string $desconto_descricao = '';
     public string $desconto_valor = '';
@@ -158,6 +159,7 @@ class LoteRecebimentos extends Page
                 'status' => 'recebido',
                 'data_recebimento' => $this->data_recebimento,
                 'observacoes' => $this->identificador_lote ?: $conta->observacoes,
+                'conta_bancaria_id' => $this->conta_bancaria_id ?: null,
             ]);
 
             if ($conta->venda) {
@@ -181,6 +183,7 @@ class LoteRecebimentos extends Page
                 'forma_pagamento' => 'Desconto Canal',
                 'observacoes' => $desconto['descricao'] . ($this->identificador_lote ? " | {$this->identificador_lote}" : ''),
                 'lancamento_manual' => true,
+                'conta_bancaria_id' => $this->conta_bancaria_id ?: null,
             ]);
         }
 

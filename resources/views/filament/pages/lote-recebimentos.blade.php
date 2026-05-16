@@ -135,6 +135,17 @@
                     </div>
 
                     <div class="mb-3">
+                        <label class="text-xs text-gray-500 block mb-1">Banco:</label>
+                        <select wire:model="conta_bancaria_id"
+                            style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:14px;">
+                            <option value="">Selecione o banco...</option>
+                            @foreach(\App\Models\ContaBancaria::where('ativo', true)->orderBy('nome')->get() as $banco)
+                                <option value="{{ $banco->id }}">{{ $banco->nome }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
                         <label class="text-xs text-gray-500 block mb-1">Data do Recebimento:</label>
                         <input type="date" wire:model="data_recebimento" value="{{ $data_recebimento }}"
                             style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:14px;">
