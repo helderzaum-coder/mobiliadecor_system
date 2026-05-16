@@ -108,7 +108,6 @@ class LoteRecebimentos extends Page
     {
         if (empty(trim($this->busca_multipla))) return;
 
-        // Separar por vírgula, ponto-e-vírgula, quebra de linha ou espaço
         $pedidos = preg_split('/[\s,;]+/', trim($this->busca_multipla));
         $pedidos = array_filter(array_map('trim', $pedidos));
 
@@ -116,9 +115,18 @@ class LoteRecebimentos extends Page
         $naoEncontrados = [];
 
         foreach ($pedidos as $numeroPedido) {
+            // Primeiro: buscar conta a receber pendente
             $conta = ContaReceber::where('status', 'pendente')
                 ->whereHas('venda', fn ($q) => $q->where('numero_pedido_canal', $numeroPedido))
                 ->first();
+
+            // Se não tem conta, tentar criar a partir da venda
+            if (!$conta) {
+                $venda = \App\Models\Venda::where('numero_pedido_canal', $numeroPedido)->first();
+                if ($venda) {
+                    $conta = $this->criarContaReceber($venda);
+                }
+            }
 
             if ($conta && !in_array($conta->id_conta_receber, $this->lote)) {
                 $this->lote[] = $conta->id_conta_receber;
@@ -136,6 +144,39 @@ class LoteRecebimentos extends Page
 
         Notification::make()->title($msg)->{$adicionados > 0 ? 'success' : 'warning'}()->send();
         $this->busca_multipla = '';
+    }
+
+    /**
+     * Cria conta a receber para uma venda que não tem (força criação).
+     */
+    private function criarContaReceber(\App\Models\Venda $venda): ?ContaReceber
+    {
+        // Verificar se já existe (qualquer status)
+        $existente = ContaReceber::where('id_venda', $venda->id_venda)->first();
+        if ($existente) {
+            return $existente->status === 'pendente' ? $existente : null;
+        }
+
+        $canal = $venda->canal;
+        $isMagalu = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
+
+        if ($isMagalu) {
+            $repasse = (float) $venda->valor_total_venda - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0) + (float) $venda->subsidio_pix;
+        } else {
+            $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
+        }
+
+        return ContaReceber::create([
+            'id_venda' => $venda->id_venda,
+            'valor_parcela' => round($repasse, 2),
+            'data_vencimento' => $venda->data_venda,
+            'status' => 'pendente',
+            'numero_parcela' => 1,
+            'total_parcelas' => 1,
+            'forma_pagamento' => $canal?->nome_canal ?? 'Marketplace',
+            'observacoes' => "Repasse #{$venda->numero_pedido_canal}",
+            'lancamento_manual' => false,
+        ]);
     }
 
     public function confirmarLote(): void
