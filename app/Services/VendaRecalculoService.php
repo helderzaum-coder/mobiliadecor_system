@@ -440,11 +440,21 @@ class VendaRecalculoService
         ]);
 
         // Gerar conta a receber se venda ficou completa
-        // Regenerar conta a receber se comissao_afiliado mudou
+        // Regenerar conta a receber se comissao_afiliado mudou ou valores mudaram
         if ((float) ($venda->comissao_afiliado ?? 0) > 0) {
             ContaReceberService::regenerar($venda->fresh());
         } else {
-            ContaReceberService::gerarSeCompleta($venda->fresh());
+            $vendaFresh = $venda->fresh();
+            $contaExistente = \App\Models\ContaReceber::where('id_venda', $vendaFresh->id_venda)
+                ->where('status', 'pendente')
+                ->first();
+
+            if ($contaExistente) {
+                // Recalcular valor se conta já existe e está pendente
+                ContaReceberService::regenerar($vendaFresh);
+            } else {
+                ContaReceberService::gerarSeCompleta($vendaFresh);
+            }
         }
     }
 }
