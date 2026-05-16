@@ -443,22 +443,25 @@ class DashboardVendas extends Page implements HasForms
             $query->where(fn ($q) => $q->where('cancelada', false)->orWhereNull('cancelada'));
         }
 
-        $query = match ($this->periodo) {
-            'hoje' => $query->whereDate('data_venda', today()),
-            'esta_semana' => $query->whereBetween('data_venda', [now()->startOfWeek(), now()->endOfWeek()]),
-            'este_mes' => $query->whereBetween('data_venda', [now()->startOfMonth(), now()->endOfMonth()]),
-            'mes_passado' => $query->whereBetween('data_venda', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()]),
-            'selecionar_mes' => $this->mes_selecionado
-                ? $query->whereBetween('data_venda', [
-                    now()->createFromFormat('Y-m', $this->mes_selecionado)->startOfMonth(),
-                    now()->createFromFormat('Y-m', $this->mes_selecionado)->endOfMonth(),
-                ])
-                : $query,
-            'customizado' => $query
-                ->when($this->data_inicio, fn ($q) => $q->whereDate('data_venda', '>=', $this->data_inicio))
-                ->when($this->data_fim, fn ($q) => $q->whereDate('data_venda', '<=', $this->data_fim)),
-            default => $query,
-        };
+        // Se tem busca por pedido, ignorar filtro de período
+        if (empty($this->busca_pedido)) {
+            $query = match ($this->periodo) {
+                'hoje' => $query->whereDate('data_venda', today()),
+                'esta_semana' => $query->whereBetween('data_venda', [now()->startOfWeek(), now()->endOfWeek()]),
+                'este_mes' => $query->whereBetween('data_venda', [now()->startOfMonth(), now()->endOfMonth()]),
+                'mes_passado' => $query->whereBetween('data_venda', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()]),
+                'selecionar_mes' => $this->mes_selecionado
+                    ? $query->whereBetween('data_venda', [
+                        now()->createFromFormat('Y-m', $this->mes_selecionado)->startOfMonth(),
+                        now()->createFromFormat('Y-m', $this->mes_selecionado)->endOfMonth(),
+                    ])
+                    : $query,
+                'customizado' => $query
+                    ->when($this->data_inicio, fn ($q) => $q->whereDate('data_venda', '>=', $this->data_inicio))
+                    ->when($this->data_fim, fn ($q) => $q->whereDate('data_venda', '<=', $this->data_fim)),
+                default => $query,
+            };
+        }
 
         if ($this->busca_pedido) {
             $query->where('numero_pedido_canal', 'like', '%' . $this->busca_pedido . '%');
