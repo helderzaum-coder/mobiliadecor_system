@@ -4,67 +4,60 @@
     </form>
 
     {{-- Totais --}}
-    <div class="grid grid-cols-1 md:grid-cols-{{ $this->exibir_saldo_anterior ? '4' : '3' }} gap-4 mt-4">
+    @php $totais = $this->totais; @endphp
+    <div style="display:flex;gap:16px;margin-top:16px;flex-wrap:wrap;">
         @if($this->exibir_saldo_anterior)
-        <div class="rounded-xl border border-cyan-800 p-4">
-            <div class="text-xs text-cyan-500 uppercase font-semibold">Saldo Anterior</div>
-            <div class="text-2xl font-bold text-white mt-1">
-                R$ {{ number_format($this->saldoAnterior, 2, ',', '.') }}
-            </div>
+        <div style="flex:1;min-width:200px;padding:16px;border-radius:12px;background:#1f2937;border-top:4px solid #06b6d4;">
+            <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;">Saldo Anterior</div>
+            <div style="font-size:24px;font-weight:800;color:#e5e7eb;">R$ {{ number_format($this->saldoAnterior, 2, ',', '.') }}</div>
         </div>
         @endif
-        <div class="rounded-xl border border-green-800 p-4">
-            <div class="text-xs text-green-500 uppercase font-semibold">Entradas</div>
-            <div class="text-2xl font-bold text-green-400 mt-1">
-                R$ {{ number_format($this->totais['entradas'], 2, ',', '.') }}
-            </div>
+        <div style="flex:1;min-width:200px;padding:16px;border-radius:12px;background:#1f2937;border-top:4px solid #10b981;">
+            <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;">Entradas</div>
+            <div style="font-size:24px;font-weight:800;color:#10b981;">R$ {{ number_format($totais['entradas'], 2, ',', '.') }}</div>
         </div>
-        <div class="rounded-xl border border-red-800 p-4">
-            <div class="text-xs text-red-500 uppercase font-semibold">Saídas</div>
-            <div class="text-2xl font-bold text-red-400 mt-1">
-                R$ {{ number_format($this->totais['saidas'], 2, ',', '.') }}
-            </div>
+        <div style="flex:1;min-width:200px;padding:16px;border-radius:12px;background:#1f2937;border-top:4px solid #ef4444;">
+            <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;">Saídas</div>
+            <div style="font-size:24px;font-weight:800;color:#ef4444;">R$ {{ number_format($totais['saidas'], 2, ',', '.') }}</div>
         </div>
-        <div class="rounded-xl border border-orange-800 p-4">
-            <div class="text-xs text-orange-500 uppercase font-semibold">{{ $this->exibir_saldo_anterior ? 'Saldo Final' : 'Resultado' }}</div>
-            <div class="text-2xl font-bold text-white mt-1">
-                R$ {{ number_format($this->exibir_saldo_anterior ? $this->totais['saldo_final'] : $this->totais['resultado'], 2, ',', '.') }}
-            </div>
+        <div style="flex:1;min-width:200px;padding:16px;border-radius:12px;background:#1f2937;border-top:4px solid #f59e0b;">
+            <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;">{{ $this->exibir_saldo_anterior ? 'Saldo Final' : 'Resultado' }}</div>
+            <div style="font-size:24px;font-weight:800;color:#f59e0b;">R$ {{ number_format($this->exibir_saldo_anterior ? $totais['saldo_final'] : $totais['resultado'], 2, ',', '.') }}</div>
         </div>
     </div>
 
     {{-- Movimentações --}}
-    <div class="mt-6">
+    <div class="mt-4 rounded-xl bg-white dark:bg-gray-800 shadow-md overflow-hidden">
         @if($this->visao === 'diaria')
             @forelse($this->movimentacoes as $dia)
-                <table class="w-full text-sm mb-4">
+                <table style="width:100%;font-size:13px;border-collapse:collapse;">
                     <thead>
-                        <tr class="border-b border-gray-700">
-                            <th colspan="4" class="text-left px-4 py-3">
-                                <span class="text-white font-semibold">{{ \Carbon\Carbon::parse($dia['data'])->format('d/m/Y') }}</span>
-                                <span class="text-gray-500 text-xs ml-2">{{ \Carbon\Carbon::parse($dia['data'])->locale('pt_BR')->isoFormat('dddd') }}</span>
+                        <tr style="border-bottom:2px solid #374151;background:#111827;">
+                            <th colspan="3" style="padding:10px;text-align:left;">
+                                <span style="color:#e5e7eb;font-weight:600;">{{ \Carbon\Carbon::parse($dia['data'])->format('d/m/Y') }}</span>
+                                <span style="color:#6b7280;font-size:11px;margin-left:8px;">{{ \Carbon\Carbon::parse($dia['data'])->locale('pt_BR')->isoFormat('dddd') }}</span>
                             </th>
-                            <th class="text-right px-4 py-3 text-green-400 text-xs font-normal">+R$ {{ number_format($dia['entradas'], 2, ',', '.') }}</th>
-                            <th class="text-right px-4 py-3 text-red-400 text-xs font-normal">-R$ {{ number_format($dia['saidas'], 2, ',', '.') }}</th>
+                            <th style="padding:10px;text-align:right;color:#10b981;font-size:12px;font-weight:400;">+R$ {{ number_format($dia['entradas'], 2, ',', '.') }}</th>
+                            <th style="padding:10px;text-align:right;color:#ef4444;font-size:12px;font-weight:400;">-R$ {{ number_format($dia['saidas'], 2, ',', '.') }}</th>
                             @if($this->exibir_saldo_anterior)
-                            <th class="text-right px-4 py-3 text-gray-400 text-xs font-normal">Saldo: R$ {{ number_format($dia['saldo_acumulado'], 2, ',', '.') }}</th>
+                            <th style="padding:10px;text-align:right;color:#9ca3af;font-size:12px;font-weight:400;">Saldo: R$ {{ number_format($dia['saldo_acumulado'], 2, ',', '.') }}</th>
                             @endif
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($dia['itens'] as $item)
-                            <tr class="border-b border-gray-800/50">
-                                <td class="px-4 py-2.5 w-10 text-center">
+                            <tr style="border-bottom:1px solid #1f2937;">
+                                <td style="padding:8px 10px;width:30px;text-align:center;">
                                     @if($item['tipo'] === 'entrada')
-                                        <span class="text-green-400 text-xs">▲</span>
+                                        <span style="color:#10b981;">▲</span>
                                     @else
-                                        <span class="text-red-400 text-xs">▼</span>
+                                        <span style="color:#ef4444;">▼</span>
                                     @endif
                                 </td>
-                                <td class="px-4 py-2.5 text-gray-200">{{ $item['descricao'] }}</td>
-                                <td class="px-4 py-2.5 text-gray-500 text-xs">{{ $item['categoria'] }}</td>
-                                <td class="px-4 py-2.5 text-gray-500 text-xs">{{ $item['banco'] !== '-' ? $item['banco'] : '' }}</td>
-                                <td colspan="{{ $this->exibir_saldo_anterior ? '3' : '2' }}" class="px-4 py-2.5 text-right font-medium {{ $item['tipo'] === 'entrada' ? 'text-green-400' : 'text-red-400' }}">
+                                <td style="padding:8px 10px;color:#e5e7eb;">{{ $item['descricao'] }}</td>
+                                <td style="padding:8px 10px;color:#6b7280;font-size:11px;">{{ $item['categoria'] }}</td>
+                                <td style="padding:8px 10px;color:#6b7280;font-size:11px;">{{ $item['banco'] !== '-' ? $item['banco'] : '' }}</td>
+                                <td colspan="{{ $this->exibir_saldo_anterior ? '2' : '1' }}" style="padding:8px 10px;text-align:right;font-weight:600;{{ $item['tipo'] === 'entrada' ? 'color:#10b981;' : 'color:#ef4444;' }}">
                                     {{ $item['tipo'] === 'entrada' ? '+' : '-' }}R$ {{ number_format($item['valor'], 2, ',', '.') }}
                                 </td>
                             </tr>
@@ -72,37 +65,37 @@
                     </tbody>
                 </table>
             @empty
-                <div class="text-center text-gray-500 py-12">Nenhuma movimentação no período.</div>
+                <div style="padding:40px;text-align:center;color:#6b7280;">Nenhuma movimentação no período.</div>
             @endforelse
         @else
             {{-- Visão por Categoria --}}
-            <table class="w-full text-sm">
+            <table style="width:100%;font-size:13px;border-collapse:collapse;">
                 <thead>
-                    <tr class="border-b border-gray-700">
-                        <th class="text-left px-4 py-3 text-gray-400 font-medium">Categoria</th>
-                        <th class="text-center px-4 py-3 text-gray-400 font-medium">Qtd</th>
-                        <th class="text-right px-4 py-3 text-gray-400 font-medium">Entradas</th>
-                        <th class="text-right px-4 py-3 text-gray-400 font-medium">Saídas</th>
-                        <th class="text-right px-4 py-3 text-gray-400 font-medium">Saldo</th>
+                    <tr style="border-bottom:2px solid #374151;background:#111827;">
+                        <th style="padding:10px;text-align:left;color:#9ca3af;">Categoria</th>
+                        <th style="padding:10px;text-align:center;color:#9ca3af;">Qtd</th>
+                        <th style="padding:10px;text-align:right;color:#9ca3af;">Entradas</th>
+                        <th style="padding:10px;text-align:right;color:#9ca3af;">Saídas</th>
+                        <th style="padding:10px;text-align:right;color:#9ca3af;">Saldo</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($this->movimentacoes as $cat)
-                        <tr class="border-b border-gray-800/50">
-                            <td class="px-4 py-3 text-gray-200 font-medium">{{ $cat['categoria'] }}</td>
-                            <td class="px-4 py-3 text-center text-gray-500">{{ $cat['qtd'] }}</td>
-                            <td class="px-4 py-3 text-right text-green-400">
+                        <tr style="border-bottom:1px solid #1f2937;">
+                            <td style="padding:8px 10px;color:#e5e7eb;font-weight:500;">{{ $cat['categoria'] }}</td>
+                            <td style="padding:8px 10px;text-align:center;color:#6b7280;">{{ $cat['qtd'] }}</td>
+                            <td style="padding:8px 10px;text-align:right;color:#10b981;">
                                 {{ $cat['entradas'] > 0 ? 'R$ ' . number_format($cat['entradas'], 2, ',', '.') : '-' }}
                             </td>
-                            <td class="px-4 py-3 text-right text-red-400">
+                            <td style="padding:8px 10px;text-align:right;color:#ef4444;">
                                 {{ $cat['saidas'] > 0 ? 'R$ ' . number_format($cat['saidas'], 2, ',', '.') : '-' }}
                             </td>
-                            <td class="px-4 py-3 text-right font-medium {{ $cat['saldo'] >= 0 ? 'text-green-400' : 'text-red-400' }}">
+                            <td style="padding:8px 10px;text-align:right;font-weight:600;{{ $cat['saldo'] >= 0 ? 'color:#10b981;' : 'color:#ef4444;' }}">
                                 R$ {{ number_format($cat['saldo'], 2, ',', '.') }}
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="text-center text-gray-500 py-12">Nenhuma movimentação no período.</td></tr>
+                        <tr><td colspan="5" style="padding:40px;text-align:center;color:#6b7280;">Nenhuma movimentação no período.</td></tr>
                     @endforelse
                 </tbody>
             </table>
