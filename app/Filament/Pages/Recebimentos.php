@@ -93,6 +93,10 @@ class Recebimentos extends Page implements HasForms
             'repasse_recebido' => true,
             'data_recebimento' => now()->toDateString(),
         ]);
+        // Atualizar conta a receber vinculada
+        \App\Models\ContaReceber::where('id_venda', $vendaId)
+            ->where('status', 'pendente')
+            ->update(['status' => 'recebido', 'data_recebimento' => now()->toDateString()]);
         \Filament\Notifications\Notification::make()->title('Recebimento confirmado.')->success()->send();
     }
 
@@ -102,6 +106,10 @@ class Recebimentos extends Page implements HasForms
             'repasse_recebido' => true,
             'data_recebimento' => $data,
         ]);
+        // Atualizar conta a receber vinculada
+        \App\Models\ContaReceber::where('id_venda', $vendaId)
+            ->where('status', 'pendente')
+            ->update(['status' => 'recebido', 'data_recebimento' => $data]);
         \Filament\Notifications\Notification::make()->title('Recebimento confirmado.')->success()->send();
     }
 
@@ -111,6 +119,10 @@ class Recebimentos extends Page implements HasForms
             'repasse_recebido' => false,
             'data_recebimento' => null,
         ]);
+        // Atualizar conta a receber vinculada
+        \App\Models\ContaReceber::where('id_venda', $vendaId)
+            ->where('status', 'recebido')
+            ->update(['status' => 'pendente', 'data_recebimento' => null]);
         \Filament\Notifications\Notification::make()->title('Recebimento desfeito.')->success()->send();
     }
 

@@ -183,17 +183,36 @@ class ContaReceberResource extends Resource
 
                         if ($filtrarPor === 'data_recebimento') {
                             return match ($periodo) {
-                                'este_mes' => $query->whereBetween('data_recebimento', [now()->startOfMonth(), now()->endOfMonth()]),
-                                'mes_passado' => $query->whereBetween('data_recebimento', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()]),
+                                'este_mes' => $query->where(fn ($q) => $q
+                                    ->whereBetween('data_recebimento', [now()->startOfMonth(), now()->endOfMonth()])
+                                    ->orWhereHas('venda', fn ($q2) => $q2->whereBetween('data_recebimento', [now()->startOfMonth(), now()->endOfMonth()]))
+                                ),
+                                'mes_passado' => $query->where(fn ($q) => $q
+                                    ->whereBetween('data_recebimento', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()])
+                                    ->orWhereHas('venda', fn ($q2) => $q2->whereBetween('data_recebimento', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()]))
+                                ),
                                 'selecionar_mes' => isset($data['mes_selecionado']) && $data['mes_selecionado']
-                                    ? $query->whereBetween('data_recebimento', [
-                                        now()->createFromFormat('Y-m', $data['mes_selecionado'])->startOfMonth(),
-                                        now()->createFromFormat('Y-m', $data['mes_selecionado'])->endOfMonth(),
-                                    ])
+                                    ? $query->where(fn ($q) => $q
+                                        ->whereBetween('data_recebimento', [
+                                            now()->createFromFormat('Y-m', $data['mes_selecionado'])->startOfMonth(),
+                                            now()->createFromFormat('Y-m', $data['mes_selecionado'])->endOfMonth(),
+                                        ])
+                                        ->orWhereHas('venda', fn ($q2) => $q2->whereBetween('data_recebimento', [
+                                            now()->createFromFormat('Y-m', $data['mes_selecionado'])->startOfMonth(),
+                                            now()->createFromFormat('Y-m', $data['mes_selecionado'])->endOfMonth(),
+                                        ]))
+                                    )
                                     : $query,
-                                'customizado' => $query
-                                    ->when($data['data_inicio'] ?? null, fn ($q) => $q->whereDate('data_recebimento', '>=', $data['data_inicio']))
-                                    ->when($data['data_fim'] ?? null, fn ($q) => $q->whereDate('data_recebimento', '<=', $data['data_fim'])),
+                                'customizado' => $query->where(fn ($q) => $q
+                                    ->where(fn ($q2) => $q2
+                                        ->when($data['data_inicio'] ?? null, fn ($q3) => $q3->whereDate('data_recebimento', '>=', $data['data_inicio']))
+                                        ->when($data['data_fim'] ?? null, fn ($q3) => $q3->whereDate('data_recebimento', '<=', $data['data_fim']))
+                                    )
+                                    ->orWhereHas('venda', fn ($q2) => $q2
+                                        ->when($data['data_inicio'] ?? null, fn ($q3) => $q3->whereDate('data_recebimento', '>=', $data['data_inicio']))
+                                        ->when($data['data_fim'] ?? null, fn ($q3) => $q3->whereDate('data_recebimento', '<=', $data['data_fim']))
+                                    )
+                                ),
                                 default => $query,
                             };
                         }
