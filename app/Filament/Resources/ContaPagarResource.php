@@ -89,14 +89,16 @@ class ContaPagarResource extends Resource
                     ]),
                 Forms\Components\Select::make('categoria_id')
                     ->label('Categoria')
-                    ->relationship('categoria', 'nome', fn ($query) => $query->whereIn('tipo', ['saida', 'ambos'])->where('ativo', true)->orderBy('nome'))
+                    ->options(fn () => \App\Models\CategoriaFinanceira::whereIn('tipo', ['saida', 'ambos'])->where('ativo', true)->orderBy('nome')->pluck('nome', 'id')->toArray())
                     ->searchable()
-                    ->preload()
                     ->placeholder('Selecione a categoria')
                     ->createOptionForm([
                         Forms\Components\TextInput::make('nome')->label('Nome')->required()->maxLength(100),
                         Forms\Components\Select::make('tipo')->label('Tipo')->options(['entrada' => 'Entrada', 'saida' => 'Saída', 'ambos' => 'Ambos'])->default('saida')->required(),
-                    ]),
+                    ])
+                    ->createOptionUsing(function (array $data) {
+                        return \App\Models\CategoriaFinanceira::create($data)->id;
+                    }),
             ])->columns(2),
         ]);
     }
