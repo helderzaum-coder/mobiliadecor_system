@@ -24,6 +24,7 @@ class Recebimentos extends Page implements HasForms
     public ?string $canal = null;
     public ?string $conta = null;
     public ?string $filtro_status = null;
+    public ?string $agrupar_por = 'data_venda';
     public int $pagina = 1;
     public int $porPagina = 20;
 
@@ -74,6 +75,14 @@ class Recebimentos extends Page implements HasForms
                     ])
                     ->placeholder('Todos')
                     ->reactive(),
+                Forms\Components\Select::make('agrupar_por')
+                    ->label('Filtrar por')
+                    ->options([
+                        'data_venda' => '📅 Data da Venda',
+                        'data_recebimento' => '💰 Data do Recebimento',
+                    ])
+                    ->default('data_venda')
+                    ->reactive(),
             ]),
         ]);
     }
@@ -107,13 +116,19 @@ class Recebimentos extends Page implements HasForms
 
     private function buildQuery()
     {
-        $query = Venda::with('canal')->orderBy('data_venda', 'desc');
+        $campoData = $this->agrupar_por === 'data_recebimento' ? 'data_recebimento' : 'data_venda';
+        $query = Venda::with('canal')->orderBy($campoData, 'desc');
+
+        // Se filtrando por data_recebimento, só mostrar vendas que têm data_recebimento
+        if ($campoData === 'data_recebimento') {
+            $query->whereNotNull('data_recebimento');
+        }
 
         $query = match ($this->periodo) {
-            'este_mes' => $query->whereBetween('data_venda', [now()->startOfMonth(), now()->endOfMonth()]),
-            'mes_passado' => $query->whereBetween('data_venda', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()]),
+            'este_mes' => $query->whereBetween($campoData, [now()->startOfMonth(), now()->endOfMonth()]),
+            'mes_passado' => $query->whereBetween($campoData, [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()]),
             'selecionar_mes' => $this->mes_selecionado
-                ? $query->whereBetween('data_venda', [
+                ? $query->whereBetween($campoData, [
                     now()->createFromFormat('Y-m', $this->mes_selecionado)->startOfMonth(),
                     now()->createFromFormat('Y-m', $this->mes_selecionado)->endOfMonth(),
                 ])
@@ -175,6 +190,7 @@ class Recebimentos extends Page implements HasForms
     public function updatedCanal(): void { $this->pagina = 1; }
     public function updatedConta(): void { $this->pagina = 1; }
     public function updatedFiltroStatus(): void { $this->pagina = 1; }
+    public function updatedAgruparPor(): void { $this->pagina = 1; }
 
     public static function canAccess(): bool
     {

@@ -262,7 +262,7 @@ class VendaRecalculoService
 
         $updateData = [
             'comissao' => $comissao,
-            'subsidio_pix' => $subsidioPix, // Exibir na dashboard (não soma no lucro pois já descontado do subtotal)
+            'subsidio_pix' => $subsidioPix,
             'planilha_processada' => true,
         ];
 
@@ -270,8 +270,9 @@ class VendaRecalculoService
         if ($totalProdutos > 0) {
             $updateData['total_produtos'] = $totalProdutos;
         }
-        if ($totalPedido > 0) {
-            $updateData['valor_total_venda'] = $totalPedido;
+        // valor_total_venda = total_produtos + frete (valor bruto que o cliente pagou)
+        if ($totalProdutos > 0) {
+            $updateData['valor_total_venda'] = $totalProdutos + $frete;
         }
         if ($frete >= 0) {
             $updateData['valor_frete_cliente'] = $frete;

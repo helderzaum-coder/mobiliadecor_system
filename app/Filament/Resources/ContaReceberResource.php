@@ -140,6 +140,14 @@ class ContaReceberResource extends Resource
                     ),
                 Tables\Filters\Filter::make('periodo')
                     ->form([
+                        Forms\Components\Select::make('filtrar_por')
+                            ->label('Filtrar por')
+                            ->options([
+                                'data_venda' => '📅 Data da Venda',
+                                'data_recebimento' => '💰 Data do Recebimento',
+                            ])
+                            ->default('data_venda')
+                            ->reactive(),
                         Forms\Components\Select::make('periodo_rapido')
                             ->label('Período')
                             ->options([
@@ -170,6 +178,26 @@ class ContaReceberResource extends Resource
                     ->query(function ($query, array $data) {
                         $periodo = $data['periodo_rapido'] ?? null;
                         if (!$periodo) return $query;
+
+                        $filtrarPor = $data['filtrar_por'] ?? 'data_venda';
+
+                        if ($filtrarPor === 'data_recebimento') {
+                            return match ($periodo) {
+                                'este_mes' => $query->whereBetween('data_recebimento', [now()->startOfMonth(), now()->endOfMonth()]),
+                                'mes_passado' => $query->whereBetween('data_recebimento', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()]),
+                                'selecionar_mes' => isset($data['mes_selecionado']) && $data['mes_selecionado']
+                                    ? $query->whereBetween('data_recebimento', [
+                                        now()->createFromFormat('Y-m', $data['mes_selecionado'])->startOfMonth(),
+                                        now()->createFromFormat('Y-m', $data['mes_selecionado'])->endOfMonth(),
+                                    ])
+                                    : $query,
+                                'customizado' => $query
+                                    ->when($data['data_inicio'] ?? null, fn ($q) => $q->whereDate('data_recebimento', '>=', $data['data_inicio']))
+                                    ->when($data['data_fim'] ?? null, fn ($q) => $q->whereDate('data_recebimento', '<=', $data['data_fim'])),
+                                default => $query,
+                            };
+                        }
+
                         return match ($periodo) {
                             'este_mes' => $query->whereHas('venda', fn ($q) => $q->whereBetween('data_venda', [now()->startOfMonth(), now()->endOfMonth()])),
                             'mes_passado' => $query->whereHas('venda', fn ($q) => $q->whereBetween('data_venda', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()])),
@@ -184,6 +212,19 @@ class ContaReceberResource extends Resource
                                 ->when($data['data_fim'] ?? null, fn ($q2) => $q2->whereDate('data_venda', '<=', $data['data_fim']))
                             ),
                             default => $query,
+                        };
+                    })
+                    ->indicateUsing(function (array $data) {
+                        $filtrarPor = $data['filtrar_por'] ?? 'data_venda';
+                        $periodo = $data['periodo_rapido'] ?? null;
+                        if (!$periodo) return null;
+                        $prefixo = $filtrarPor === 'data_recebimento' ? '💰 Recebimento: ' : '📅 Venda: ';
+                        return $prefixo . match ($periodo) {
+                            'este_mes' => 'Este mês',
+                            'mes_passado' => 'Mês passado',
+                            'selecionar_mes' => $data['mes_selecionado'] ?? 'Mês',
+                            'customizado' => trim(($data['data_inicio'] ?? '') . ' → ' . ($data['data_fim'] ?? '')),
+                            default => '',
                         };
                     }),
             ])
