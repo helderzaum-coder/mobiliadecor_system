@@ -34,11 +34,26 @@ class ContaPagarResource extends Resource
                     ->required()
                     ->numeric()
                     ->prefix('R$'),
-                Forms\Components\TextInput::make('forma_pagamento')
-                    ->label('Categoria / Tipo')
-                    ->required()
-                    ->maxLength(50)
-                    ->placeholder('Ex: Estorno, Frete, Fornecedor...'),
+                Forms\Components\Select::make('categoria_id')
+                    ->label('Categoria')
+                    ->options(fn () => \App\Models\CategoriaFinanceira::whereIn('tipo', ['saida', 'ambos'])->where('ativo', true)->orderBy('nome')->pluck('nome', 'id')->toArray())
+                    ->searchable()
+                    ->placeholder('Selecione a categoria')
+                    ->createOptionForm([
+                        Forms\Components\TextInput::make('nome')->label('Nome')->required()->maxLength(100),
+                        Forms\Components\Select::make('tipo')->label('Tipo')->options(['entrada' => 'Entrada', 'saida' => 'Saída', 'ambos' => 'Ambos'])->default('saida')->required(),
+                    ])
+                    ->createOptionUsing(fn (array $data) => \App\Models\CategoriaFinanceira::create($data)->id),
+                Forms\Components\Select::make('conta_bancaria_id')
+                    ->label('Banco')
+                    ->relationship('contaBancaria', 'nome')
+                    ->searchable()
+                    ->preload()
+                    ->placeholder('Selecione o banco')
+                    ->createOptionForm([
+                        Forms\Components\TextInput::make('nome')->label('Nome')->required()->maxLength(100),
+                        Forms\Components\TextInput::make('banco')->label('Banco')->maxLength(100),
+                    ]),
                 Forms\Components\Select::make('status')
                     ->label('Status')
                     ->options([
@@ -49,6 +64,10 @@ class ContaPagarResource extends Resource
                     ])
                     ->required()
                     ->default('pendente'),
+                Forms\Components\TextInput::make('forma_pagamento')
+                    ->label('Forma de Pagamento')
+                    ->maxLength(50)
+                    ->placeholder('Ex: Pix, Boleto, Cartão...'),
             ])->columns(2),
 
             Forms\Components\Section::make('Datas')->schema([
@@ -77,29 +96,7 @@ class ContaPagarResource extends Resource
                     ->rows(3),
                 Forms\Components\Toggle::make('lancamento_manual')
                     ->label('Lançamento Manual'),
-                Forms\Components\Select::make('conta_bancaria_id')
-                    ->label('Banco')
-                    ->relationship('contaBancaria', 'nome')
-                    ->searchable()
-                    ->preload()
-                    ->placeholder('Selecione o banco')
-                    ->createOptionForm([
-                        Forms\Components\TextInput::make('nome')->label('Nome')->required()->maxLength(100),
-                        Forms\Components\TextInput::make('banco')->label('Banco')->maxLength(100),
-                    ]),
-                Forms\Components\Select::make('categoria_id')
-                    ->label('Categoria')
-                    ->options(fn () => \App\Models\CategoriaFinanceira::whereIn('tipo', ['saida', 'ambos'])->where('ativo', true)->orderBy('nome')->pluck('nome', 'id')->toArray())
-                    ->searchable()
-                    ->placeholder('Selecione a categoria')
-                    ->createOptionForm([
-                        Forms\Components\TextInput::make('nome')->label('Nome')->required()->maxLength(100),
-                        Forms\Components\Select::make('tipo')->label('Tipo')->options(['entrada' => 'Entrada', 'saida' => 'Saída', 'ambos' => 'Ambos'])->default('saida')->required(),
-                    ])
-                    ->createOptionUsing(function (array $data) {
-                        return \App\Models\CategoriaFinanceira::create($data)->id;
-                    }),
-            ])->columns(2),
+            ]),
         ]);
     }
 
