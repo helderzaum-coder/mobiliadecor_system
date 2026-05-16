@@ -93,13 +93,17 @@ class VendaResource extends Resource
             Forms\Components\Section::make('Comissão e Impostos')->schema([
                 Forms\Components\TextInput::make('comissao')
                     ->label('Comissão')->numeric()->prefix('R$'),
+                Forms\Components\TextInput::make('comissao_afiliado')
+                    ->label('Comissão Afiliado')->numeric()->prefix('R$')
+                    ->default(0)
+                    ->helperText('Desconto de afiliado (Shopee, etc.)'),
                 Forms\Components\TextInput::make('subsidio_pix')
                     ->label('Subsídio Pix')->numeric()->prefix('R$'),
                 Forms\Components\TextInput::make('percentual_imposto')
                     ->label('Imposto (%)')->numeric()->suffix('%'),
                 Forms\Components\TextInput::make('valor_imposto')
                     ->label('Valor Imposto')->numeric()->prefix('R$'),
-            ])->columns(4),
+            ])->columns(5),
 
             Forms\Components\Section::make('Mercado Livre')
                 ->schema([
