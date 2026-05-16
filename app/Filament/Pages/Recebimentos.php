@@ -21,6 +21,8 @@ class Recebimentos extends Page implements HasForms
 
     public ?string $periodo = 'este_mes';
     public ?string $mes_selecionado = null;
+    public ?string $data_inicio = null;
+    public ?string $data_fim = null;
     public ?string $canal = null;
     public ?string $conta = null;
     public ?string $filtro_status = null;
@@ -49,6 +51,7 @@ class Recebimentos extends Page implements HasForms
                         'este_mes' => 'Este mês',
                         'mes_passado' => 'Mês passado',
                         'selecionar_mes' => 'Selecionar mês',
+                        'customizado' => 'Customizado',
                     ])
                     ->reactive(),
                 Forms\Components\Select::make('mes_selecionado')
@@ -62,6 +65,14 @@ class Recebimentos extends Page implements HasForms
                         return $options;
                     })
                     ->visible(fn ($get) => $get('periodo') === 'selecionar_mes')
+                    ->reactive(),
+                Forms\Components\DatePicker::make('data_inicio')
+                    ->label('De')
+                    ->visible(fn ($get) => $get('periodo') === 'customizado')
+                    ->reactive(),
+                Forms\Components\DatePicker::make('data_fim')
+                    ->label('Até')
+                    ->visible(fn ($get) => $get('periodo') === 'customizado')
                     ->reactive(),
                 Forms\Components\Select::make('canal')
                     ->label('Canal')
@@ -153,6 +164,9 @@ class Recebimentos extends Page implements HasForms
                         now()->createFromFormat('Y-m', $this->mes_selecionado)->endOfMonth(),
                     ])
                     : $query,
+                'customizado' => $query
+                    ->when($this->data_inicio, fn ($q) => $q->whereDate($campoData, '>=', $this->data_inicio))
+                    ->when($this->data_fim, fn ($q) => $q->whereDate($campoData, '<=', $this->data_fim)),
                 default => $query,
             };
         }
@@ -216,6 +230,8 @@ class Recebimentos extends Page implements HasForms
     public function updatedFiltroStatus(): void { $this->pagina = 1; }
     public function updatedAgruparPor(): void { $this->pagina = 1; }
     public function updatedBuscaPedido(): void { $this->pagina = 1; }
+    public function updatedDataInicio(): void { $this->pagina = 1; }
+    public function updatedDataFim(): void { $this->pagina = 1; }
 
     public static function canAccess(): bool
     {
