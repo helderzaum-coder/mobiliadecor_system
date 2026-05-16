@@ -18,9 +18,12 @@ class LoteRecebimentos extends Page
 
     public string $busca = '';
     public string $busca_multipla = '';
-    public array $lote = []; // array de id_conta_receber
+    public array $lote = [];
     public string $data_recebimento = '';
     public string $identificador_lote = '';
+    public array $descontos = [];
+    public string $desconto_descricao = '';
+    public string $desconto_valor = '';
 
     public function mount(): void
     {
@@ -48,6 +51,38 @@ class LoteRecebimentos extends Page
     public function getTotalLoteProperty(): float
     {
         return $this->loteItens->sum('valor_parcela');
+    }
+
+    public function getTotalDescontosProperty(): float
+    {
+        return collect($this->descontos)->sum('valor');
+    }
+
+    public function getLiquidoLoteProperty(): float
+    {
+        return $this->totalLote - $this->totalDescontos;
+    }
+
+    public function adicionarDesconto(): void
+    {
+        if (empty(trim($this->desconto_descricao)) || (float) $this->desconto_valor <= 0) {
+            Notification::make()->title('Informe descrição e valor do desconto.')->warning()->send();
+            return;
+        }
+
+        $this->descontos[] = [
+            'descricao' => trim($this->desconto_descricao),
+            'valor' => round((float) $this->desconto_valor, 2),
+        ];
+
+        $this->desconto_descricao = '';
+        $this->desconto_valor = '';
+    }
+
+    public function removerDesconto(int $index): void
+    {
+        unset($this->descontos[$index]);
+        $this->descontos = array_values($this->descontos);
     }
 
     public function adicionarAoLote(int $id): void
@@ -134,8 +169,25 @@ class LoteRecebimentos extends Page
             $count++;
         }
 
-        Notification::make()->title("{$count} recebimento(s) confirmado(s).")->success()->send();
+        // Lançar descontos como contas a pagar (já pagas)
+        foreach ($this->descontos as $desconto) {
+            \App\Models\ContaPagar::create([
+                'valor_parcela' => $desconto['valor'],
+                'data_vencimento' => $this->data_recebimento,
+                'data_pagamento' => $this->data_recebimento,
+                'status' => 'pago',
+                'numero_parcela' => 1,
+                'total_parcelas' => 1,
+                'forma_pagamento' => 'Desconto Canal',
+                'observacoes' => $desconto['descricao'] . ($this->identificador_lote ? " | {$this->identificador_lote}" : ''),
+                'lancamento_manual' => true,
+            ]);
+        }
+
+        $msgDescontos = !empty($this->descontos) ? " | " . count($this->descontos) . " desconto(s) lançado(s)" : '';
+        Notification::make()->title("{$count} recebimento(s) confirmado(s){$msgDescontos}.")->success()->send();
         $this->lote = [];
+        $this->descontos = [];
     }
 
     public static function canAccess(): bool

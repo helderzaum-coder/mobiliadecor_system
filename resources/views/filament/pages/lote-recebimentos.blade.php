@@ -83,9 +83,55 @@
 
                 {{-- Total e Confirmação --}}
                 <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-                    <div class="flex items-center justify-between mb-3">
-                        <span class="text-sm text-gray-500">Total do Lote:</span>
-                        <span class="text-xl font-bold text-green-600">R$ {{ number_format($this->totalLote, 2, ',', '.') }}</span>
+
+                    {{-- Descontos --}}
+                    <div class="mb-4">
+                        <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Descontos / Abatimentos</h4>
+
+                        @foreach($descontos as $index => $desconto)
+                            <div class="flex items-center justify-between p-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm mb-2">
+                                <span class="text-red-700 dark:text-red-300">{{ $desconto['descricao'] }}</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-semibold text-red-600">- R$ {{ number_format($desconto['valor'], 2, ',', '.') }}</span>
+                                    <button wire:click="removerDesconto({{ $index }})"
+                                        style="color:#ef4444;font-size:14px;cursor:pointer;background:none;border:none;font-weight:bold;">✕</button>
+                                </div>
+                            </div>
+                        @endforeach
+
+                        <div class="flex gap-2">
+                            <input type="text" wire:model="desconto_descricao" placeholder="Ex: Crédito publicidade"
+                                style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:13px;">
+                            <input type="number" wire:model="desconto_valor" placeholder="Valor" step="0.01" min="0"
+                                style="width:120px;padding:8px 12px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:13px;">
+                            <button wire:click="adicionarDesconto"
+                                style="padding:8px 14px;border-radius:8px;border:none;cursor:pointer;background:#ef4444;color:#fff;font-size:12px;font-weight:600;white-space:nowrap;">
+                                + Desconto
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- Totais --}}
+                    <div class="space-y-2 mb-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-500">Total Bruto (pedidos):</span>
+                            <span class="text-sm font-semibold text-green-600">R$ {{ number_format($this->totalLote, 2, ',', '.') }}</span>
+                        </div>
+                        @if(!empty($descontos))
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-500">Descontos:</span>
+                            <span class="text-sm font-semibold text-red-500">- R$ {{ number_format($this->totalDescontos, 2, ',', '.') }}</span>
+                        </div>
+                        <div class="flex items-center justify-between pt-2 border-t border-gray-700">
+                            <span class="text-sm text-gray-400 font-medium">Líquido (repasse):</span>
+                            <span class="text-xl font-bold text-blue-400">R$ {{ number_format($this->liquidoLote, 2, ',', '.') }}</span>
+                        </div>
+                        @else
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-500">Total do Lote:</span>
+                            <span class="text-xl font-bold text-green-600">R$ {{ number_format($this->totalLote, 2, ',', '.') }}</span>
+                        </div>
+                        @endif
                     </div>
 
                     <div class="mb-3">
@@ -96,11 +142,11 @@
 
                     <div class="mb-3">
                         <label class="text-xs text-gray-500 block mb-1">Identificador do Lote (opcional):</label>
-                        <input type="text" wire:model="identificador_lote" placeholder="Ex: Antecipação ML 30/04 #1"
+                        <input type="text" wire:model="identificador_lote" placeholder="Ex: Repasse Shopee 15/05"
                             style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:14px;">
                     </div>
 
-                    <button wire:click="confirmarLote" wire:confirm="Confirmar recebimento de {{ count($lote) }} pedido(s) totalizando R$ {{ number_format($this->totalLote, 2, ',', '.') }}?"
+                    <button wire:click="confirmarLote" wire:confirm="Confirmar recebimento de {{ count($lote) }} pedido(s) totalizando R$ {{ number_format($this->liquidoLote, 2, ',', '.') }} (líquido)?"
                         style="width:100%;padding:12px;font-size:14px;font-weight:700;border-radius:10px;border:none;cursor:pointer;background:#10b981;color:#fff;">
                         ✅ Confirmar Recebimento do Lote
                     </button>
