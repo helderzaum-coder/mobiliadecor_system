@@ -22,6 +22,8 @@ class ContaReceber extends Model
         'observacoes',
         'lancamento_manual',
         'estorno_pendente',
+        'conta_bancaria_id',
+        'categoria_id',
     ];
 
     protected $casts = [
@@ -35,5 +37,15 @@ class ContaReceber extends Model
     public function venda(): BelongsTo
     {
         return $this->belongsTo(Venda::class, 'id_venda', 'id_venda');
+    }
+
+    public function contaBancaria(): BelongsTo
+    {
+        return $this->belongsTo(ContaBancaria::class, 'conta_bancaria_id');
+    }
+
+    public function categoria(): BelongsTo
+    {
+        return $this->belongsTo(CategoriaFinanceira::class, 'categoria_id');
     }
 }

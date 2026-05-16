@@ -47,6 +47,26 @@ class ContaReceberResource extends Resource
                     'cancelado' => 'Cancelado',
                 ])
                 ->required(),
+            Forms\Components\Select::make('conta_bancaria_id')
+                ->label('Banco')
+                ->relationship('contaBancaria', 'nome')
+                ->searchable()
+                ->preload()
+                ->placeholder('Selecione o banco')
+                ->createOptionForm([
+                    Forms\Components\TextInput::make('nome')->label('Nome')->required()->maxLength(100),
+                    Forms\Components\TextInput::make('banco')->label('Banco')->maxLength(100),
+                ]),
+            Forms\Components\Select::make('categoria_id')
+                ->label('Categoria')
+                ->relationship('categoria', 'nome', fn ($query) => $query->whereIn('tipo', ['entrada', 'ambos'])->where('ativo', true)->orderBy('nome'))
+                ->searchable()
+                ->preload()
+                ->placeholder('Selecione a categoria')
+                ->createOptionForm([
+                    Forms\Components\TextInput::make('nome')->label('Nome')->required()->maxLength(100),
+                    Forms\Components\Select::make('tipo')->label('Tipo')->options(['entrada' => 'Entrada', 'saida' => 'Saída', 'ambos' => 'Ambos'])->default('entrada')->required(),
+                ]),
             Forms\Components\TextInput::make('numero_parcela')
                 ->label('Nº Parcela')
                 ->required()

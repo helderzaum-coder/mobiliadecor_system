@@ -1,0 +1,275 @@
+<?php
+
+namespace App\Filament\Pages;
+
+use App\Models\CategoriaFinanceira;
+use App\Models\ContaBancaria;
+use App\Models\ContaPagar;
+use App\Models\ContaReceber;
+use Filament\Forms;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
+use Filament\Pages\Page;
+use Illuminate\Support\Collection;
+
+class Caixa extends Page implements HasForms
+{
+    use InteractsWithForms;
+
+    protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
+    protected static ?string $navigationGroup = 'Financeiro';
+    protected static ?string $navigationLabel = 'Caixa';
+    protected static ?string $title = 'Fluxo de Caixa';
+    protected static string $view = 'filament.pages.caixa';
+    protected static ?int $navigationSort = 1;
+
+    public ?string $periodo = 'este_mes';
+    public ?string $mes_selecionado = null;
+    public ?string $data_inicio = null;
+    public ?string $data_fim = null;
+    public ?string $conta_bancaria_id = null;
+    public ?string $categoria_id = null;
+    public ?string $visao = 'diaria';
+    public bool $exibir_saldo_anterior = true;
+
+    public function mount(): void
+    {
+        $this->mes_selecionado = now()->format('Y-m');
+    }
+
+    public function form(Forms\Form $form): Forms\Form
+    {
+        return $form->schema([
+            Forms\Components\Grid::make(6)->schema([
+                Forms\Components\Select::make('periodo')
+                    ->label('Período')
+                    ->options([
+                        'este_mes' => 'Este mês',
+                        'mes_passado' => 'Mês passado',
+                        'selecionar_mes' => 'Selecionar mês',
+                        'customizado' => 'Customizado',
+                    ])
+                    ->reactive(),
+                Forms\Components\Select::make('mes_selecionado')
+                    ->label('Mês')
+                    ->options(function () {
+                        $options = [];
+                        for ($i = 0; $i < 12; $i++) {
+                            $d = now()->subMonths($i)->startOfMonth();
+                            $options[$d->format('Y-m')] = ucfirst($d->locale('pt_BR')->isoFormat('MMMM [de] YYYY'));
+                        }
+                        return $options;
+                    })
+                    ->visible(fn ($get) => $get('periodo') === 'selecionar_mes')
+                    ->reactive(),
+                Forms\Components\DatePicker::make('data_inicio')
+                    ->label('De')
+                    ->visible(fn ($get) => $get('periodo') === 'customizado')
+                    ->reactive(),
+                Forms\Components\DatePicker::make('data_fim')
+                    ->label('Até')
+                    ->visible(fn ($get) => $get('periodo') === 'customizado')
+                    ->reactive(),
+                Forms\Components\Select::make('conta_bancaria_id')
+                    ->label('Banco')
+                    ->options(fn () => ContaBancaria::where('ativo', true)->orderBy('nome')->pluck('nome', 'id')->toArray())
+                    ->placeholder('Todos')
+                    ->reactive(),
+                Forms\Components\Select::make('categoria_id')
+                    ->label('Categoria')
+                    ->options(fn () => CategoriaFinanceira::where('ativo', true)->orderBy('nome')->pluck('nome', 'id')->toArray())
+                    ->placeholder('Todas')
+                    ->reactive(),
+                Forms\Components\Select::make('visao')
+                    ->label('Visão')
+                    ->options([
+                        'diaria' => '📅 Diária',
+                        'categoria' => '📊 Por Categoria',
+                    ])
+                    ->default('diaria')
+                    ->reactive(),
+                Forms\Components\Toggle::make('exibir_saldo_anterior')
+                    ->label('Exibir saldo anterior')
+                    ->default(true)
+                    ->reactive(),
+            ]),
+        ]);
+    }
+
+    private function getDataRange(): array
+    {
+        return match ($this->periodo) {
+            'este_mes' => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
+            'mes_passado' => [now()->subMonth()->startOfMonth()->toDateString(), now()->subMonth()->endOfMonth()->toDateString()],
+            'selecionar_mes' => $this->mes_selecionado
+                ? [
+                    now()->createFromFormat('Y-m', $this->mes_selecionado)->startOfMonth()->toDateString(),
+                    now()->createFromFormat('Y-m', $this->mes_selecionado)->endOfMonth()->toDateString(),
+                ]
+                : [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
+            'customizado' => [
+                $this->data_inicio ?? now()->startOfMonth()->toDateString(),
+                $this->data_fim ?? now()->endOfMonth()->toDateString(),
+            ],
+            default => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
+        };
+    }
+
+    private function getEntradas(): Collection
+    {
+        [$inicio, $fim] = $this->getDataRange();
+
+        $query = ContaReceber::with(['venda', 'contaBancaria', 'categoria'])
+            ->where('status', 'recebido')
+            ->whereNotNull('data_recebimento')
+            ->whereBetween('data_recebimento', [$inicio, $fim]);
+
+        if ($this->conta_bancaria_id) {
+            $query->where('conta_bancaria_id', $this->conta_bancaria_id);
+        }
+        if ($this->categoria_id) {
+            $query->where('categoria_id', $this->categoria_id);
+        }
+
+        return $query->get()->map(fn ($r) => [
+            'data' => $r->data_recebimento->format('Y-m-d'),
+            'tipo' => 'entrada',
+            'descricao' => $r->venda ? "Repasse #{$r->venda->numero_pedido_canal}" : ($r->observacoes ?: 'Recebimento'),
+            'categoria' => $r->categoria?->nome ?? $r->forma_pagamento ?? '-',
+            'banco' => $r->contaBancaria?->nome ?? '-',
+            'valor' => (float) $r->valor_parcela,
+        ]);
+    }
+
+    private function getSaidas(): Collection
+    {
+        [$inicio, $fim] = $this->getDataRange();
+
+        $query = ContaPagar::with(['fatura', 'contaBancaria', 'categoria'])
+            ->where('status', 'pago')
+            ->whereNotNull('data_pagamento')
+            ->whereBetween('data_pagamento', [$inicio, $fim]);
+
+        if ($this->conta_bancaria_id) {
+            $query->where('conta_bancaria_id', $this->conta_bancaria_id);
+        }
+        if ($this->categoria_id) {
+            $query->where('categoria_id', $this->categoria_id);
+        }
+
+        return $query->get()->map(fn ($r) => [
+            'data' => $r->data_pagamento->format('Y-m-d'),
+            'tipo' => 'saida',
+            'descricao' => $r->observacoes ?: ($r->fatura ? "Fatura #{$r->fatura->id_fatura}" : 'Pagamento'),
+            'categoria' => $r->categoria?->nome ?? $r->forma_pagamento ?? '-',
+            'banco' => $r->contaBancaria?->nome ?? '-',
+            'valor' => (float) $r->valor_parcela,
+        ]);
+    }
+
+    public function getSaldoAnteriorProperty(): float
+    {
+        if (!$this->exibir_saldo_anterior) return 0;
+
+        [$inicio] = $this->getDataRange();
+
+        $entradasAntes = ContaReceber::where('status', 'recebido')
+            ->whereNotNull('data_recebimento')
+            ->where('data_recebimento', '<', $inicio)
+            ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
+            ->sum('valor_parcela');
+
+        $saidasAntes = ContaPagar::where('status', 'pago')
+            ->whereNotNull('data_pagamento')
+            ->where('data_pagamento', '<', $inicio)
+            ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
+            ->sum('valor_parcela');
+
+        $saldoInicialBanco = 0;
+        if ($this->conta_bancaria_id) {
+            $banco = ContaBancaria::find($this->conta_bancaria_id);
+            $saldoInicialBanco = (float) ($banco->saldo_inicial ?? 0);
+        } else {
+            $saldoInicialBanco = (float) ContaBancaria::where('ativo', true)->sum('saldo_inicial');
+        }
+
+        return $saldoInicialBanco + (float) $entradasAntes - (float) $saidasAntes;
+    }
+
+    public function getMovimentacoesProperty(): array
+    {
+        $entradas = $this->getEntradas();
+        $saidas = $this->getSaidas();
+
+        $todas = $entradas->merge($saidas)->sortBy('data')->values();
+
+        if ($this->visao === 'categoria') {
+            return $this->agruparPorCategoria($todas);
+        }
+
+        return $this->agruparPorDia($todas);
+    }
+
+    private function agruparPorDia(Collection $movimentacoes): array
+    {
+        $dias = [];
+        $saldoAcumulado = $this->saldoAnterior;
+
+        foreach ($movimentacoes->groupBy('data') as $data => $itens) {
+            $entradasDia = $itens->where('tipo', 'entrada')->sum('valor');
+            $saidasDia = $itens->where('tipo', 'saida')->sum('valor');
+            $saldoAcumulado += $entradasDia - $saidasDia;
+
+            $dias[] = [
+                'data' => $data,
+                'itens' => $itens->toArray(),
+                'entradas' => $entradasDia,
+                'saidas' => $saidasDia,
+                'saldo_dia' => $entradasDia - $saidasDia,
+                'saldo_acumulado' => $saldoAcumulado,
+            ];
+        }
+
+        return $dias;
+    }
+
+    private function agruparPorCategoria(Collection $movimentacoes): array
+    {
+        $categorias = [];
+
+        foreach ($movimentacoes->groupBy('categoria') as $cat => $itens) {
+            $entradas = $itens->where('tipo', 'entrada')->sum('valor');
+            $saidas = $itens->where('tipo', 'saida')->sum('valor');
+
+            $categorias[] = [
+                'categoria' => $cat,
+                'entradas' => $entradas,
+                'saidas' => $saidas,
+                'saldo' => $entradas - $saidas,
+                'qtd' => $itens->count(),
+            ];
+        }
+
+        usort($categorias, fn ($a, $b) => $a['categoria'] <=> $b['categoria']);
+
+        return $categorias;
+    }
+
+    public function getTotaisProperty(): array
+    {
+        $entradas = $this->getEntradas()->sum('valor');
+        $saidas = $this->getSaidas()->sum('valor');
+
+        return [
+            'entradas' => $entradas,
+            'saidas' => $saidas,
+            'resultado' => $entradas - $saidas,
+            'saldo_final' => $this->saldoAnterior + $entradas - $saidas,
+        ];
+    }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('admin') ?? false;
+    }
+}

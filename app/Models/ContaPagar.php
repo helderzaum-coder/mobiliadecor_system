@@ -21,6 +21,8 @@ class ContaPagar extends Model
         'forma_pagamento',
         'observacoes',
         'lancamento_manual',
+        'conta_bancaria_id',
+        'categoria_id',
     ];
 
     protected $casts = [
@@ -33,5 +35,15 @@ class ContaPagar extends Model
     public function fatura(): BelongsTo
     {
         return $this->belongsTo(FaturaTransportadora::class, 'id_fatura', 'id_fatura');
+    }
+
+    public function contaBancaria(): BelongsTo
+    {
+        return $this->belongsTo(ContaBancaria::class, 'conta_bancaria_id');
+    }
+
+    public function categoria(): BelongsTo
+    {
+        return $this->belongsTo(CategoriaFinanceira::class, 'categoria_id');
     }
 }
