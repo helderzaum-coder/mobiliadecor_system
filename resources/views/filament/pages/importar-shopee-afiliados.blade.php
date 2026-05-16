@@ -13,6 +13,28 @@
             </p>
         </div>
 
+        {{-- Destaque: a partir de quando falta importar --}}
+        @if($this->data_primeiro_pendente)
+            <div class="bg-red-50 dark:bg-red-900/20 rounded-xl shadow p-4 border border-red-300 dark:border-red-700 mb-6 flex items-center gap-3">
+                <span class="text-2xl">⚠️</span>
+                <div>
+                    <p class="text-sm font-semibold text-red-800 dark:text-red-200">
+                        Importar pedidos a partir do dia: {{ $this->data_primeiro_pendente }}
+                    </p>
+                    <p class="text-xs text-red-600 dark:text-red-400">
+                        Existem pedidos Shopee sem comissão de afiliado definida desde esta data.
+                    </p>
+                </div>
+            </div>
+        @else
+            <div class="bg-green-50 dark:bg-green-900/20 rounded-xl shadow p-4 border border-green-300 dark:border-green-700 mb-6 flex items-center gap-3">
+                <span class="text-2xl">✅</span>
+                <p class="text-sm font-semibold text-green-800 dark:text-green-200">
+                    Todos os pedidos Shopee estão com comissão de afiliado processada.
+                </p>
+            </div>
+        @endif
+
         {{-- Período da importação --}}
         <div class="bg-amber-50 dark:bg-amber-900/20 rounded-xl shadow p-6 border border-amber-300 dark:border-amber-700 mb-6">
             <h3 class="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-2">📅 Período da Importação</h3>

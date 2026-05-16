@@ -46,6 +46,19 @@ class ImportarShopeeAfiliados extends Page implements HasForms
     }
 
     /**
+     * Retorna a data do primeiro pedido Shopee pendente de afiliado.
+     */
+    public function getDataPrimeiroPendenteProperty(): ?string
+    {
+        $venda = \App\Models\Venda::where('planilha_afiliado_processada', false)
+            ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%hopee%'))
+            ->orderBy('data_venda', 'asc')
+            ->value('data_venda');
+
+        return $venda ? \Carbon\Carbon::parse($venda)->format('d/m/Y') : null;
+    }
+
+    /**
      * Retorna quantos pedidos Shopee do período ainda não foram processados para afiliado.
      */
     public function getPedidosPendentesProperty(): int
