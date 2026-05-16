@@ -131,14 +131,39 @@ class Caixa extends Page implements HasForms
             $query->where('categoria_id', $this->categoria_id);
         }
 
-        return $query->get()->map(fn ($r) => [
-            'data' => $r->data_recebimento->format('Y-m-d'),
-            'tipo' => 'entrada',
-            'descricao' => $r->venda ? "Repasse #{$r->venda->numero_pedido_canal}" : ($r->observacoes ?: 'Recebimento'),
-            'categoria' => $r->categoria?->nome ?? $r->forma_pagamento ?? '-',
-            'banco' => $r->contaBancaria?->nome ?? '-',
-            'valor' => (float) $r->valor_parcela,
-        ]);
+        $registros = $query->get();
+
+        // Agrupar por lote (observacoes = identificador do lote)
+        $comLote = $registros->filter(fn ($r) => !empty($r->observacoes) && !str_starts_with($r->observacoes, 'Repasse #'));
+        $semLote = $registros->filter(fn ($r) => empty($r->observacoes) || str_starts_with($r->observacoes, 'Repasse #'));
+
+        $resultado = collect();
+
+        // Lotes agrupados: uma linha por lote
+        foreach ($comLote->groupBy('observacoes') as $loteNome => $itensLote) {
+            $resultado->push([
+                'data' => $itensLote->first()->data_recebimento->format('Y-m-d'),
+                'tipo' => 'entrada',
+                'descricao' => $loteNome,
+                'categoria' => $itensLote->first()->categoria?->nome ?? $itensLote->first()->forma_pagamento ?? '-',
+                'banco' => $itensLote->first()->contaBancaria?->nome ?? '-',
+                'valor' => (float) $itensLote->sum('valor_parcela'),
+            ]);
+        }
+
+        // Individuais: uma linha por registro
+        foreach ($semLote as $r) {
+            $resultado->push([
+                'data' => $r->data_recebimento->format('Y-m-d'),
+                'tipo' => 'entrada',
+                'descricao' => $r->venda ? "Repasse #{$r->venda->numero_pedido_canal}" : ($r->observacoes ?: 'Recebimento'),
+                'categoria' => $r->categoria?->nome ?? $r->forma_pagamento ?? '-',
+                'banco' => $r->contaBancaria?->nome ?? '-',
+                'valor' => (float) $r->valor_parcela,
+            ]);
+        }
+
+        return $resultado;
     }
 
     private function getSaidas(): Collection
