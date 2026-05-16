@@ -23,6 +23,14 @@ class ImportarShopeeAfiliados extends Page implements HasForms
     public ?array $data = [];
     public ?string $data_inicio_marcar = null;
     public ?string $data_fim_marcar = null;
+    public ?string $data_inicio_periodo = null;
+    public ?string $data_fim_periodo = null;
+
+    public function mount(): void
+    {
+        $this->data_inicio_periodo = now()->subMonth()->startOfMonth()->format('Y-m-d');
+        $this->data_fim_periodo = now()->subMonth()->endOfMonth()->format('Y-m-d');
+    }
 
     public function form(Form $form): Form
     {
@@ -37,8 +45,39 @@ class ImportarShopeeAfiliados extends Page implements HasForms
         ])->statePath('data');
     }
 
+    /**
+     * Retorna quantos pedidos Shopee do período ainda não foram processados para afiliado.
+     */
+    public function getPedidosPendentesProperty(): int
+    {
+        if (!$this->data_inicio_periodo || !$this->data_fim_periodo) return 0;
+
+        return \App\Models\Venda::where('planilha_afiliado_processada', false)
+            ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%hopee%'))
+            ->whereBetween('data_venda', [$this->data_inicio_periodo, $this->data_fim_periodo])
+            ->count();
+    }
+
+    /**
+     * Retorna quantos pedidos anteriores ao período ainda estão pendentes.
+     */
+    public function getPendentesAnterioresProperty(): int
+    {
+        if (!$this->data_inicio_periodo) return 0;
+
+        return \App\Models\Venda::where('planilha_afiliado_processada', false)
+            ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%hopee%'))
+            ->where('data_venda', '<', $this->data_inicio_periodo)
+            ->count();
+    }
+
     public function processar(): void
     {
+        if (!$this->data_inicio_periodo || !$this->data_fim_periodo) {
+            Notification::make()->title('Informe o período da importação.')->danger()->send();
+            return;
+        }
+
         try {
             $data = $this->form->getState();
         } catch (\Exception $e) {
@@ -63,13 +102,28 @@ class ImportarShopeeAfiliados extends Page implements HasForms
             return;
         }
 
+        // 1) Travar pedidos anteriores ao período (marcar como processados sem afiliado)
+        $travados = \App\Models\Venda::where('planilha_afiliado_processada', false)
+            ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%hopee%'))
+            ->where('data_venda', '<', $this->data_inicio_periodo)
+            ->update(['planilha_afiliado_processada' => true]);
+
+        // 2) Processar planilha (aplica comissão nos pedidos encontrados)
         $resultado = ShopeeAfiliadosService::processar($filePath);
 
-        $msg = "Atualizados: {$resultado['atualizados']}";
+        // 3) Marcar restantes do período como processados (sem afiliado)
+        $restantes = \App\Models\Venda::where('planilha_afiliado_processada', false)
+            ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%hopee%'))
+            ->whereBetween('data_venda', [$this->data_inicio_periodo, $this->data_fim_periodo])
+            ->update(['planilha_afiliado_processada' => true]);
+
+        $msg = "Afiliados: {$resultado['atualizados']}";
+        if ($travados > 0) $msg .= " | Travados (anteriores): {$travados}";
+        if ($restantes > 0) $msg .= " | Sem afiliado (período): {$restantes}";
         if ($resultado['nao_encontrados'] > 0) $msg .= " | Não encontrados: {$resultado['nao_encontrados']}";
         if ($resultado['erros'] > 0) $msg .= " | Erros: {$resultado['erros']}";
 
-        if ($resultado['atualizados'] > 0) {
+        if ($resultado['atualizados'] > 0 || $travados > 0 || $restantes > 0) {
             Notification::make()->title($msg)->success()->send();
         } else {
             Notification::make()->title($msg)->warning()->send();

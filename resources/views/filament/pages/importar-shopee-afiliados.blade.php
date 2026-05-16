@@ -11,9 +11,39 @@
                     📥 Baixar relatório: Central de Marketing › Afiliados do Vendedor › Conversão de Pedidos
                 </a>
             </p>
-            <p class="text-sm text-yellow-600 dark:text-yellow-400 mt-3">
-                ⚠ Pedidos Shopee só ficam "Completos" após passar pela planilha de afiliados.
+        </div>
+
+        {{-- Período da importação --}}
+        <div class="bg-amber-50 dark:bg-amber-900/20 rounded-xl shadow p-6 border border-amber-300 dark:border-amber-700 mb-6">
+            <h3 class="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-2">📅 Período da Importação</h3>
+            <p class="text-xs text-amber-700 dark:text-amber-300 mb-4">
+                Informe o período que a planilha cobre. Ao processar:
+                <br>• Pedidos <strong>anteriores</strong> ao período serão travados automaticamente (sem afiliado).
+                <br>• Pedidos <strong>do período</strong> que não aparecerem na planilha serão marcados como "sem afiliado".
             </p>
+            <div class="flex gap-3 items-end flex-wrap">
+                <div>
+                    <label class="text-xs text-amber-700 dark:text-amber-300 font-medium">De</label>
+                    <input type="date" wire:model.live="data_inicio_periodo" class="block w-full rounded-lg border-amber-300 dark:border-amber-600 dark:bg-gray-700 text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-amber-700 dark:text-amber-300 font-medium">Até</label>
+                    <input type="date" wire:model.live="data_fim_periodo" class="block w-full rounded-lg border-amber-300 dark:border-amber-600 dark:bg-gray-700 text-sm">
+                </div>
+            </div>
+
+            @if($this->data_inicio_periodo && $this->data_fim_periodo)
+                <div class="mt-4 flex gap-4 text-xs">
+                    @if($this->pendentes_anteriores > 0)
+                        <span class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-1 rounded">
+                            🔒 {{ $this->pendentes_anteriores }} pedido(s) anterior(es) serão travados
+                        </span>
+                    @endif
+                    <span class="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">
+                        📋 {{ $this->pedidos_pendentes }} pedido(s) pendente(s) no período
+                    </span>
+                </div>
+            @endif
         </div>
 
         <form wire:submit="processar">
@@ -28,10 +58,10 @@
         </form>
 
         <div class="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700">
-            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Marcar período sem afiliado</h3>
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Marcar período sem afiliado (manual)</h3>
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
                 Marca todas as vendas Shopee do período como "planilha afiliado processada" com comissão = 0.
-                Use após confirmar que nenhum pedido do período teve afiliado, ou após importar a planilha (para fechar os que não apareceram).
+                Use quando precisar fechar um período manualmente sem importar planilha.
             </p>
             <div class="flex gap-3 items-end">
                 <div>
