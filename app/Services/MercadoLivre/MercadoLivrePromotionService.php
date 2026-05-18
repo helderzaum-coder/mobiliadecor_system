@@ -228,7 +228,40 @@ class MercadoLivrePromotionService
         if (!empty($item['name'])) {
             return $item['name'];
         }
-        // 4. Não fazer fallback HTTP individual para evitar timeout
-        return $item['id'] ?? 'Sem título';
+        return '';
+    }
+
+    /**
+     * Busca títulos em batch via multiget (até 20 por chamada)
+     */
+    public function buscarTitulosEmBatch(array $itemIds): array
+    {
+        $token = $this->oauth->getAccessToken();
+        if (!$token || empty($itemIds)) return [];
+
+        $titulos = [];
+        $chunks = array_chunk($itemIds, 20);
+
+        foreach ($chunks as $chunk) {
+            try {
+                $ids = implode(',', $chunk);
+                $response = Http::withToken($token)
+                    ->withOptions(['verify' => false])
+                    ->timeout(15)
+                    ->get("{$this->apiBase}/items", ['ids' => $ids]);
+
+                if ($response->successful()) {
+                    foreach ($response->json() as $result) {
+                        if (($result['code'] ?? 0) == 200 && !empty($result['body']['title'])) {
+                            $titulos[$result['body']['id']] = $result['body']['title'];
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Continuar sem títulos
+            }
+        }
+
+        return $titulos;
     }
 }

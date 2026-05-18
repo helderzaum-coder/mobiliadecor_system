@@ -25,6 +25,8 @@ class MercadoLivrePromocoes extends Page
     public bool $needsLoadItems = false;
     public ?string $editingItemId = null;
     public ?float $editingDealPrice = null;
+    public ?string $aderindoItemId = null;
+    public ?float $aderindoPreco = null;
 
     public function mount(): void
     {
@@ -88,7 +90,21 @@ class MercadoLivrePromocoes extends Page
         );
 
         if ($result['success']) {
-            $this->items = array_merge($this->items, $result['items']);
+            $newItems = $result['items'];
+
+            // Buscar títulos em batch para itens sem título
+            $semTitulo = array_filter($newItems, fn($i) => empty($i['title']) || $i['title'] === $i['id']);
+            if (!empty($semTitulo)) {
+                $ids = array_column($semTitulo, 'id');
+                $titulos = $service->buscarTitulosEmBatch($ids);
+                foreach ($newItems as &$item) {
+                    if (isset($titulos[$item['id']])) {
+                        $item['title'] = $titulos[$item['id']];
+                    }
+                }
+            }
+
+            $this->items = array_merge($this->items, $newItems);
             $this->totalItems = $result['total'];
             $this->searchAfter = $result['search_after'];
         } else {
@@ -113,48 +129,49 @@ class MercadoLivrePromocoes extends Page
         }
     }
 
-    public function aderirItem(string $itemId): void
+    public function iniciarAdesao(string $itemId): void
     {
-        if (!$this->selectedPromotion) return;
-
-        // Encontrar o item na lista para pegar o preço
-        $targetItem = null;
+        $this->aderindoItemId = $itemId;
+        // Preencher com deal_price ou price como sugestão
         foreach ($this->items as $item) {
             if ($item['id'] === $itemId) {
-                $targetItem = $item;
+                $this->aderindoPreco = $item['deal_price'] ?? $item['price'] ?? null;
                 break;
             }
         }
+    }
 
-        if (!$targetItem) {
-            Notification::make()->title('Item não encontrado')->danger()->send();
-            return;
-        }
+    public function cancelarAdesao(): void
+    {
+        $this->aderindoItemId = null;
+        $this->aderindoPreco = null;
+    }
 
-        // Usar deal_price se existir, senão price
-        $dealPrice = $targetItem['deal_price'] ?? $targetItem['price'] ?? null;
-        if (!$dealPrice) {
-            Notification::make()->title('Preço não disponível para adesão')->danger()->send();
+    public function confirmarAdesao(): void
+    {
+        if (!$this->selectedPromotion || !$this->aderindoItemId || !$this->aderindoPreco) {
+            Notification::make()->title('Preencha o preço para aderir')->warning()->send();
             return;
         }
 
         $service = new MercadoLivrePromotionService($this->accountKey);
         $result = $service->aderirPromocao(
-            $itemId,
+            $this->aderindoItemId,
             $this->selectedPromotion['id'],
             $this->selectedPromotion['type'],
-            (float) $dealPrice
+            (float) $this->aderindoPreco
         );
 
         if ($result['success']) {
-            // Atualizar status local
             foreach ($this->items as &$item) {
-                if ($item['id'] === $itemId) {
+                if ($item['id'] === $this->aderindoItemId) {
                     $item['status'] = 'active';
+                    $item['deal_price'] = $this->aderindoPreco;
                     break;
                 }
             }
-            Notification::make()->title('Item adicionado à promoção!')->success()->send();
+            Notification::make()->title('Adesão realizada!')->body("R$ " . number_format($this->aderindoPreco, 2, ',', '.'))->success()->send();
+            $this->cancelarAdesao();
         } else {
             Notification::make()->title('Erro ao aderir')->body($result['error'] ?? '')->danger()->send();
         }
