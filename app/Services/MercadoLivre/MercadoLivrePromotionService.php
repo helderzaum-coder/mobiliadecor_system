@@ -83,15 +83,18 @@ class MercadoLivrePromotionService
         foreach ($data['results'] ?? [] as $item) {
             $titulo = $this->extrairTitulo($item, $token);
             $preco = $item['price'] ?? null;
-            $dealPrice = $item['deal_price'] ?? $item['proposed_deal_price'] ?? null;
+            $originalPrice = $item['original_price'] ?? $preco;
+            $dealPrice = $item['deal_price'] ?? null;
+            $proposedDealPrice = $item['proposed_deal_price'] ?? null;
 
             $items[] = [
                 'id' => $item['id'] ?? '',
                 'title' => $titulo,
                 'status' => $item['status'] ?? '',
                 'price' => $preco,
-                'deal_price' => $dealPrice,
-                'original_price' => $item['original_price'] ?? $preco,
+                'original_price' => $originalPrice,
+                'deal_price' => $dealPrice ?? $proposedDealPrice,
+                'proposed_deal_price' => $proposedDealPrice,
             ];
         }
 
@@ -234,6 +237,61 @@ class MercadoLivrePromotionService
     /**
      * Busca títulos em batch via multiget (até 20 por chamada)
      */
+    public function buscarInfoParaAdesao(string $itemId): array
+    {
+        $token = $this->oauth->getAccessToken();
+        if (!$token) return [];
+
+        $info = ['base_price' => 0, 'frete' => 0, 'comissao' => 0];
+
+        // 1. Buscar dados do item (preço original, shipping, listing_type)
+        try {
+            $resp = Http::withToken($token)->withOptions(['verify' => false])->timeout(10)
+                ->get("{$this->apiBase}/items/{$itemId}");
+            if ($resp->successful()) {
+                $item = $resp->json();
+                $info['base_price'] = $item['base_price'] ?? $item['price'] ?? 0;
+
+                // Frete grátis
+                $freeShipping = $item['shipping']['free_shipping'] ?? false;
+                $mode = $item['shipping']['mode'] ?? '';
+
+                if ($freeShipping && $mode === 'me2') {
+                    $tokenModel = \App\Models\MercadoLivreToken::where('account_key', $this->accountKey)->first();
+                    $userId = $tokenModel?->user_id ?? config("mercadolivre.accounts.{$this->accountKey}.user_id");
+
+                    $freteResp = Http::withToken($token)->withOptions(['verify' => false])->timeout(10)
+                        ->get("{$this->apiBase}/users/{$userId}/shipping_options/free", ['item_id' => $itemId]);
+
+                    if ($freteResp->successful()) {
+                        $coverage = $freteResp->json()['coverage'] ?? [];
+                        $info['frete'] = $coverage['all_country']['list_cost']
+                            ?? collect($coverage)->flatten(1)->pluck('list_cost')->filter()->first()
+                            ?? 0;
+                    }
+                }
+
+                // 2. Comissão via listing_prices do item
+                $comResp = Http::withToken($token)->withOptions(['verify' => false])->timeout(10)
+                    ->get("{$this->apiBase}/items/{$itemId}/listing_prices");
+
+                if ($comResp->successful()) {
+                    $prices = $comResp->json()['prices'] ?? [];
+                    foreach ($prices as $price) {
+                        if (($price['type'] ?? '') === 'sale_fee') {
+                            $info['comissao'] = $price['amount'] ?? 0;
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning("ML buscarInfoParaAdesao [{$itemId}]: " . $e->getMessage());
+        }
+
+        return $info;
+    }
+
     public function buscarTitulosEmBatch(array $itemIds): array
     {
         $token = $this->oauth->getAccessToken();

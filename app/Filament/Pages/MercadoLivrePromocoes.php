@@ -27,6 +27,7 @@ class MercadoLivrePromocoes extends Page
     public ?float $editingDealPrice = null;
     public ?string $aderindoItemId = null;
     public ?float $aderindoPreco = null;
+    public ?array $aderindoInfo = null; // dados enriquecidos para simulação
 
     public function mount(): void
     {
@@ -132,13 +133,30 @@ class MercadoLivrePromocoes extends Page
     public function iniciarAdesao(string $itemId): void
     {
         $this->aderindoItemId = $itemId;
-        // Preencher com deal_price ou price como sugestão
+        $this->aderindoInfo = null;
+
+        // Buscar item na lista
+        $targetItem = null;
         foreach ($this->items as $item) {
             if ($item['id'] === $itemId) {
-                $this->aderindoPreco = $item['deal_price'] ?? $item['price'] ?? null;
+                $targetItem = $item;
                 break;
             }
         }
+
+        $this->aderindoPreco = $targetItem['deal_price'] ?? $targetItem['price'] ?? null;
+
+        // Buscar dados enriquecidos via API
+        $service = new MercadoLivrePromotionService($this->accountKey);
+        $info = $service->buscarInfoParaAdesao($itemId);
+
+        $this->aderindoInfo = [
+            'title' => $targetItem['title'] ?? $itemId,
+            'original_price' => $info['base_price'] ?? $targetItem['price'] ?? 0,
+            'frete' => $info['frete'] ?? 0,
+            'comissao' => $info['comissao'] ?? 0,
+            'imposto_percent' => 17.8, // padrão Simples Nacional - editável
+        ];
     }
 
     public function cancelarAdesao(): void
