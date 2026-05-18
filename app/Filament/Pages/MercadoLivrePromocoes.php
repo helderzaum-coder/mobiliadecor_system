@@ -5,7 +5,6 @@ namespace App\Filament\Pages;
 use App\Services\MercadoLivre\MercadoLivrePromotionService;
 use Filament\Pages\Page;
 use Filament\Notifications\Notification;
-use Livewire\Attributes\Url;
 
 class MercadoLivrePromocoes extends Page
 {
@@ -23,6 +22,7 @@ class MercadoLivrePromocoes extends Page
     public int $totalItems = 0;
     public ?string $searchAfter = null;
     public bool $loading = false;
+    public bool $needsLoadItems = false;
     public ?string $editingItemId = null;
     public ?float $editingDealPrice = null;
 
@@ -59,10 +59,21 @@ class MercadoLivrePromocoes extends Page
         $this->items = [];
         $this->searchAfter = null;
         $this->totalItems = 0;
+        $this->loading = true;
+        $this->needsLoadItems = true;
+    }
 
-        if ($this->selectedPromotion) {
+    public function doLoadItems(): void
+    {
+        if (!$this->needsLoadItems || !$this->selectedPromotion) return;
+        $this->needsLoadItems = false;
+
+        try {
             $this->loadItems();
+        } catch (\Throwable $e) {
+            Notification::make()->title('Erro ao carregar itens')->body($e->getMessage())->danger()->send();
         }
+        $this->loading = false;
     }
 
     public function loadItems(): void

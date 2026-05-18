@@ -26,10 +26,17 @@ class MercadoLivrePromotionService
         $tokenModel = \App\Models\MercadoLivreToken::where('account_key', $this->accountKey)->first();
         $userId = $tokenModel?->user_id ?? config("mercadolivre.accounts.{$this->accountKey}.user_id");
 
-        $response = Http::withToken($token)
-            ->withOptions(['verify' => false])
-            ->timeout(30)
-            ->get("{$this->apiBase}/seller-promotions/users/{$userId}", ['app_version' => 'v2']);
+        if (!$userId) return ['success' => false, 'error' => 'User ID não configurado'];
+
+        try {
+            $response = Http::withToken($token)
+                ->withOptions(['verify' => false])
+                ->timeout(30)
+                ->get("{$this->apiBase}/seller-promotions/users/{$userId}", ['app_version' => 'v2']);
+        } catch (\Throwable $e) {
+            Log::error("ML Promoções [{$this->accountKey}]: Timeout", ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => 'Timeout: ' . $e->getMessage()];
+        }
 
         if ($response->failed()) {
             Log::error("ML Promoções [{$this->accountKey}]: Erro ao listar", ['status' => $response->status()]);
@@ -57,10 +64,14 @@ class MercadoLivrePromotionService
             $params['search_after'] = $searchAfter;
         }
 
-        $response = Http::withToken($token)
-            ->withOptions(['verify' => false])
-            ->timeout(30)
-            ->get("{$this->apiBase}/seller-promotions/promotions/{$promotionId}/items", $params);
+        try {
+            $response = Http::withToken($token)
+                ->withOptions(['verify' => false])
+                ->timeout(60)
+                ->get("{$this->apiBase}/seller-promotions/promotions/{$promotionId}/items", $params);
+        } catch (\Throwable $e) {
+            return ['success' => false, 'error' => 'Timeout: ' . $e->getMessage()];
+        }
 
         if ($response->failed()) {
             return ['success' => false, 'error' => "HTTP {$response->status()}"];
@@ -191,17 +202,7 @@ class MercadoLivrePromotionService
         if (!empty($item['name'])) {
             return $item['name'];
         }
-        // 4. Fallback: buscar via API
-        $itemId = $item['id'] ?? '';
-        if ($itemId) {
-            $resp = Http::withToken($token)
-                ->withOptions(['verify' => false])
-                ->timeout(10)
-                ->get("{$this->apiBase}/items/{$itemId}");
-            if ($resp->successful() && !empty($resp->json()['title'])) {
-                return $resp->json()['title'];
-            }
-        }
-        return 'Sem título';
+        // 4. Não fazer fallback HTTP individual para evitar timeout
+        return $item['id'] ?? 'Sem título';
     }
 }
