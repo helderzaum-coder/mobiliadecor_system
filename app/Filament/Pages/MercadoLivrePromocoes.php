@@ -113,6 +113,53 @@ class MercadoLivrePromocoes extends Page
         }
     }
 
+    public function aderirItem(string $itemId): void
+    {
+        if (!$this->selectedPromotion) return;
+
+        // Encontrar o item na lista para pegar o preço
+        $targetItem = null;
+        foreach ($this->items as $item) {
+            if ($item['id'] === $itemId) {
+                $targetItem = $item;
+                break;
+            }
+        }
+
+        if (!$targetItem) {
+            Notification::make()->title('Item não encontrado')->danger()->send();
+            return;
+        }
+
+        // Usar deal_price se existir, senão price
+        $dealPrice = $targetItem['deal_price'] ?? $targetItem['price'] ?? null;
+        if (!$dealPrice) {
+            Notification::make()->title('Preço não disponível para adesão')->danger()->send();
+            return;
+        }
+
+        $service = new MercadoLivrePromotionService($this->accountKey);
+        $result = $service->aderirPromocao(
+            $itemId,
+            $this->selectedPromotion['id'],
+            $this->selectedPromotion['type'],
+            (float) $dealPrice
+        );
+
+        if ($result['success']) {
+            // Atualizar status local
+            foreach ($this->items as &$item) {
+                if ($item['id'] === $itemId) {
+                    $item['status'] = 'active';
+                    break;
+                }
+            }
+            Notification::make()->title('Item adicionado à promoção!')->success()->send();
+        } else {
+            Notification::make()->title('Erro ao aderir')->body($result['error'] ?? '')->danger()->send();
+        }
+    }
+
     public function removeItem(string $itemId): void
     {
         if (!$this->selectedPromotion) return;
