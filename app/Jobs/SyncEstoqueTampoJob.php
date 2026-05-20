@@ -58,8 +58,26 @@ class SyncEstoqueTampoJob implements ShouldQueue
                 "Tampo: venda {$this->skuVendido} x{$this->quantidadeVendida}"
             );
 
+            // Limitar pelo estoque do tampo correspondente
             if ($res['success']) {
-                Log::info("SyncEstoqueTampo: {$variacao->sku_produto} → saldo {$res['saldo']} (venda {$this->skuVendido} x{$this->quantidadeVendida})");
+                $produtoAtualizado = $produto->fresh();
+                $tampo = ProdutoEstoque::where('sku', $variacao->sku_tampo)->where('ativo', true)->first();
+                if ($tampo && $produtoAtualizado->saldo > $tampo->saldo) {
+                    // Reduzir virtual para que saldo total = tampo->saldo
+                    $virtualNecessario = max(0, $tampo->saldo - $produtoAtualizado->saldo_fisico);
+                    EstoqueService::balanco(
+                        $variacao->sku_produto,
+                        $virtualNecessario,
+                        'sync',
+                        "Limitado por tampo {$tampo->sku} (={$tampo->saldo})",
+                        null,
+                        true,
+                        'virtual'
+                    );
+                    Log::info("SyncEstoqueTampo: {$variacao->sku_produto} limitado por tampo {$tampo->sku} → {$tampo->saldo}");
+                } else {
+                    Log::info("SyncEstoqueTampo: {$variacao->sku_produto} → saldo {$res['saldo']} (venda {$this->skuVendido} x{$this->quantidadeVendida})");
+                }
             } else {
                 Log::warning("SyncEstoqueTampo: erro {$variacao->sku_produto}: " . ($res['erro'] ?? '?'));
             }

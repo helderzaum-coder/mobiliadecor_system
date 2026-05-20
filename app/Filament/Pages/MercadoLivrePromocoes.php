@@ -154,8 +154,9 @@ class MercadoLivrePromocoes extends Page
             'title' => $targetItem['title'] ?? $itemId,
             'original_price' => $info['base_price'] ?? $targetItem['price'] ?? 0,
             'frete' => $info['frete'] ?? 0,
-            'comissao' => $info['comissao'] ?? 0,
-            'imposto_percent' => 17.8, // padrão Simples Nacional - editável
+            'comissao_percent' => $info['comissao_percent'] ?? 11.5,
+            'listing_type' => $info['listing_type'] ?? '',
+            'imposto_percent' => 17.8,
         ];
     }
 

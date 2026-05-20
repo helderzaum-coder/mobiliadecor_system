@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\ProdutoEstoque;
 use App\Models\TrocaTampoConfig;
 use App\Services\Bling\BlingClient;
 use Illuminate\Bus\Queueable;
@@ -134,9 +135,21 @@ class VariacaoTamposJob implements ShouldQueue
                 'saldo_alvo' => $saldoAlvo,
             ]);
 
-            // Equalizar
+            // Equalizar (com limitador de tampo)
             foreach ($produtosInfo as $info) {
-                if ($info['saldo_atual'] === $saldoAlvo) {
+                $saldoFinal = $saldoAlvo;
+
+                // Limitar pelo estoque do tampo correspondente
+                $tampo = ProdutoEstoque::where('sku', $info['config']->sku_tampo)->where('ativo', true)->first();
+                if ($tampo) {
+                    $saldoTampo = $tampo->saldo;
+                    if ($saldoTampo < $saldoFinal) {
+                        Log::info("VariacaoTampos: limitando {$info['config']->sku_produto} por tampo {$tampo->sku} (tampo={$saldoTampo}, alvo={$saldoFinal})");
+                        $saldoFinal = $saldoTampo;
+                    }
+                }
+
+                if ($info['saldo_atual'] === $saldoFinal) {
                     continue;
                 }
 
@@ -146,13 +159,13 @@ class VariacaoTamposJob implements ShouldQueue
                     'operacao' => 'B',
                     'preco' => 0,
                     'custo' => 0,
-                    'quantidade' => max(0, $saldoAlvo),
-                    'observacoes' => "Variação Tampos: {$familia}/{$cor} saldo={$saldoAlvo}",
+                    'quantidade' => max(0, $saldoFinal),
+                    'observacoes' => "Variação Tampos: {$familia}/{$cor} saldo={$saldoFinal}" . ($tampo ? " (tampo:{$tampo->saldo})" : ''),
                 ]);
 
                 if ($res['success']) {
                     $resultado['atualizados']++;
-                    $resultado['log'][] = "{$info['config']->sku_produto}: {$info['saldo_atual']} → {$saldoAlvo}";
+                    $resultado['log'][] = "{$info['config']->sku_produto}: {$info['saldo_atual']} → {$saldoFinal}";
                 } else {
                     $resultado['erros']++;
                     $resultado['log'][] = "{$info['config']->sku_produto}: erro HTTP " . ($res['http_code'] ?? '?');

@@ -80,9 +80,10 @@
                         @php
                             $precoOriginal = $aderindoInfo['original_price'] ?? 0;
                             $frete = $aderindoInfo['frete'] ?? 0;
-                            $comissao = $aderindoInfo['comissao'] ?? 0;
+                            $comissaoPercent = $aderindoInfo['comissao_percent'] ?? 11.5;
                             $impPercent = $aderindoInfo['imposto_percent'] ?? 17.8;
                             $precoPromo = $aderindoPreco ?? 0;
+                            $comissao = $precoPromo * ($comissaoPercent / 100);
                             $imposto = $precoPromo * ($impPercent / 100);
                             $custoTotal = $frete + $comissao + $imposto;
                             $margem = $precoPromo - $custoTotal;
@@ -108,7 +109,7 @@
                                     <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($frete, 2, ',', '.') }}</span>
                                 </div>
                                 <div class="p-2 rounded bg-gray-50 dark:bg-gray-900">
-                                    <span class="text-gray-500 block">Comissão ML</span>
+                                    <span class="text-gray-500 block">Comissão ML ({{ number_format($comissaoPercent, 1) }}%)</span>
                                     <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($comissao, 2, ',', '.') }}</span>
                                 </div>
                                 <div class="p-2 rounded bg-gray-50 dark:bg-gray-900">

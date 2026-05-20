@@ -242,21 +242,20 @@ class MercadoLivrePromotionService
         $token = $this->oauth->getAccessToken();
         if (!$token) return [];
 
-        $info = ['base_price' => 0, 'frete' => 0, 'comissao' => 0];
+        $info = ['base_price' => 0, 'frete' => 0, 'comissao_percent' => 0, 'listing_type' => ''];
 
-        // 1. Buscar dados do item (preço original, shipping, listing_type)
         try {
             $resp = Http::withToken($token)->withOptions(['verify' => false])->timeout(10)
                 ->get("{$this->apiBase}/items/{$itemId}");
             if ($resp->successful()) {
                 $item = $resp->json();
                 $info['base_price'] = $item['base_price'] ?? $item['price'] ?? 0;
+                $info['listing_type'] = $item['listing_type_id'] ?? '';
+                $info['comissao_percent'] = $this->percentualComissao($item['listing_type_id'] ?? null);
 
-                // Frete grátis
+                // Frete grátis - buscar custo via shipping_options
                 $freeShipping = $item['shipping']['free_shipping'] ?? false;
-                $mode = $item['shipping']['mode'] ?? '';
-
-                if ($freeShipping && $mode === 'me2') {
+                if ($freeShipping) {
                     $tokenModel = \App\Models\MercadoLivreToken::where('account_key', $this->accountKey)->first();
                     $userId = $tokenModel?->user_id ?? config("mercadolivre.accounts.{$this->accountKey}.user_id");
 
@@ -270,26 +269,21 @@ class MercadoLivrePromotionService
                             ?? 0;
                     }
                 }
-
-                // 2. Comissão via listing_prices do item
-                $comResp = Http::withToken($token)->withOptions(['verify' => false])->timeout(10)
-                    ->get("{$this->apiBase}/items/{$itemId}/listing_prices");
-
-                if ($comResp->successful()) {
-                    $prices = $comResp->json()['prices'] ?? [];
-                    foreach ($prices as $price) {
-                        if (($price['type'] ?? '') === 'sale_fee') {
-                            $info['comissao'] = $price['amount'] ?? 0;
-                            break;
-                        }
-                    }
-                }
             }
         } catch (\Throwable $e) {
             Log::warning("ML buscarInfoParaAdesao [{$itemId}]: " . $e->getMessage());
         }
 
         return $info;
+    }
+
+    private function percentualComissao(?string $listingTypeId): float
+    {
+        return match ($listingTypeId) {
+            'gold_special' => 11.5,
+            'gold_pro' => 16.5,
+            default => 11.5,
+        };
     }
 
     public function buscarTitulosEmBatch(array $itemIds): array
