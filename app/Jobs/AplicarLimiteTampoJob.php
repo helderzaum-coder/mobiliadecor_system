@@ -36,21 +36,27 @@ class AplicarLimiteTampoJob implements ShouldQueue
             if (!$tampo) continue;
 
             if ($produto->saldo > $tampo->saldo) {
-                // Reduzir virtual para que saldo total = tampo->saldo
-                $novoVirtual = max(0, $tampo->saldo - $produto->saldo_fisico);
+                $alvo = $tampo->saldo;
+
+                // Primeiro zerar virtual se houver
+                if ($produto->saldo_virtual > 0) {
+                    EstoqueService::balanco($config->sku_produto, 0, 'limite_tampo', "Limitado por tampo {$tampo->sku}", null, false, 'virtual');
+                }
+
+                // Ajustar físico para o alvo
                 $res = EstoqueService::balanco(
                     $config->sku_produto,
-                    $novoVirtual,
+                    $alvo,
                     'limite_tampo',
                     "Limitado por tampo {$tampo->sku} (={$tampo->saldo})",
                     null,
                     true,
-                    'virtual'
+                    'fisico'
                 );
 
                 if ($res['success']) {
                     $atualizados++;
-                    Log::info("AplicarLimiteTampo: {$config->sku_produto} limitado a {$tampo->saldo} por tampo {$tampo->sku}");
+                    Log::info("AplicarLimiteTampo: {$config->sku_produto} limitado a {$alvo} por tampo {$tampo->sku}");
                 } else {
                     $erros++;
                     Log::warning("AplicarLimiteTampo: erro {$config->sku_produto}: " . ($res['erro'] ?? '?'));
