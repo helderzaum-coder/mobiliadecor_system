@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Jobs\AplicarLimiteTampoJob;
 use App\Jobs\VariacaoTamposJob;
 use App\Models\TrocaTampoConfig;
 use App\Services\TrocaTampoService;
@@ -179,6 +180,17 @@ class TrocaTampos extends Page implements HasForms
                 ->action(function () {
                     VariacaoTamposJob::dispatch('primary');
                     Notification::make()->title('Variação de Tampos disparada! Aguarde a notificação de conclusão.')->success()->send();
+                }),
+            Action::make('aplicar_limite_tampos')
+                ->label('Aplicar Limite de Tampos')
+                ->icon('heroicon-o-funnel')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->modalHeading('Aplicar Limite de Tampos')
+                ->modalDescription('Isso vai limitar o saldo de TODOS os produtos configurados pelo estoque do tampo correspondente. Continuar?')
+                ->action(function () {
+                    AplicarLimiteTampoJob::dispatch();
+                    Notification::make()->title('Limite de Tampos disparado! Aguarde a notificação de conclusão.')->success()->send();
                 }),
         ];
     }
