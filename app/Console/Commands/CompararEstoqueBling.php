@@ -64,7 +64,8 @@ class CompararEstoqueBling extends Command
         if (empty($divergencias)) {
             $this->info('✅ Nenhuma divergência encontrada! Estoques iguais.');
         } else {
-            $this->warn("⚠️  {$count = count($divergencias)} divergência(s) encontrada(s):");
+            $count = count($divergencias);
+            $this->warn("⚠️  {$count} divergência(s) encontrada(s):");
             $this->newLine();
             $this->table(
                 ['SKU', 'Nome', 'Sistema', 'Primary', 'Secondary', 'Diff (P-S)'],
