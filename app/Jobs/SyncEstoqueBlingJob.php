@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Models\ProdutoEstoque;
+use App\Models\TrocaTampoConfig;
 use App\Services\Bling\BlingClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -28,12 +30,40 @@ class SyncEstoqueBlingJob implements ShouldQueue
 
     public function handle(): void
     {
+        $saldoLimitado = $this->aplicarLimiteTampo($this->sku, $this->saldo);
+
         foreach (['primary', 'secondary'] as $account) {
-            $this->atualizarConta($account);
+            $this->atualizarConta($account, $saldoLimitado);
         }
     }
 
-    private function atualizarConta(string $account): void
+    /**
+     * Limita o saldo pelo estoque do tampo correspondente.
+     */
+    private function aplicarLimiteTampo(string $sku, int $saldo): int
+    {
+        $config = TrocaTampoConfig::where('sku_produto', $sku)
+            ->where('equalizacao_ativa', true)
+            ->first();
+
+        if (!$config || empty($config->sku_tampo)) {
+            return $saldo;
+        }
+
+        $tampo = ProdutoEstoque::where('sku', $config->sku_tampo)->where('ativo', true)->first();
+        if (!$tampo) {
+            return $saldo;
+        }
+
+        if ($tampo->saldo < $saldo) {
+            Log::info("SyncEstoqueBling: SKU {$sku} limitado por tampo {$tampo->sku} ({$saldo} → {$tampo->saldo})");
+            return $tampo->saldo;
+        }
+
+        return $saldo;
+    }
+
+    private function atualizarConta(string $account, int $saldoFinal): void
     {
         $client = new BlingClient($account);
 
@@ -53,17 +83,17 @@ class SyncEstoqueBlingJob implements ShouldQueue
         Cache::put("bling_sync_loop_{$account}_{$produtoId}", true, 60);
 
         $res = $this->operacao === 'B'
-            ? $this->balancoEstoque($client, $produtoId, $depositoId)
-            : $this->movimentarEstoque($client, $produtoId, $depositoId);
+            ? $this->balancoEstoque($client, $produtoId, $depositoId, $saldoFinal)
+            : $this->movimentarEstoque($client, $produtoId, $depositoId, $saldoFinal);
 
         if ($res['success']) {
-            Log::info("SyncEstoqueBling: {$account} SKU {$this->sku} {$this->operacao} {$this->saldo}");
+            Log::info("SyncEstoqueBling: {$account} SKU {$this->sku} {$this->operacao} {$saldoFinal}");
         } else {
             Log::warning("SyncEstoqueBling: erro {$account} SKU {$this->sku}", ['http' => $res['http_code'] ?? null]);
         }
     }
 
-    private function movimentarEstoque(BlingClient $client, int $produtoId, int $depositoId): array
+    private function movimentarEstoque(BlingClient $client, int $produtoId, int $depositoId, int $saldoFinal): array
     {
         return $client->post('/estoques', [], [
             'produto' => ['id' => $produtoId],
@@ -71,12 +101,12 @@ class SyncEstoqueBlingJob implements ShouldQueue
             'operacao' => $this->operacao,
             'preco' => 0,
             'custo' => 0,
-            'quantidade' => max(0, $this->saldo),
-            'observacoes' => $this->observacao ?: "Sistema: SKU {$this->sku} {$this->operacao} {$this->saldo}",
+            'quantidade' => max(0, $saldoFinal),
+            'observacoes' => $this->observacao ?: "Sistema: SKU {$this->sku} {$this->operacao} {$saldoFinal}",
         ]);
     }
 
-    private function balancoEstoque(BlingClient $client, int $produtoId, int $depositoId): array
+    private function balancoEstoque(BlingClient $client, int $produtoId, int $depositoId, int $saldoFinal): array
     {
         return $client->post('/estoques', [], [
             'produto' => ['id' => $produtoId],
@@ -84,8 +114,8 @@ class SyncEstoqueBlingJob implements ShouldQueue
             'operacao' => 'B',
             'preco' => 0,
             'custo' => 0,
-            'quantidade' => max(0, $this->saldo),
-            'observacoes' => $this->observacao ?: "Sistema: SKU {$this->sku} = {$this->saldo}",
+            'quantidade' => max(0, $saldoFinal),
+            'observacoes' => $this->observacao ?: "Sistema: SKU {$this->sku} = {$saldoFinal}",
         ]);
     }
 
