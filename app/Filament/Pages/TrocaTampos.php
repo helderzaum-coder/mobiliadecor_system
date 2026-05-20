@@ -2,8 +2,10 @@
 
 namespace App\Filament\Pages;
 
+use App\Jobs\VariacaoTamposJob;
 use App\Models\TrocaTampoConfig;
 use App\Services\TrocaTampoService;
+use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -162,6 +164,23 @@ class TrocaTampos extends Page implements HasForms
         $this->tipo_tampo = null;
         $this->fonte_tampo = null;
         $this->caixa_aberta_id = null;
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('variacao_tampos')
+                ->label('Rodar Variação de Tampos')
+                ->icon('heroicon-o-arrow-path')
+                ->color('warning')
+                ->requiresConfirmation()
+                ->modalHeading('Rodar Variação de Tampos')
+                ->modalDescription('Isso vai equalizar os saldos de todos os grupos e aplicar os limites de tampo. Continuar?')
+                ->action(function () {
+                    VariacaoTamposJob::dispatch('primary');
+                    Notification::make()->title('Variação de Tampos disparada! Aguarde a notificação de conclusão.')->success()->send();
+                }),
+        ];
     }
 
     public static function canAccess(): bool
