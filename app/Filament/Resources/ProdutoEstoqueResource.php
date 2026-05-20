@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\ProdutoEstoqueResource\Pages;
 use App\Jobs\EspelharEstoqueJob;
 use App\Models\ProdutoEstoque;
+use App\Models\TrocaTampoConfig;
 use App\Services\EstoqueService;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -75,6 +76,21 @@ class ProdutoEstoqueResource extends Resource
                     ->color(fn ($record) => $record->saldo <= $record->saldo_minimo ? 'danger' : 'success')
                     ->weight('bold')
                     ->alignCenter(),
+                Tables\Columns\TextColumn::make('saldo_tampo')
+                    ->label('Tampo')
+                    ->getStateUsing(function ($record) {
+                        $config = TrocaTampoConfig::where('sku_produto', $record->sku)->first();
+                        if (!$config || empty($config->sku_tampo)) return null;
+                        $tampo = ProdutoEstoque::where('sku', $config->sku_tampo)->where('ativo', true)->first();
+                        return $tampo ? $tampo->saldo : null;
+                    })
+                    ->placeholder('—')
+                    ->color(fn ($state) => $state !== null && $state <= 1 ? 'danger' : 'warning')
+                    ->alignCenter()
+                    ->tooltip(function ($record) {
+                        $config = TrocaTampoConfig::where('sku_produto', $record->sku)->first();
+                        return $config ? "Tampo: {$config->nome_tampo} ({$config->sku_tampo})" : null;
+                    }),
                 Tables\Columns\TextColumn::make('saldo_minimo')->label('Mín.')->sortable(),
                 Tables\Columns\IconColumn::make('ativo')->label('Ativo')->boolean(),
             ])
