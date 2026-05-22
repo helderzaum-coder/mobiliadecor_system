@@ -79,16 +79,26 @@ class ProdutoEstoqueResource extends Resource
                 Tables\Columns\TextColumn::make('saldo_tampo')
                     ->label('Tampo')
                     ->getStateUsing(function ($record) {
-                        $config = TrocaTampoConfig::where('sku_produto', $record->sku)->first();
+                        static $tampoCache = null;
+                        if ($tampoCache === null) {
+                            $configs = TrocaTampoConfig::all()->keyBy('sku_produto');
+                            $skusTampo = $configs->pluck('sku_tampo')->unique()->filter();
+                            $tampos = ProdutoEstoque::whereIn('sku', $skusTampo)->where('ativo', true)->pluck('saldo', 'sku');
+                            $tampoCache = ['configs' => $configs, 'tampos' => $tampos];
+                        }
+                        $config = $tampoCache['configs']->get($record->sku);
                         if (!$config || empty($config->sku_tampo)) return null;
-                        $tampo = ProdutoEstoque::where('sku', $config->sku_tampo)->where('ativo', true)->first();
-                        return $tampo ? $tampo->saldo : null;
+                        return $tampoCache['tampos']->get($config->sku_tampo);
                     })
                     ->placeholder('—')
                     ->color(fn ($state) => $state !== null && $state <= 1 ? 'danger' : 'warning')
                     ->alignCenter()
                     ->tooltip(function ($record) {
-                        $config = TrocaTampoConfig::where('sku_produto', $record->sku)->first();
+                        static $configCache = null;
+                        if ($configCache === null) {
+                            $configCache = TrocaTampoConfig::all()->keyBy('sku_produto');
+                        }
+                        $config = $configCache->get($record->sku);
                         return $config ? "Tampo: {$config->nome_tampo} ({$config->sku_tampo})" : null;
                     }),
                 Tables\Columns\TextColumn::make('saldo_minimo')->label('Mín.')->sortable(),

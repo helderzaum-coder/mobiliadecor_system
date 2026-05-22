@@ -6,6 +6,7 @@ use App\Models\ProdutoEstoque;
 use App\Services\Bling\BlingClient;
 use Filament\Pages\Page;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class CompararEstoqueBling extends Page
@@ -16,20 +17,40 @@ class CompararEstoqueBling extends Page
     protected static ?string $title = 'Comparar Estoque Bling';
     protected static string $view = 'filament.pages.comparar-estoque-bling';
 
-    public string $filtro = 'divergencias'; // divergencias, todos
+    public string $filtro = 'divergencias';
     public string $buscaSku = '';
     public array $resultados = [];
-    public bool $carregando = false;
     public bool $consultaRealizada = false;
     public int $totalProdutos = 0;
     public int $totalDivergencias = 0;
+    public bool $jobRodando = false;
+
+    public function mount(): void
+    {
+        // Carregar resultado anterior do cache se existir
+        $cached = Cache::get('comparar_bling_resultado');
+        if ($cached) {
+            $this->resultados = $cached['resultados'];
+            $this->totalProdutos = $cached['totalProdutos'];
+            $this->totalDivergencias = $cached['totalDivergencias'];
+            $this->consultaRealizada = true;
+        }
+        $this->jobRodando = Cache::has('comparar_bling_running');
+    }
 
     public function consultar(): void
     {
+        if (empty($this->buscaSku)) {
+            // Consulta completa: rodar via Job
+            \App\Jobs\CompararEstoqueBlingJob::dispatch($this->filtro, auth()->id());
+            $this->jobRodando = true;
+            Notification::make()->title('Comparação iniciada em background. Recarregue a página em alguns minutos.')->info()->send();
+            return;
+        }
+
+        // Busca específica: executar inline (rápido)
         $this->resultados = [];
         $this->consultaRealizada = false;
-        $this->totalProdutos = 0;
-        $this->totalDivergencias = 0;
 
         $primary = new BlingClient('primary');
         $secondary = new BlingClient('secondary');
@@ -42,27 +63,21 @@ class CompararEstoqueBling extends Page
             return;
         }
 
-        $query = ProdutoEstoque::where('ativo', true);
-        if (!empty($this->buscaSku)) {
-            $query->where(function ($q) {
+        $query = ProdutoEstoque::where('ativo', true)
+            ->where(function ($q) {
                 $q->where('sku', 'like', "%{$this->buscaSku}%")
                   ->orWhere('nome', 'like', "%{$this->buscaSku}%");
             });
-        }
-        $produtos = $query->orderBy('sku')->get();
+        $produtos = $query->orderBy('sku')->limit(20)->get();
 
         $resultados = [];
 
         foreach ($produtos as $produto) {
             $saldoPrimary = $this->getSaldo($primary, $produto->sku, $depositoPrimary);
             $saldoSecondary = $this->getSaldo($secondary, $produto->sku, $depositoSecondary);
-
             $divergente = $saldoPrimary !== $saldoSecondary;
 
-            if ($this->filtro === 'divergencias' && !$divergente) {
-                $this->totalProdutos++;
-                continue;
-            }
+            if ($this->filtro === 'divergencias' && !$divergente) continue;
 
             $resultados[] = [
                 'sku' => $produto->sku,
@@ -72,29 +87,25 @@ class CompararEstoqueBling extends Page
                 'secondary' => $saldoSecondary,
                 'divergente' => $divergente,
             ];
-
-            $this->totalProdutos++;
-            if ($divergente) $this->totalDivergencias++;
-        }
-
-        // Contar os que não entraram no loop por serem iguais
-        if ($this->filtro === 'todos') {
-            $this->totalProdutos = count($resultados);
-            $this->totalDivergencias = collect($resultados)->where('divergente', true)->count();
-        } else {
-            $this->totalProdutos = $produtos->count();
-            $this->totalDivergencias = count($resultados);
         }
 
         $this->resultados = $resultados;
+        $this->totalProdutos = $produtos->count();
+        $this->totalDivergencias = collect($resultados)->where('divergente', true)->count();
         $this->consultaRealizada = true;
+    }
 
-        Log::info("CompararEstoqueBling: consultado por " . auth()->user()->name, [
-            'filtro' => $this->filtro,
-            'busca' => $this->buscaSku,
-            'total' => $this->totalProdutos,
-            'divergencias' => $this->totalDivergencias,
-        ]);
+    public function recarregar(): void
+    {
+        $cached = Cache::get('comparar_bling_resultado');
+        if ($cached) {
+            $this->resultados = $cached['resultados'];
+            $this->totalProdutos = $cached['totalProdutos'];
+            $this->totalDivergencias = $cached['totalDivergencias'];
+            $this->consultaRealizada = true;
+            $this->filtro = $cached['filtro'] ?? 'divergencias';
+        }
+        $this->jobRodando = Cache::has('comparar_bling_running');
     }
 
     public function exportarCsv(): \Symfony\Component\HttpFoundation\StreamedResponse

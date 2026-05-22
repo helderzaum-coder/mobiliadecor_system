@@ -17,31 +17,46 @@
                         type="text"
                         wire:model="buscaSku"
                         wire:keydown.enter="consultar"
-                        placeholder="Deixe vazio para consultar todos..."
+                        placeholder="Busca específica (rápido) ou vazio para todos (background)..."
                         class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-sm"
                     />
                 </div>
-                <div>
-                    <x-filament::button wire:click="consultar" wire:loading.attr="disabled" class="w-full">
+                <div class="flex gap-2">
+                    <x-filament::button wire:click="consultar" wire:loading.attr="disabled" class="flex-1">
                         <span wire:loading.remove wire:target="consultar">Consultar</span>
-                        <span wire:loading wire:target="consultar">Consultando...</span>
+                        <span wire:loading wire:target="consultar">...</span>
                     </x-filament::button>
+                    @if($this->consultaRealizada)
+                        <x-filament::button wire:click="recarregar" color="gray" size="sm">
+                            ↻
+                        </x-filament::button>
+                    @endif
                 </div>
             </div>
 
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                ⚠️ A consulta pode demorar alguns minutos dependendo da quantidade de produtos (rate limit da API Bling).
+                💡 Com busca preenchida: consulta instantânea (máx 20 produtos). Sem busca: roda em background e notifica ao concluir.
             </p>
+
+            @if($this->jobRodando)
+                <div class="mt-3 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+                    <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    Comparação em andamento... Você receberá uma notificação ao concluir. Clique em ↻ para atualizar.
+                </div>
+            @endif
         </div>
 
-        {{-- Loading --}}
-        <div wire:loading wire:target="consultar" class="text-center py-8">
-            <div class="inline-flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        {{-- Loading inline --}}
+        <div wire:loading wire:target="consultar" class="text-center py-4">
+            <div class="inline-flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
+                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                 </svg>
-                <span>Consultando estoques nos dois Blings...</span>
+                Consultando...
             </div>
         </div>
 
