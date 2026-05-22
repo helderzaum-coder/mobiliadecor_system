@@ -56,7 +56,7 @@ class PedidoBlingStagingResource extends Resource
                     ->required(),
                 Forms\Components\TextInput::make('cliente_nome')
                     ->label('Cliente')
-                    ->disabled(),
+                    ->required(),
                 Forms\Components\TextInput::make('cliente_documento')
                     ->label('CPF/CNPJ')
                     ->disabled(),
