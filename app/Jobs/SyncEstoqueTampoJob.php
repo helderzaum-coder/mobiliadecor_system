@@ -22,7 +22,8 @@ class SyncEstoqueTampoJob implements ShouldQueue
     public function __construct(
         private readonly string $skuVendido,
         private readonly int $quantidadeVendida,
-        private readonly string $accountKey = 'primary'
+        private readonly string $accountKey = 'primary',
+        private readonly ?int $numeroPedido = null
     ) {}
 
     public function handle(): void
@@ -51,11 +52,14 @@ class SyncEstoqueTampoJob implements ShouldQueue
                 continue;
             }
 
+            $contaNome = $this->accountKey === 'primary' ? 'Mobília Decor' : 'HES Móveis';
+            $refPedido = $this->numeroPedido ? "Venda: #{$this->numeroPedido} - " : '';
+
             $res = EstoqueService::saida(
                 $variacao->sku_produto,
                 $this->quantidadeVendida,
                 'sync',
-                "Tampo: venda {$this->skuVendido} x{$this->quantidadeVendida}"
+                "{$refPedido}SKU: {$this->skuVendido} - Conta: {$contaNome}"
             );
 
             // Limitar pelo estoque do tampo correspondente

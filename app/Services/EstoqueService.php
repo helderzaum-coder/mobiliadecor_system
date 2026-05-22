@@ -85,8 +85,7 @@ class EstoqueService
         });
 
         if ($syncBling) {
-            $obs = "Balanço {$tipoEstoque} (={$novoSaldo}) total={$produto->saldo}";
-            if ($referencia) $obs .= " - {$referencia}";
+            $obs = $referencia ?: "Balanço {$tipoEstoque} (={$novoSaldo}) total={$produto->saldo}";
             SyncEstoqueBlingJob::dispatch($produto->sku, $produto->saldo, $obs, 'B');
         }
 
@@ -174,8 +173,7 @@ class EstoqueService
         });
 
         if ($syncBling) {
-            $obs = $tipo === 'entrada' ? "Entrada {$tipoEstoque} (+{$quantidade})" : "Saída {$tipoEstoque} (-{$quantidade})";
-            if ($referencia) $obs .= " - {$referencia}";
+            $obs = $referencia ?: ($tipo === 'entrada' ? "Entrada {$tipoEstoque} (+{$quantidade})" : "Saída {$tipoEstoque} (-{$quantidade})");
             // Sempre envia o saldo TOTAL pro Bling como balanço
             SyncEstoqueBlingJob::dispatch($produto->sku, $produto->saldo, $obs, 'B');
         }

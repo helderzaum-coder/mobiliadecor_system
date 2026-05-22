@@ -206,7 +206,7 @@ class AprovacaoVendaService
             $sku = $item['codigo'] ?? '';
             $qtd = (int) ($item['quantidade'] ?? 1);
             if ($sku) {
-                \App\Jobs\SyncEstoqueTampoJob::dispatch($sku, $qtd, $staging->bling_account);
+                \App\Jobs\SyncEstoqueTampoJob::dispatch($sku, $qtd, $staging->bling_account, $staging->numero_pedido);
             }
         }
 

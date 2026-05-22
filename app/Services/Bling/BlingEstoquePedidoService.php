@@ -34,11 +34,12 @@ class BlingEstoquePedidoService
             foreach ($skusParaDescontar as $skuInfo) {
                 $prod = ProdutoEstoque::where('sku', $skuInfo['sku'])->where('ativo', true)->first();
                 $tipoEstoque = ($prod && $prod->saldo_fisico > 0) ? 'fisico' : 'virtual';
+                $contaNome = $origem === 'primary' ? 'Mobília Decor' : 'HES Móveis';
                 $res = EstoqueService::saida(
                     $skuInfo['sku'],
                     $skuInfo['quantidade'],
                     "venda_{$origem}",
-                    "Pedido #{$pedido->numero_pedido}",
+                    "Venda: #{$pedido->numero_pedido} - SKU: {$sku} - Conta: {$contaNome}",
                     null,
                     true,
                     $tipoEstoque
