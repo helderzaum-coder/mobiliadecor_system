@@ -28,6 +28,7 @@ class RelatorioFretes extends Page implements HasForms
     public ?string $filtro_uf = null;
     public ?string $filtro_cidade = null;
     public ?string $filtro_transportadora = null;
+    public ?string $busca_pedido = null;
     public ?string $data_inicio = null;
     public ?string $data_fim = null;
     public bool $incluir_frete_zerado = false;
@@ -211,6 +212,11 @@ class RelatorioFretes extends Page implements HasForms
                     ->searchable()
                     ->reactive()
                     ->columnSpan(2),
+                Forms\Components\TextInput::make('busca_pedido')
+                    ->label('Nº Pedido')
+                    ->placeholder('Buscar pedido...')
+                    ->reactive()
+                    ->debounce(500),
                 Forms\Components\Toggle::make('incluir_frete_zerado')
                     ->label('Incluir frete zerado')
                     ->default(false)
@@ -259,6 +265,17 @@ class RelatorioFretes extends Page implements HasForms
         }
         if ($this->conta) {
             $query->where('bling_account', $this->conta);
+        }
+
+        if ($this->busca_pedido) {
+            $busca = $this->busca_pedido;
+            $query->where(function ($q) use ($busca) {
+                $q->where('numero_pedido_canal', 'like', "%{$busca}%")
+                    ->orWhereIn('bling_id', function ($sub) use ($busca) {
+                        $sub->select('bling_id')->from('pedidos_bling_staging')
+                            ->where('numero_pedido', 'like', "%{$busca}%");
+                    });
+            });
         }
 
         // Filtro por UF/Cidade (dados no staging)

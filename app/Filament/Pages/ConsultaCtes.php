@@ -91,7 +91,15 @@ class ConsultaCtes extends Page
         $cte = Cte::find($cteId);
         if (!$cte) return;
 
+        // Buscar por número do canal OU número interno do pedido
         $venda = \App\Models\Venda::where('numero_pedido_canal', $numeroPedido)->first();
+        if (!$venda) {
+            $blingId = \App\Models\PedidoBlingStaging::where('numero_pedido', $numeroPedido)->value('bling_id');
+            if ($blingId) {
+                $venda = \App\Models\Venda::where('bling_id', $blingId)->first();
+            }
+        }
+
         if (!$venda) {
             \Filament\Notifications\Notification::make()
                 ->title("Pedido '{$numeroPedido}' não encontrado")
