@@ -212,6 +212,16 @@ class AprovacaoVendaService
 
         Log::info("Pedido {$staging->numero_pedido} aprovado -> Venda #{$venda->id_venda}");
 
+        // Notificação Telegram
+        TelegramService::enviar(
+            "🛒 <b>Nova Venda Aprovada!</b>\n"
+            . "Pedido: {$staging->numero_pedido}\n"
+            . "Canal: " . ($canal?->nome_canal ?? $staging->canal) . "\n"
+            . "Cliente: {$staging->cliente_nome}\n"
+            . "Total: R$ " . number_format($totalPedido, 2, ',', '.') . "\n"
+            . "Margem: R$ " . number_format($margemVendaTotal, 2, ',', '.') . " ({$margemContribuicao}%)"
+        );
+
         return $venda;
     }
 }
