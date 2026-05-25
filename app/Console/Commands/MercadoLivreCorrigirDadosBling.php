@@ -120,19 +120,25 @@ class MercadoLivreCorrigirDadosBling extends Command
             $payload['numeroDocumento'] = $cpfMl;
         }
 
-        // Preservar telefone existente ou atualizar com o do ML
+        // Preservar telefone/celular existentes ou atualizar com o do ML
         if ($telefone) {
             $tel = preg_replace('/\D/', '', $telefone);
             if (strlen($tel) >= 12 && str_starts_with($tel, '55')) {
                 $tel = substr($tel, 2);
             }
-            $payload['telefone'] = $tel;
-        } elseif (!empty($contatoData['telefone'])) {
-            $payload['telefone'] = $contatoData['telefone'];
-        }
+            // DDD (2) + 9 dígitos = celular, DDD (2) + 8 dígitos = fixo
+            $isCelular = strlen($tel) === 11;
 
-        if (!empty($contatoData['celular'])) {
-            $payload['celular'] = $contatoData['celular'];
+            // Preenche ambos os campos com o mesmo número do ML
+            $payload['telefone'] = $contatoData['telefone'] ?? '' ?: $tel;
+            $payload['celular'] = $contatoData['celular'] ?? '' ?: $tel;
+        } else {
+            if (!empty($contatoData['telefone'])) {
+                $payload['telefone'] = $contatoData['telefone'];
+            }
+            if (!empty($contatoData['celular'])) {
+                $payload['celular'] = $contatoData['celular'];
+            }
         }
         if (!empty($contatoData['email'])) {
             $payload['email'] = $contatoData['email'];
