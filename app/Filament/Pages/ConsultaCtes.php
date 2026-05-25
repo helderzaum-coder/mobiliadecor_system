@@ -25,13 +25,13 @@ class ConsultaCtes extends Page
     public bool $modalAberto = false;
     public ?int $modalCteId = null;
     public ?array $modalVendaDados = null;
+    public ?string $modalTipoPendente = null;
 
     public function vincularManual(int $cteId): void
     {
         $cte = Cte::find($cteId);
         if (!$cte) return;
 
-        // Buscar venda pelo destinatário (nome do cliente)
         $venda = \App\Models\Venda::where('cliente_nome', 'like', '%' . $cte->destinatario . '%')
             ->where('frete_pago', false)
             ->first();
@@ -66,6 +66,16 @@ class ConsultaCtes extends Page
         $cte = Cte::find($cteId);
         if (!$cte) return;
 
+        // Se não está vinculado e tipo exige pedido, abrir modal para vincular
+        if (!$cte->venda_id && in_array($novoTipo, ['reentrega', 'devolucao', 'assistencia'])) {
+            $cte->update(['tipo' => $novoTipo]);
+            $this->modalCteId = $cte->id;
+            $this->modalVendaDados = null;
+            $this->modalTipoPendente = $novoTipo;
+            $this->modalAberto = true;
+            return;
+        }
+
         $cte->update(['tipo' => $novoTipo]);
 
         // Recalcular frete da venda vinculada (só soma CT-es tipo entrega)
@@ -83,6 +93,7 @@ class ConsultaCtes extends Page
         $label = match ($novoTipo) {
             'reentrega' => 'Reentrega',
             'devolucao' => 'Devolução',
+            'assistencia' => 'Assistência',
             default => 'Entrega',
         };
 
@@ -112,6 +123,7 @@ class ConsultaCtes extends Page
         }
 
         $this->modalCteId = $cte->id;
+        $this->modalTipoPendente = null;
         $this->modalVendaDados = [
             'id_venda' => $venda->id_venda,
             'numero_pedido_canal' => $venda->numero_pedido_canal,
@@ -125,6 +137,12 @@ class ConsultaCtes extends Page
             'cte_destinatario' => $cte->destinatario,
         ];
         $this->modalAberto = true;
+    }
+
+    public function buscarPedidoModal(string $numeroPedido): void
+    {
+        if (!$this->modalCteId) return;
+        $this->buscarPedidoParaVincular($this->modalCteId, $numeroPedido);
     }
 
     public function confirmarVinculacao(): void
@@ -168,6 +186,7 @@ class ConsultaCtes extends Page
         $this->modalAberto = false;
         $this->modalCteId = null;
         $this->modalVendaDados = null;
+        $this->modalTipoPendente = null;
     }
 
     public function getCtesProperty()
@@ -241,13 +260,11 @@ class ConsultaCtes extends Page
         if (!$datas) return;
 
         $query->where(function ($q) use ($datas) {
-            // CT-es com data_emissao no período
             $q->where(function ($sub) use ($datas) {
                 $sub->whereNotNull('data_emissao');
                 if ($datas[0]) $sub->where('data_emissao', '>=', $datas[0]);
                 if ($datas[1]) $sub->where('data_emissao', '<=', $datas[1]);
             });
-            // OU CT-es sem data_emissao (sempre mostrar, pois não temos a data real)
             $q->orWhereNull('data_emissao');
         });
     }

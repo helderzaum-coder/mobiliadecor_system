@@ -123,6 +123,7 @@
                                 <option value="entrega" {{ ($cte->tipo ?? 'entrega') === 'entrega' ? 'selected' : '' }}>✅ Entrega</option>
                                 <option value="reentrega" {{ ($cte->tipo ?? '') === 'reentrega' ? 'selected' : '' }}>🔄 Reentrega</option>
                                 <option value="devolucao" {{ ($cte->tipo ?? '') === 'devolucao' ? 'selected' : '' }}>↩️ Devolução</option>
+                                <option value="assistencia" {{ ($cte->tipo ?? '') === 'assistencia' ? 'selected' : '' }}>🔧 Assistência</option>
                             </select>
                         </td>
                         <td class="p-2 text-center">
@@ -168,37 +169,65 @@
     </div>
 
     {{-- Modal de Confirmação --}}
-    @if($modalAberto && $modalVendaDados)
+    @if($modalAberto)
     <div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;" wire:click.self="fecharModal">
         <div style="background:#1f2937;border-radius:12px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4);">
-            <h3 style="font-size:16px;font-weight:700;color:#f9fafb;margin-bottom:16px;">✅ Confirmar Vinculação</h3>
 
-            <div style="background:#111827;border-radius:8px;padding:12px;margin-bottom:12px;">
-                <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;margin-bottom:6px;">CT-e</div>
-                <div style="font-size:13px;color:#f9fafb;">Nº {{ $modalVendaDados['cte_numero'] }} — <b>R$ {{ $modalVendaDados['cte_valor'] }}</b></div>
-                <div style="font-size:12px;color:#9ca3af;">Destinatário: {{ $modalVendaDados['cte_destinatario'] }}</div>
-            </div>
+            @if($modalVendaDados)
+                {{-- Dados encontrados - confirmar --}}
+                <h3 style="font-size:16px;font-weight:700;color:#f9fafb;margin-bottom:16px;">✅ Confirmar Vinculação</h3>
 
-            <div style="background:#111827;border-radius:8px;padding:12px;margin-bottom:16px;">
-                <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;margin-bottom:6px;">Pedido</div>
-                <div style="font-size:13px;color:#f9fafb;"><b>#{{ $modalVendaDados['numero_pedido_canal'] }}</b></div>
-                <div style="font-size:12px;color:#d1d5db;margin-top:4px;">Cliente: {{ $modalVendaDados['cliente_nome'] }}</div>
-                <div style="font-size:12px;color:#d1d5db;">Canal: {{ $modalVendaDados['canal'] }}</div>
-                <div style="font-size:12px;color:#d1d5db;">Nota Fiscal: {{ $modalVendaDados['nota_fiscal'] }}</div>
-                <div style="font-size:12px;color:#d1d5db;">Total: R$ {{ $modalVendaDados['valor_total'] }}</div>
-                <div style="font-size:12px;color:#d1d5db;">Data: {{ $modalVendaDados['data_venda'] }}</div>
-            </div>
+                <div style="background:#111827;border-radius:8px;padding:12px;margin-bottom:12px;">
+                    <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;margin-bottom:6px;">CT-e</div>
+                    <div style="font-size:13px;color:#f9fafb;">Nº {{ $modalVendaDados['cte_numero'] }} — <b>R$ {{ $modalVendaDados['cte_valor'] }}</b></div>
+                    <div style="font-size:12px;color:#9ca3af;">Destinatário: {{ $modalVendaDados['cte_destinatario'] }}</div>
+                </div>
 
-            <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button wire:click="fecharModal"
-                    style="background:#374151;color:#d1d5db;padding:8px 16px;font-size:13px;border-radius:6px;border:none;cursor:pointer;">
-                    Cancelar
-                </button>
-                <button wire:click="confirmarVinculacao"
-                    style="background:#059669;color:#fff;padding:8px 16px;font-size:13px;border-radius:6px;border:none;cursor:pointer;font-weight:600;">
-                    Confirmar Vinculação
-                </button>
-            </div>
+                <div style="background:#111827;border-radius:8px;padding:12px;margin-bottom:16px;">
+                    <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;margin-bottom:6px;">Pedido</div>
+                    <div style="font-size:13px;color:#f9fafb;"><b>#{{ $modalVendaDados['numero_pedido_canal'] }}</b></div>
+                    <div style="font-size:12px;color:#d1d5db;margin-top:4px;">Cliente: {{ $modalVendaDados['cliente_nome'] }}</div>
+                    <div style="font-size:12px;color:#d1d5db;">Canal: {{ $modalVendaDados['canal'] }}</div>
+                    <div style="font-size:12px;color:#d1d5db;">Nota Fiscal: {{ $modalVendaDados['nota_fiscal'] }}</div>
+                    <div style="font-size:12px;color:#d1d5db;">Total: R$ {{ $modalVendaDados['valor_total'] }}</div>
+                    <div style="font-size:12px;color:#d1d5db;">Data: {{ $modalVendaDados['data_venda'] }}</div>
+                </div>
+
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    <button wire:click="fecharModal"
+                        style="background:#374151;color:#d1d5db;padding:8px 16px;font-size:13px;border-radius:6px;border:none;cursor:pointer;">
+                        Cancelar
+                    </button>
+                    <button wire:click="confirmarVinculacao"
+                        style="background:#059669;color:#fff;padding:8px 16px;font-size:13px;border-radius:6px;border:none;cursor:pointer;font-weight:600;">
+                        Confirmar Vinculação
+                    </button>
+                </div>
+
+            @else
+                {{-- Precisa informar o pedido --}}
+                <h3 style="font-size:16px;font-weight:700;color:#f9fafb;margin-bottom:8px;">🔗 Vincular a um Pedido</h3>
+                <p style="font-size:12px;color:#9ca3af;margin-bottom:16px;">
+                    Este CT-e foi marcado como <b style="color:#f59e0b;">{{ match($modalTipoPendente) { 'reentrega' => 'Reentrega', 'devolucao' => 'Devolução', 'assistencia' => 'Assistência', default => $modalTipoPendente } }}</b>. Informe o número do pedido relacionado.
+                </p>
+
+                <div x-data="{ pedido: '' }" style="display:flex;gap:8px;margin-bottom:16px;">
+                    <input type="text" x-model="pedido" placeholder="Nº do pedido (canal ou interno)"
+                        class="flex-1 rounded-lg border border-gray-600 bg-gray-900 text-sm px-3 py-2 text-white">
+                    <button @click="$wire.buscarPedidoModal(pedido)"
+                        style="background:#2563eb;color:#fff;padding:8px 16px;font-size:13px;border-radius:6px;border:none;cursor:pointer;">
+                        Buscar
+                    </button>
+                </div>
+
+                <div style="display:flex;justify-content:flex-end;">
+                    <button wire:click="fecharModal"
+                        style="background:#374151;color:#d1d5db;padding:8px 16px;font-size:13px;border-radius:6px;border:none;cursor:pointer;">
+                        Cancelar
+                    </button>
+                </div>
+            @endif
+
         </div>
     </div>
     @endif
