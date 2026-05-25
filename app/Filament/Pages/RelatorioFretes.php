@@ -171,7 +171,7 @@ class RelatorioFretes extends Page implements HasForms
                 Forms\Components\Select::make('filtro_frete')
                     ->label('Filtro Frete')
                     ->options([
-                        'prejuizo' => '🔴 Prejuízo (pago > cobrado)',
+                        'prejuizo' => '🔴 Prejuízo (margem frete negativa)',
                         'acima_cotado' => '🟡 Acima do cotado',
                         'sem_frete' => '⚪ Sem frete pago',
                         'todos_pagos' => '✅ Todos com frete pago',
@@ -311,7 +311,7 @@ class RelatorioFretes extends Page implements HasForms
         }
 
         if ($this->filtro_frete === 'prejuizo') {
-            $query->whereRaw('valor_frete_transportadora > valor_frete_cliente');
+            $query->where('margem_frete', '<', 0);
         } elseif ($this->filtro_frete === 'acima_cotado') {
             $query->whereNotNull('frete_cotado')
                 ->where('frete_cotado', '>', 0)
