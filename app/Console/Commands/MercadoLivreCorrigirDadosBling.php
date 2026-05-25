@@ -59,6 +59,13 @@ class MercadoLivreCorrigirDadosBling extends Command
         $telefone = $receiverAddress['receiver_phone'] ?? null;
         $complemento = $receiverAddress['comment'] ?? null;
 
+        // Buscar CPF do billing_info
+        $billingRes = $mlClient->get("/orders/{$orderId}/billing_info");
+        $cpfMl = null;
+        if ($billingRes['success']) {
+            $cpfMl = $billingRes['body']['billing_info']['doc_number'] ?? null;
+        }
+
         $this->info("Dados ML encontrados:");
         $this->line("  Telefone: " . ($telefone ?: '(vazio)'));
         $this->line("  Complemento: " . ($complemento ?: '(vazio)'));
@@ -108,6 +115,11 @@ class MercadoLivreCorrigirDadosBling extends Command
             'contribuinte' => $contatoData['contribuinte'] ?? 9,
         ];
 
+        // Preencher CPF se estiver vazio no Bling
+        if (empty($payload['numeroDocumento']) && $cpfMl) {
+            $payload['numeroDocumento'] = $cpfMl;
+        }
+
         // Preservar telefone existente ou atualizar com o do ML
         if ($telefone) {
             $tel = preg_replace('/\D/', '', $telefone);
@@ -126,21 +138,24 @@ class MercadoLivreCorrigirDadosBling extends Command
             $payload['email'] = $contatoData['email'];
         }
 
-        // Preservar endereço existente e adicionar complemento
+        // Preservar endereço existente, preenchendo com dados do ML se estiver vazio
         $enderecoAtual = $contatoData['endereco']['geral'] ?? $contatoData['endereco'] ?? [];
-        $enderecoPayload = [
-            'endereco' => $enderecoAtual['endereco'] ?? '',
-            'numero' => $enderecoAtual['numero'] ?? '',
-            'bairro' => $enderecoAtual['bairro'] ?? '',
-            'municipio' => $enderecoAtual['municipio'] ?? '',
-            'uf' => $enderecoAtual['uf'] ?? '',
-            'cep' => $enderecoAtual['cep'] ?? '',
-            'complemento' => $enderecoAtual['complemento'] ?? '',
-        ];
 
-        if ($complemento) {
-            $enderecoPayload['complemento'] = $complemento;
+        // Extrair UF do ML (formato BR-XX -> XX)
+        $mlUf = $receiverAddress['state']['id'] ?? '';
+        if (str_contains($mlUf, '-')) {
+            $mlUf = explode('-', $mlUf)[1];
         }
+
+        $enderecoPayload = [
+            'endereco' => $enderecoAtual['endereco'] ?? '' ?: ($receiverAddress['street_name'] ?? ''),
+            'numero' => $enderecoAtual['numero'] ?? '' ?: ($receiverAddress['street_number'] ?? ''),
+            'bairro' => $enderecoAtual['bairro'] ?? '' ?: ($receiverAddress['neighborhood']['name'] ?? ''),
+            'municipio' => $enderecoAtual['municipio'] ?? '' ?: ($receiverAddress['city']['name'] ?? ''),
+            'uf' => $enderecoAtual['uf'] ?? '' ?: $mlUf,
+            'cep' => $enderecoAtual['cep'] ?? '' ?: ($receiverAddress['zip_code'] ?? ''),
+            'complemento' => $complemento ?: ($enderecoAtual['complemento'] ?? ''),
+        ];
 
         $payload['endereco'] = $enderecoPayload;
 
