@@ -2,22 +2,22 @@
     @php $totais = $this->totais; @endphp
 
     {{-- Resumo --}}
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div class="rounded-xl bg-white dark:bg-gray-800 p-4 shadow text-center">
-            <div class="text-2xl font-bold text-gray-800 dark:text-white">{{ $totais['total'] }}</div>
-            <div class="text-xs text-gray-500">Total CT-es</div>
+    <div style="display:flex;gap:12px;margin-bottom:16px;">
+        <div style="flex:1;background:var(--kpi-bg,#1f2937);border-radius:10px;padding:10px 16px;text-align:center;">
+            <div style="font-size:20px;font-weight:800;color:var(--kpi-text,#f9fafb);">{{ $totais['total'] }}</div>
+            <div style="font-size:10px;color:#9ca3af;">Total CT-es</div>
         </div>
-        <div class="rounded-xl bg-white dark:bg-gray-800 p-4 shadow text-center">
-            <div class="text-2xl font-bold text-green-600">{{ $totais['utilizados'] }}</div>
-            <div class="text-xs text-gray-500">Utilizados</div>
+        <div style="flex:1;background:var(--kpi-bg,#1f2937);border-radius:10px;padding:10px 16px;text-align:center;">
+            <div style="font-size:20px;font-weight:800;color:#10b981;">{{ $totais['utilizados'] }}</div>
+            <div style="font-size:10px;color:#9ca3af;">Utilizados</div>
         </div>
-        <div class="rounded-xl bg-white dark:bg-gray-800 p-4 shadow text-center">
-            <div class="text-2xl font-bold text-orange-600">{{ $totais['nao_utilizados'] }}</div>
-            <div class="text-xs text-gray-500">Não Utilizados</div>
+        <div style="flex:1;background:var(--kpi-bg,#1f2937);border-radius:10px;padding:10px 16px;text-align:center;">
+            <div style="font-size:20px;font-weight:800;color:#f59e0b;">{{ $totais['nao_utilizados'] }}</div>
+            <div style="font-size:10px;color:#9ca3af;">Não Utilizados</div>
         </div>
-        <div class="rounded-xl bg-white dark:bg-gray-800 p-4 shadow text-center">
-            <div class="text-2xl font-bold text-orange-600">R$ {{ number_format($totais['valor_nao_utilizado'], 2, ',', '.') }}</div>
-            <div class="text-xs text-gray-500">Valor Não Utilizado</div>
+        <div style="flex:1;background:var(--kpi-bg,#1f2937);border-radius:10px;padding:10px 16px;text-align:center;">
+            <div style="font-size:20px;font-weight:800;color:#f59e0b;">R$ {{ number_format($totais['valor_nao_utilizado'], 2, ',', '.') }}</div>
+            <div style="font-size:10px;color:#9ca3af;">Valor Não Utilizado</div>
         </div>
     </div>
 
