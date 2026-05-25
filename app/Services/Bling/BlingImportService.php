@@ -4,11 +4,13 @@ namespace App\Services\Bling;
 
 use App\Jobs\SyncEstoquePedidoJob;
 use App\Models\PedidoBlingStaging;
+use App\Models\ProdutoEstoque;
 use App\Models\Venda;
 use App\Services\MercadoLivre\MercadoLivreOrderService;
 use App\Services\MercadoLivrePlanilhaService;
 use App\Services\AprovacaoVendaService;
 use App\Services\Shopee\ShopeeService;
+use App\Services\TelegramService;
 use Illuminate\Support\Facades\Log;
 
 class BlingImportService
@@ -326,6 +328,9 @@ class BlingImportService
             'dados_originais' => $pedido,
             'status' => 'pendente',
         ]);
+
+        // Notificação Telegram — novo pedido importado
+        $this->notificarTelegram($staging, $itens);
 
         $isMl = str_contains(strtolower($canal), 'mercado')
             || str_contains(strtolower($canal), 'meli')
@@ -749,6 +754,48 @@ class BlingImportService
         }
 
         return \App\Services\CalculoComissaoService::calcular($canal->id_canal, $itens, $mlTipoAnuncio, $mlTipoFrete, $valorFrete);
+    }
+
+    private function notificarTelegram(PedidoBlingStaging $staging, array $itens): void
+    {
+        $pedidoCanal = $staging->numero_loja ?? $staging->numero_pedido;
+        $totalPedido = (float) $staging->total_pedido;
+        $frete = (float) $staging->frete;
+
+        $msg = "\xF0\x9F\x9B\x92 <b>Novo Pedido!</b>\n"
+            . "Pedido: {$staging->numero_pedido}\n"
+            . "Pedido Canal: #{$pedidoCanal}\n"
+            . "Canal: {$staging->canal}\n"
+            . "Cliente: {$staging->cliente_nome}\n"
+            . "Subtotal: R$ " . number_format((float) $staging->total_produtos, 2, ',', '.') . "\n";
+        if ($frete > 0) {
+            $msg .= "Frete: R$ " . number_format($frete, 2, ',', '.') . "\n";
+        }
+        $msg .= "Total: R$ " . number_format($totalPedido, 2, ',', '.') . "\n";
+
+        $custoProdutos = 0;
+        foreach ($itens as $item) {
+            $custoProdutos += ((float) ($item['custo'] ?? 0)) * ((int) ($item['quantidade'] ?? 1));
+        }
+        $msg .= "Custo produto: R$ " . number_format($custoProdutos, 2, ',', '.') . "\n"
+            . "Imposto: R$ " . number_format((float) $staging->valor_imposto, 2, ',', '.') . "\n";
+
+        foreach ($itens as $item) {
+            $sku = $item['codigo'] ?? '-';
+            $nome = $item['descricao'] ?? '-';
+            $msg .= "\nSKU: {$sku}\nProduto: {$nome}\n";
+
+            $produto = ProdutoEstoque::where('sku', $sku)->where('ativo', true)->first();
+            if ($produto && $produto->isKit()) {
+                foreach ($produto->componentes as $comp) {
+                    $msg .= "  \xE2\x80\xA2 {$comp->sku}: saldo {$comp->saldo}\n";
+                }
+            } elseif ($produto) {
+                $msg .= "  \xE2\x80\xA2 Estoque: {$produto->saldo}\n";
+            }
+        }
+
+        TelegramService::enviar($msg);
     }
 
     private function preCalcularImposto(string $canalNome, float $total, float $frete, string $data): array
