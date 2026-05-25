@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\PedidoBlingStaging;
 use App\Services\Bling\BlingEstoquePedidoService;
+use App\Services\TelegramService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -43,6 +44,15 @@ class SyncEstoquePedidoJob implements ShouldQueue
                 ->icon($resultado['success'] ? 'heroicon-o-check-circle' : 'heroicon-o-exclamation-triangle')
                 ->iconColor($resultado['success'] ? 'success' : 'warning')
                 ->sendToDatabase($admin);
+        }
+
+        // Notificação Telegram com saldo atualizado
+        if ($resultado['success']) {
+            $msg = "📦 <b>Estoque atualizado — Pedido #{$pedido->numero_pedido}</b>\n";
+            foreach ($resultado['log'] as $linha) {
+                $msg .= "• {$linha}\n";
+            }
+            TelegramService::enviar($msg);
         }
     }
 
