@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 class MercadoLivreCorrigirDadosBling extends Command
 {
     protected $signature = 'ml:corrigir-dados-bling {order_id} {--account=primary} {--force}';
-    protected $description = 'Busca telefone e complemento do ML e atualiza no Bling (contato + observações do pedido)';
+    protected $description = 'Busca telefone e complemento do ML e atualiza no cadastro do contato no Bling';
 
     public function handle(): int
     {
@@ -87,71 +87,76 @@ class MercadoLivreCorrigirDadosBling extends Command
 
         $this->info("Contato Bling ID: {$contatoId}");
 
-        // 4) Atualizar contato no Bling (telefone)
+        // 4) Buscar contato completo do Bling para preservar dados existentes
+        $contatoRes = $blingClient->get("/contatos/{$contatoId}");
+        if (!$contatoRes['success']) {
+            $this->error("Erro ao buscar contato Bling #{$contatoId}");
+            return 1;
+        }
+
+        $contatoData = $contatoRes['body']['data'] ?? [];
+        $this->line("Contato atual: " . json_encode($contatoData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+        // Montar payload preservando TODOS os campos existentes
+        $payload = [
+            'nome' => $contatoData['nome'] ?? $staging->cliente_nome,
+            'tipo' => $contatoData['tipo'] ?? 'F',
+            'situacao' => $contatoData['situacao'] ?? 'A',
+            'numeroDocumento' => $contatoData['numeroDocumento'] ?? '',
+            'ie' => $contatoData['ie'] ?? '',
+            'fantasia' => $contatoData['fantasia'] ?? '',
+            'contribuinte' => $contatoData['contribuinte'] ?? 9,
+        ];
+
+        // Preservar telefone existente ou atualizar com o do ML
         if ($telefone) {
             $tel = preg_replace('/\D/', '', $telefone);
             if (strlen($tel) >= 12 && str_starts_with($tel, '55')) {
                 $tel = substr($tel, 2);
             }
-
-            $contatoRes = $blingClient->get("/contatos/{$contatoId}");
-            $contatoData = $contatoRes['success'] ? ($contatoRes['body']['data'] ?? []) : [];
-
-            $payload = [
-                'nome' => $contatoData['nome'] ?? $staging->cliente_nome,
-                'tipo' => $contatoData['tipo'] ?? 'F',
-                'situacao' => 'A',
-                'telefone' => $tel,
-            ];
-
-            $this->info("Atualizando telefone no contato...");
-            $res = $blingClient->put("/contatos/{$contatoId}", [], $payload);
-
-            if ($res['success']) {
-                $this->info("✓ Telefone atualizado com sucesso.");
-            } else {
-                $this->warn("✗ Falha ao atualizar telefone: HTTP " . ($res['http_code'] ?? '?'));
-                $this->line(json_encode($res['body'] ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-            }
+            $payload['telefone'] = $tel;
+        } elseif (!empty($contatoData['telefone'])) {
+            $payload['telefone'] = $contatoData['telefone'];
         }
 
-        // 5) Atualizar observações do pedido no Bling (complemento/referência)
+        if (!empty($contatoData['celular'])) {
+            $payload['celular'] = $contatoData['celular'];
+        }
+        if (!empty($contatoData['email'])) {
+            $payload['email'] = $contatoData['email'];
+        }
+
+        // Preservar endereço existente e adicionar complemento
+        $enderecoAtual = $contatoData['endereco']['geral'] ?? $contatoData['endereco'] ?? [];
+        $enderecoPayload = [
+            'endereco' => $enderecoAtual['endereco'] ?? '',
+            'numero' => $enderecoAtual['numero'] ?? '',
+            'bairro' => $enderecoAtual['bairro'] ?? '',
+            'municipio' => $enderecoAtual['municipio'] ?? '',
+            'uf' => $enderecoAtual['uf'] ?? '',
+            'cep' => $enderecoAtual['cep'] ?? '',
+            'complemento' => $enderecoAtual['complemento'] ?? '',
+        ];
+
         if ($complemento) {
-            $obsAtual = trim((string) ($pedidoData['observacoes'] ?? ''));
-            $obsInternasAtual = trim((string) ($pedidoData['observacoesInternas'] ?? ''));
-
-            // Adicionar complemento nas observações (visíveis na etiqueta/NF)
-            $novaObs = $obsAtual;
-            if (!str_contains($obsAtual, $complemento)) {
-                $novaObs = $obsAtual
-                    ? $obsAtual . "\n" . $complemento
-                    : $complemento;
-            }
-
-            // Montar payload PUT completo
-            $payload = $pedidoData;
-            $payload['observacoes'] = $novaObs;
-
-            if ($contatoId) {
-                $payload['contato'] = ['id' => $contatoId];
-            }
-
-            foreach (['id', 'numero', 'situacao', 'dataOperacao', 'dataCriacao'] as $campo) {
-                unset($payload[$campo]);
-            }
-
-            $this->info("Atualizando observações do pedido...");
-            $res = $blingClient->put("/pedidos/vendas/{$staging->bling_id}", [], $payload);
-
-            if ($res['success']) {
-                $this->info("✓ Observações atualizadas com sucesso.");
-            } else {
-                $this->warn("✗ Falha ao atualizar observações: HTTP " . ($res['http_code'] ?? '?'));
-                $this->line(json_encode($res['body'] ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-            }
+            $enderecoPayload['complemento'] = $complemento;
         }
 
-        // 6) Marcar como corrigido no staging
+        $payload['endereco'] = $enderecoPayload;
+
+        $this->info("Atualizando contato com telefone e complemento...");
+        $this->line("Payload: " . json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+        $res = $blingClient->put("/contatos/{$contatoId}", [], $payload);
+
+        if ($res['success']) {
+            $this->info("✓ Contato atualizado com sucesso (telefone + complemento).");
+        } else {
+            $this->warn("✗ Falha ao atualizar contato: HTTP " . ($res['http_code'] ?? '?'));
+            $this->line(json_encode($res['body'] ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        }
+
+        // 5) Marcar como corrigido no staging
         $staging->update(['bling_dados_corrigidos' => true]);
         $this->info("✓ Pedido marcado como corrigido no staging.");
 
