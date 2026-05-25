@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CanalVenda;
 use App\Models\PedidoBlingStaging;
+use App\Models\ProdutoEstoque;
 use App\Models\Venda;
 use Illuminate\Support\Facades\Log;
 
@@ -213,12 +214,6 @@ class AprovacaoVendaService
         Log::info("Pedido {$staging->numero_pedido} aprovado -> Venda #{$venda->id_venda}");
 
         // Notificação Telegram
-        $itensTexto = '';
-        foreach ($staging->itens ?? [] as $item) {
-            $sku = $item['codigo'] ?? '-';
-            $nome = $item['descricao'] ?? '-';
-            $itensTexto .= "SKU: {$sku}\nProduto: {$nome}\n";
-        }
         $pedidoCanal = $staging->numero_loja ?? $staging->numero_pedido;
         $msg = "🛒 <b>Nova Venda Aprovada!</b>\n"
             . "Pedido: {$staging->numero_pedido}\n"
@@ -231,9 +226,24 @@ class AprovacaoVendaService
         }
         $msg .= "Total: R$ " . number_format($totalPedido, 2, ',', '.') . "\n"
             . "Custo produto: R$ " . number_format($custoProdutos, 2, ',', '.') . "\n"
-            . "Imposto: R$ " . number_format($valorImposto, 2, ',', '.') . "\n"
-            . $itensTexto
-            . "\nMargem: R$ " . number_format($margemVendaTotal, 2, ',', '.') . " ({$margemContribuicao}%)";
+            . "Imposto: R$ " . number_format($valorImposto, 2, ',', '.') . "\n";
+
+        foreach ($staging->itens ?? [] as $item) {
+            $sku = $item['codigo'] ?? '-';
+            $nome = $item['descricao'] ?? '-';
+            $msg .= "\nSKU: {$sku}\nProduto: {$nome}\n";
+
+            $produto = ProdutoEstoque::where('sku', $sku)->where('ativo', true)->first();
+            if ($produto && $produto->isKit()) {
+                foreach ($produto->componentes as $comp) {
+                    $msg .= "  • {$comp->sku}: saldo {$comp->saldo}\n";
+                }
+            } elseif ($produto) {
+                $msg .= "  • Estoque: {$produto->saldo}\n";
+            }
+        }
+
+        $msg .= "\nMargem: R$ " . number_format($margemVendaTotal, 2, ',', '.') . " ({$margemContribuicao}%)";
         TelegramService::enviar($msg);
 
         return $venda;
