@@ -21,6 +21,11 @@ class ConsultaCtes extends Page
     public ?string $data_inicio = null;
     public ?string $data_fim = null;
 
+    // Modal de confirmação
+    public bool $modalAberto = false;
+    public ?int $modalCteId = null;
+    public ?array $modalVendaDados = null;
+
     public function vincularManual(int $cteId): void
     {
         $cte = Cte::find($cteId);
@@ -86,12 +91,11 @@ class ConsultaCtes extends Page
             ->success()->send();
     }
 
-    public function vincularPorPedido(int $cteId, string $numeroPedido): void
+    public function buscarPedidoParaVincular(int $cteId, string $numeroPedido): void
     {
         $cte = Cte::find($cteId);
         if (!$cte) return;
 
-        // Buscar por número do canal OU número interno do pedido
         $venda = \App\Models\Venda::where('numero_pedido_canal', $numeroPedido)->first();
         if (!$venda) {
             $blingId = \App\Models\PedidoBlingStaging::where('numero_pedido', $numeroPedido)->value('bling_id');
@@ -107,12 +111,39 @@ class ConsultaCtes extends Page
             return;
         }
 
+        $this->modalCteId = $cte->id;
+        $this->modalVendaDados = [
+            'id_venda' => $venda->id_venda,
+            'numero_pedido_canal' => $venda->numero_pedido_canal,
+            'cliente_nome' => $venda->cliente_nome,
+            'nota_fiscal' => $venda->numero_nota_fiscal ?: 'N/A',
+            'canal' => $venda->canal_nome,
+            'valor_total' => number_format((float) $venda->valor_total_venda, 2, ',', '.'),
+            'data_venda' => $venda->data_venda?->format('d/m/Y'),
+            'cte_numero' => $cte->numero_cte,
+            'cte_valor' => number_format((float) $cte->valor_frete, 2, ',', '.'),
+            'cte_destinatario' => $cte->destinatario,
+        ];
+        $this->modalAberto = true;
+    }
+
+    public function confirmarVinculacao(): void
+    {
+        if (!$this->modalCteId || !$this->modalVendaDados) return;
+
+        $cte = Cte::find($this->modalCteId);
+        $venda = \App\Models\Venda::find($this->modalVendaDados['id_venda']);
+
+        if (!$cte || !$venda) {
+            $this->fecharModal();
+            return;
+        }
+
         $cte->update([
             'utilizado' => true,
             'venda_id' => $venda->id_venda,
         ]);
 
-        // Recalcular frete somando apenas CT-es tipo entrega
         $totalFrete = Cte::where('venda_id', $venda->id_venda)
             ->where('tipo', 'entrega')
             ->sum('valor_frete');
@@ -126,8 +157,17 @@ class ConsultaCtes extends Page
         \App\Services\VendaRecalculoService::recalcularMargens($venda);
 
         \Filament\Notifications\Notification::make()
-            ->title("CT-e {$cte->numero_cte} vinculado à venda #{$numeroPedido} — Frete total: R$ " . number_format($totalFrete, 2, ',', '.'))
+            ->title("CT-e {$cte->numero_cte} vinculado à venda #{$venda->numero_pedido_canal} — Frete: R$ " . number_format($totalFrete, 2, ',', '.'))
             ->success()->send();
+
+        $this->fecharModal();
+    }
+
+    public function fecharModal(): void
+    {
+        $this->modalAberto = false;
+        $this->modalCteId = null;
+        $this->modalVendaDados = null;
     }
 
     public function getCtesProperty()

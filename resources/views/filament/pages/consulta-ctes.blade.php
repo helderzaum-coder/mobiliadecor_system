@@ -149,7 +149,7 @@
                                     <div x-show="open" x-cloak class="flex items-center gap-1">
                                         <input type="text" x-model="pedido" placeholder="Nº pedido"
                                             class="rounded border border-gray-400 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs px-2 py-1 w-36 text-gray-800 dark:text-white">
-                                        <button @click="$wire.vincularPorPedido({{ $cte->id }}, pedido); open = false"
+                                        <button @click="$wire.buscarPedidoParaVincular({{ $cte->id }}, pedido); open = false"
                                             style="background:#059669;color:#fff;padding:2px 8px;font-size:10px;border-radius:4px;border:none;cursor:pointer;">
                                             OK
                                         </button>
@@ -166,4 +166,40 @@
             </tbody>
         </table>
     </div>
+
+    {{-- Modal de Confirmação --}}
+    @if($modalAberto && $modalVendaDados)
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;" wire:click.self="fecharModal">
+        <div style="background:#1f2937;border-radius:12px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4);">
+            <h3 style="font-size:16px;font-weight:700;color:#f9fafb;margin-bottom:16px;">✅ Confirmar Vinculação</h3>
+
+            <div style="background:#111827;border-radius:8px;padding:12px;margin-bottom:12px;">
+                <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;margin-bottom:6px;">CT-e</div>
+                <div style="font-size:13px;color:#f9fafb;">Nº {{ $modalVendaDados['cte_numero'] }} — <b>R$ {{ $modalVendaDados['cte_valor'] }}</b></div>
+                <div style="font-size:12px;color:#9ca3af;">Destinatário: {{ $modalVendaDados['cte_destinatario'] }}</div>
+            </div>
+
+            <div style="background:#111827;border-radius:8px;padding:12px;margin-bottom:16px;">
+                <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;margin-bottom:6px;">Pedido</div>
+                <div style="font-size:13px;color:#f9fafb;"><b>#{{ $modalVendaDados['numero_pedido_canal'] }}</b></div>
+                <div style="font-size:12px;color:#d1d5db;margin-top:4px;">Cliente: {{ $modalVendaDados['cliente_nome'] }}</div>
+                <div style="font-size:12px;color:#d1d5db;">Canal: {{ $modalVendaDados['canal'] }}</div>
+                <div style="font-size:12px;color:#d1d5db;">Nota Fiscal: {{ $modalVendaDados['nota_fiscal'] }}</div>
+                <div style="font-size:12px;color:#d1d5db;">Total: R$ {{ $modalVendaDados['valor_total'] }}</div>
+                <div style="font-size:12px;color:#d1d5db;">Data: {{ $modalVendaDados['data_venda'] }}</div>
+            </div>
+
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button wire:click="fecharModal"
+                    style="background:#374151;color:#d1d5db;padding:8px 16px;font-size:13px;border-radius:6px;border:none;cursor:pointer;">
+                    Cancelar
+                </button>
+                <button wire:click="confirmarVinculacao"
+                    style="background:#059669;color:#fff;padding:8px 16px;font-size:13px;border-radius:6px;border:none;cursor:pointer;font-weight:600;">
+                    Confirmar Vinculação
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
 </x-filament-panels::page>
