@@ -98,6 +98,7 @@
                     <th class="text-right p-2">Valor Frete</th>
                     <th class="text-left p-2">Transportadora</th>
                     <th class="text-left p-2">Destinatário</th>
+                    <th class="text-center p-2">Tipo</th>
                     <th class="text-center p-2">Status</th>
                     <th class="text-left p-2">Data Emissão</th>
                     <th class="text-center p-2">Ações</th>
@@ -115,6 +116,15 @@
                         <td class="p-2 text-right font-semibold text-gray-800 dark:text-white">R$ {{ number_format($cte->valor_frete, 2, ',', '.') }}</td>
                         <td class="p-2 text-gray-600 dark:text-gray-400">{{ $cte->transportadora }}</td>
                         <td class="p-2 text-gray-600 dark:text-gray-400">{{ $cte->destinatario }}</td>
+                        <td class="p-2 text-center">
+                            <select wire:change="alterarTipo({{ $cte->id }}, $event.target.value)"
+                                class="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs px-2 py-1 text-gray-800 dark:text-white"
+                                style="font-size:11px;">
+                                <option value="entrega" {{ ($cte->tipo ?? 'entrega') === 'entrega' ? 'selected' : '' }}>✅ Entrega</option>
+                                <option value="reentrega" {{ ($cte->tipo ?? '') === 'reentrega' ? 'selected' : '' }}>🔄 Reentrega</option>
+                                <option value="devolucao" {{ ($cte->tipo ?? '') === 'devolucao' ? 'selected' : '' }}>↩️ Devolução</option>
+                            </select>
+                        </td>
                         <td class="p-2 text-center">
                             @if($cte->utilizado)
                                 <span style="background:#059669;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">Utilizado</span>
@@ -150,7 +160,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="p-4 text-center text-gray-500">Nenhum CT-e encontrado.</td>
+                        <td colspan="9" class="p-4 text-center text-gray-500">Nenhum CT-e encontrado.</td>
                     </tr>
                 @endforelse
             </tbody>

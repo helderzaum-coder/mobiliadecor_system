@@ -56,6 +56,36 @@ class ConsultaCtes extends Page
             ->success()->send();
     }
 
+    public function alterarTipo(int $cteId, string $novoTipo): void
+    {
+        $cte = Cte::find($cteId);
+        if (!$cte) return;
+
+        $cte->update(['tipo' => $novoTipo]);
+
+        // Recalcular frete da venda vinculada (só soma CT-es tipo entrega)
+        if ($cte->venda_id) {
+            $venda = \App\Models\Venda::find($cte->venda_id);
+            if ($venda) {
+                $totalFrete = Cte::where('venda_id', $venda->id_venda)
+                    ->where('tipo', 'entrega')
+                    ->sum('valor_frete');
+                $venda->update(['valor_frete_transportadora' => round($totalFrete, 2)]);
+                \App\Services\VendaRecalculoService::recalcularMargens($venda);
+            }
+        }
+
+        $label = match ($novoTipo) {
+            'reentrega' => 'Reentrega',
+            'devolucao' => 'Devolução',
+            default => 'Entrega',
+        };
+
+        \Filament\Notifications\Notification::make()
+            ->title("CT-e {$cte->numero_cte} marcado como: {$label}")
+            ->success()->send();
+    }
+
     public function vincularPorPedido(int $cteId, string $numeroPedido): void
     {
         $cte = Cte::find($cteId);
@@ -69,25 +99,26 @@ class ConsultaCtes extends Page
             return;
         }
 
-        // Somar com frete existente se já tem outro CT-e
-        $freteAtual = $venda->frete_pago ? (float) $venda->valor_frete_transportadora : 0;
-        $novoFrete = $freteAtual + (float) $cte->valor_frete;
-
-        $venda->update([
-            'valor_frete_transportadora' => round($novoFrete, 2),
-            'nfe_chave_acesso' => $venda->nfe_chave_acesso ?: $cte->chave_nfe,
-            'frete_pago' => true,
-        ]);
-
         $cte->update([
             'utilizado' => true,
             'venda_id' => $venda->id_venda,
         ]);
 
+        // Recalcular frete somando apenas CT-es tipo entrega
+        $totalFrete = Cte::where('venda_id', $venda->id_venda)
+            ->where('tipo', 'entrega')
+            ->sum('valor_frete');
+
+        $venda->update([
+            'valor_frete_transportadora' => round($totalFrete, 2),
+            'nfe_chave_acesso' => $venda->nfe_chave_acesso ?: $cte->chave_nfe,
+            'frete_pago' => true,
+        ]);
+
         \App\Services\VendaRecalculoService::recalcularMargens($venda);
 
         \Filament\Notifications\Notification::make()
-            ->title("CT-e {$cte->numero_cte} vinculado à venda #{$numeroPedido} — Frete total: R$ " . number_format($novoFrete, 2, ',', '.'))
+            ->title("CT-e {$cte->numero_cte} vinculado à venda #{$numeroPedido} — Frete total: R$ " . number_format($totalFrete, 2, ',', '.'))
             ->success()->send();
     }
 

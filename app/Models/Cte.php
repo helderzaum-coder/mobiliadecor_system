@@ -20,6 +20,7 @@ class Cte extends Model
         'arquivo',
         'utilizado',
         'venda_id',
+        'tipo',
     ];
 
     protected $casts = [

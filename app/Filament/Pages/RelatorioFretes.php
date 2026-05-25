@@ -365,6 +365,7 @@ class RelatorioFretes extends Page implements HasForms
             foreach ($vendas as $venda) {
                 $ctesVenda = $ctesByNfe[$venda->nfe_chave_acesso] ?? $ctesByVenda[$venda->id_venda] ?? collect();
                 $venda->qtd_ctes = $ctesVenda->count();
+                $venda->ctes_reentrega = $ctesVenda->where('tipo', '!=', 'entrega')->count();
                 if ($ctesVenda->isNotEmpty()) {
                     $venda->staging_transportadora = $ctesVenda->first()->transportadora ?? $venda->staging_transportadora;
                 }

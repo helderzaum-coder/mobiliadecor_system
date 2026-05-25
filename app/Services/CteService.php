@@ -90,7 +90,7 @@ class CteService
     }
 
     /**
-     * Aplica o valor do CT-e na venda (soma todos os CT-es da NF-e).
+     * Aplica o valor do CT-e na venda (soma apenas CT-es tipo 'entrega').
      */
     public static function aplicarCteNaVenda(Venda $venda): array
     {
@@ -104,9 +104,11 @@ class CteService
         $numeros = [];
         $cteIds = [];
         foreach ($ctes as $cte) {
-            $totalFrete += (float) $cte['valor_frete'];
-            $numeros[] = $cte['numero_cte'];
             $cteIds[] = $cte['id'];
+            $numeros[] = $cte['numero_cte'];
+            if (($cte['tipo'] ?? 'entrega') === 'entrega') {
+                $totalFrete += (float) $cte['valor_frete'];
+            }
         }
 
         $venda->update([

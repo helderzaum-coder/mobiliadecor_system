@@ -36,7 +36,9 @@ class VincularCtesAutomatico extends Command
             }
 
             $freteAtual = $venda->frete_pago ? (float) $venda->valor_frete_transportadora : 0;
-            $novoFrete = $freteAtual + (float) $cte->valor_frete;
+            $novoFrete = ($cte->tipo ?? 'entrega') === 'entrega'
+                ? $freteAtual + (float) $cte->valor_frete
+                : $freteAtual;
 
             $venda->update([
                 'valor_frete_transportadora' => round($novoFrete, 2),

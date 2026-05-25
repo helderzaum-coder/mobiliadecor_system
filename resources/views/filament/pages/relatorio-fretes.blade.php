@@ -132,6 +132,9 @@
                             @if(($venda->qtd_ctes ?? 0) > 1)
                                 <span style="background:#f59e0b;color:#000;font-size:9px;padding:1px 5px;border-radius:4px;margin-left:4px;" title="Soma de {{ $venda->qtd_ctes }} CT-es">{{ $venda->qtd_ctes }} CT-es</span>
                             @endif
+                            @if(($venda->ctes_reentrega ?? 0) > 0)
+                                <span style="background:#ef4444;color:#fff;font-size:9px;padding:1px 5px;border-radius:4px;margin-left:4px;" title="{{ $venda->ctes_reentrega }} CT-e(s) de reentrega/devolução (não contabilizado)">{{ $venda->ctes_reentrega }} reentrega</span>
+                            @endif
                         </td>
                         <td class="p-3 text-right {{ $comissaoFrete > 0 ? 'text-orange-600' : 'text-gray-400' }}">{{ $comissaoFrete > 0 ? 'R$ ' . number_format($comissaoFrete, 2, ',', '.') : '-' }}</td>
                         <td class="p-3 text-right {{ $impostoFrete > 0 ? 'text-orange-600' : 'text-gray-400' }}">{{ $impostoFrete > 0 ? 'R$ ' . number_format($impostoFrete, 2, ',', '.') : '-' }}</td>
