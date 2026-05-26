@@ -64,7 +64,7 @@ class EspelharEstoqueJob implements ShouldQueue
         $limite = 100;
 
         do {
-            $res = $clientPrimary->get('/produtos', ['pagina' => $pagina, 'limite' => $limite, 'tipo' => 'P']);
+            $res = $clientPrimary->get('/produtos', ['pagina' => $pagina, 'limite' => $limite]);
             if (!$res['success']) {
                 $resultado['erros']++;
                 $resultado['log'][] = "Erro ao buscar produtos página {$pagina}";
