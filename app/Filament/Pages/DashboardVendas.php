@@ -337,6 +337,106 @@ class DashboardVendas extends Page implements HasForms
         \Filament\Notifications\Notification::make()->title(count($ids) . ' venda(s) Shopee enviadas para aplicar planilha.')->info()->send();
     }
 
+    public function exportarPlanilha(): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $vendas = $this->buildQuery()->get();
+
+        // Carregar CTes vinculados por nfe_chave_acesso
+        $chaves = $vendas->pluck('nfe_chave_acesso')->filter()->unique()->toArray();
+        $ctesPorChave = \App\Models\Cte::whereIn('chave_nfe', $chaves)
+            ->orderBy('id')
+            ->get()
+            ->groupBy('chave_nfe');
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="pedidos_' . now()->format('Y-m-d_His') . '.csv"',
+        ];
+
+        return response()->streamDownload(function () use ($vendas, $ctesPorChave) {
+            $out = fopen('php://output', 'w');
+            // BOM UTF-8 para Excel
+            fputs($out, "\xEF\xBB\xBF");
+
+            fputcsv($out, [
+                'Pedido', 'Data', 'Canal', 'Conta', 'Cliente',
+                'Total Pedido', 'Subtotal Produtos', 'Custo Produtos',
+                'Comissão', 'Imposto', 'Frete Cobrado', 'Frete Pago',
+                'Lucro Final', 'Margem %',
+                // Status de completude
+                'NF-e Número', 'NF-e Chave', 'NF-e Valor',
+                'Frete Lançado', 'CTe Número', 'CTe Transportadora', 'CTe Valor', 'Transportadora Manual',
+                'Planilha Canal', 'Planilha Afiliado (Shopee)',
+                'Custo Lançado',
+                'Completo',
+                'Cancelado',
+            ], ';');
+
+            foreach ($vendas as $v) {
+                $canal = $v->canal?->nome_canal ?? ($v->canal_nome ?? '-');
+                $isShopee = str_contains(strtolower($canal), 'shopee');
+                $isML = str_contains(strtolower($canal), 'mercado');
+                $isMagalu = str_contains(strtolower($canal), 'magalu');
+                $isWC = str_contains(strtolower($canal), 'webcontinental');
+                $isMM = str_contains(strtolower($canal), 'madeira');
+                $precisaPlanilha = $isShopee || $isML || $isMagalu || $isWC || $isMM;
+                $precisaAfiliado = $isShopee;
+
+                $temNfe = !empty($v->nfe_chave_acesso);
+                $fretePago = (bool) $v->frete_pago;
+                $isMlMe2Full = in_array($v->ml_tipo_frete, ['ME2', 'FULL']);
+                $freteCliente = (float) $v->valor_frete_cliente;
+                $custoFrete = (float) $v->valor_frete_transportadora;
+                $freteOk = $fretePago || $isMlMe2Full || ($freteCliente == 0 && $custoFrete == 0);
+                $planilhaOk = (bool) $v->planilha_processada;
+                $afiliadoOk = (bool) $v->planilha_afiliado_processada;
+                $custoOk = (float) $v->custo_produtos > 0;
+                $completo = $temNfe && $freteOk && (!$precisaPlanilha || $planilhaOk) && (!$precisaAfiliado || $afiliadoOk);
+
+                // CTe vinculado
+                $ctes = $temNfe ? ($ctesPorChave[$v->nfe_chave_acesso] ?? collect()) : collect();
+                $cte = $ctes->first();
+
+                fputcsv($out, [
+                    $v->numero_pedido_canal,
+                    $v->data_venda?->format('d/m/Y'),
+                    $canal,
+                    $v->bling_account === 'primary' ? 'Mobilia Decor' : 'HES Móveis',
+                    $v->cliente_nome,
+                    number_format((float) $v->valor_total_venda, 2, ',', '.'),
+                    number_format((float) $v->total_produtos, 2, ',', '.'),
+                    number_format((float) $v->custo_produtos, 2, ',', '.'),
+                    number_format((float) $v->comissao, 2, ',', '.'),
+                    number_format((float) $v->valor_imposto, 2, ',', '.'),
+                    number_format($freteCliente, 2, ',', '.'),
+                    number_format($custoFrete, 2, ',', '.'),
+                    number_format((float) $v->margem_venda_total, 2, ',', '.'),
+                    number_format((float) $v->margem_contribuicao, 2, ',', '.') . '%',
+                    // NF-e
+                    $v->numero_nota_fiscal ?? '',
+                    $v->nfe_chave_acesso ?? '',
+                    $v->nfe_valor ? number_format((float) $v->nfe_valor, 2, ',', '.') : '',
+                    // Frete
+                    $freteOk ? 'Sim' : 'Não',
+                    $cte?->numero_cte ?? ($v->transportadora_manual ? '' : ''),
+                    $cte?->transportadora ?? '',
+                    $cte ? number_format((float) $cte->valor_frete, 2, ',', '.') : '',
+                    $v->transportadora_manual ?? '',
+                    // Planilhas
+                    $precisaPlanilha ? ($planilhaOk ? 'Sim' : 'Não') : 'N/A',
+                    $precisaAfiliado ? ($afiliadoOk ? 'Sim' : 'Não') : 'N/A',
+                    // Custo
+                    $custoOk ? 'Sim' : 'Não',
+                    // Completo
+                    $completo ? 'Sim' : 'Não',
+                    (bool) $v->cancelada ? 'Sim' : 'Não',
+                ], ';');
+            }
+
+            fclose($out);
+        }, 'pedidos.csv', $headers);
+    }
+
     public function paginaAnterior(): void
     {
         if ($this->pagina > 1) $this->pagina--;

@@ -20,6 +20,10 @@
             style="background:#ea580c;color:#fff;padding:6px 12px;font-size:11px;border-radius:6px;border:none;cursor:pointer;white-space:nowrap;">
             📊 Shopee Lote
         </button>
+        <a href="#" wire:click.prevent="exportarPlanilha"
+            style="background:#065f46;color:#fff;padding:6px 12px;font-size:11px;border-radius:6px;border:none;cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-block;">
+            📥 Exportar CSV
+        </a>
     </div>
 
     {{-- Filtros ocupando toda a largura --}}
