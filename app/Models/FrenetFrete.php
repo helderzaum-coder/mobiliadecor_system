@@ -17,6 +17,7 @@ class FrenetFrete extends Model
         'modalidade',
         'valor_frete',
         'status',
+        'tipo',
         'utilizado',
         'venda_id',
     ];

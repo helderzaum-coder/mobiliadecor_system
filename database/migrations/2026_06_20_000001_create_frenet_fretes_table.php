@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('modalidade')->nullable();
             $table->decimal('valor_frete', 10, 2)->default(0);
             $table->string('status')->nullable();
+            $table->string('tipo')->default('entrega');
             $table->boolean('utilizado')->default(false);
             $table->unsignedBigInteger('venda_id')->nullable();
             $table->timestamps();

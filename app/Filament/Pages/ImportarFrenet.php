@@ -25,6 +25,7 @@ class ImportarFrenet extends Page
     public bool    $modalAberto    = false;
     public ?int    $modalFrenetId  = null;
     public ?array  $modalVendaDados = null;
+    public ?string $modalTipoPendente = null;
 
     // ── Upload ──────────────────────────────────────────────────────────────
 
@@ -101,6 +102,44 @@ class ImportarFrenet extends Page
 
     // ── Vinculação automática ────────────────────────────────────────────────
 
+    public function alterarTipo(int $frenetId, string $novoTipo): void
+    {
+        $frete = FrenetFrete::find($frenetId);
+        if (!$frete) return;
+
+        // Se tipo exige pedido e não está vinculado, abrir modal
+        if (!$frete->venda_id && in_array($novoTipo, ['assistencia', 'devolucao'])) {
+            $frete->update(['tipo' => $novoTipo]);
+            $this->modalFrenetId = $frete->id;
+            $this->modalVendaDados = null;
+            $this->modalTipoPendente = $novoTipo;
+            $this->modalAberto = true;
+            return;
+        }
+
+        $frete->update(['tipo' => $novoTipo]);
+
+        // Recalcular frete da venda vinculada (só soma tipo entrega)
+        if ($frete->venda_id) {
+            $venda = Venda::find($frete->venda_id);
+            if ($venda) {
+                $totalFrete = FrenetFrete::where('venda_id', $venda->id_venda)
+                    ->where('tipo', 'entrega')
+                    ->sum('valor_frete');
+                $venda->update(['valor_frete_transportadora' => round($totalFrete, 2)]);
+                \App\Services\VendaRecalculoService::recalcularMargens($venda);
+            }
+        }
+
+        $label = match ($novoTipo) {
+            'assistencia' => 'Assistência',
+            'devolucao' => 'Devolução',
+            default => 'Entrega',
+        };
+
+        Notification::make()->title("Frete marcado como: {$label}")->success()->send();
+    }
+
     public function vincularAuto(int $frenetId): void
     {
         $frete = FrenetFrete::find($frenetId);
@@ -163,6 +202,12 @@ class ImportarFrenet extends Page
         ];
     }
 
+    public function buscarPedidoModal(string $numeroPedido): void
+    {
+        if (!$this->modalFrenetId) return;
+        $this->buscarPedidoParaVincular($this->modalFrenetId, $numeroPedido);
+    }
+
     public function confirmarVinculacao(): void
     {
         if (!$this->modalFrenetId || !$this->modalVendaDados) return;
@@ -175,21 +220,36 @@ class ImportarFrenet extends Page
             return;
         }
 
-        $venda->update([
-            'valor_frete_transportadora' => $frete->valor_frete,
-            'frete_pago'                 => true,
-            'transportadora_manual'      => $frete->modalidade,
-        ]);
+        $tipo = $frete->tipo ?? 'entrega';
 
         $frete->update([
             'utilizado' => true,
             'venda_id'  => $venda->id_venda,
         ]);
 
+        // Só soma no frete da venda se for tipo entrega
+        if ($tipo === 'entrega') {
+            $totalFrete = FrenetFrete::where('venda_id', $venda->id_venda)
+                ->where('tipo', 'entrega')
+                ->sum('valor_frete');
+
+            $venda->update([
+                'valor_frete_transportadora' => round($totalFrete, 2),
+                'frete_pago'                 => true,
+                'transportadora_manual'      => $frete->modalidade,
+            ]);
+        }
+
         \App\Services\VendaRecalculoService::recalcularMargens($venda);
 
+        $label = match ($tipo) {
+            'assistencia' => 'Assistência',
+            'devolucao' => 'Devolução',
+            default => 'Entrega',
+        };
+
         Notification::make()
-            ->title("Frete Frenet vinculado à venda #{$venda->numero_pedido_canal} — R$ " . number_format((float) $frete->valor_frete, 2, ',', '.'))
+            ->title("Frete ({$label}) vinculado à venda #{$venda->numero_pedido_canal} — R$ " . number_format((float) $frete->valor_frete, 2, ',', '.'))
             ->success()->send();
 
         $this->fecharModal();
@@ -197,9 +257,10 @@ class ImportarFrenet extends Page
 
     public function fecharModal(): void
     {
-        $this->modalAberto    = false;
-        $this->modalFrenetId  = null;
+        $this->modalAberto     = false;
+        $this->modalFrenetId   = null;
         $this->modalVendaDados = null;
+        $this->modalTipoPendente = null;
     }
 
     // ── Dados ────────────────────────────────────────────────────────────────

@@ -123,6 +123,7 @@
                     <th class="text-left p-2">Modalidade</th>
                     <th class="text-right p-2">Valor</th>
                     <th class="text-left p-2">Status Envio</th>
+                    <th class="text-center p-2">Tipo</th>
                     <th class="text-center p-2">Situação</th>
                     <th class="text-center p-2">Ações</th>
                 </tr>
@@ -137,6 +138,15 @@
                         <td class="p-2 text-xs text-gray-500">{{ $frete->modalidade }}</td>
                         <td class="p-2 text-right font-semibold text-gray-800 dark:text-white">R$ {{ number_format($frete->valor_frete, 2, ',', '.') }}</td>
                         <td class="p-2 text-xs text-gray-500">{{ $frete->status }}</td>
+                        <td class="p-2 text-center">
+                            <select wire:change="alterarTipo({{ $frete->id }}, $event.target.value)"
+                                class="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs px-2 py-1 text-gray-800 dark:text-white"
+                                style="font-size:11px;">
+                                <option value="entrega" {{ ($frete->tipo ?? 'entrega') === 'entrega' ? 'selected' : '' }}>✅ Entrega</option>
+                                <option value="assistencia" {{ ($frete->tipo ?? '') === 'assistencia' ? 'selected' : '' }}>🔧 Assistência</option>
+                                <option value="devolucao" {{ ($frete->tipo ?? '') === 'devolucao' ? 'selected' : '' }}>↩️ Devolução</option>
+                            </select>
+                        </td>
                         <td class="p-2 text-center">
                             @if($frete->utilizado)
                                 <span style="background:#059669;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">Vinculado</span>
@@ -180,7 +190,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="p-4 text-center text-gray-500">Nenhum frete encontrado.</td>
+                        <td colspan="10" class="p-4 text-center text-gray-500">Nenhum frete encontrado.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -191,34 +201,62 @@
     @if($modalAberto)
     <div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;" wire:click.self="fecharModal">
         <div style="background:#1f2937;border-radius:12px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4);">
-            <h3 style="font-size:16px;font-weight:700;color:#f9fafb;margin-bottom:16px;">✅ Confirmar Vinculação</h3>
 
-            <div style="background:#111827;border-radius:8px;padding:12px;margin-bottom:12px;">
-                <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;margin-bottom:6px;">Frete Frenet</div>
-                <div style="font-size:13px;color:#f9fafb;">{{ $modalVendaDados['frete_destinatario'] }} — <b>R$ {{ $modalVendaDados['frete_valor'] }}</b></div>
-                <div style="font-size:12px;color:#9ca3af;">{{ $modalVendaDados['frete_modalidade'] }}</div>
-            </div>
+            @if($modalVendaDados)
+                {{-- Dados encontrados - confirmar --}}
+                <h3 style="font-size:16px;font-weight:700;color:#f9fafb;margin-bottom:16px;">✅ Confirmar Vinculação</h3>
 
-            <div style="background:#111827;border-radius:8px;padding:12px;margin-bottom:16px;">
-                <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;margin-bottom:6px;">Pedido</div>
-                <div style="font-size:13px;color:#f9fafb;"><b>#{{ $modalVendaDados['numero_pedido_canal'] }}</b></div>
-                <div style="font-size:12px;color:#d1d5db;margin-top:4px;">Cliente: {{ $modalVendaDados['cliente_nome'] }}</div>
-                <div style="font-size:12px;color:#d1d5db;">Canal: {{ $modalVendaDados['canal'] }}</div>
-                <div style="font-size:12px;color:#d1d5db;">NF-e: {{ $modalVendaDados['nota_fiscal'] }}</div>
-                <div style="font-size:12px;color:#d1d5db;">Total: R$ {{ $modalVendaDados['valor_total'] }}</div>
-                <div style="font-size:12px;color:#d1d5db;">Data: {{ $modalVendaDados['data_venda'] }}</div>
-            </div>
+                <div style="background:#111827;border-radius:8px;padding:12px;margin-bottom:12px;">
+                    <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;margin-bottom:6px;">Frete Frenet</div>
+                    <div style="font-size:13px;color:#f9fafb;">{{ $modalVendaDados['frete_destinatario'] }} — <b>R$ {{ $modalVendaDados['frete_valor'] }}</b></div>
+                    <div style="font-size:12px;color:#9ca3af;">{{ $modalVendaDados['frete_modalidade'] }}</div>
+                </div>
 
-            <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button wire:click="fecharModal"
-                    style="background:#374151;color:#d1d5db;padding:8px 16px;font-size:13px;border-radius:6px;border:none;cursor:pointer;">
-                    Cancelar
-                </button>
-                <button wire:click="confirmarVinculacao"
-                    style="background:#059669;color:#fff;padding:8px 16px;font-size:13px;border-radius:6px;border:none;cursor:pointer;font-weight:600;">
-                    Confirmar Vinculação
-                </button>
-            </div>
+                <div style="background:#111827;border-radius:8px;padding:12px;margin-bottom:16px;">
+                    <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;margin-bottom:6px;">Pedido</div>
+                    <div style="font-size:13px;color:#f9fafb;"><b>#{{ $modalVendaDados['numero_pedido_canal'] }}</b></div>
+                    <div style="font-size:12px;color:#d1d5db;margin-top:4px;">Cliente: {{ $modalVendaDados['cliente_nome'] }}</div>
+                    <div style="font-size:12px;color:#d1d5db;">Canal: {{ $modalVendaDados['canal'] }}</div>
+                    <div style="font-size:12px;color:#d1d5db;">NF-e: {{ $modalVendaDados['nota_fiscal'] }}</div>
+                    <div style="font-size:12px;color:#d1d5db;">Total: R$ {{ $modalVendaDados['valor_total'] }}</div>
+                    <div style="font-size:12px;color:#d1d5db;">Data: {{ $modalVendaDados['data_venda'] }}</div>
+                </div>
+
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    <button wire:click="fecharModal"
+                        style="background:#374151;color:#d1d5db;padding:8px 16px;font-size:13px;border-radius:6px;border:none;cursor:pointer;">
+                        Cancelar
+                    </button>
+                    <button wire:click="confirmarVinculacao"
+                        style="background:#059669;color:#fff;padding:8px 16px;font-size:13px;border-radius:6px;border:none;cursor:pointer;font-weight:600;">
+                        Confirmar Vinculação
+                    </button>
+                </div>
+
+            @else
+                {{-- Precisa informar o pedido (assistência/devolução) --}}
+                <h3 style="font-size:16px;font-weight:700;color:#f9fafb;margin-bottom:8px;">🔗 Vincular a um Pedido</h3>
+                <p style="font-size:12px;color:#9ca3af;margin-bottom:16px;">
+                    Este frete foi marcado como <b style="color:#f59e0b;">{{ match($modalTipoPendente) { 'assistencia' => 'Assistência', 'devolucao' => 'Devolução', default => $modalTipoPendente } }}</b>. Informe o número do pedido relacionado.
+                </p>
+
+                <div x-data="{ pedido: '' }" style="display:flex;gap:8px;margin-bottom:16px;">
+                    <input type="text" x-model="pedido" placeholder="Nº do pedido (canal ou interno)"
+                        class="flex-1 rounded-lg border border-gray-600 bg-gray-900 text-sm px-3 py-2 text-white">
+                    <button @click="$wire.buscarPedidoModal(pedido)"
+                        style="background:#2563eb;color:#fff;padding:8px 16px;font-size:13px;border-radius:6px;border:none;cursor:pointer;">
+                        Buscar
+                    </button>
+                </div>
+
+                <div style="display:flex;justify-content:flex-end;">
+                    <button wire:click="fecharModal"
+                        style="background:#374151;color:#d1d5db;padding:8px 16px;font-size:13px;border-radius:6px;border:none;cursor:pointer;">
+                        Cancelar
+                    </button>
+                </div>
+            @endif
+
         </div>
     </div>
     @endif
