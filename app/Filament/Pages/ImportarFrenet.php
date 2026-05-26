@@ -204,11 +204,6 @@ class ImportarFrenet extends Page
 
     // ── Dados ────────────────────────────────────────────────────────────────
 
-    public function getFretesPorperty()
-    {
-        return $this->buildQuery()->limit(300)->get();
-    }
-
     public function getFretesProperty()
     {
         return $this->buildQuery()->limit(300)->get();
