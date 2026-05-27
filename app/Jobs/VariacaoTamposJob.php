@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\ProdutoEstoque;
 use App\Models\TrocaTampoConfig;
 use App\Services\Bling\BlingClient;
+use App\Services\EstoqueService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -166,6 +167,17 @@ class VariacaoTamposJob implements ShouldQueue
                 if ($res['success']) {
                     $resultado['atualizados']++;
                     $resultado['log'][] = "{$info['config']->sku_produto}: {$info['saldo_atual']} → {$saldoFinal}";
+
+                    // Atualizar estoque interno
+                    EstoqueService::balanco(
+                        $info['config']->sku_produto,
+                        $saldoFinal,
+                        'variacao_tampos',
+                        "Equalização {$familia}/{$cor}",
+                        null,
+                        false, // não sync Bling (já atualizou acima)
+                        'fisico'
+                    );
                 } else {
                     $resultado['erros']++;
                     $resultado['log'][] = "{$info['config']->sku_produto}: erro HTTP " . ($res['http_code'] ?? '?');
