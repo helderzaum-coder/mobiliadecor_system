@@ -233,6 +233,29 @@ class ProdutoEstoqueResource extends Resource
                             Notification::make()->title($res['erro'] ?? 'Erro')->danger()->send();
                         }
                     }),
+                Tables\Actions\Action::make('balanco_carcaca')
+                    ->label('Carcaças')
+                    ->icon('heroicon-o-cube')
+                    ->color('info')
+                    ->visible(function ($record) {
+                        static $configSkus = null;
+                        if ($configSkus === null) {
+                            $configSkus = TrocaTampoConfig::pluck('sku_produto')->flip();
+                        }
+                        return $configSkus->has($record->sku);
+                    })
+                    ->modalHeading(fn ($record) => "Carcaças: {$record->sku} - {$record->nome}")
+                    ->modalDescription('Informe a quantidade real de carcaças físicas deste SKU específico (independente da equalização).')
+                    ->form([
+                        Forms\Components\TextInput::make('quantidade')
+                            ->label('Quantidade de Carcaças')
+                            ->numeric()->required()->minValue(0)
+                            ->helperText(fn ($record) => "Saldo atual: {$record->saldo_carcaca}"),
+                    ])
+                    ->action(function ($record, array $data) {
+                        $record->update(['saldo_carcaca' => (int) $data['quantidade']]);
+                        Notification::make()->title("Carcaças de {$record->sku} atualizadas para {$data['quantidade']}")->success()->send();
+                    }),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
