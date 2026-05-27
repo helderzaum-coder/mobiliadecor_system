@@ -146,7 +146,7 @@ class VariacaoTamposJob implements ShouldQueue
                     );
 
                     // Guardar saldo real individual (antes da equalização)
-                    ProdutoEstoque::where('sku', $sku)->update(['saldo_carcaca' => max(0, $info['saldo_atual'])]);
+                    ProdutoEstoque::where('sku', (string) $sku)->update(['saldo_carcaca' => max(0, $info['saldo_atual'])]);
                 } else {
                     $resultado['erros']++;
                     $resultado['log'][] = "{$sku}: erro HTTP " . ($res['http_code'] ?? '?');
