@@ -73,7 +73,7 @@ class VariacaoTamposJob implements ShouldQueue
         foreach ($familias as $familia => $membros) {
             $resultado['grupos']++;
 
-            // Buscar saldo atual de cada SKU no Bling
+            // Buscar saldo atual de cada SKU no Bling e saldo_carcaca interno
             $saldosPorSku = [];
             foreach ($membros as $config) {
                 $produto = $client->getProductBySku($config->sku_produto);
@@ -81,19 +81,27 @@ class VariacaoTamposJob implements ShouldQueue
                     $resultado['log'][] = "SKU {$config->sku_produto}: não encontrado no Bling";
                     continue;
                 }
-                $saldo = self::buscarSaldoGeral($client, (int) $produto['id'], $depositoId);
+                $saldoBling = self::buscarSaldoGeral($client, (int) $produto['id'], $depositoId);
+
+                // Usar saldo_carcaca interno se preenchido, senão usar saldo do Bling
+                $produtoInterno = ProdutoEstoque::where('sku', $config->sku_produto)->where('ativo', true)->first();
+                $saldoCarcaca = ($produtoInterno && $produtoInterno->saldo_carcaca > 0)
+                    ? $produtoInterno->saldo_carcaca
+                    : $saldoBling;
+
                 $saldosPorSku[$config->sku_produto] = [
-                    'config'     => $config,
-                    'produto_id' => (int) $produto['id'],
-                    'saldo_atual' => $saldo,
+                    'config'      => $config,
+                    'produto_id'  => (int) $produto['id'],
+                    'saldo_atual' => $saldoBling,
+                    'saldo_carcaca' => $saldoCarcaca,
                 ];
             }
 
-            // Calcular total de carcaças por cor (soma de todos os SKUs da mesma cor)
+            // Calcular total de carcaças por cor usando saldo_carcaca
             $carcacasPorCor = [];
             foreach ($saldosPorSku as $info) {
                 $cor = $info['config']->cor;
-                $carcacasPorCor[$cor] = ($carcacasPorCor[$cor] ?? 0) + max(0, $info['saldo_atual']);
+                $carcacasPorCor[$cor] = ($carcacasPorCor[$cor] ?? 0) + max(0, $info['saldo_carcaca']);
             }
 
             Log::info("VariacaoTampos: familia {$familia} - carcaças por cor", $carcacasPorCor);
@@ -102,6 +110,7 @@ class VariacaoTamposJob implements ShouldQueue
             foreach ($saldosPorSku as $sku => $info) {
                 $cor = $info['config']->cor;
                 $totalCarcacas = $carcacasPorCor[$cor] ?? 0;
+                $produtoInterno = ProdutoEstoque::where('sku', (string) $sku)->where('ativo', true)->first();
 
                 $saldoFinal = $totalCarcacas;
 
@@ -145,8 +154,10 @@ class VariacaoTamposJob implements ShouldQueue
                         'fisico'
                     );
 
-                    // Guardar saldo real individual (antes da equalização)
-                    ProdutoEstoque::where('sku', (string) $sku)->update(['saldo_carcaca' => max(0, $info['saldo_atual'])]);
+                    // Guardar saldo real individual apenas se ainda não foi lançado manualmente
+                    if (!$produtoInterno || $produtoInterno->saldo_carcaca === 0) {
+                        ProdutoEstoque::where('sku', (string) $sku)->update(['saldo_carcaca' => max(0, $info['saldo_atual'])]);
+                    }
                 } else {
                     $resultado['erros']++;
                     $resultado['log'][] = "{$sku}: erro HTTP " . ($res['http_code'] ?? '?');
