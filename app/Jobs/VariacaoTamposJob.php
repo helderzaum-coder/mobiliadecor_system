@@ -56,13 +56,10 @@ class VariacaoTamposJob implements ShouldQueue
         $client = new BlingClient($accountKey);
         $resultado = ['grupos' => 0, 'atualizados' => 0, 'erros' => 0, 'sem_estoque' => 0, 'log' => []];
 
-        // Agrupar por cor + familia_tampo
         $configs = TrocaTampoConfig::where('familia_tampo', '!=', '')
             ->whereNotNull('familia_tampo')
             ->where('equalizacao_ativa', true)
             ->get();
-
-        $grupos = $configs->groupBy(fn ($c) => $c->familia_tampo . '|' . $c->cor);
 
         $depositoId = self::getDepositoGeral($client);
         if (!$depositoId) {
@@ -70,117 +67,86 @@ class VariacaoTamposJob implements ShouldQueue
             return ['grupos' => 0, 'atualizados' => 0, 'erros' => 1, 'sem_estoque' => 0, 'log' => ['Depósito não encontrado']];
         }
 
-        foreach ($grupos as $chave => $membros) {
-            if ($membros->count() < 2) continue; // Precisa de pelo menos 2 para equalizar
+        // Agrupar por familia_tampo
+        $familias = $configs->groupBy('familia_tampo');
 
+        foreach ($familias as $familia => $membros) {
             $resultado['grupos']++;
-            [$familia, $cor] = explode('|', $chave);
 
-            // Buscar estoque de cada SKU
-            $produtosInfo = [];
-
+            // Buscar saldo atual de cada SKU no Bling
+            $saldosPorSku = [];
             foreach ($membros as $config) {
                 $produto = $client->getProductBySku($config->sku_produto);
                 if (!$produto) {
                     $resultado['log'][] = "SKU {$config->sku_produto}: não encontrado no Bling";
                     continue;
                 }
-
-                $produtoId = (int) $produto['id'];
-                $skuRetornado = $produto['codigo'] ?? '?';
-                $saldo = self::buscarSaldoGeral($client, $produtoId, $depositoId);
-
-                Log::info("VariacaoTampos: leitura", [
-                    'familia' => $familia,
-                    'cor' => $cor,
-                    'sku_config' => $config->sku_produto,
-                    'sku_bling' => $skuRetornado,
-                    'produto_id' => $produtoId,
-                    'saldo_deposito_geral' => $saldo,
-                    'deposito_id' => $depositoId,
-                ]);
-
-                $produtosInfo[] = [
-                    'config' => $config,
-                    'produto_id' => $produtoId,
+                $saldo = self::buscarSaldoGeral($client, (int) $produto['id'], $depositoId);
+                $saldosPorSku[$config->sku_produto] = [
+                    'config'     => $config,
+                    'produto_id' => (int) $produto['id'],
                     'saldo_atual' => $saldo,
                 ];
             }
 
-            if (count($produtosInfo) < 2) continue;
-
-            $saldos = array_column($produtosInfo, 'saldo_atual');
-            $maior = max($saldos);
-            $menor = min($saldos);
-            $numVariacoes = count($produtosInfo);
-
-            if ($maior === $menor) {
-                Log::info("VariacaoTampos: grupo {$familia}/{$cor} já equalizado em {$maior}");
-                continue;
+            // Calcular total de carcaças por cor (soma de todos os SKUs da mesma cor)
+            $carcacasPorCor = [];
+            foreach ($saldosPorSku as $info) {
+                $cor = $info['config']->cor;
+                $carcacasPorCor[$cor] = ($carcacasPorCor[$cor] ?? 0) + max(0, $info['saldo_atual']);
             }
 
-            // Lógica: caixas são intercambiáveis (mesma carcaça, tampo diferente)
-            // Cada venda de qualquer variação consome 1 caixa física
-            // Com sync automático ativo, todos os saldos devem estar iguais
-            // Se não estão, usar soma ÷ variações (média = caixas reais)
-            $somaSaldos = array_sum($saldos);
-            $saldoAlvo = (int) floor($somaSaldos / $numVariacoes);
-            $saldoAlvo = max(0, $saldoAlvo);
+            Log::info("VariacaoTampos: familia {$familia} - carcaças por cor", $carcacasPorCor);
 
-            Log::info("VariacaoTampos: equalizando {$familia}/{$cor}", [
-                'maior' => $maior,
-                'menor' => $menor,
-                'soma_saldos' => $somaSaldos,
-                'num_variacoes' => $numVariacoes,
-                'vendas_totais' => $somaSaldos - $numVariacoes * $saldoAlvo,
-                'saldo_alvo' => $saldoAlvo,
-            ]);
+            // Para cada produto: estoque = min(carcaças da cor, tampos do tipo)
+            foreach ($saldosPorSku as $sku => $info) {
+                $cor = $info['config']->cor;
+                $totalCarcacas = $carcacasPorCor[$cor] ?? 0;
 
-            // Equalizar (com limitador de tampo)
-            foreach ($produtosInfo as $info) {
-                $saldoFinal = $saldoAlvo;
+                $saldoFinal = $totalCarcacas;
 
                 // Limitar pelo estoque do tampo correspondente
                 $tampo = ProdutoEstoque::where('sku', $info['config']->sku_tampo)->where('ativo', true)->first();
-                if ($tampo) {
-                    $saldoTampo = $tampo->saldo;
-                    if ($saldoTampo < $saldoFinal) {
-                        Log::info("VariacaoTampos: limitando {$info['config']->sku_produto} por tampo {$tampo->sku} (tampo={$saldoTampo}, alvo={$saldoFinal})");
-                        $saldoFinal = $saldoTampo;
-                    }
+                if ($tampo && $tampo->saldo < $saldoFinal) {
+                    Log::info("VariacaoTampos: {$sku} limitado por tampo {$tampo->sku} (tampo={$tampo->saldo}, carcaças={$totalCarcacas})");
+                    $saldoFinal = $tampo->saldo;
                 }
+
+                $saldoFinal = max(0, $saldoFinal);
 
                 if ($info['saldo_atual'] === $saldoFinal) {
                     continue;
                 }
 
+                $obs = "Variação Tampos: {$familia}/{$cor} carcaças={$totalCarcacas} tampo=" . ($tampo ? $tampo->saldo : 'N/A');
+
                 $res = $client->post('/estoques', [], [
-                    'produto' => ['id' => $info['produto_id']],
-                    'deposito' => ['id' => $depositoId],
-                    'operacao' => 'B',
-                    'preco' => 0,
-                    'custo' => 0,
-                    'quantidade' => max(0, $saldoFinal),
-                    'observacoes' => "Variação Tampos: {$familia}/{$cor} saldo={$saldoFinal}" . ($tampo ? " (tampo:{$tampo->saldo})" : ''),
+                    'produto'     => ['id' => $info['produto_id']],
+                    'deposito'    => ['id' => $depositoId],
+                    'operacao'    => 'B',
+                    'preco'       => 0,
+                    'custo'       => 0,
+                    'quantidade'  => $saldoFinal,
+                    'observacoes' => $obs,
                 ]);
 
                 if ($res['success']) {
                     $resultado['atualizados']++;
-                    $resultado['log'][] = "{$info['config']->sku_produto}: {$info['saldo_atual']} → {$saldoFinal}";
+                    $resultado['log'][] = "{$sku}: {$info['saldo_atual']} → {$saldoFinal} (carcaças={$totalCarcacas} tampo=" . ($tampo ? $tampo->saldo : 'N/A') . ")";
 
                     // Atualizar estoque interno
                     EstoqueService::balanco(
-                        $info['config']->sku_produto,
+                        $sku,
                         $saldoFinal,
                         'variacao_tampos',
                         "Equalização {$familia}/{$cor}",
                         null,
-                        false, // não sync Bling (já atualizou acima)
+                        false,
                         'fisico'
                     );
                 } else {
                     $resultado['erros']++;
-                    $resultado['log'][] = "{$info['config']->sku_produto}: erro HTTP " . ($res['http_code'] ?? '?');
+                    $resultado['log'][] = "{$sku}: erro HTTP " . ($res['http_code'] ?? '?');
                 }
             }
         }
@@ -199,9 +165,7 @@ class VariacaoTamposJob implements ShouldQueue
         $dados = $res['body']['data'][0] ?? null;
         if (!$dados) return 0;
 
-        // Ler APENAS o saldo do depósito Geral (mesmo onde o balanço é escrito)
         foreach ($dados['depositos'] ?? [] as $dep) {
-            // API Bling v3: id pode estar em deposito.id (nested) ou id (flat)
             $depId = (int) ($dep['deposito']['id'] ?? $dep['id'] ?? 0);
             if ($depId === $depositoGeralId) {
                 return (int) ($dep['saldoFisico'] ?? 0);
