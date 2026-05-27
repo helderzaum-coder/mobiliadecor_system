@@ -67,6 +67,11 @@ class ProdutoEstoque extends Model
             ->withTimestamps();
     }
 
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class, 'produto_estoque_tag');
+    }
+
     public function isKit(): bool
     {
         return in_array($this->formato, ['E', 'C']);

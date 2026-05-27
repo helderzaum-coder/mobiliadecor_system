@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\ProdutoEstoqueResource\Pages;
 use App\Jobs\EspelharEstoqueJob;
 use App\Models\ProdutoEstoque;
+use App\Models\Tag;
 use App\Models\TrocaTampoConfig;
 use App\Services\EstoqueService;
 use Filament\Forms;
@@ -39,6 +40,16 @@ class ProdutoEstoqueResource extends Resource
                 ->helperText('Calculado automaticamente: físico + virtual'),
             Forms\Components\TextInput::make('saldo_minimo')->label('Saldo Mínimo')->numeric()->default(0),
             Forms\Components\Toggle::make('ativo')->label('Ativo')->default(true),
+            Forms\Components\Select::make('tags')
+                ->label('Tags')
+                ->relationship('tags', 'nome')
+                ->multiple()
+                ->preload()
+                ->createOptionForm([
+                    Forms\Components\TextInput::make('nome')->required()->maxLength(50),
+                    Forms\Components\ColorPicker::make('cor')->default('#6b7280'),
+                ])
+                ->columnSpanFull(),
         ]);
     }
 
@@ -102,6 +113,12 @@ class ProdutoEstoqueResource extends Resource
                         return $config ? "Tampo: {$config->nome_tampo} ({$config->sku_tampo})" : null;
                     }),
                 Tables\Columns\TextColumn::make('saldo_minimo')->label('Mín.')->sortable(),
+                Tables\Columns\TextColumn::make('tags.nome')
+                    ->label('Tags')
+                    ->badge()
+                    ->color(fn ($state, $record) => 'gray')
+                    ->separator(',')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\IconColumn::make('ativo')->label('Ativo')->boolean(),
             ])
             ->defaultSort('nome')
@@ -112,6 +129,11 @@ class ProdutoEstoqueResource extends Resource
                 Tables\Filters\Filter::make('estoque_baixo')
                     ->label('Estoque Baixo')
                     ->query(fn ($query) => $query->whereColumn('saldo', '<=', 'saldo_minimo')),
+                Tables\Filters\SelectFilter::make('tags')
+                    ->label('Tag')
+                    ->relationship('tags', 'nome')
+                    ->multiple()
+                    ->preload(),
             ])
             ->actions([
                 Tables\Actions\Action::make('ver_componentes')
