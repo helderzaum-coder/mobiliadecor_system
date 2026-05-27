@@ -24,7 +24,7 @@ class EditProdutoEstoque extends EditRecord
             Actions\Action::make('save_and_close')
                 ->label('Salvar e Fechar')
                 ->action(function () {
-                    $this->save();
+                    $this->save(shouldRedirect: false);
                     $this->redirect(url()->previous());
                 })
                 ->color('gray'),
