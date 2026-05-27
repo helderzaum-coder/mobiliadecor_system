@@ -237,7 +237,6 @@ class ProdutoEstoqueResource extends Resource
                     ->label('Carcaças')
                     ->icon('heroicon-o-cube')
                     ->color('info')
-                    ->iconButton()
                     ->visible(function ($record) {
                         static $configSkus = null;
                         if ($configSkus === null) {
