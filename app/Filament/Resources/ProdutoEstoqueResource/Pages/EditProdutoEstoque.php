@@ -16,4 +16,19 @@ class EditProdutoEstoque extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
+
+    protected function getFormActions(): array
+    {
+        return [
+            $this->getSaveFormAction(),
+            Actions\Action::make('save_and_close')
+                ->label('Salvar e Fechar')
+                ->action(function () {
+                    $this->save();
+                    $this->redirect(url()->previous());
+                })
+                ->color('gray'),
+            $this->getCancelFormAction(),
+        ];
+    }
 }
