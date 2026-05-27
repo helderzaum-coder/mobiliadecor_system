@@ -134,7 +134,7 @@ class VariacaoTamposJob implements ShouldQueue
                     $resultado['atualizados']++;
                     $resultado['log'][] = "{$sku}: {$info['saldo_atual']} → {$saldoFinal} (carcaças={$totalCarcacas} tampo=" . ($tampo ? $tampo->saldo : 'N/A') . ")";
 
-                    // Atualizar estoque interno
+                    // Atualizar estoque interno (saldo_fisico = equalizado, saldo_carcaca = real)
                     EstoqueService::balanco(
                         $sku,
                         $saldoFinal,
@@ -144,6 +144,9 @@ class VariacaoTamposJob implements ShouldQueue
                         false,
                         'fisico'
                     );
+
+                    // Guardar saldo real individual (antes da equalização)
+                    ProdutoEstoque::where('sku', $sku)->update(['saldo_carcaca' => max(0, $info['saldo_atual'])]);
                 } else {
                     $resultado['erros']++;
                     $resultado['log'][] = "{$sku}: erro HTTP " . ($res['http_code'] ?? '?');

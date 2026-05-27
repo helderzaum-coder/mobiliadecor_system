@@ -112,6 +112,19 @@ class ProdutoEstoqueResource extends Resource
                         $config = $configCache->get($record->sku);
                         return $config ? "Tampo: {$config->nome_tampo} ({$config->sku_tampo})" : null;
                     }),
+                Tables\Columns\TextColumn::make('saldo_carcaca')
+                    ->label('Carc.')
+                    ->getStateUsing(function ($record) {
+                        static $configCache2 = null;
+                        if ($configCache2 === null) {
+                            $configCache2 = TrocaTampoConfig::all()->pluck('sku_produto')->flip();
+                        }
+                        return $configCache2->has($record->sku) ? $record->saldo_carcaca : null;
+                    })
+                    ->placeholder('—')
+                    ->color('info')
+                    ->alignCenter()
+                    ->tooltip('Carcaças reais deste SKU (antes da equalização)'),
                 Tables\Columns\TextColumn::make('saldo_minimo')->label('Mín.')->sortable(),
                 Tables\Columns\TextColumn::make('tags.nome')
                     ->label('Tags')

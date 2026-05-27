@@ -26,6 +26,7 @@ class ProdutoEstoque extends Model
         'saldo_fisico',
         'saldo_virtual',
         'saldo_secondary',
+        'saldo_carcaca',
         'saldo_minimo',
         'ativo',
     ];
@@ -36,6 +37,7 @@ class ProdutoEstoque extends Model
         'saldo_fisico' => 'integer',
         'saldo_virtual' => 'integer',
         'saldo_secondary' => 'integer',
+        'saldo_carcaca' => 'integer',
         'saldo_minimo' => 'integer',
     ];
 
