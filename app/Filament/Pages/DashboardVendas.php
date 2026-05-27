@@ -19,6 +19,18 @@ class DashboardVendas extends Page implements HasForms
     protected static string $view = 'filament.pages.dashboard-vendas';
     protected static ?int $navigationSort = 0;
 
+    protected $queryString = [
+        'periodo'      => ['except' => 'este_mes', 'as' => 'periodo'],
+        'mes_selecionado' => ['except' => '', 'as' => 'mes'],
+        'canal'        => ['except' => '', 'as' => 'canal'],
+        'conta'        => ['except' => '', 'as' => 'conta'],
+        'status_filtro' => ['except' => '', 'as' => 'status'],
+        'busca_pedido' => ['except' => '', 'as' => 'pedido'],
+        'data_inicio'  => ['except' => '', 'as' => 'de'],
+        'data_fim'     => ['except' => '', 'as' => 'ate'],
+        'pagina'       => ['except' => 1, 'as' => 'pag'],
+    ];
+
     public ?string $periodo = 'este_mes';
     public ?string $mes_selecionado = null;
     public ?string $canal = null;
@@ -32,7 +44,9 @@ class DashboardVendas extends Page implements HasForms
 
     public function mount(): void
     {
-        $this->mes_selecionado = now()->format('Y-m');
+        if (empty($this->mes_selecionado)) {
+            $this->mes_selecionado = now()->format('Y-m');
+        }
     }
 
     // ---- Ações ----
