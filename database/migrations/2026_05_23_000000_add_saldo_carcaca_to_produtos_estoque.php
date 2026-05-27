@@ -9,8 +9,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('produtos_estoque', function (Blueprint $table) {
-            $table->integer('saldo_carcaca')->default(0)->after('saldo_virtual')
-                ->comment('Saldo real individual (carcaças físicas deste SKU específico)');
+            $table->integer('saldo_carcaca')->nullable()->default(null)->after('saldo_virtual')
+                ->comment('Saldo real individual (carcaças físicas deste SKU específico). NULL = não preenchido.');
         });
     }
 

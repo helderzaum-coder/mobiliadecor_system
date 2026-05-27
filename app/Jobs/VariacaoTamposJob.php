@@ -83,9 +83,9 @@ class VariacaoTamposJob implements ShouldQueue
                 }
                 $saldoBling = self::buscarSaldoGeral($client, (int) $produto['id'], $depositoId);
 
-                // Usar saldo_carcaca interno se preenchido, senão usar saldo do Bling
+                // Usar saldo_carcaca interno se preenchido (não nulo), senão usar saldo do Bling
                 $produtoInterno = ProdutoEstoque::where('sku', $config->sku_produto)->where('ativo', true)->first();
-                $saldoCarcaca = ($produtoInterno && $produtoInterno->saldo_carcaca > 0)
+                $saldoCarcaca = ($produtoInterno && $produtoInterno->saldo_carcaca !== null)
                     ? $produtoInterno->saldo_carcaca
                     : $saldoBling;
 
@@ -155,7 +155,7 @@ class VariacaoTamposJob implements ShouldQueue
                     );
 
                     // Guardar saldo real individual apenas se ainda não foi lançado manualmente
-                    if (!$produtoInterno || $produtoInterno->saldo_carcaca === 0) {
+                    if (!$produtoInterno || $produtoInterno->saldo_carcaca === null) {
                         ProdutoEstoque::where('sku', (string) $sku)->update(['saldo_carcaca' => max(0, $info['saldo_atual'])]);
                     }
                 } else {
