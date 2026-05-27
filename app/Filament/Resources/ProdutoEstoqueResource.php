@@ -267,14 +267,21 @@ class ProdutoEstoqueResource extends Resource
                     ->icon('heroicon-o-arrow-down-on-square')
                     ->color('gray')
                     ->action(function () {
+                        $configs = TrocaTampoConfig::all()->keyBy('sku_produto');
+                        $skusTampo = $configs->pluck('sku_tampo')->unique()->filter();
+                        $tampos = ProdutoEstoque::whereIn('sku', $skusTampo)->where('ativo', true)->pluck('saldo', 'sku');
+
                         $produtos = ProdutoEstoque::where('ativo', true)
                             ->whereNotIn('formato', ['E', 'C'])
                             ->orderBy('sku')
-                            ->get(['sku', 'nome', 'saldo_fisico', 'saldo_virtual']);
+                            ->get(['sku', 'nome', 'saldo_fisico', 'saldo_virtual', 'saldo_carcaca']);
 
-                        $csv = "sku;nome;saldo_fisico;saldo_virtual\n";
+                        $csv = "sku;nome;saldo_fisico;saldo_virtual;tampo;carcacas\n";
                         foreach ($produtos as $p) {
-                            $csv .= "{$p->sku};" . str_replace(';', ',', $p->nome) . ";{$p->saldo_fisico};{$p->saldo_virtual}\n";
+                            $config = $configs->get($p->sku);
+                            $saldoTampo = $config ? ($tampos->get($config->sku_tampo) ?? '') : '';
+                            $carcaca = $config ? ($p->saldo_carcaca ?? '') : '';
+                            $csv .= "{$p->sku};" . str_replace(';', ',', $p->nome) . ";{$p->saldo_fisico};{$p->saldo_virtual};{$saldoTampo};{$carcaca}\n";
                         }
 
                         $path = storage_path('app/public/estoque_export.csv');
