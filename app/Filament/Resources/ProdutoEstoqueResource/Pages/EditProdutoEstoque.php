@@ -25,7 +25,7 @@ class EditProdutoEstoque extends EditRecord
                 ->label('Salvar e Fechar')
                 ->action(function () {
                     $this->save(shouldRedirect: false);
-                    $this->redirect(ProdutoEstoqueResource::getUrl('index'));
+                    $this->redirect($this->previousUrl ?? ProdutoEstoqueResource::getUrl('index'));
                 })
                 ->color('gray'),
             $this->getCancelFormAction(),
