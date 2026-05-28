@@ -189,12 +189,13 @@ class MercadoLivrePromocoes extends Page
         $service = new MercadoLivrePromotionService($this->accountKey);
         $info = $service->buscarInfoParaAdesao($itemId);
 
-        // Item inacessível (MLB migrado/removido)
-        if (!empty($info['erro'])) {
-            Notification::make()->title('Item inacessível')->body($info['erro'] . ' - ' . $itemId)->warning()->send();
-            $this->cancelarAdesao();
-            $this->pularParaProximo();
-            return;
+        // Item inacessível via API (MLB migrado para UP) - usar dados da promoção
+        if (!empty($info['erro_api'])) {
+            $info['base_price'] = $targetItem['original_price'] ?? $targetItem['price'] ?? 0;
+            $info['title'] = $targetItem['title'] ?? $itemId;
+            // Tentar buscar custo pelo SKU se tiver no título ou via Bling
+            // Frete não disponível para itens migrados
+            Notification::make()->title('Item com acesso limitado')->body('MLB migrado para UP. Frete e comissão podem estar imprecisos.')->warning()->send();
         }
 
         // Se não veio offer_id e é SMART, buscar via API

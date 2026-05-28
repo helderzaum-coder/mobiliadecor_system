@@ -273,8 +273,9 @@ class MercadoLivrePromotionService
                 ->get("{$this->apiBase}/items/{$itemId}");
 
             if ($resp->status() === 403 || $resp->status() === 404) {
-                Log::warning("ML buscarInfoParaAdesao [{$itemId}]: item inacessível (HTTP {$resp->status()}). Pode ser MLB migrado para UP.");
-                $info['erro'] = 'Item inacessível (MLB migrado ou removido)';
+                Log::warning("ML buscarInfoParaAdesao [{$itemId}]: item inacessível (HTTP {$resp->status()}). Tentando dados alternativos.");
+                // Item inacessível - tentar buscar custo pelo SKU se disponível via promoção
+                $info['erro_api'] = true;
                 return $info;
             }
 
