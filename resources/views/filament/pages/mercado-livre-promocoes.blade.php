@@ -101,15 +101,15 @@
                             $temSubsidio = $aderindoInfo['tem_subsidio'] ?? false;
                             $meliPercentage = $aderindoInfo['meli_percentage'] ?? 0;
                             $precoPromo = $aderindoPreco ?? 0;
-                            $comissao = $precoPromo * ($comissaoPercent / 100);
-                            $imposto = $precoPromo * ($impPercent / 100);
-                            // Subsídio ML: meli_percentage sobre o preço original
+                            $comissaoCheia = $precoPromo * ($comissaoPercent / 100);
+                            // Subsídio ML: desconto na comissão
                             $subsidioML = $temSubsidio ? $precoOriginal * ($meliPercentage / 100) : 0;
-                            // Receita real = preço promo + subsídio ML
-                            $receitaReal = $precoPromo + $subsidioML;
+                            $comissao = $comissaoCheia - $subsidioML;
+                            if ($comissao < 0) $comissao = 0;
+                            $imposto = $precoPromo * ($impPercent / 100);
                             $custoTotal = $frete + $comissao + $imposto + $custoProduto;
-                            $margem = $receitaReal - $custoTotal;
-                            $margemPercent = $receitaReal > 0 ? ($margem / $receitaReal) * 100 : 0;
+                            $margem = $precoPromo - $custoTotal;
+                            $margemPercent = $precoPromo > 0 ? ($margem / $precoPromo) * 100 : 0;
                             $desconto = $precoOriginal > 0 ? (($precoOriginal - $precoPromo) / $precoOriginal) * 100 : 0;
                         @endphp
                         <div class="mb-4 p-4 rounded-lg bg-white dark:bg-gray-800 ring-1 ring-primary-500/30 shadow-sm">
@@ -133,6 +133,9 @@
                                 <div class="p-2 rounded bg-gray-50 dark:bg-gray-900">
                                     <span class="text-gray-500 block">Comissão ML ({{ number_format($comissaoPercent, 1) }}%)</span>
                                     <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($comissao, 2, ',', '.') }}</span>
+                                    @if($temSubsidio)
+                                        <span class="text-[10px] text-green-600 dark:text-green-400 block">-R$ {{ number_format($subsidioML, 2, ',', '.') }} subsídio</span>
+                                    @endif
                                 </div>
                                 <div class="p-2 rounded bg-gray-50 dark:bg-gray-900">
                                     <span class="text-gray-500 block">Imposto ({{ number_format($impPercent, 1) }}%)</span>
@@ -157,8 +160,7 @@
                                 @if($temSubsidio)
                                 <div class="p-2 rounded bg-blue-50 dark:bg-blue-900/20">
                                     <span class="text-gray-500 block">Subsídio ML ({{ number_format($meliPercentage, 1) }}%)</span>
-                                    <span class="font-semibold text-blue-700 dark:text-blue-400">+ R$ {{ number_format($subsidioML, 2, ',', '.') }}</span>
-                                    <span class="text-[10px] text-gray-400 block">Receita real: R$ {{ number_format($receitaReal, 2, ',', '.') }}</span>
+                                    <span class="font-semibold text-blue-700 dark:text-blue-400">- R$ {{ number_format($subsidioML, 2, ',', '.') }} na comissão</span>
                                 </div>
                                 @endif
                             </div>
@@ -194,7 +196,7 @@
                                     </x-filament::button>
                                 </div>
                             </div>
-                            <p class="text-[10px] text-gray-400 mt-1">* Margem = {{ $temSubsidio ? '(Preço promo + Subsídio ML)' : 'Preço promo' }} - Frete - Comissão - Imposto{{ $custoProduto > 0 ? ' - Custo Produto' : '' }}</p>
+                            <p class="text-[10px] text-gray-400 mt-1">* Margem = Preço promo - Frete - Comissão{{ $temSubsidio ? ' (já com subsídio)' : '' }} - Imposto{{ $custoProduto > 0 ? ' - Custo Produto' : '' }}</p>
                         </div>
                     @elseif($aderindoItemId && !$aderindoInfo)
                         <div class="mb-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 flex items-center gap-2">
@@ -359,13 +361,13 @@
                         $temSubsidio = $aderindoInfo['tem_subsidio'] ?? false;
                         $meliPercentage = $aderindoInfo['meli_percentage'] ?? 0;
                         $precoPromo = $aderindoPreco ?? 0;
-                        $comissao = $precoPromo * ($comissaoPercent / 100);
-                        $imposto = $precoPromo * ($impPercent / 100);
+                        $comissaoCheia = $precoPromo * ($comissaoPercent / 100);
                         $subsidioML = $temSubsidio ? $precoOriginal * ($meliPercentage / 100) : 0;
-                        $receitaReal = $precoPromo + $subsidioML;
+                        $comissao = max(0, $comissaoCheia - $subsidioML);
+                        $imposto = $precoPromo * ($impPercent / 100);
                         $custoTotal = $frete + $comissao + $imposto + $custoProduto;
-                        $margem = $receitaReal - $custoTotal;
-                        $margemPercent = $receitaReal > 0 ? ($margem / $receitaReal) * 100 : 0;
+                        $margem = $precoPromo - $custoTotal;
+                        $margemPercent = $precoPromo > 0 ? ($margem / $precoPromo) * 100 : 0;
                         $desconto = $precoOriginal > 0 ? (($precoOriginal - $precoPromo) / $precoOriginal) * 100 : 0;
                     @endphp
                     <div class="mb-4 p-4 rounded-lg bg-white dark:bg-gray-800 ring-1 ring-primary-500/30 shadow-sm">
