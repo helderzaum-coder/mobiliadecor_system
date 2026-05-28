@@ -328,6 +328,48 @@ class MercadoLivrePromocoes extends Page
         }
     }
 
+    public function iniciarAdesaoDoItem(int $promoIndex): void
+    {
+        $promo = $this->promocoesDoItem[$promoIndex] ?? null;
+        if (!$promo) return;
+
+        $itemId = trim($this->buscarItemId);
+        if (!str_starts_with(strtoupper($itemId), 'MLB')) {
+            $itemId = 'MLB' . $itemId;
+        }
+
+        $this->aderindoItemId = $itemId;
+        $this->aderindoInfo = null;
+        $this->aderindoPreco = $promo['price'] ?? null;
+
+        $this->selectedPromotion = [
+            'id' => $promo['id'],
+            'type' => $promo['type'],
+            'name' => $promo['name'],
+        ];
+
+        $service = new MercadoLivrePromotionService($this->accountKey);
+        $info = $service->buscarInfoParaAdesao($itemId);
+
+        $meliPercentage = (float) ($promo['meli_percentage'] ?? 0);
+        $sellerPercentage = (float) ($promo['seller_percentage'] ?? 0);
+
+        $this->aderindoInfo = [
+            'title'              => $info['title'] ?? $itemId,
+            'original_price'     => $info['base_price'] ?? $promo['original_price'] ?? 0,
+            'frete'              => $info['frete'] ?? 0,
+            'comissao_percent'   => $info['comissao_percent'] ?? 11.5,
+            'listing_type'       => $info['listing_type'] ?? '',
+            'imposto_percent'    => 17.8,
+            'custo_produto'      => $info['custo_produto'] ?? 0,
+            'sku'                => $info['sku'] ?? null,
+            'tem_subsidio'       => $meliPercentage > 0,
+            'meli_percentage'    => $meliPercentage,
+            'seller_percentage'  => $sellerPercentage,
+            'promo_type'         => $promo['type'],
+        ];
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->hasRole('admin') ?? false;

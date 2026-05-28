@@ -348,6 +348,96 @@
             </div>
 
             @if(!empty($promocoesDoItem))
+                {{-- Painel de Adesão (reutilizado) --}}
+                @if($aderindoItemId && $aderindoInfo && $abaAtiva === 'buscar_item')
+                    @php
+                        $precoOriginal = $aderindoInfo['original_price'] ?? 0;
+                        $frete = $aderindoInfo['frete'] ?? 0;
+                        $comissaoPercent = $aderindoInfo['comissao_percent'] ?? 11.5;
+                        $impPercent = $aderindoInfo['imposto_percent'] ?? 17.8;
+                        $custoProduto = $aderindoInfo['custo_produto'] ?? 0;
+                        $temSubsidio = $aderindoInfo['tem_subsidio'] ?? false;
+                        $meliPercentage = $aderindoInfo['meli_percentage'] ?? 0;
+                        $precoPromo = $aderindoPreco ?? 0;
+                        $comissao = $precoPromo * ($comissaoPercent / 100);
+                        $imposto = $precoPromo * ($impPercent / 100);
+                        $subsidioML = $temSubsidio ? $precoOriginal * ($meliPercentage / 100) : 0;
+                        $receitaReal = $precoPromo + $subsidioML;
+                        $custoTotal = $frete + $comissao + $imposto + $custoProduto;
+                        $margem = $receitaReal - $custoTotal;
+                        $margemPercent = $receitaReal > 0 ? ($margem / $receitaReal) * 100 : 0;
+                        $desconto = $precoOriginal > 0 ? (($precoOriginal - $precoPromo) / $precoOriginal) * 100 : 0;
+                    @endphp
+                    <div class="mb-4 p-4 rounded-lg bg-white dark:bg-gray-800 ring-1 ring-primary-500/30 shadow-sm">
+                        <div class="flex items-start justify-between mb-3">
+                            <div>
+                                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $aderindoInfo['title'] }}</p>
+                                <p class="text-xs text-gray-500 font-mono">{{ $aderindoItemId }} • {{ $selectedPromotion['name'] ?? '' }}</p>
+                            </div>
+                            <x-filament::button size="xs" color="gray" wire:click="cancelarAdesao">Fechar</x-filament::button>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs mb-3">
+                            <div class="p-2 rounded bg-gray-50 dark:bg-gray-900">
+                                <span class="text-gray-500 block">Preço Original</span>
+                                <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($precoOriginal, 2, ',', '.') }}</span>
+                            </div>
+                            <div class="p-2 rounded bg-gray-50 dark:bg-gray-900">
+                                <span class="text-gray-500 block">Frete Grátis</span>
+                                <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($frete, 2, ',', '.') }}</span>
+                            </div>
+                            <div class="p-2 rounded bg-gray-50 dark:bg-gray-900">
+                                <span class="text-gray-500 block">Comissão ML ({{ number_format($comissaoPercent, 1) }}%)</span>
+                                <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($comissao, 2, ',', '.') }}</span>
+                            </div>
+                            <div class="p-2 rounded bg-gray-50 dark:bg-gray-900">
+                                <span class="text-gray-500 block">Imposto ({{ number_format($impPercent, 1) }}%)</span>
+                                <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($imposto, 2, ',', '.') }}</span>
+                            </div>
+                            <div class="p-2 rounded {{ $custoProduto > 0 ? 'bg-gray-50 dark:bg-gray-900' : 'bg-yellow-50 dark:bg-yellow-900/20' }}">
+                                <span class="text-gray-500 block">Custo Produto</span>
+                                @if($custoProduto > 0)
+                                    <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($custoProduto, 2, ',', '.') }}</span>
+                                    @if($aderindoInfo['sku'] ?? null)
+                                        <span class="text-[10px] text-gray-400 block">SKU: {{ $aderindoInfo['sku'] }}</span>
+                                    @endif
+                                @else
+                                    <span class="font-semibold text-yellow-600 dark:text-yellow-400">Sem custo</span>
+                                @endif
+                            </div>
+                            @if($temSubsidio)
+                            <div class="p-2 rounded bg-blue-50 dark:bg-blue-900/20">
+                                <span class="text-gray-500 block">Subsídio ML ({{ number_format($meliPercentage, 1) }}%)</span>
+                                <span class="font-semibold text-blue-700 dark:text-blue-400">+ R$ {{ number_format($subsidioML, 2, ',', '.') }}</span>
+                            </div>
+                            @endif
+                        </div>
+                        <div class="flex items-center gap-3 flex-wrap p-2 rounded {{ $margemPercent >= 15 ? 'bg-green-50 dark:bg-green-900/20' : ($margemPercent >= 0 ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-red-50 dark:bg-red-900/20') }}">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-gray-600 dark:text-gray-400">Preço promo:</span>
+                                <span class="text-xs text-gray-500">R$</span>
+                                <input type="number" step="0.01" wire:model.blur="aderindoPreco"
+                                    class="w-24 px-2 py-1 text-sm rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:ring-primary-500">
+                                <x-filament::button size="xs" color="gray" wire:click="$refresh">Calcular</x-filament::button>
+                            </div>
+                            <div class="text-xs">
+                                <span class="text-gray-500">Desconto:</span>
+                                <span class="font-semibold">{{ number_format($desconto, 1) }}%</span>
+                            </div>
+                            <div class="text-xs">
+                                <span class="text-gray-500">Margem:</span>
+                                <span @class(['font-bold',
+                                    'text-green-700 dark:text-green-400' => $margemPercent >= 15,
+                                    'text-yellow-700 dark:text-yellow-400' => $margemPercent >= 0 && $margemPercent < 15,
+                                    'text-red-700 dark:text-red-400' => $margemPercent < 0,
+                                ])>R$ {{ number_format($margem, 2, ',', '.') }} ({{ number_format($margemPercent, 1) }}%)</span>
+                            </div>
+                            <div class="ml-auto">
+                                <x-filament::button size="sm" wire:click="confirmarAdesao">Confirmar Adesão</x-filament::button>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
                 <div class="overflow-auto rounded-lg ring-1 ring-gray-950/5 dark:ring-white/10">
                     <table class="fi-ta-table w-full table-auto text-start">
                         <thead class="bg-gray-50 dark:bg-white/5">
@@ -359,6 +449,7 @@
                                 <th class="px-3 py-2 text-end text-xs font-medium text-gray-500 dark:text-gray-400">Preço Promo</th>
                                 <th class="px-3 py-2 text-end text-xs font-medium text-gray-500 dark:text-gray-400">Rebate ML</th>
                                 <th class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Período</th>
+                                <th class="px-3 py-2 text-end text-xs font-medium text-gray-500 dark:text-gray-400">Ações</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-white/5">
@@ -402,6 +493,14 @@
                                             @endif
                                         @else
                                             —
+                                        @endif
+                                    </td>
+                                    <td class="px-3 py-2 text-end">
+                                        @if($promo['status'] === 'candidate' || $promo['status'] === 'started')
+                                            <button wire:click="iniciarAdesaoDoItem({{ $loop->index }})"
+                                                class="text-xs text-primary-600 hover:text-primary-500 font-medium">
+                                                Aderir
+                                            </button>
                                         @endif
                                     </td>
                                 </tr>

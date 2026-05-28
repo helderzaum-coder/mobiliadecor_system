@@ -244,7 +244,7 @@ class MercadoLivrePromotionService
         $token = $this->oauth->getAccessToken();
         if (!$token) return [];
 
-        $info = ['base_price' => 0, 'frete' => 0, 'comissao_percent' => 0, 'listing_type' => '', 'sku' => null, 'custo_produto' => 0];
+        $info = ['base_price' => 0, 'frete' => 0, 'comissao_percent' => 0, 'listing_type' => '', 'sku' => null, 'custo_produto' => 0, 'title' => null];
 
         try {
             $resp = Http::withToken($token)->withOptions(['verify' => false])->timeout(10)
@@ -254,6 +254,7 @@ class MercadoLivrePromotionService
                 $info['base_price'] = $item['base_price'] ?? $item['price'] ?? 0;
                 $info['listing_type'] = $item['listing_type_id'] ?? '';
                 $info['comissao_percent'] = $this->percentualComissao($item['listing_type_id'] ?? null);
+                $info['title'] = $item['title'] ?? null;
 
                 // SKU via seller_custom_field, attributes ou variations
                 $sku = $item['seller_custom_field'] ?? null;
