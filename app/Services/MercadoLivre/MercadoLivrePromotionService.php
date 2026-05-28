@@ -265,7 +265,7 @@ class MercadoLivrePromotionService
         $token = $this->oauth->getAccessToken();
         if (!$token) return [];
 
-        $info = ['base_price' => 0, 'frete' => 0, 'comissao_percent' => 0, 'listing_type' => '', 'sku' => null, 'custo_produto' => 0, 'title' => null];
+        $info = ['base_price' => 0, 'frete' => 0, 'comissao_percent' => 0, 'comissao_valor' => 0, 'listing_type' => '', 'sku' => null, 'custo_produto' => 0, 'title' => null];
 
         try {
             $resp = Http::withToken($token)->withOptions(['verify' => false])->timeout(10)
@@ -276,11 +276,15 @@ class MercadoLivrePromotionService
                 $info['listing_type'] = $item['listing_type_id'] ?? '';
                 $info['title'] = $item['title'] ?? null;
 
-                // Comissão real via API listing_prices
+                // Comissão real via API listing_prices (valor absoluto)
                 $categoryId = $item['category_id'] ?? '';
                 $listingType = $item['listing_type_id'] ?? '';
+                $logisticType = $item['shipping']['logistic_type'] ?? 'xd_drop_off';
+                $shippingMode = $item['shipping']['mode'] ?? 'me2';
                 $price = $info['base_price'];
-                $info['comissao_percent'] = $this->buscarComissaoReal($token, $price, $listingType, $categoryId);
+                $comissaoData = $this->buscarComissaoReal($token, $price, $listingType, $categoryId, $logisticType, $shippingMode);
+                $info['comissao_percent'] = $comissaoData['percent'];
+                $info['comissao_valor'] = $comissaoData['valor'];
 
                 // SKU via seller_custom_field, attributes ou variations
                 $sku = $item['seller_custom_field'] ?? null;
@@ -342,32 +346,43 @@ class MercadoLivrePromotionService
         return $info;
     }
 
-    private function buscarComissaoReal(string $token, float $price, string $listingType, string $categoryId): float
+    private function buscarComissaoReal(string $token, float $price, string $listingType, string $categoryId, string $logisticType = 'xd_drop_off', string $shippingMode = 'me2'): array
     {
+        $fallback = ['percent' => $this->percentualComissao($listingType), 'valor' => 0];
+
         if (!$price || !$listingType || !$categoryId) {
-            return $this->percentualComissao($listingType);
+            return $fallback;
         }
 
         try {
+            $params = [
+                'price' => $price,
+                'listing_type_id' => $listingType,
+                'category_id' => $categoryId,
+                'logistic_type' => $logisticType,
+                'shipping_mode' => $shippingMode,
+            ];
+
             $resp = Http::withToken($token)->withOptions(['verify' => false])->timeout(10)
-                ->get("{$this->apiBase}/sites/MLB/listing_prices", [
-                    'price' => $price,
-                    'listing_type_id' => $listingType,
-                    'category_id' => $categoryId,
-                ]);
+                ->get("{$this->apiBase}/sites/MLB/listing_prices", $params);
 
             if ($resp->successful()) {
                 $data = $resp->json();
-                $saleFee = $data['sale_fee_details'] ?? [];
-                if (!empty($saleFee['percentage_fee'])) {
-                    return (float) $saleFee['percentage_fee'];
+                // Resposta pode ser array ou objeto único
+                $item = is_array($data) && isset($data[0]) ? collect($data)->firstWhere('listing_type_id', $listingType) ?? $data[0] : $data;
+                $saleFee = $item['sale_fee_details'] ?? [];
+                $percent = (float) ($saleFee['percentage_fee'] ?? 0);
+                $valor = (float) ($item['sale_fee_amount'] ?? 0);
+
+                if ($percent > 0 || $valor > 0) {
+                    return ['percent' => $percent ?: ($price > 0 ? ($valor / $price) * 100 : 0), 'valor' => $valor];
                 }
             }
         } catch (\Throwable $e) {
             Log::warning("ML buscarComissaoReal: " . $e->getMessage());
         }
 
-        return $this->percentualComissao($listingType);
+        return $fallback;
     }
 
     private function percentualComissao(?string $listingTypeId): float
