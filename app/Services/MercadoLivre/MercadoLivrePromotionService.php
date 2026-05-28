@@ -336,44 +336,21 @@ class MercadoLivrePromotionService
                     }
                 }
 
-                // Frete grátis - buscar custo via shipping_options
+                // Frete grátis - buscar custo real via shipping_options do item
                 $freeShipping = $item['shipping']['free_shipping'] ?? false;
                 if ($freeShipping) {
-                    $tokenModel = \App\Models\MercadoLivreToken::where('account_key', $this->accountKey)->first();
-                    $userId = $tokenModel?->user_id ?? config("mercadolivre.accounts.{$this->accountKey}.user_id");
+                    $freteResp = Http::withToken($token)->withOptions(['verify' => false])->timeout(10)
+                        ->get("{$this->apiBase}/items/{$itemId}/shipping_options", ['zip_code' => '01310100']);
 
-                    $maiorFrete = 0;
-                    $variations = $item['variations'] ?? [];
-
-                    if (!empty($variations)) {
-                        // Buscar frete de cada variação e usar o maior
-                        foreach ($variations as $var) {
-                            $varId = $var['id'] ?? null;
-                            if (!$varId) continue;
-                            $freteResp = Http::withToken($token)->withOptions(['verify' => false])->timeout(10)
-                                ->get("{$this->apiBase}/users/{$userId}/shipping_options/free", [
-                                    'item_id' => $itemId,
-                                    'variation_id' => $varId,
-                                ]);
-                            if ($freteResp->successful()) {
-                                $coverage = $freteResp->json()['coverage'] ?? [];
-                                $frete = (float) ($coverage['all_country']['list_cost']
-                                    ?? collect($coverage)->flatten(1)->pluck('list_cost')->filter()->first()
-                                    ?? 0);
-                                $maiorFrete = max($maiorFrete, $frete);
-                            }
+                    if ($freteResp->successful()) {
+                        $options = $freteResp->json()['options'] ?? [];
+                        // Pegar o maior custo entre as opções (geralmente a primeira é a mais cara)
+                        $maiorFrete = 0;
+                        foreach ($options as $opt) {
+                            $cost = (float) ($opt['list_cost'] ?? $opt['cost'] ?? 0);
+                            $maiorFrete = max($maiorFrete, $cost);
                         }
                         $info['frete'] = $maiorFrete;
-                    } else {
-                        // Sem variações: buscar frete simples
-                        $freteResp = Http::withToken($token)->withOptions(['verify' => false])->timeout(10)
-                            ->get("{$this->apiBase}/users/{$userId}/shipping_options/free", ['item_id' => $itemId]);
-                        if ($freteResp->successful()) {
-                            $coverage = $freteResp->json()['coverage'] ?? [];
-                            $info['frete'] = $coverage['all_country']['list_cost']
-                                ?? collect($coverage)->flatten(1)->pluck('list_cost')->filter()->first()
-                                ?? 0;
-                        }
                     }
                 }
             }
