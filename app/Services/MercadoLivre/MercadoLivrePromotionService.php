@@ -253,8 +253,13 @@ class MercadoLivrePromotionService
                 $item = $resp->json();
                 $info['base_price'] = $item['base_price'] ?? $item['price'] ?? 0;
                 $info['listing_type'] = $item['listing_type_id'] ?? '';
-                $info['comissao_percent'] = $this->percentualComissao($item['listing_type_id'] ?? null);
                 $info['title'] = $item['title'] ?? null;
+
+                // Comissão real via API listing_prices
+                $categoryId = $item['category_id'] ?? '';
+                $listingType = $item['listing_type_id'] ?? '';
+                $price = $info['base_price'];
+                $info['comissao_percent'] = $this->buscarComissaoReal($token, $price, $listingType, $categoryId);
 
                 // SKU via seller_custom_field, attributes ou variations
                 $sku = $item['seller_custom_field'] ?? null;
@@ -314,6 +319,34 @@ class MercadoLivrePromotionService
         }
 
         return $info;
+    }
+
+    private function buscarComissaoReal(string $token, float $price, string $listingType, string $categoryId): float
+    {
+        if (!$price || !$listingType || !$categoryId) {
+            return $this->percentualComissao($listingType);
+        }
+
+        try {
+            $resp = Http::withToken($token)->withOptions(['verify' => false])->timeout(10)
+                ->get("{$this->apiBase}/sites/MLB/listing_prices", [
+                    'price' => $price,
+                    'listing_type_id' => $listingType,
+                    'category_id' => $categoryId,
+                ]);
+
+            if ($resp->successful()) {
+                $data = $resp->json();
+                $saleFee = $data['sale_fee_details'] ?? [];
+                if (!empty($saleFee['percentage_fee'])) {
+                    return (float) $saleFee['percentage_fee'];
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning("ML buscarComissaoReal: " . $e->getMessage());
+        }
+
+        return $this->percentualComissao($listingType);
     }
 
     private function percentualComissao(?string $listingTypeId): float
