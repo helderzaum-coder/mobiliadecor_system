@@ -95,6 +95,7 @@ class MercadoLivrePromotionService
                 'original_price' => $originalPrice,
                 'deal_price' => $dealPrice ?? $proposedDealPrice,
                 'proposed_deal_price' => $proposedDealPrice,
+                'buyer_price' => $preco, // preço que o comprador paga (base para comissão)
                 'meli_percentage' => (float) ($item['meli_percentage'] ?? 0),
                 'seller_percentage' => (float) ($item['seller_percentage'] ?? 0),
                 'offer_id' => $item['offer_id'] ?? $item['ref_id'] ?? $item['deal_id'] ?? $item['candidate_id'] ?? null,

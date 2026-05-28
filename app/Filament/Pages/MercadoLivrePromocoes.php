@@ -183,6 +183,7 @@ class MercadoLivrePromocoes extends Page
         }
 
         $this->aderindoPreco = $targetItem['deal_price'] ?? $targetItem['price'] ?? null;
+        $buyerPrice = $targetItem['buyer_price'] ?? $targetItem['price'] ?? $targetItem['deal_price'] ?? 0;
         $this->aderindoOfferId = $targetItem['offer_id'] ?? null;
 
         $service = new MercadoLivrePromotionService($this->accountKey);
@@ -203,6 +204,7 @@ class MercadoLivrePromocoes extends Page
             'frete'              => $info['frete'] ?? 0,
             'comissao_percent'   => $info['comissao_percent'] ?? 11.5,
             'comissao_valor'     => $info['comissao_valor'] ?? 0,
+            'buyer_price'        => $buyerPrice,
             'listing_type'       => $info['listing_type'] ?? '',
             'imposto_percent'    => $this->impostoPercent,
             'custo_produto'      => $info['custo_produto'] ?? 0,
@@ -429,6 +431,7 @@ class MercadoLivrePromocoes extends Page
             'frete'              => $info['frete'] ?? 0,
             'comissao_percent'   => $info['comissao_percent'] ?? 11.5,
             'comissao_valor'     => $info['comissao_valor'] ?? 0,
+            'buyer_price'        => $promo['price'] ?? $info['base_price'] ?? 0,
             'listing_type'       => $info['listing_type'] ?? '',
             'imposto_percent'    => $this->impostoPercent,
             'custo_produto'      => $info['custo_produto'] ?? 0,
