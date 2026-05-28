@@ -174,9 +174,9 @@ class MercadoLivrePromocoes extends Page
         $info = $service->buscarInfoParaAdesao($itemId);
 
         $promoType = $this->selectedPromotion['type'] ?? '';
-        $temSubsidio = in_array($promoType, ['PRICE_MATCHING', 'LIGHTNING', 'SMART']);
-        $meliPercentage = (float) ($this->selectedPromotion['meli_percentage'] ?? 0);
-        $sellerPercentage = (float) ($this->selectedPromotion['seller_percentage'] ?? 0);
+        $meliPercentage = (float) ($targetItem['meli_percentage'] ?? 0);
+        $sellerPercentage = (float) ($targetItem['seller_percentage'] ?? 0);
+        $temSubsidio = $meliPercentage > 0;
 
         $this->aderindoInfo = [
             'title'              => $targetItem['title'] ?? $itemId,
@@ -187,7 +187,7 @@ class MercadoLivrePromocoes extends Page
             'imposto_percent'    => 17.8,
             'custo_produto'      => $info['custo_produto'] ?? 0,
             'sku'                => $info['sku'] ?? null,
-            'tem_subsidio'       => $temSubsidio && $meliPercentage > 0,
+            'tem_subsidio'       => $temSubsidio,
             'meli_percentage'    => $meliPercentage,
             'seller_percentage'  => $sellerPercentage,
             'promo_type'         => $promoType,
