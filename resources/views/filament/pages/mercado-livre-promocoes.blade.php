@@ -122,9 +122,16 @@
                                     <span class="text-gray-500 block">Custo Produto</span>
                                     @if($custoProduto > 0)
                                         <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($custoProduto, 2, ',', '.') }}</span>
-                                        <span class="text-[10px] text-gray-400 block">média últimas vendas</span>
+                                        @if($aderindoInfo['sku'] ?? null)
+                                            <span class="text-[10px] text-gray-400 block">SKU: {{ $aderindoInfo['sku'] }}</span>
+                                        @endif
                                     @else
-                                        <span class="font-semibold text-yellow-600 dark:text-yellow-400">Sem histórico</span>
+                                        <span class="font-semibold text-yellow-600 dark:text-yellow-400">Sem custo no Bling</span>
+                                        @if($aderindoInfo['sku'] ?? null)
+                                            <span class="text-[10px] text-gray-400 block">SKU: {{ $aderindoInfo['sku'] }}</span>
+                                        @else
+                                            <span class="text-[10px] text-gray-400 block">SKU não encontrado</span>
+                                        @endif
                                     @endif
                                 </div>
                                 @if($temSubsidio)

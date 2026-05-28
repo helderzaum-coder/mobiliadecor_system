@@ -242,7 +242,7 @@ class MercadoLivrePromotionService
         $token = $this->oauth->getAccessToken();
         if (!$token) return [];
 
-        $info = ['base_price' => 0, 'frete' => 0, 'comissao_percent' => 0, 'listing_type' => ''];
+        $info = ['base_price' => 0, 'frete' => 0, 'comissao_percent' => 0, 'listing_type' => '', 'sku' => null, 'custo_produto' => 0];
 
         try {
             $resp = Http::withToken($token)->withOptions(['verify' => false])->timeout(10)
@@ -252,6 +252,29 @@ class MercadoLivrePromotionService
                 $info['base_price'] = $item['base_price'] ?? $item['price'] ?? 0;
                 $info['listing_type'] = $item['listing_type_id'] ?? '';
                 $info['comissao_percent'] = $this->percentualComissao($item['listing_type_id'] ?? null);
+
+                // SKU via seller_custom_field ou attributes
+                $sku = $item['seller_custom_field'] ?? null;
+                if (!$sku) {
+                    foreach ($item['attributes'] ?? [] as $attr) {
+                        if (($attr['id'] ?? '') === 'SELLER_SKU') {
+                            $sku = $attr['value_name'] ?? null;
+                            break;
+                        }
+                    }
+                }
+                $info['sku'] = $sku;
+
+                // Custo de compra via Bling
+                if ($sku) {
+                    try {
+                        $bling = new \App\Services\Bling\BlingClient($this->accountKey);
+                        $produto = $bling->getProductBySku($sku);
+                        $info['custo_produto'] = (float) ($produto['precoCusto'] ?? 0);
+                    } catch (\Throwable $e) {
+                        Log::warning("ML buscarInfoParaAdesao [{$itemId}]: erro Bling SKU {$sku}: " . $e->getMessage());
+                    }
+                }
 
                 // Frete grátis - buscar custo via shipping_options
                 $freeShipping = $item['shipping']['free_shipping'] ?? false;
