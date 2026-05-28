@@ -286,6 +286,19 @@ class MercadoLivrePromotionService
                 $info['comissao_percent'] = $comissaoData['percent'];
                 $info['comissao_valor'] = $comissaoData['valor'];
 
+                // Log completo para debug
+                Log::info("ML buscarInfoParaAdesao [{$itemId}]: dados completos", [
+                    'base_price' => $info['base_price'],
+                    'listing_type' => $listingType,
+                    'category_id' => $categoryId,
+                    'logistic_type' => $logisticType,
+                    'shipping_mode' => $shippingMode,
+                    'comissao_percent' => $comissaoData['percent'],
+                    'comissao_valor' => $comissaoData['valor'],
+                    'free_shipping' => $item['shipping']['free_shipping'] ?? false,
+                    'shipping_tags' => $item['shipping']['tags'] ?? [],
+                ]);
+
                 // SKU via seller_custom_field, attributes ou variations
                 $sku = $item['seller_custom_field'] ?? null;
                 if (!$sku) {
