@@ -385,6 +385,7 @@ class MercadoLivrePromotionService
 
         $searchAfter = null;
         $maxPages = 20;
+        $itemIdNorm = strtoupper($itemId);
 
         for ($i = 0; $i < $maxPages; $i++) {
             $params = [
@@ -403,21 +404,20 @@ class MercadoLivrePromotionService
                 if (!$resp->successful()) break;
 
                 $data = $resp->json();
-                foreach ($data['results'] ?? [] as $item) {
-                    if (($item['id'] ?? '') === $itemId) {
-                        // Tentar todos os campos possíveis que podem ser o offer/candidate id
-                        $offerId = $item['offer_id']
-                            ?? $item['deal_id']
-                            ?? $item['candidate_id']
-                            ?? $item['promotion_item_id']
-                            ?? null;
+                $results = $data['results'] ?? [];
 
-                        // Se não encontrou em campos diretos, logar para debug
+                // Log primeira página para debug
+                if ($i === 0) {
+                    $ids = array_map(fn($r) => $r['id'] ?? '?', array_slice($results, 0, 5));
+                    Log::info("ML buscarOfferIdDoItem [{$itemId}]: promo {$promotionId}, primeiros IDs: " . implode(', ', $ids) . " (total pág: " . count($results) . ")");
+                }
+
+                foreach ($results as $item) {
+                    $id = strtoupper($item['id'] ?? '');
+                    if ($id === $itemIdNorm) {
+                        $offerId = $item['offer_id'] ?? $item['deal_id'] ?? $item['candidate_id'] ?? $item['promotion_item_id'] ?? null;
                         if (!$offerId) {
-                            Log::warning("ML buscarOfferIdDoItem [{$itemId}]: item encontrado mas sem offer_id", [
-                                'keys' => array_keys($item),
-                                'item_json' => json_encode($item),
-                            ]);
+                            Log::warning("ML buscarOfferIdDoItem [{$itemId}]: encontrado mas sem offer_id", ['keys' => array_keys($item)]);
                         }
                         return $offerId;
                     }
@@ -431,7 +431,7 @@ class MercadoLivrePromotionService
             }
         }
 
-        Log::warning("ML buscarOfferIdDoItem [{$itemId}]: item NÃO encontrado na promoção {$promotionId}");
+        Log::warning("ML buscarOfferIdDoItem [{$itemId}]: item NÃO encontrado na promoção {$promotionId} após {$i} páginas");
         return null;
     }
 
