@@ -135,7 +135,6 @@ class MercadoLivrePromocoes extends Page
         $this->aderindoItemId = $itemId;
         $this->aderindoInfo = null;
 
-        // Buscar item na lista
         $targetItem = null;
         foreach ($this->items as $item) {
             if ($item['id'] === $itemId) {
@@ -146,17 +145,30 @@ class MercadoLivrePromocoes extends Page
 
         $this->aderindoPreco = $targetItem['deal_price'] ?? $targetItem['price'] ?? null;
 
-        // Buscar dados enriquecidos via API
         $service = new MercadoLivrePromotionService($this->accountKey);
         $info = $service->buscarInfoParaAdesao($itemId);
 
+        // Custo médio das últimas vendas deste MLB ID
+        $custoMedio = \App\Models\Venda::where('numero_pedido_canal', 'like', "%{$itemId}%")
+            ->whereNotNull('custo_produtos')
+            ->where('custo_produtos', '>', 0)
+            ->orderByDesc('data_venda')
+            ->limit(10)
+            ->avg('custo_produtos');
+
+        $promoType = $this->selectedPromotion['type'] ?? '';
+        $temSubsidio = in_array($promoType, ['PRICE_MATCHING', 'LIGHTNING']);
+
         $this->aderindoInfo = [
-            'title' => $targetItem['title'] ?? $itemId,
-            'original_price' => $info['base_price'] ?? $targetItem['price'] ?? 0,
-            'frete' => $info['frete'] ?? 0,
+            'title'            => $targetItem['title'] ?? $itemId,
+            'original_price'   => $info['base_price'] ?? $targetItem['price'] ?? 0,
+            'frete'            => $info['frete'] ?? 0,
             'comissao_percent' => $info['comissao_percent'] ?? 11.5,
-            'listing_type' => $info['listing_type'] ?? '',
-            'imposto_percent' => 17.8,
+            'listing_type'     => $info['listing_type'] ?? '',
+            'imposto_percent'  => 17.8,
+            'custo_produto'    => round((float) ($custoMedio ?? 0), 2),
+            'tem_subsidio'     => $temSubsidio,
+            'promo_type'       => $promoType,
         ];
     }
 

@@ -80,10 +80,14 @@
                             $frete = $aderindoInfo['frete'] ?? 0;
                             $comissaoPercent = $aderindoInfo['comissao_percent'] ?? 11.5;
                             $impPercent = $aderindoInfo['imposto_percent'] ?? 17.8;
+                            $custoProduto = $aderindoInfo['custo_produto'] ?? 0;
+                            $temSubsidio = $aderindoInfo['tem_subsidio'] ?? false;
                             $precoPromo = $aderindoPreco ?? 0;
                             $comissao = $precoPromo * ($comissaoPercent / 100);
                             $imposto = $precoPromo * ($impPercent / 100);
-                            $custoTotal = $frete + $comissao + $imposto;
+                            // Subsídio estimado: diferença entre preço original e preço promo (o ML cobre parte)
+                            $subsidioEstimado = $temSubsidio && $precoOriginal > $precoPromo ? $precoOriginal - $precoPromo : 0;
+                            $custoTotal = $frete + $comissao + $imposto + $custoProduto;
                             $margem = $precoPromo - $custoTotal;
                             $margemPercent = $precoPromo > 0 ? ($margem / $precoPromo) * 100 : 0;
                             $desconto = $precoOriginal > 0 ? (($precoOriginal - $precoPromo) / $precoOriginal) * 100 : 0;
@@ -114,6 +118,22 @@
                                     <span class="text-gray-500 block">Imposto ({{ number_format($impPercent, 1) }}%)</span>
                                     <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($imposto, 2, ',', '.') }}</span>
                                 </div>
+                                <div class="p-2 rounded {{ $custoProduto > 0 ? 'bg-gray-50 dark:bg-gray-900' : 'bg-yellow-50 dark:bg-yellow-900/20' }}">
+                                    <span class="text-gray-500 block">Custo Produto</span>
+                                    @if($custoProduto > 0)
+                                        <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($custoProduto, 2, ',', '.') }}</span>
+                                        <span class="text-[10px] text-gray-400 block">média últimas vendas</span>
+                                    @else
+                                        <span class="font-semibold text-yellow-600 dark:text-yellow-400">Sem histórico</span>
+                                    @endif
+                                </div>
+                                @if($temSubsidio)
+                                <div class="p-2 rounded bg-blue-50 dark:bg-blue-900/20">
+                                    <span class="text-gray-500 block">Subsídio ML (est.)</span>
+                                    <span class="font-semibold text-blue-700 dark:text-blue-400">~R$ {{ number_format($subsidioEstimado, 2, ',', '.') }}</span>
+                                    <span class="text-[10px] text-gray-400 block">{{ $aderindoInfo['promo_type'] }}</span>
+                                </div>
+                                @endif
                             </div>
 
                             <div class="flex items-center gap-3 flex-wrap p-2 rounded {{ $margemPercent >= 15 ? 'bg-green-50 dark:bg-green-900/20' : ($margemPercent >= 0 ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-red-50 dark:bg-red-900/20') }}">
@@ -144,7 +164,7 @@
                                     </x-filament::button>
                                 </div>
                             </div>
-                            <p class="text-[10px] text-gray-400 mt-1">* Margem = Preço promo - Frete - Comissão - Imposto (sem custo do produto)</p>
+                            <p class="text-[10px] text-gray-400 mt-1">* Margem = Preço promo - Frete - Comissão - Imposto{{ $custoProduto > 0 ? ' - Custo Produto' : ' (sem custo do produto)' }}</p>
                         </div>
                     @elseif($aderindoItemId && !$aderindoInfo)
                         <div class="mb-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 flex items-center gap-2">
