@@ -253,7 +253,7 @@ class MercadoLivrePromotionService
                 $info['listing_type'] = $item['listing_type_id'] ?? '';
                 $info['comissao_percent'] = $this->percentualComissao($item['listing_type_id'] ?? null);
 
-                // SKU via seller_custom_field ou attributes
+                // SKU via seller_custom_field, attributes ou variations
                 $sku = $item['seller_custom_field'] ?? null;
                 if (!$sku) {
                     foreach ($item['attributes'] ?? [] as $attr) {
@@ -263,6 +263,13 @@ class MercadoLivrePromotionService
                         }
                     }
                 }
+                if (!$sku && !empty($item['variations'])) {
+                    $sku = $item['variations'][0]['seller_custom_field'] ?? null;
+                }
+                // Tratar SKUs compostos: "10061880__4286723" → "10061880"
+                if ($sku && str_contains($sku, '__')) {
+                    $sku = explode('__', $sku)[0];
+                }
                 $info['sku'] = $sku;
 
                 // Custo de compra via Bling
@@ -270,7 +277,13 @@ class MercadoLivrePromotionService
                     try {
                         $bling = new \App\Services\Bling\BlingClient($this->accountKey);
                         $produto = $bling->getProductBySku($sku);
-                        $info['custo_produto'] = (float) ($produto['precoCusto'] ?? 0);
+                        $custo = (float) ($produto['precoCusto'] ?? 0);
+                        // Se listagem retornou 0, tentar no detalhe
+                        if ($custo <= 0 && !empty($produto['id'])) {
+                            $detalhe = $bling->getProductById((int) $produto['id']);
+                            $custo = (float) ($detalhe['precoCusto'] ?? 0);
+                        }
+                        $info['custo_produto'] = $custo;
                     } catch (\Throwable $e) {
                         Log::warning("ML buscarInfoParaAdesao [{$itemId}]: erro Bling SKU {$sku}: " . $e->getMessage());
                     }
