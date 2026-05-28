@@ -25,6 +25,7 @@ class MercadoLivrePromocoes extends Page
     public bool $needsLoadItems = false;
     public ?string $editingItemId = null;
     public ?float $editingDealPrice = null;
+    public string $searchItem = '';
     public ?string $aderindoItemId = null;
     public ?float $aderindoPreco = null;
     public ?array $aderindoInfo = null; // dados enriquecidos para simulação

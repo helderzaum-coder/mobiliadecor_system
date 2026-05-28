@@ -193,8 +193,10 @@
                                     {{ count($items) }}/{{ $totalItems }} itens · {{ $selectedPromotion['type'] ?? '' }}
                                 </p>
                             </div>
-                            @if($searchAfter)
-                                <div class="flex gap-1.5">
+                            <div class="flex items-center gap-2">
+                                <input type="text" wire:model.live.debounce.300ms="searchItem" placeholder="Buscar MLB ou SKU..."
+                                    class="px-2 py-1 text-xs rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:ring-primary-500 w-44">
+                                @if($searchAfter)
                                     <x-filament::button size="xs" color="gray" wire:click="loadItems">
                                         + Mais
                                     </x-filament::button>
@@ -202,8 +204,8 @@
                                         wire:confirm="Carregar todos pode demorar. Continuar?">
                                         Todos
                                     </x-filament::button>
-                                </div>
-                            @endif
+                                @endif
+                            </div>
                         </div>
 
                         {{-- Tabela --}}
@@ -221,6 +223,9 @@
                                 </thead>
                                 <tbody class="divide-y divide-gray-100 dark:divide-white/5">
                                     @foreach($items as $item)
+                                        @if($searchItem && !str_contains(strtolower($item['id']), strtolower($searchItem)) && !str_contains(strtolower($item['title'] ?? ''), strtolower($searchItem)))
+                                            @continue
+                                        @endif
                                         <tr class="hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition">
                                             <td class="px-3 py-2">
                                                 <span class="font-mono text-xs text-gray-600 dark:text-gray-300" title="{{ $item['title'] ?: $item['id'] }}">
