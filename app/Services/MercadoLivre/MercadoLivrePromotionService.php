@@ -400,6 +400,13 @@ class MercadoLivrePromotionService
         $promotions = [];
 
         foreach ($data as $promo) {
+            // Tentar extrair offer_id de vários campos possíveis
+            $offerId = $promo['offer_id'] ?? $promo['deal_id'] ?? $promo['id'] ?? null;
+            // Se o 'id' parece ser um offer_id (não é promotion_id)
+            if ($offerId && isset($promo['promotion_id']) && $offerId === $promo['promotion_id']) {
+                $offerId = null; // Não é offer_id, é promotion_id
+            }
+
             $promotions[] = [
                 'id' => $promo['promotion_id'] ?? $promo['id'] ?? '',
                 'name' => $promo['name'] ?? $promo['promotion_name'] ?? 'Sem nome',
@@ -411,7 +418,8 @@ class MercadoLivrePromotionService
                 'seller_percentage' => (float) ($promo['seller_percentage'] ?? 0),
                 'start_date' => $promo['start_date'] ?? null,
                 'finish_date' => $promo['finish_date'] ?? null,
-                'offer_id' => $promo['offer_id'] ?? $promo['deal_id'] ?? null,
+                'offer_id' => $offerId,
+                'raw_keys' => array_keys($promo), // debug: ver campos disponíveis
             ];
         }
 

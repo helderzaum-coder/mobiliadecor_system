@@ -102,7 +102,7 @@
                             $precoOriginal = $aderindoInfo['original_price'] ?? 0;
                             $frete = $aderindoInfo['frete'] ?? 0;
                             $comissaoPercent = $aderindoInfo['comissao_percent'] ?? 11.5;
-                            $impPercent = $aderindoInfo['imposto_percent'] ?? 17.8;
+                            $impPercent = $impostoPercent;
                             $custoProduto = $aderindoInfo['custo_produto'] ?? 0;
                             $temSubsidio = $aderindoInfo['tem_subsidio'] ?? false;
                             $meliPercentage = $aderindoInfo['meli_percentage'] ?? 0;
@@ -371,7 +371,7 @@
                         $precoOriginal = $aderindoInfo['original_price'] ?? 0;
                         $frete = $aderindoInfo['frete'] ?? 0;
                         $comissaoPercent = $aderindoInfo['comissao_percent'] ?? 11.5;
-                        $impPercent = $aderindoInfo['imposto_percent'] ?? 17.8;
+                        $impPercent = $impostoPercent;
                         $custoProduto = $aderindoInfo['custo_produto'] ?? 0;
                         $temSubsidio = $aderindoInfo['tem_subsidio'] ?? false;
                         $meliPercentage = $aderindoInfo['meli_percentage'] ?? 0;
@@ -483,6 +483,11 @@
                                     <td class="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">{{ $promo['name'] }}</td>
                                     <td class="px-3 py-2">
                                         <span class="text-[10px] text-gray-500">{{ $promo['type'] }}</span>
+                                        @if(!empty($promo['offer_id']))
+                                            <span class="text-[10px] text-green-500 block">offer: {{ $promo['offer_id'] }}</span>
+                                        @else
+                                            <span class="text-[10px] text-red-400 block">keys: {{ implode(',', $promo['raw_keys'] ?? []) }}</span>
+                                        @endif
                                     </td>
                                     <td class="px-3 py-2">
                                         @php $sc = match($promo['status']) {
