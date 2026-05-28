@@ -220,6 +220,11 @@ class MercadoLivrePromocoes extends Page
             return;
         }
 
+        if (($this->aderindoInfo['custo_produto'] ?? 0) <= 0) {
+            Notification::make()->title('Custo do produto não encontrado')->body('Não é possível aderir sem custo cadastrado no Bling.')->danger()->send();
+            return;
+        }
+
         $service = new MercadoLivrePromotionService($this->accountKey);
         $result = $service->aderirPromocao(
             $this->aderindoItemId,
