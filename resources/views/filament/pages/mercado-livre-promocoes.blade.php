@@ -14,7 +14,10 @@
                         {{ $name }}
                     </button>
                 @endforeach
-                <span class="ml-auto text-sm font-medium text-gray-500 dark:text-gray-400">Imposto %:</span>
+                <span class="ml-auto text-sm font-medium text-gray-500 dark:text-gray-400">Margem %:</span>
+                <input type="number" step="0.1" wire:model.blur="margemDesejada"
+                    class="w-16 px-2 py-1 text-sm rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:ring-primary-500">
+                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Imposto %:</span>
                 <input type="number" step="0.1" wire:model.blur="impostoPercent"
                     class="w-20 px-2 py-1 text-sm rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:ring-primary-500">
             </div>
@@ -114,6 +117,9 @@
                             $margem = $precoPromo - $custoTotal;
                             $margemPercent = $precoPromo > 0 ? ($margem / $precoPromo) * 100 : 0;
                             $desconto = $precoOriginal > 0 ? (($precoOriginal - $precoPromo) / $precoOriginal) * 100 : 0;
+                            // Preço sugerido para margem desejada
+                            $divisor = 1 - ($comissaoPercent / 100) - ($impPercent / 100) - ($margemDesejada / 100);
+                            $precoSugerido = $divisor > 0 ? ($frete + $custoProduto - $subsidioML) / $divisor : 0;
                         @endphp
                         <div class="mb-4 p-4 rounded-lg bg-white dark:bg-gray-800 ring-1 ring-primary-500/30 shadow-sm">
                             <div class="flex items-start justify-between mb-3">
@@ -178,6 +184,12 @@
                                         Calcular
                                     </x-filament::button>
                                 </div>
+                                @if($precoSugerido > 0)
+                                <div class="text-xs">
+                                    <span class="text-gray-500">Sugerido ({{ number_format($margemDesejada, 0) }}%):</span>
+                                    <span class="font-semibold text-primary-600 dark:text-primary-400">R$ {{ number_format($precoSugerido, 2, ',', '.') }}</span>
+                                </div>
+                                @endif
                                 <div class="text-xs">
                                     <span class="text-gray-500">Desconto:</span>
                                     <span class="font-semibold">{{ number_format($desconto, 1) }}%</span>
@@ -372,6 +384,8 @@
                         $margem = $precoPromo - $custoTotal;
                         $margemPercent = $precoPromo > 0 ? ($margem / $precoPromo) * 100 : 0;
                         $desconto = $precoOriginal > 0 ? (($precoOriginal - $precoPromo) / $precoOriginal) * 100 : 0;
+                        $divisor = 1 - ($comissaoPercent / 100) - ($impPercent / 100) - ($margemDesejada / 100);
+                        $precoSugerido = $divisor > 0 ? ($frete + $custoProduto - $subsidioML) / $divisor : 0;
                     @endphp
                     <div class="mb-4 p-4 rounded-lg bg-white dark:bg-gray-800 ring-1 ring-primary-500/30 shadow-sm">
                         <div class="flex items-start justify-between mb-3">
@@ -424,6 +438,12 @@
                                     class="w-24 px-2 py-1 text-sm rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:ring-primary-500">
                                 <x-filament::button size="xs" color="gray" wire:click="$refresh">Calcular</x-filament::button>
                             </div>
+                            @if($precoSugerido > 0)
+                            <div class="text-xs">
+                                <span class="text-gray-500">Sugerido ({{ number_format($margemDesejada, 0) }}%):</span>
+                                <span class="font-semibold text-primary-600 dark:text-primary-400">R$ {{ number_format($precoSugerido, 2, ',', '.') }}</span>
+                            </div>
+                            @endif
                             <div class="text-xs">
                                 <span class="text-gray-500">Desconto:</span>
                                 <span class="font-semibold">{{ number_format($desconto, 1) }}%</span>

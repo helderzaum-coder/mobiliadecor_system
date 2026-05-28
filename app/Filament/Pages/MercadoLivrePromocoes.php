@@ -57,6 +57,7 @@ class MercadoLivrePromocoes extends Page
     public array $promocoesDoItem = [];
     public string $abaAtiva = 'promocoes'; // 'promocoes' ou 'buscar_item'
     public float $impostoPercent = 17.8;
+    public float $margemDesejada = 15.0;
 
     public function mount(): void
     {
