@@ -17,9 +17,9 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div style="display:flex; gap:1rem; align-items:flex-start;">
             {{-- Lista de Promoções --}}
-            <div class="lg:col-span-4 xl:col-span-3">
+            <div style="width:280px; flex-shrink:0;">
                 <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 p-3">
                     <div class="flex items-center justify-between mb-3">
                         <h3 class="text-sm font-semibold text-gray-950 dark:text-white">
@@ -60,7 +60,7 @@
             </div>
 
             {{-- Itens da Promoção --}}
-            <div class="lg:col-span-8 xl:col-span-9">
+            <div style="flex:1; min-width:0;">
                 <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 p-3 relative min-h-[200px]">
 
                     {{-- Loading --}}
