@@ -363,6 +363,9 @@ class MercadoLivrePromocoes extends Page
         // Se não veio offer_id e é SMART, buscar percorrendo itens da promoção
         if (!$this->aderindoOfferId && $promo['type'] === 'SMART') {
             $this->aderindoOfferId = $service->buscarOfferIdDoItem($itemId, $promo['id'], $promo['type']);
+            if (!$this->aderindoOfferId) {
+                Notification::make()->title('Offer ID não encontrado')->body('Não foi possível encontrar o offer_id para este item nesta promoção. Verifique o log.')->warning()->send();
+            }
         }
 
         $info = $service->buscarInfoParaAdesao($itemId);
