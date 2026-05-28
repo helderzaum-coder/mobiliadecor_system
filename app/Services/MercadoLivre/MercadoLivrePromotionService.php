@@ -342,22 +342,19 @@ class MercadoLivrePromotionService
                     $tokenModel = \App\Models\MercadoLivreToken::where('account_key', $this->accountKey)->first();
                     $userId = $tokenModel?->user_id ?? config("mercadolivre.accounts.{$this->accountKey}.user_id");
 
-                    // Verificar variações para pegar o maior frete
+                    $maiorFrete = 0;
                     $variations = $item['variations'] ?? [];
+
                     if (!empty($variations)) {
-                        $maiorFrete = 0;
-                        // Buscar frete de cada variação
+                        // Buscar frete de cada variação e usar o maior
                         foreach ($variations as $var) {
                             $varId = $var['id'] ?? null;
                             if (!$varId) continue;
-                            // item_relations da variação (filho de catálogo)
-                            $childId = null;
-                            if (!empty($var['item_relations'][0]['id'])) {
-                                $childId = $var['item_relations'][0]['id'];
-                            }
-                            $freteItemId = $childId ?? $itemId;
                             $freteResp = Http::withToken($token)->withOptions(['verify' => false])->timeout(10)
-                                ->get("{$this->apiBase}/users/{$userId}/shipping_options/free", ['item_id' => $freteItemId]);
+                                ->get("{$this->apiBase}/users/{$userId}/shipping_options/free", [
+                                    'item_id' => $itemId,
+                                    'variation_id' => $varId,
+                                ]);
                             if ($freteResp->successful()) {
                                 $coverage = $freteResp->json()['coverage'] ?? [];
                                 $frete = (float) ($coverage['all_country']['list_cost']
