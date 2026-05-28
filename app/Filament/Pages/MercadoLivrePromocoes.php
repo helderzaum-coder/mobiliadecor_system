@@ -218,6 +218,24 @@ class MercadoLivrePromocoes extends Page
         $this->aderindoOfferId = null;
     }
 
+    public function pularParaProximo(): void
+    {
+        $currentId = $this->aderindoItemId;
+        $this->cancelarAdesao();
+
+        // Encontrar próximo candidate após o atual
+        $found = false;
+        foreach ($this->items as $item) {
+            if ($found && ($item['status'] ?? '') === 'candidate') {
+                $this->iniciarAdesao($item['id']);
+                return;
+            }
+            if (($item['id'] ?? '') === $currentId) {
+                $found = true;
+            }
+        }
+    }
+
     public function confirmarAdesao(): void
     {
         if (!$this->selectedPromotion || !$this->aderindoItemId || !$this->aderindoPreco) {
@@ -251,8 +269,21 @@ class MercadoLivrePromocoes extends Page
             }
             Notification::make()->title('Adesão realizada!')->body("R$ " . number_format($this->aderindoPreco, 2, ',', '.'))->success()->send();
             $this->cancelarAdesao();
+
+            // Pular para o próximo candidate
+            $this->aderirProximoCandidate();
         } else {
             Notification::make()->title('Erro ao aderir')->body($result['error'] ?? '')->danger()->send();
+        }
+    }
+
+    public function aderirProximoCandidate(): void
+    {
+        foreach ($this->items as $item) {
+            if (($item['status'] ?? '') === 'candidate' && $item['id'] !== ($this->aderindoItemId ?? '')) {
+                $this->iniciarAdesao($item['id']);
+                return;
+            }
         }
     }
 

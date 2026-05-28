@@ -96,8 +96,10 @@
                         <div wire:init="doLoadItems"></div>
                     @endif
 
-                    {{-- Painel de Adesão com Simulação --}}
+                    {{-- Modal de Adesão --}}
                     @if($aderindoItemId && $aderindoInfo)
+                        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" wire:click.self="cancelarAdesao">
+                            <div class="w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
                         @php
                             $precoOriginal = $aderindoInfo['original_price'] ?? 0;
                             $frete = $aderindoInfo['frete'] ?? 0;
@@ -108,7 +110,6 @@
                             $meliPercentage = $aderindoInfo['meli_percentage'] ?? 0;
                             $precoPromo = $aderindoPreco ?? 0;
                             $comissaoCheia = $precoPromo * ($comissaoPercent / 100);
-                            // Subsídio ML: desconto na comissão
                             $subsidioML = $temSubsidio ? $precoOriginal * ($meliPercentage / 100) : 0;
                             $comissao = $comissaoCheia - $subsidioML;
                             if ($comissao < 0) $comissao = 0;
@@ -117,33 +118,32 @@
                             $margem = $precoPromo - $custoTotal;
                             $margemPercent = $precoPromo > 0 ? ($margem / $precoPromo) * 100 : 0;
                             $desconto = $precoOriginal > 0 ? (($precoOriginal - $precoPromo) / $precoOriginal) * 100 : 0;
-                            // Preço sugerido para margem desejada
                             $divisor = 1 - ($comissaoPercent / 100) - ($impPercent / 100) - ($margemDesejada / 100);
                             $precoSugerido = $divisor > 0 ? ($frete + $custoProduto - $subsidioML) / $divisor : 0;
                         @endphp
-                        <div class="mb-4 p-4 rounded-lg bg-white dark:bg-gray-800 ring-1 ring-primary-500/30 shadow-sm">
+                        <div class="p-4 rounded-xl bg-white dark:bg-gray-800 ring-1 ring-gray-950/5 dark:ring-white/10 shadow-xl">
                             <div class="flex items-start justify-between mb-3">
                                 <div>
                                     <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $aderindoInfo['title'] }}</p>
                                     <p class="text-xs text-gray-500 font-mono">{{ $aderindoItemId }}</p>
                                 </div>
-                                <x-filament::button size="xs" color="gray" wire:click="cancelarAdesao">Fechar</x-filament::button>
+                                <button wire:click="cancelarAdesao" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-lg">&times;</button>
                             </div>
 
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs mb-3">
+                            <div class="grid grid-cols-3 gap-2 text-xs mb-3">
                                 <div class="p-2 rounded bg-gray-50 dark:bg-gray-900">
                                     <span class="text-gray-500 block">Preço Original</span>
                                     <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($precoOriginal, 2, ',', '.') }}</span>
                                 </div>
                                 <div class="p-2 rounded bg-gray-50 dark:bg-gray-900">
-                                    <span class="text-gray-500 block">Frete Grátis</span>
+                                    <span class="text-gray-500 block">Frete</span>
                                     <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($frete, 2, ',', '.') }}</span>
                                 </div>
                                 <div class="p-2 rounded bg-gray-50 dark:bg-gray-900">
-                                    <span class="text-gray-500 block">Comissão ML ({{ number_format($comissaoPercent, 1) }}%)</span>
+                                    <span class="text-gray-500 block">Comissão ({{ number_format($comissaoPercent, 1) }}%)</span>
                                     <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($comissao, 2, ',', '.') }}</span>
                                     @if($temSubsidio)
-                                        <span class="text-[10px] text-green-600 dark:text-green-400 block">-R$ {{ number_format($subsidioML, 2, ',', '.') }} subsídio</span>
+                                        <span class="text-[10px] text-green-600 block">-R$ {{ number_format($subsidioML, 2, ',', '.') }}</span>
                                     @endif
                                 </div>
                                 <div class="p-2 rounded bg-gray-50 dark:bg-gray-900">
@@ -151,72 +151,53 @@
                                     <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($imposto, 2, ',', '.') }}</span>
                                 </div>
                                 <div class="p-2 rounded {{ $custoProduto > 0 ? 'bg-gray-50 dark:bg-gray-900' : 'bg-yellow-50 dark:bg-yellow-900/20' }}">
-                                    <span class="text-gray-500 block">Custo Produto</span>
+                                    <span class="text-gray-500 block">Custo</span>
                                     @if($custoProduto > 0)
                                         <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($custoProduto, 2, ',', '.') }}</span>
-                                        @if($aderindoInfo['sku'] ?? null)
-                                            <span class="text-[10px] text-gray-400 block">SKU: {{ $aderindoInfo['sku'] }}</span>
-                                        @endif
+                                        <span class="text-[10px] text-gray-400 block">{{ $aderindoInfo['sku'] ?? '' }}</span>
                                     @else
-                                        <span class="font-semibold text-yellow-600 dark:text-yellow-400">Sem custo no Bling</span>
-                                        @if($aderindoInfo['sku'] ?? null)
-                                            <span class="text-[10px] text-gray-400 block">SKU: {{ $aderindoInfo['sku'] }}</span>
-                                        @else
-                                            <span class="text-[10px] text-gray-400 block">SKU não encontrado</span>
-                                        @endif
+                                        <span class="font-semibold text-yellow-600">Sem custo</span>
                                     @endif
                                 </div>
                                 @if($temSubsidio)
                                 <div class="p-2 rounded bg-blue-50 dark:bg-blue-900/20">
-                                    <span class="text-gray-500 block">Subsídio ML ({{ number_format($meliPercentage, 1) }}%)</span>
-                                    <span class="font-semibold text-blue-700 dark:text-blue-400">- R$ {{ number_format($subsidioML, 2, ',', '.') }} na comissão</span>
+                                    <span class="text-gray-500 block">Subsídio ({{ number_format($meliPercentage, 1) }}%)</span>
+                                    <span class="font-semibold text-blue-700 dark:text-blue-400">R$ {{ number_format($subsidioML, 2, ',', '.') }}</span>
                                 </div>
                                 @endif
                             </div>
 
                             <div class="flex items-center gap-3 flex-wrap p-2 rounded {{ $margemPercent >= 15 ? 'bg-green-50 dark:bg-green-900/20' : ($margemPercent >= 0 ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-red-50 dark:bg-red-900/20') }}">
                                 <div class="flex items-center gap-2">
-                                    <span class="text-xs text-gray-600 dark:text-gray-400">Preço promo:</span>
                                     <span class="text-xs text-gray-500">R$</span>
                                     <input type="number" step="0.01" wire:model.blur="aderindoPreco"
                                         class="w-24 px-2 py-1 text-sm rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:ring-primary-500">
-                                    <x-filament::button size="xs" color="gray" wire:click="$refresh">
-                                        Calcular
-                                    </x-filament::button>
+                                    <x-filament::button size="xs" color="gray" wire:click="$refresh">Calc</x-filament::button>
                                 </div>
                                 @if($precoSugerido > 0)
-                                <div class="text-xs">
-                                    <span class="text-gray-500">Sugerido ({{ number_format($margemDesejada, 0) }}%):</span>
-                                    <span class="font-semibold text-primary-600 dark:text-primary-400">R$ {{ number_format($precoSugerido, 2, ',', '.') }}</span>
-                                </div>
+                                <span class="text-xs text-primary-600 font-semibold">Sug: R$ {{ number_format($precoSugerido, 2, ',', '.') }}</span>
                                 @endif
-                                <div class="text-xs">
-                                    <span class="text-gray-500">Desconto:</span>
-                                    <span class="font-semibold">{{ number_format($desconto, 1) }}%</span>
-                                </div>
-                                <div class="text-xs">
-                                    <span class="text-gray-500">Margem:</span>
-                                    <span @class([
-                                        'font-bold',
-                                        'text-green-700 dark:text-green-400' => $margemPercent >= 15,
-                                        'text-yellow-700 dark:text-yellow-400' => $margemPercent >= 0 && $margemPercent < 15,
-                                        'text-red-700 dark:text-red-400' => $margemPercent < 0,
-                                    ])>
-                                        R$ {{ number_format($margem, 2, ',', '.') }} ({{ number_format($margemPercent, 1) }}%)
-                                    </span>
-                                </div>
-                                <div class="ml-auto">
-                                    <x-filament::button size="sm" wire:click="confirmarAdesao">
-                                        Confirmar Adesão
-                                    </x-filament::button>
+                                <span class="text-xs">Desc: {{ number_format($desconto, 1) }}%</span>
+                                <span @class(['text-xs font-bold',
+                                    'text-green-700 dark:text-green-400' => $margemPercent >= 15,
+                                    'text-yellow-700 dark:text-yellow-400' => $margemPercent >= 0 && $margemPercent < 15,
+                                    'text-red-700 dark:text-red-400' => $margemPercent < 0,
+                                ])>Margem: R$ {{ number_format($margem, 2, ',', '.') }} ({{ number_format($margemPercent, 1) }}%)</span>
+                                <div class="ml-auto flex gap-2">
+                                    <x-filament::button size="sm" color="gray" wire:click="pularParaProximo">Pular</x-filament::button>
+                                    <x-filament::button size="sm" color="gray" wire:click="cancelarAdesao">Fechar</x-filament::button>
+                                    <x-filament::button size="sm" wire:click="confirmarAdesao">Aderir</x-filament::button>
                                 </div>
                             </div>
-                            <p class="text-[10px] text-gray-400 mt-1">* Margem = Preço promo - Frete - Comissão{{ $temSubsidio ? ' (já com subsídio)' : '' }} - Imposto{{ $custoProduto > 0 ? ' - Custo Produto' : '' }}</p>
+                        </div>
+                            </div>
                         </div>
                     @elseif($aderindoItemId && !$aderindoInfo)
-                        <div class="mb-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 flex items-center gap-2">
-                            <x-filament::loading-indicator class="h-4 w-4" />
-                            <span class="text-sm text-gray-500">Buscando dados do item...</span>
+                        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                            <div class="p-6 rounded-xl bg-white dark:bg-gray-800 flex items-center gap-3">
+                                <x-filament::loading-indicator class="h-5 w-5" />
+                                <span class="text-sm text-gray-500">Buscando dados do item...</span>
+                            </div>
                         </div>
                     @endif
 
