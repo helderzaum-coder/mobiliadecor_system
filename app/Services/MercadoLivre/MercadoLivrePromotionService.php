@@ -172,20 +172,25 @@ class MercadoLivrePromotionService
         return ['success' => false, 'error' => "HTTP {$response->status()}: " . ($response->json()['message'] ?? '')];
     }
 
-    public function aderirPromocao(string $itemId, string $promotionId, string $promotionType, float $dealPrice): array
+    public function aderirPromocao(string $itemId, string $promotionId, string $promotionType, float $dealPrice, ?string $offerId = null): array
     {
         $token = $this->oauth->getAccessToken();
         if (!$token) return ['success' => false, 'error' => 'Token não disponível'];
+
+        $body = [
+            'promotion_type' => $promotionType,
+            'promotion_id' => $promotionId,
+            'deal_price' => $dealPrice,
+        ];
+        if ($offerId) {
+            $body['offer_id'] = $offerId;
+        }
 
         try {
             $response = Http::withToken($token)
                 ->withOptions(['verify' => false])
                 ->timeout(15)
-                ->post("{$this->apiBase}/seller-promotions/items/{$itemId}?app_version=v2", [
-                    'promotion_type' => $promotionType,
-                    'promotion_id' => $promotionId,
-                    'deal_price' => $dealPrice,
-                ]);
+                ->post("{$this->apiBase}/seller-promotions/items/{$itemId}?app_version=v2", $body);
         } catch (\Throwable $e) {
             return ['success' => false, 'error' => 'Timeout: ' . $e->getMessage()];
         }
@@ -194,8 +199,8 @@ class MercadoLivrePromotionService
             return ['success' => true];
         }
 
-        $body = $response->json();
-        return ['success' => false, 'error' => "HTTP {$response->status()}: " . ($body['message'] ?? $response->body())];
+        $respBody = $response->json();
+        return ['success' => false, 'error' => "HTTP {$response->status()}: " . ($respBody['message'] ?? $response->body())];
     }
 
     public function editarPrecoPromocional(string $itemId, string $promotionId, string $promotionType, float $dealPrice): array
@@ -391,6 +396,7 @@ class MercadoLivrePromotionService
                 'seller_percentage' => (float) ($promo['seller_percentage'] ?? 0),
                 'start_date' => $promo['start_date'] ?? null,
                 'finish_date' => $promo['finish_date'] ?? null,
+                'offer_id' => $promo['offer_id'] ?? $promo['deal_id'] ?? null,
             ];
         }
 

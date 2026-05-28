@@ -52,7 +52,8 @@ class MercadoLivrePromocoes extends Page
     }
     public ?string $aderindoItemId = null;
     public ?float $aderindoPreco = null;
-    public ?array $aderindoInfo = null; // dados enriquecidos para simulação
+    public ?array $aderindoInfo = null;
+    public ?string $aderindoOfferId = null;
     public string $buscarItemId = '';
     public array $promocoesDoItem = [];
     public string $abaAtiva = 'promocoes'; // 'promocoes' ou 'buscar_item'
@@ -203,6 +204,7 @@ class MercadoLivrePromocoes extends Page
     {
         $this->aderindoItemId = null;
         $this->aderindoPreco = null;
+        $this->aderindoOfferId = null;
     }
 
     public function confirmarAdesao(): void
@@ -217,7 +219,8 @@ class MercadoLivrePromocoes extends Page
             $this->aderindoItemId,
             $this->selectedPromotion['id'],
             $this->selectedPromotion['type'],
-            (float) $this->aderindoPreco
+            (float) $this->aderindoPreco,
+            $this->aderindoOfferId
         );
 
         if ($result['success']) {
@@ -343,6 +346,7 @@ class MercadoLivrePromocoes extends Page
         $this->aderindoItemId = $itemId;
         $this->aderindoInfo = null;
         $this->aderindoPreco = $promo['price'] ?? null;
+        $this->aderindoOfferId = $promo['offer_id'] ?? null;
 
         $this->selectedPromotion = [
             'id' => $promo['id'],
