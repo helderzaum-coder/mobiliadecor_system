@@ -378,6 +378,48 @@ class MercadoLivrePromotionService
         };
     }
 
+    public function buscarOfferIdDoItem(string $itemId, string $promotionId, string $promotionType): ?string
+    {
+        $token = $this->oauth->getAccessToken();
+        if (!$token) return null;
+
+        $searchAfter = null;
+        $maxPages = 20;
+
+        for ($i = 0; $i < $maxPages; $i++) {
+            $params = [
+                'promotion_type' => $promotionType,
+                'app_version' => 'v2',
+                'limit' => 50,
+            ];
+            if ($searchAfter) {
+                $params['search_after'] = $searchAfter;
+            }
+
+            try {
+                $resp = Http::withToken($token)->withOptions(['verify' => false])->timeout(30)
+                    ->get("{$this->apiBase}/seller-promotions/promotions/{$promotionId}/items", $params);
+
+                if (!$resp->successful()) break;
+
+                $data = $resp->json();
+                foreach ($data['results'] ?? [] as $item) {
+                    if (($item['id'] ?? '') === $itemId) {
+                        return $item['offer_id'] ?? $item['deal_id'] ?? $item['candidate_id'] ?? null;
+                    }
+                }
+
+                $paging = $data['paging'] ?? [];
+                $searchAfter = $paging['search_after'] ?? $paging['searchAfter'] ?? null;
+                if (!$searchAfter) break;
+            } catch (\Throwable $e) {
+                break;
+            }
+        }
+
+        return null;
+    }
+
     public function buscarPromocoesParaItem(string $itemId): array
     {
         $token = $this->oauth->getAccessToken();

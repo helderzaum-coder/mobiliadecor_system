@@ -359,6 +359,12 @@ class MercadoLivrePromocoes extends Page
         ];
 
         $service = new MercadoLivrePromotionService($this->accountKey);
+
+        // Se não veio offer_id e é SMART, buscar percorrendo itens da promoção
+        if (!$this->aderindoOfferId && $promo['type'] === 'SMART') {
+            $this->aderindoOfferId = $service->buscarOfferIdDoItem($itemId, $promo['id'], $promo['type']);
+        }
+
         $info = $service->buscarInfoParaAdesao($itemId);
 
         $meliPercentage = (float) ($promo['meli_percentage'] ?? 0);
