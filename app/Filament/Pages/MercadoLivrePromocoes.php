@@ -199,7 +199,7 @@ class MercadoLivrePromocoes extends Page
         $temSubsidio = $meliPercentage > 0;
 
         $this->aderindoInfo = [
-            'title'              => $targetItem['title'] ?? $itemId,
+            'title'              => $info['title'] ?? $targetItem['title'] ?? $itemId,
             'original_price'     => $info['base_price'] ?? $targetItem['price'] ?? 0,
             'frete'              => $info['frete'] ?? 0,
             'comissao_percent'   => $info['comissao_percent'] ?? 11.5,
