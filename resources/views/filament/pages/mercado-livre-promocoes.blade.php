@@ -64,7 +64,7 @@
                 <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 p-3 relative min-h-[200px]">
 
                     {{-- Loading --}}
-                    <div wire:loading wire:target="selectPromotion,loadItems,loadAllItems,doLoadItems,confirmarAdesao"
+                    <div wire:loading wire:target="selectPromotion,loadItems,loadAllItems,doLoadItems,confirmarAdesao,searchItems"
                         class="absolute inset-0 bg-white/60 dark:bg-gray-900/60 z-10 flex items-center justify-center rounded-xl backdrop-blur-sm">
                         <x-filament::loading-indicator class="h-6 w-6" />
                     </div>
@@ -194,8 +194,11 @@
                                 </p>
                             </div>
                             <div class="flex items-center gap-2">
-                                <input type="text" wire:model.live.debounce.300ms="searchItem" placeholder="Buscar MLB ou SKU..."
+                                <input type="text" wire:model="searchItem" wire:keydown.enter="searchItems" placeholder="Buscar MLB ou SKU..."
                                     class="px-2 py-1 text-xs rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:ring-primary-500 w-44">
+                                <x-filament::button size="xs" color="gray" wire:click="searchItems">
+                                    Buscar
+                                </x-filament::button>
                                 @if($searchAfter)
                                     <x-filament::button size="xs" color="gray" wire:click="loadItems">
                                         + Mais
