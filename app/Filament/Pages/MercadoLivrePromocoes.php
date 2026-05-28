@@ -59,6 +59,7 @@ class MercadoLivrePromocoes extends Page
     public ?float $aderindoPreco = null;
     public ?array $aderindoInfo = null;
     public ?string $aderindoOfferId = null;
+    public array $itensPulados = [];
     public string $buscarItemId = '';
     public array $promocoesDoItem = [];
     public string $abaAtiva = 'promocoes';
@@ -101,6 +102,7 @@ class MercadoLivrePromocoes extends Page
         $this->totalItems = 0;
         $this->loading = true;
         $this->needsLoadItems = true;
+        $this->itensPulados = [];
     }
 
     public function doLoadItems(): void
@@ -221,12 +223,13 @@ class MercadoLivrePromocoes extends Page
     public function pularParaProximo(): void
     {
         $currentId = $this->aderindoItemId;
+        $this->itensPulados[] = $currentId;
         $this->cancelarAdesao();
 
-        // Encontrar próximo candidate após o atual
+        // Encontrar próximo candidate após o atual (que não foi pulado)
         $found = false;
         foreach ($this->items as $item) {
-            if ($found && ($item['status'] ?? '') === 'candidate') {
+            if ($found && ($item['status'] ?? '') === 'candidate' && !in_array($item['id'], $this->itensPulados)) {
                 $this->iniciarAdesao($item['id']);
                 return;
             }
@@ -280,7 +283,7 @@ class MercadoLivrePromocoes extends Page
     public function aderirProximoCandidate(): void
     {
         foreach ($this->items as $item) {
-            if (($item['status'] ?? '') === 'candidate' && $item['id'] !== ($this->aderindoItemId ?? '')) {
+            if (($item['status'] ?? '') === 'candidate' && !in_array($item['id'], $this->itensPulados)) {
                 $this->iniciarAdesao($item['id']);
                 return;
             }
