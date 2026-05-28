@@ -26,6 +26,7 @@ class MercadoLivrePromocoes extends Page
     public ?string $editingItemId = null;
     public ?float $editingDealPrice = null;
     public string $searchItem = '';
+    public string $filtroStatus = '';
 
     public function searchItems(): void
     {
@@ -37,18 +38,22 @@ class MercadoLivrePromocoes extends Page
 
     public function getFilteredItems(): array
     {
-        if (!$this->searchItem) return $this->items;
+        $items = $this->items;
+
+        if ($this->filtroStatus) {
+            $items = array_filter($items, fn($item) => ($item['status'] ?? '') === $this->filtroStatus);
+        }
+
+        if (!$this->searchItem) return array_values($items);
 
         $term = strtolower(trim($this->searchItem));
-        return array_filter($this->items, function ($item) use ($term) {
-            // Buscar no ID (com ou sem prefixo MLB)
+        return array_values(array_filter($items, function ($item) use ($term) {
             $id = strtolower($item['id'] ?? '');
             $idSemPrefixo = preg_replace('/^mlb/', '', $id);
             if (str_contains($id, $term) || str_contains($idSemPrefixo, $term)) return true;
-            // Buscar no título
             if (str_contains(strtolower($item['title'] ?? ''), $term)) return true;
             return false;
-        });
+        }));
     }
     public ?string $aderindoItemId = null;
     public ?float $aderindoPreco = null;

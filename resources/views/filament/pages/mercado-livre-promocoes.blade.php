@@ -231,6 +231,14 @@
                                 </p>
                             </div>
                             <div class="flex items-center gap-2">
+                                <select wire:model.live="filtroStatus"
+                                    class="px-2 py-1 text-xs rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:ring-primary-500">
+                                    <option value="">Todos</option>
+                                    <option value="candidate">Candidate</option>
+                                    <option value="started">Started</option>
+                                    <option value="active">Active</option>
+                                    <option value="finished">Finished</option>
+                                </select>
                                 <input type="text" wire:model="searchItem" wire:keydown.enter="searchItems" placeholder="Buscar MLB ou SKU..."
                                     class="px-2 py-1 text-xs rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:ring-primary-500 w-44">
                                 <x-filament::button size="xs" color="gray" wire:click="searchItems">
