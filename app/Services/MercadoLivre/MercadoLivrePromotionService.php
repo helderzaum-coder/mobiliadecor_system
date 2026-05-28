@@ -172,18 +172,33 @@ class MercadoLivrePromotionService
         return ['success' => false, 'error' => "HTTP {$response->status()}: " . ($response->json()['message'] ?? '')];
     }
 
-    public function aderirPromocao(string $itemId, string $promotionId, string $promotionType, float $dealPrice, ?string $offerId = null): array
+    public function aderirPromocao(string $itemId, string $promotionId, string $promotionType, float $dealPrice, ?string $offerId = null, ?string $startDate = null, ?string $finishDate = null): array
     {
         $token = $this->oauth->getAccessToken();
         if (!$token) return ['success' => false, 'error' => 'Token não disponível'];
 
-        $body = [
-            'promotion_type' => $promotionType,
-            'promotion_id' => $promotionId,
-            'deal_price' => $dealPrice,
-        ];
-        if ($offerId) {
-            $body['offer_id'] = $offerId;
+        // SMART: usa offer_id, sem deal_price
+        if ($promotionType === 'SMART' && $offerId) {
+            $body = [
+                'promotion_id' => $promotionId,
+                'promotion_type' => $promotionType,
+                'offer_id' => $offerId,
+            ];
+        } else {
+            $body = [
+                'promotion_type' => $promotionType,
+                'promotion_id' => $promotionId,
+                'deal_price' => $dealPrice,
+            ];
+            if ($offerId) {
+                $body['offer_id'] = $offerId;
+            }
+            if ($startDate) {
+                $body['start_date'] = $startDate;
+            }
+            if ($finishDate) {
+                $body['finish_date'] = $finishDate;
+            }
         }
 
         try {

@@ -56,9 +56,10 @@ class MercadoLivrePromocoes extends Page
     public ?string $aderindoOfferId = null;
     public string $buscarItemId = '';
     public array $promocoesDoItem = [];
-    public string $abaAtiva = 'promocoes'; // 'promocoes' ou 'buscar_item'
+    public string $abaAtiva = 'promocoes';
     public float $impostoPercent = 17.8;
     public float $margemDesejada = 15.0;
+    public ?array $aderindoPromoData = null; // dados extras da promo para adesão
 
     public function mount(): void
     {
@@ -220,7 +221,9 @@ class MercadoLivrePromocoes extends Page
             $this->selectedPromotion['id'],
             $this->selectedPromotion['type'],
             (float) $this->aderindoPreco,
-            $this->aderindoOfferId
+            $this->aderindoOfferId,
+            $this->aderindoPromoData['start_date'] ?? null,
+            $this->aderindoPromoData['finish_date'] ?? null
         );
 
         if ($result['success']) {
@@ -347,6 +350,7 @@ class MercadoLivrePromocoes extends Page
         $this->aderindoInfo = null;
         $this->aderindoPreco = $promo['price'] ?? null;
         $this->aderindoOfferId = $promo['offer_id'] ?? null;
+        $this->aderindoPromoData = $promo;
 
         $this->selectedPromotion = [
             'id' => $promo['id'],
