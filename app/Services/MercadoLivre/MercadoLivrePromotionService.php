@@ -405,6 +405,7 @@ class MercadoLivrePromotionService
                 $data = $resp->json();
                 foreach ($data['results'] ?? [] as $item) {
                     if (($item['id'] ?? '') === $itemId) {
+                        Log::info("ML buscarOfferIdDoItem [{$itemId}]: encontrado", ['keys' => array_keys($item), 'item' => $item]);
                         return $item['offer_id'] ?? $item['deal_id'] ?? $item['candidate_id'] ?? null;
                     }
                 }
