@@ -26,6 +26,24 @@ class MercadoLivrePromocoes extends Page
     public ?string $editingItemId = null;
     public ?float $editingDealPrice = null;
     public string $searchItem = '';
+
+    public function updatedSearchItem(): void
+    {
+        // Se buscou algo, não encontrou nos itens carregados, e ainda há mais itens
+        if ($this->searchItem && $this->searchAfter) {
+            $found = false;
+            $term = strtolower($this->searchItem);
+            foreach ($this->items as $item) {
+                if (str_contains(strtolower($item['id']), $term) || str_contains(strtolower($item['title'] ?? ''), $term)) {
+                    $found = true;
+                    break;
+                }
+            }
+            if (!$found) {
+                $this->loadAllItems();
+            }
+        }
+    }
     public ?string $aderindoItemId = null;
     public ?float $aderindoPreco = null;
     public ?array $aderindoInfo = null; // dados enriquecidos para simulação
