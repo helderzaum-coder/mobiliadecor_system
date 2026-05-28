@@ -111,22 +111,22 @@
                             $temSubsidio = $aderindoInfo['tem_subsidio'] ?? false;
                             $meliPercentage = $aderindoInfo['meli_percentage'] ?? 0;
                             $precoPromo = $aderindoPreco ?? 0;
-                            // Comissão: sobre o preço que o comprador paga (buyer_price ou precoPromo)
+                            // Comissão sobre o preço que o comprador paga
                             $precoBaseComissao = $buyerPrice > 0 ? $buyerPrice : $precoPromo;
-                            $comissao = $comissaoValorBase > 0 && $precoOriginal > 0
+                            $comissaoCheia = $comissaoValorBase > 0 && $precoOriginal > 0
                                 ? $comissaoValorBase * ($precoBaseComissao / $precoOriginal)
                                 : $precoBaseComissao * ($comissaoPercent / 100);
-                            $imposto = $precoBaseComissao * ($impPercent / 100);
-                            // Subsídio ML: co-participação (vendedor recebe mais)
+                            // Subsídio ML: desconto na comissão
                             $subsidioML = $temSubsidio ? $precoOriginal * ($meliPercentage / 100) : 0;
-                            $receita = $precoBaseComissao + $subsidioML;
+                            $comissao = max(0, $comissaoCheia - $subsidioML);
+                            $imposto = $precoBaseComissao * ($impPercent / 100);
                             $custoTotal = $frete + $comissao + $imposto + $custoProduto;
-                            $margem = $receita - $custoTotal;
-                            $margemPercent = $receita > 0 ? ($margem / $receita) * 100 : 0;
+                            $margem = $precoBaseComissao - $custoTotal;
+                            $margemPercent = $precoBaseComissao > 0 ? ($margem / $precoBaseComissao) * 100 : 0;
                             $desconto = $precoOriginal > 0 ? (($precoOriginal - $precoBaseComissao) / $precoOriginal) * 100 : 0;
                             $comissaoPercentEfetivo = $precoBaseComissao > 0 ? ($comissao / $precoBaseComissao) * 100 : 0;
                             $divisor = 1 - ($comissaoPercentEfetivo / 100) - ($impPercent / 100) - ($margemDesejada / 100);
-                            $precoSugerido = $divisor > 0 ? ($frete + $custoProduto - $subsidioML) / $divisor : 0;
+                            $precoSugerido = $divisor > 0 ? ($frete + $custoProduto) / $divisor : 0;
                         @endphp
                         <div class="p-4 rounded-xl bg-white dark:bg-gray-800 ring-1 ring-gray-950/5 dark:ring-white/10 shadow-xl">
                             <div class="flex items-start justify-between mb-3">
@@ -149,6 +149,9 @@
                                 <div class="p-2 rounded bg-gray-50 dark:bg-gray-900">
                                     <span class="text-gray-500 block">Comissão ({{ number_format($comissaoPercentEfetivo, 1) }}%)</span>
                                     <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($comissao, 2, ',', '.') }}</span>
+                                    @if($temSubsidio)
+                                        <span class="text-[10px] text-green-600 block">-R$ {{ number_format($subsidioML, 2, ',', '.') }} subsídio</span>
+                                    @endif
                                 </div>
                                 <div class="p-2 rounded bg-gray-50 dark:bg-gray-900">
                                     <span class="text-gray-500 block">Imposto ({{ number_format($impPercent, 1) }}%)</span>
