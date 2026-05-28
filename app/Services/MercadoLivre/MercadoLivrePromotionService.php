@@ -271,6 +271,13 @@ class MercadoLivrePromotionService
         try {
             $resp = Http::withToken($token)->withOptions(['verify' => false])->timeout(10)
                 ->get("{$this->apiBase}/items/{$itemId}");
+
+            if ($resp->status() === 403 || $resp->status() === 404) {
+                Log::warning("ML buscarInfoParaAdesao [{$itemId}]: item inacessível (HTTP {$resp->status()}). Pode ser MLB migrado para UP.");
+                $info['erro'] = 'Item inacessível (MLB migrado ou removido)';
+                return $info;
+            }
+
             if ($resp->successful()) {
                 $item = $resp->json();
                 $info['base_price'] = $item['base_price'] ?? $item['price'] ?? 0;

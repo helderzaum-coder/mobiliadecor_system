@@ -189,6 +189,14 @@ class MercadoLivrePromocoes extends Page
         $service = new MercadoLivrePromotionService($this->accountKey);
         $info = $service->buscarInfoParaAdesao($itemId);
 
+        // Item inacessível (MLB migrado/removido)
+        if (!empty($info['erro'])) {
+            Notification::make()->title('Item inacessível')->body($info['erro'] . ' - ' . $itemId)->warning()->send();
+            $this->cancelarAdesao();
+            $this->pularParaProximo();
+            return;
+        }
+
         // Se não veio offer_id e é SMART, buscar via API
         $promoType = $this->selectedPromotion['type'] ?? '';
         if (!$this->aderindoOfferId && $promoType === 'SMART') {
