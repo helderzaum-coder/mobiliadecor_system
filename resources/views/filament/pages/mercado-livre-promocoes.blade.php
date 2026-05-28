@@ -169,8 +169,7 @@
                                 @if($temSubsidio)
                                 <div class="p-2 rounded bg-blue-50 dark:bg-blue-900/20">
                                     <span class="text-gray-500 block">Subsídio ML ({{ number_format($meliPercentage, 1) }}%)</span>
-                                    <span class="font-semibold text-blue-700 dark:text-blue-400">+ R$ {{ number_format($subsidioML, 2, ',', '.') }}</span>
-                                    <span class="text-[10px] text-gray-400 block">Receita: R$ {{ number_format($receita, 2, ',', '.') }}</span>
+                                    <span class="font-semibold text-blue-700 dark:text-blue-400">- R$ {{ number_format($subsidioML, 2, ',', '.') }} na comissão</span>
                                 </div>
                                 @endif
                             </div>
