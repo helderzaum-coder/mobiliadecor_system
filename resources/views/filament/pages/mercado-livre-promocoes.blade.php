@@ -17,6 +17,23 @@
             </div>
         </div>
 
+        {{-- Abas --}}
+        <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 p-1">
+            <div class="flex gap-1">
+                <button wire:click="$set('abaAtiva', 'promocoes')"
+                    @class(['px-3 py-1.5 rounded-lg text-sm font-medium transition',
+                        'bg-primary-500 text-white' => $abaAtiva === 'promocoes',
+                        'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5' => $abaAtiva !== 'promocoes',
+                    ])>Promoções</button>
+                <button wire:click="$set('abaAtiva', 'buscar_item')"
+                    @class(['px-3 py-1.5 rounded-lg text-sm font-medium transition',
+                        'bg-primary-500 text-white' => $abaAtiva === 'buscar_item',
+                        'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5' => $abaAtiva !== 'buscar_item',
+                    ])>Buscar por Item</button>
+            </div>
+        </div>
+
+        @if($abaAtiva === 'promocoes')
         <div style="display:flex; gap:1rem; align-items:flex-start;">
             {{-- Lista de Promoções --}}
             <div style="width:280px; flex-shrink:0;">
@@ -313,5 +330,91 @@
                 </div>
             </div>
         </div>
+        @endif
+
+        @if($abaAtiva === 'buscar_item')
+        <div class="fi-section rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 p-4">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="text-sm font-medium text-gray-500 dark:text-gray-400">MLB ID:</span>
+                <input type="text" wire:model="buscarItemId" wire:keydown.enter="buscarPromocoesDoItem"
+                    placeholder="Ex: MLB4486776021 ou 4486776021"
+                    class="px-3 py-1.5 text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:ring-primary-500 w-64">
+                <x-filament::button size="sm" wire:click="buscarPromocoesDoItem">
+                    Buscar Promoções
+                </x-filament::button>
+                <div wire:loading wire:target="buscarPromocoesDoItem">
+                    <x-filament::loading-indicator class="h-5 w-5" />
+                </div>
+            </div>
+
+            @if(!empty($promocoesDoItem))
+                <div class="overflow-auto rounded-lg ring-1 ring-gray-950/5 dark:ring-white/10">
+                    <table class="fi-ta-table w-full table-auto text-start">
+                        <thead class="bg-gray-50 dark:bg-white/5">
+                            <tr>
+                                <th class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Promoção</th>
+                                <th class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Tipo</th>
+                                <th class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Status</th>
+                                <th class="px-3 py-2 text-end text-xs font-medium text-gray-500 dark:text-gray-400">Preço Original</th>
+                                <th class="px-3 py-2 text-end text-xs font-medium text-gray-500 dark:text-gray-400">Preço Promo</th>
+                                <th class="px-3 py-2 text-end text-xs font-medium text-gray-500 dark:text-gray-400">Rebate ML</th>
+                                <th class="px-3 py-2 text-start text-xs font-medium text-gray-500 dark:text-gray-400">Período</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-white/5">
+                            @foreach($promocoesDoItem as $promo)
+                                <tr class="hover:bg-gray-50/50 dark:hover:bg-white/[0.02]">
+                                    <td class="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">{{ $promo['name'] }}</td>
+                                    <td class="px-3 py-2">
+                                        <span class="text-[10px] text-gray-500">{{ $promo['type'] }}</span>
+                                    </td>
+                                    <td class="px-3 py-2">
+                                        @php $sc = match($promo['status']) {
+                                            'candidate' => 'warning',
+                                            'active', 'started' => 'success',
+                                            'finished' => 'gray',
+                                            default => 'gray'
+                                        }; @endphp
+                                        <x-filament::badge size="sm" :color="$sc">{{ $promo['status'] }}</x-filament::badge>
+                                    </td>
+                                    <td class="px-3 py-2 text-end text-xs tabular-nums text-gray-700 dark:text-gray-300">
+                                        {{ $promo['original_price'] ? 'R$ ' . number_format($promo['original_price'], 2, ',', '.') : '—' }}
+                                    </td>
+                                    <td class="px-3 py-2 text-end text-xs tabular-nums">
+                                        @if($promo['price'])
+                                            <span class="font-semibold text-green-600 dark:text-green-400">R$ {{ number_format($promo['price'], 2, ',', '.') }}</span>
+                                        @else
+                                            <span class="text-gray-400">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-3 py-2 text-end text-xs tabular-nums">
+                                        @if($promo['meli_percentage'] > 0)
+                                            <span class="text-blue-600 dark:text-blue-400">{{ number_format($promo['meli_percentage'], 1) }}%</span>
+                                        @else
+                                            <span class="text-gray-400">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-3 py-2 text-xs text-gray-500">
+                                        @if($promo['start_date'])
+                                            {{ \Carbon\Carbon::parse($promo['start_date'])->format('d/m') }}
+                                            @if($promo['finish_date'])
+                                                - {{ \Carbon\Carbon::parse($promo['finish_date'])->format('d/m') }}
+                                            @endif
+                                        @else
+                                            —
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @elseif($buscarItemId)
+                <p class="text-sm text-gray-400 text-center py-8">Nenhuma promoção encontrada</p>
+            @else
+                <p class="text-sm text-gray-400 text-center py-8">Digite um MLB ID para buscar promoções disponíveis</p>
+            @endif
+        </div>
+        @endif
     </div>
 </x-filament-panels::page>

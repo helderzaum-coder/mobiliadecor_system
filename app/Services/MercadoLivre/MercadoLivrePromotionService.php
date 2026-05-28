@@ -324,6 +324,45 @@ class MercadoLivrePromotionService
         };
     }
 
+    public function buscarPromocoesParaItem(string $itemId): array
+    {
+        $token = $this->oauth->getAccessToken();
+        if (!$token) return ['success' => false, 'error' => 'Token não disponível'];
+
+        try {
+            $response = Http::withToken($token)
+                ->withOptions(['verify' => false])
+                ->timeout(15)
+                ->get("{$this->apiBase}/seller-promotions/items/{$itemId}", ['app_version' => 'v2']);
+        } catch (\Throwable $e) {
+            return ['success' => false, 'error' => 'Timeout: ' . $e->getMessage()];
+        }
+
+        if ($response->failed()) {
+            return ['success' => false, 'error' => "HTTP {$response->status()}"];
+        }
+
+        $data = $response->json();
+        $promotions = [];
+
+        foreach ($data as $promo) {
+            $promotions[] = [
+                'id' => $promo['promotion_id'] ?? $promo['id'] ?? '',
+                'name' => $promo['name'] ?? $promo['promotion_name'] ?? 'Sem nome',
+                'type' => $promo['type'] ?? $promo['promotion_type'] ?? '',
+                'status' => $promo['status'] ?? '',
+                'price' => $promo['price'] ?? null,
+                'original_price' => $promo['original_price'] ?? null,
+                'meli_percentage' => (float) ($promo['meli_percentage'] ?? 0),
+                'seller_percentage' => (float) ($promo['seller_percentage'] ?? 0),
+                'start_date' => $promo['start_date'] ?? null,
+                'finish_date' => $promo['finish_date'] ?? null,
+            ];
+        }
+
+        return ['success' => true, 'promotions' => $promotions];
+    }
+
     public function buscarTitulosEmBatch(array $itemIds): array
     {
         $token = $this->oauth->getAccessToken();

@@ -53,6 +53,9 @@ class MercadoLivrePromocoes extends Page
     public ?string $aderindoItemId = null;
     public ?float $aderindoPreco = null;
     public ?array $aderindoInfo = null; // dados enriquecidos para simulação
+    public string $buscarItemId = '';
+    public array $promocoesDoItem = [];
+    public string $abaAtiva = 'promocoes'; // 'promocoes' ou 'buscar_item'
 
     public function mount(): void
     {
@@ -296,6 +299,33 @@ class MercadoLivrePromocoes extends Page
             $accounts[$key] = $account['name'];
         }
         return $accounts;
+    }
+
+    public function buscarPromocoesDoItem(): void
+    {
+        if (!$this->buscarItemId) {
+            Notification::make()->title('Digite um MLB ID')->warning()->send();
+            return;
+        }
+
+        $itemId = trim($this->buscarItemId);
+        // Adicionar prefixo MLB se não tiver
+        if (!str_starts_with(strtoupper($itemId), 'MLB')) {
+            $itemId = 'MLB' . $itemId;
+        }
+
+        $service = new MercadoLivrePromotionService($this->accountKey);
+        $result = $service->buscarPromocoesParaItem($itemId);
+
+        if ($result['success']) {
+            $this->promocoesDoItem = $result['promotions'];
+            if (empty($this->promocoesDoItem)) {
+                Notification::make()->title('Nenhuma promoção encontrada para ' . $itemId)->warning()->send();
+            }
+        } else {
+            Notification::make()->title('Erro ao buscar promoções')->body($result['error'] ?? '')->danger()->send();
+            $this->promocoesDoItem = [];
+        }
     }
 
     public static function canAccess(): bool
