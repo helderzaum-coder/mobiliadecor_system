@@ -30,29 +30,27 @@
                         </button>
                     </div>
 
-                    <div class="space-y-1.5 max-h-[72vh] overflow-y-auto">
+                    <div class="max-h-[72vh] overflow-y-auto">
                         @forelse($promotions as $index => $promo)
+                            @php $statusColor = match($promo['status'] ?? '') {
+                                'started' => 'success',
+                                'candidate' => 'warning',
+                                'scheduled' => 'info',
+                                default => 'gray'
+                            }; @endphp
                             <button wire:click="selectPromotion({{ $index }})"
                                 @class([
-                                    'w-full text-left px-3 py-2 rounded-lg transition text-sm',
+                                    'w-full text-left px-2 py-1.5 flex items-center gap-2 transition text-xs rounded',
                                     'bg-primary-50 dark:bg-primary-500/10 ring-1 ring-primary-500/30' => ($selectedPromotion['id'] ?? '') === $promo['id'],
                                     'hover:bg-gray-50 dark:hover:bg-white/5' => ($selectedPromotion['id'] ?? '') !== $promo['id'],
                                 ])>
-                                <div class="font-medium text-gray-900 dark:text-gray-100 truncate text-xs">
+                                <x-filament::badge size="sm" :color="$statusColor" class="shrink-0">
+                                    {{ $promo['status'] ?? '-' }}
+                                </x-filament::badge>
+                                <span class="truncate font-medium text-gray-900 dark:text-gray-100">
                                     {{ $promo['name'] ?? 'Sem nome' }}
-                                </div>
-                                <div class="flex items-center gap-1.5 mt-0.5">
-                                    @php $statusColor = match($promo['status'] ?? '') {
-                                        'started' => 'success',
-                                        'candidate' => 'warning',
-                                        'scheduled' => 'info',
-                                        default => 'gray'
-                                    }; @endphp
-                                    <x-filament::badge size="sm" :color="$statusColor">
-                                        {{ $promo['status'] ?? '-' }}
-                                    </x-filament::badge>
-                                    <span class="text-[10px] text-gray-400">{{ $promo['type'] ?? '' }}</span>
-                                </div>
+                                </span>
+                                <span class="ml-auto shrink-0 text-[10px] text-gray-400">{{ $promo['type'] ?? '' }}</span>
                             </button>
                         @empty
                             <p class="text-xs text-gray-400 text-center py-6">Nenhuma promoção</p>
