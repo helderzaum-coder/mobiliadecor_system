@@ -464,7 +464,7 @@ class MercadoLivrePromotionService
 
         foreach ($data as $promo) {
             $promotions[] = [
-                'id' => $promo['promotion_id'] ?? '',
+                'id' => $promo['promotion_id'] ?? $promo['id'] ?? '',
                 'name' => $promo['name'] ?? $promo['promotion_name'] ?? 'Sem nome',
                 'type' => $promo['type'] ?? $promo['promotion_type'] ?? '',
                 'status' => $promo['status'] ?? '',
@@ -474,7 +474,7 @@ class MercadoLivrePromotionService
                 'seller_percentage' => (float) ($promo['seller_percentage'] ?? 0),
                 'start_date' => $promo['start_date'] ?? null,
                 'finish_date' => $promo['finish_date'] ?? null,
-                'offer_id' => $promo['offer_id'] ?? $promo['deal_id'] ?? $promo['candidate_id'] ?? null,
+                'offer_id' => $promo['offer_id'] ?? $promo['ref_id'] ?? $promo['deal_id'] ?? $promo['candidate_id'] ?? null,
                 'raw_keys' => array_keys($promo),
             ];
         }
