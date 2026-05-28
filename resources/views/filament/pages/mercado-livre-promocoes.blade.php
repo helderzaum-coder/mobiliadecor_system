@@ -199,6 +199,11 @@
                                 <x-filament::button size="xs" color="gray" wire:click="searchItems">
                                     Buscar
                                 </x-filament::button>
+                                @if($searchItem)
+                                    <x-filament::button size="xs" color="gray" wire:click="$set('searchItem', '')">
+                                        Limpar
+                                    </x-filament::button>
+                                @endif
                                 @if($searchAfter)
                                     <x-filament::button size="xs" color="gray" wire:click="loadItems">
                                         + Mais
@@ -225,10 +230,7 @@
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100 dark:divide-white/5">
-                                    @foreach($items as $item)
-                                        @if($searchItem && !str_contains(strtolower($item['id']), strtolower($searchItem)) && !str_contains(strtolower($item['title'] ?? ''), strtolower($searchItem)))
-                                            @continue
-                                        @endif
+                                    @foreach($this->getFilteredItems() as $item)
                                         <tr class="hover:bg-gray-50/50 dark:hover:bg-white/[0.02] transition">
                                             <td class="px-3 py-2">
                                                 <span class="font-mono text-xs text-gray-600 dark:text-gray-300" title="{{ $item['title'] ?: $item['id'] }}">

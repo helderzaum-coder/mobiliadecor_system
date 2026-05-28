@@ -29,22 +29,26 @@ class MercadoLivrePromocoes extends Page
 
     public function searchItems(): void
     {
-        if (!$this->searchItem || !$this->selectedPromotion) return;
-
-        // Se ainda há itens não carregados, verificar se já encontrou
-        $term = strtolower(trim($this->searchItem));
-        $found = false;
-        foreach ($this->items as $item) {
-            if (str_contains(strtolower($item['id']), $term) || str_contains(strtolower($item['title'] ?? ''), $term)) {
-                $found = true;
-                break;
-            }
-        }
-
-        // Se não encontrou e ainda há mais páginas, carregar tudo
-        if (!$found && $this->searchAfter) {
+        // Se ainda há itens não carregados, carregar todos para buscar
+        if ($this->searchItem && $this->searchAfter) {
             $this->loadAllItems();
         }
+    }
+
+    public function getFilteredItems(): array
+    {
+        if (!$this->searchItem) return $this->items;
+
+        $term = strtolower(trim($this->searchItem));
+        return array_filter($this->items, function ($item) use ($term) {
+            // Buscar no ID (com ou sem prefixo MLB)
+            $id = strtolower($item['id'] ?? '');
+            $idSemPrefixo = preg_replace('/^mlb/', '', $id);
+            if (str_contains($id, $term) || str_contains($idSemPrefixo, $term)) return true;
+            // Buscar no título
+            if (str_contains(strtolower($item['title'] ?? ''), $term)) return true;
+            return false;
+        });
     }
     public ?string $aderindoItemId = null;
     public ?float $aderindoPreco = null;
