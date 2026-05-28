@@ -14,6 +14,9 @@
                         {{ $name }}
                     </button>
                 @endforeach
+                <span class="ml-auto text-sm font-medium text-gray-500 dark:text-gray-400">Imposto %:</span>
+                <input type="number" step="0.1" wire:model.blur="impostoPercent"
+                    class="w-20 px-2 py-1 text-sm rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:ring-primary-500">
             </div>
         </div>
 

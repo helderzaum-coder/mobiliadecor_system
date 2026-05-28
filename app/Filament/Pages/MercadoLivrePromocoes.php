@@ -56,6 +56,7 @@ class MercadoLivrePromocoes extends Page
     public string $buscarItemId = '';
     public array $promocoesDoItem = [];
     public string $abaAtiva = 'promocoes'; // 'promocoes' ou 'buscar_item'
+    public float $impostoPercent = 17.8;
 
     public function mount(): void
     {
@@ -187,7 +188,7 @@ class MercadoLivrePromocoes extends Page
             'frete'              => $info['frete'] ?? 0,
             'comissao_percent'   => $info['comissao_percent'] ?? 11.5,
             'listing_type'       => $info['listing_type'] ?? '',
-            'imposto_percent'    => 17.8,
+            'imposto_percent'    => $this->impostoPercent,
             'custo_produto'      => $info['custo_produto'] ?? 0,
             'sku'                => $info['sku'] ?? null,
             'tem_subsidio'       => $temSubsidio,
@@ -360,7 +361,7 @@ class MercadoLivrePromocoes extends Page
             'frete'              => $info['frete'] ?? 0,
             'comissao_percent'   => $info['comissao_percent'] ?? 11.5,
             'listing_type'       => $info['listing_type'] ?? '',
-            'imposto_percent'    => 17.8,
+            'imposto_percent'    => $this->impostoPercent,
             'custo_produto'      => $info['custo_produto'] ?? 0,
             'sku'                => $info['sku'] ?? null,
             'tem_subsidio'       => $meliPercentage > 0,
