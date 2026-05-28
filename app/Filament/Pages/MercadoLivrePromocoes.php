@@ -176,11 +176,16 @@ class MercadoLivrePromocoes extends Page
         }
 
         $this->aderindoPreco = $targetItem['deal_price'] ?? $targetItem['price'] ?? null;
+        $this->aderindoOfferId = $targetItem['offer_id'] ?? null;
 
         $service = new MercadoLivrePromotionService($this->accountKey);
         $info = $service->buscarInfoParaAdesao($itemId);
 
+        // Se não veio offer_id e é SMART, buscar via API
         $promoType = $this->selectedPromotion['type'] ?? '';
+        if (!$this->aderindoOfferId && $promoType === 'SMART') {
+            $this->aderindoOfferId = $service->buscarOfferIdDoItem($itemId, $this->selectedPromotion['id'], $promoType);
+        }
         $meliPercentage = (float) ($targetItem['meli_percentage'] ?? 0);
         $sellerPercentage = (float) ($targetItem['seller_percentage'] ?? 0);
         $temSubsidio = $meliPercentage > 0;

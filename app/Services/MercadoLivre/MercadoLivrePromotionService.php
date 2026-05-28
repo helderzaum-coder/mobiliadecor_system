@@ -97,6 +97,7 @@ class MercadoLivrePromotionService
                 'proposed_deal_price' => $proposedDealPrice,
                 'meli_percentage' => (float) ($item['meli_percentage'] ?? 0),
                 'seller_percentage' => (float) ($item['seller_percentage'] ?? 0),
+                'offer_id' => $item['offer_id'] ?? $item['ref_id'] ?? $item['deal_id'] ?? $item['candidate_id'] ?? null,
             ];
         }
 
