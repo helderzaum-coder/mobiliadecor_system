@@ -398,10 +398,16 @@ class MercadoLivrePromotionService
             }
 
             try {
-                $resp = Http::withToken($token)->withOptions(['verify' => false])->timeout(30)
-                    ->get("{$this->apiBase}/seller-promotions/promotions/{$promotionId}/items", $params);
+                $url = "{$this->apiBase}/seller-promotions/promotions/{$promotionId}/items";
+                Log::info("ML buscarOfferIdDoItem: GET {$url}", ['params' => $params]);
 
-                if (!$resp->successful()) break;
+                $resp = Http::withToken($token)->withOptions(['verify' => false])->timeout(30)
+                    ->get($url, $params);
+
+                if (!$resp->successful()) {
+                    Log::warning("ML buscarOfferIdDoItem: HTTP {$resp->status()}", ['body' => $resp->body()]);
+                    break;
+                }
 
                 $data = $resp->json();
                 $results = $data['results'] ?? [];
