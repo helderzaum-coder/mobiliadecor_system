@@ -150,8 +150,6 @@
                 $subsidio = (float) $venda->subsidio_pix;
 
                 $borderColor = $lucro >= 0 ? 'border-green-500' : 'border-red-500';
-                $lucroBg = $lucro >= 0 ? 'bg-green-100 dark:bg-green-900/40' : 'bg-red-100 dark:bg-red-900/40';
-                $lucroColor = $lucro >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400';
 
                 // Alertas
                 $alertas = [];
@@ -223,44 +221,44 @@
                     <div class="flex flex-wrap gap-2 shrink-0">
                         {{-- NF-e --}}
                         @if($temNfeChave)
-                            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700">
-                                <span class="text-green-600 dark:text-green-400 text-sm">✓</span>
-                                <span class="text-xs font-medium text-green-700 dark:text-green-300">NF-e</span>
+                            <div class="flex items-center gap-1.5 rounded-lg" style="padding:6px 12px;background:rgba(6,78,59,0.35);border:1px solid rgba(34,197,94,0.5);">
+                                <span style="color:#4ade80;font-size:14px;">✓</span>
+                                <span style="font-size:11px;font-weight:600;color:#86efac;">NF-e</span>
                             </div>
                         @else
-                            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-100 dark:bg-red-900/40 border border-red-300 dark:border-red-700">
-                                <span class="text-red-500 dark:text-red-400 text-sm">✗</span>
-                                <span class="text-xs font-medium text-red-700 dark:text-red-300">NF-e</span>
+                            <div class="flex items-center gap-1.5 rounded-lg" style="padding:6px 12px;background:rgba(127,29,29,0.35);border:1px solid rgba(239,68,68,0.5);">
+                                <span style="color:#f87171;font-size:14px;">✗</span>
+                                <span style="font-size:11px;font-weight:600;color:#fca5a5;">NF-e</span>
                                 @if($venda->data_prevista_envio)
-                                    <span class="text-[10px] text-purple-600 dark:text-purple-400 ml-1">📦 {{ $venda->data_prevista_envio->format('d/m') }}</span>
+                                    <span style="font-size:10px;color:#c084fc;margin-left:4px;">📦 {{ $venda->data_prevista_envio->format('d/m') }}</span>
                                 @endif
                             </div>
                         @endif
 
                         {{-- Frete --}}
                         @if($freteOk)
-                            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700">
-                                <span class="text-green-600 dark:text-green-400 text-sm">✓</span>
-                                <span class="text-xs font-medium text-green-700 dark:text-green-300">Frete</span>
+                            <div class="flex items-center gap-1.5 rounded-lg" style="padding:6px 12px;background:rgba(6,78,59,0.35);border:1px solid rgba(34,197,94,0.5);">
+                                <span style="color:#4ade80;font-size:14px;">✓</span>
+                                <span style="font-size:11px;font-weight:600;color:#86efac;">Frete</span>
                             </div>
                         @else
-                            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700">
-                                <span class="text-amber-500 dark:text-amber-400 text-sm">✗</span>
-                                <span class="text-xs font-medium text-amber-700 dark:text-amber-300">Frete</span>
+                            <div class="flex items-center gap-1.5 rounded-lg" style="padding:6px 12px;background:rgba(120,53,15,0.35);border:1px solid rgba(245,158,11,0.5);">
+                                <span style="color:#fbbf24;font-size:14px;">✗</span>
+                                <span style="font-size:11px;font-weight:600;color:#fcd34d;">Frete</span>
                             </div>
                         @endif
 
                         {{-- Planilha (só marketplaces) --}}
                         @if($precisaPlanilha)
                             @if($planilhaOk)
-                                <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700">
-                                    <span class="text-green-600 dark:text-green-400 text-sm">✓</span>
-                                    <span class="text-xs font-medium text-green-700 dark:text-green-300">Planilha</span>
+                                <div class="flex items-center gap-1.5 rounded-lg" style="padding:6px 12px;background:rgba(6,78,59,0.35);border:1px solid rgba(34,197,94,0.5);">
+                                    <span style="color:#4ade80;font-size:14px;">✓</span>
+                                    <span style="font-size:11px;font-weight:600;color:#86efac;">Planilha</span>
                                 </div>
                             @else
-                                <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-100 dark:bg-purple-900/40 border border-purple-300 dark:border-purple-700">
-                                    <span class="text-purple-500 dark:text-purple-400 text-sm">✗</span>
-                                    <span class="text-xs font-medium text-purple-700 dark:text-purple-300">Planilha</span>
+                                <div class="flex items-center gap-1.5 rounded-lg" style="padding:6px 12px;background:rgba(88,28,135,0.35);border:1px solid rgba(168,85,247,0.5);">
+                                    <span style="color:#c084fc;font-size:14px;">✗</span>
+                                    <span style="font-size:11px;font-weight:600;color:#d8b4fe;">Planilha</span>
                                 </div>
                             @endif
                         @endif
@@ -268,41 +266,41 @@
                         {{-- Afiliado (só Shopee) --}}
                         @if($precisaAfiliado)
                             @if($afiliadoOk)
-                                <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700">
-                                    <span class="text-green-600 dark:text-green-400 text-sm">✓</span>
-                                    <span class="text-xs font-medium text-green-700 dark:text-green-300">Afiliado</span>
+                                <div class="flex items-center gap-1.5 rounded-lg" style="padding:6px 12px;background:rgba(6,78,59,0.35);border:1px solid rgba(34,197,94,0.5);">
+                                    <span style="color:#4ade80;font-size:14px;">✓</span>
+                                    <span style="font-size:11px;font-weight:600;color:#86efac;">Afiliado</span>
                                 </div>
                             @else
-                                <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink-100 dark:bg-pink-900/40 border border-pink-300 dark:border-pink-700">
-                                    <span class="text-pink-500 dark:text-pink-400 text-sm">✗</span>
-                                    <span class="text-xs font-medium text-pink-700 dark:text-pink-300">Afiliado</span>
+                                <div class="flex items-center gap-1.5 rounded-lg" style="padding:6px 12px;background:rgba(131,24,67,0.35);border:1px solid rgba(236,72,153,0.5);">
+                                    <span style="color:#f472b6;font-size:14px;">✗</span>
+                                    <span style="font-size:11px;font-weight:600;color:#fbcfe8;">Afiliado</span>
                                 </div>
                             @endif
                         @endif
 
                         {{-- Custos --}}
                         @if($custoProd > 0)
-                            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700">
-                                <span class="text-green-600 dark:text-green-400 text-sm">✓</span>
-                                <span class="text-xs font-medium text-green-700 dark:text-green-300">Custos</span>
+                            <div class="flex items-center gap-1.5 rounded-lg" style="padding:6px 12px;background:rgba(6,78,59,0.35);border:1px solid rgba(34,197,94,0.5);">
+                                <span style="color:#4ade80;font-size:14px;">✓</span>
+                                <span style="font-size:11px;font-weight:600;color:#86efac;">Custos</span>
                             </div>
                         @else
-                            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-100 dark:bg-orange-900/40 border border-orange-300 dark:border-orange-700">
-                                <span class="text-orange-500 dark:text-orange-400 text-sm">✗</span>
-                                <span class="text-xs font-medium text-orange-700 dark:text-orange-300">Custos</span>
+                            <div class="flex items-center gap-1.5 rounded-lg" style="padding:6px 12px;background:rgba(124,45,18,0.35);border:1px solid rgba(249,115,22,0.5);">
+                                <span style="color:#fb923c;font-size:14px;">✗</span>
+                                <span style="font-size:11px;font-weight:600;color:#fdba74;">Custos</span>
                             </div>
                         @endif
 
                         {{-- Imposto --}}
                         @if($imposto > 0)
-                            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700">
-                                <span class="text-green-600 dark:text-green-400 text-sm">✓</span>
-                                <span class="text-xs font-medium text-green-700 dark:text-green-300">Imposto</span>
+                            <div class="flex items-center gap-1.5 rounded-lg" style="padding:6px 12px;background:rgba(6,78,59,0.35);border:1px solid rgba(34,197,94,0.5);">
+                                <span style="color:#4ade80;font-size:14px;">✓</span>
+                                <span style="font-size:11px;font-weight:600;color:#86efac;">Imposto</span>
                             </div>
                         @else
-                            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-100 dark:bg-orange-900/40 border border-orange-300 dark:border-orange-700">
-                                <span class="text-orange-500 dark:text-orange-400 text-sm">✗</span>
-                                <span class="text-xs font-medium text-orange-700 dark:text-orange-300">Imposto</span>
+                            <div class="flex items-center gap-1.5 rounded-lg" style="padding:6px 12px;background:rgba(124,45,18,0.35);border:1px solid rgba(249,115,22,0.5);">
+                                <span style="color:#fb923c;font-size:14px;">✗</span>
+                                <span style="font-size:11px;font-weight:600;color:#fdba74;">Imposto</span>
                             </div>
                         @endif
                     </div>
@@ -335,25 +333,25 @@
                     $isMagaluCard = str_contains(strtolower($canal), 'magalu');
                 @endphp
                 <div class="flex flex-wrap items-stretch gap-2 text-xs">
-                    <div class="flex items-center gap-4 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center gap-4 px-3 py-2 rounded-lg" style="background:rgba(31,41,55,0.5);border:1px solid rgba(75,85,99,0.6);">
                         <div>
-                            <div class="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-wide">Total</div>
-                            <div class="font-semibold text-gray-800 dark:text-white">R$ {{ number_format($total, 2, ',', '.') }}</div>
+                            <div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">Total</div>
+                            <div class="font-semibold" style="color:#fff;">R$ {{ number_format($total, 2, ',', '.') }}</div>
                         </div>
-                        <div class="w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
+                        <div style="width:1px;height:24px;background:#4b5563;"></div>
                         <div>
-                            <div class="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-wide">Subtotal</div>
-                            <div class="font-semibold text-gray-800 dark:text-white">R$ {{ number_format($totalProd, 2, ',', '.') }}</div>
+                            <div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">Subtotal</div>
+                            <div class="font-semibold" style="color:#fff;">R$ {{ number_format($totalProd, 2, ',', '.') }}</div>
                         </div>
-                        <div class="w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
+                        <div style="width:1px;height:24px;background:#4b5563;"></div>
                         <div>
-                            <div class="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-wide">Custo</div>
-                            <div class="font-semibold {{ $custoProd > 0 ? 'text-gray-800 dark:text-white' : 'text-orange-600' }}">R$ {{ number_format($custoProd, 2, ',', '.') }}</div>
+                            <div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">Custo</div>
+                            <div class="font-semibold" style="color:{{ $custoProd > 0 ? '#fff' : '#f97316' }};">R$ {{ number_format($custoProd, 2, ',', '.') }}</div>
                         </div>
-                        <div class="w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
+                        <div style="width:1px;height:24px;background:#4b5563;"></div>
                         <div>
-                            <div class="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-wide">Comissão</div>
-                            <div class="font-semibold text-gray-800 dark:text-white">
+                            <div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">Comissão</div>
+                            <div class="font-semibold" style="color:#fff;">
                                 R$ {{ number_format($comissao, 2, ',', '.') }}
                                 @if((float) ($venda->comissao_afiliado ?? 0) > 0)
                                     <span style="font-size:9px;color:#db2777;">+{{ number_format((float) $venda->comissao_afiliado, 2, ',', '.') }}</span>
@@ -367,23 +365,23 @@
                                 </div>
                             @endif
                         </div>
-                        <div class="w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
+                        <div style="width:1px;height:24px;background:#4b5563;"></div>
                         <div>
-                            <div class="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-wide">Imposto</div>
-                            <div class="font-semibold text-gray-800 dark:text-white">R$ {{ number_format($imposto, 2, ',', '.') }}</div>
+                            <div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">Imposto</div>
+                            <div class="font-semibold" style="color:#fff;">R$ {{ number_format($imposto, 2, ',', '.') }}</div>
                         </div>
-                        <div class="w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
+                        <div style="width:1px;height:24px;background:#4b5563;"></div>
                         <div>
-                            <div class="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-wide">Repasse</div>
-                            <div class="font-semibold text-blue-600 dark:text-blue-400">R$ {{ number_format($repasse, 2, ',', '.') }}</div>
+                            <div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">Repasse</div>
+                            <div class="font-semibold" style="color:#60a5fa;">R$ {{ number_format($repasse, 2, ',', '.') }}</div>
                         </div>
                     </div>
 
                     {{-- Frete separado --}}
-                    <div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center gap-3 px-3 py-2 rounded-lg" style="background:rgba(31,41,55,0.5);border:1px solid rgba(75,85,99,0.6);">
                         <div>
-                            <div class="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-wide">Frete (cobrado → {{ $fretePago ? 'pago' : ($custoFrete > 0 ? 'cotado' : '-') }})</div>
-                            <div class="font-semibold text-gray-800 dark:text-white">
+                            <div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">Frete (cobrado → {{ $fretePago ? 'pago' : ($custoFrete > 0 ? 'cotado' : '-') }})</div>
+                            <div class="font-semibold" style="color:#fff;">
                                 R$ {{ number_format($freteCliente, 2, ',', '.') }} → R$ {{ number_format($custoFrete, 2, ',', '.') }}
                                 @if($custoFrete > 0 && !$fretePago)
                                     <span style="color:#d97706;font-size:9px;">⚠ estimado</span>
@@ -405,21 +403,25 @@
                     </div>
 
                     @if($subsidio > 0)
-                    <div class="flex items-center px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center px-3 py-2 rounded-lg" style="background:rgba(31,41,55,0.5);border:1px solid rgba(75,85,99,0.6);">
                         <div>
-                            <div class="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-wide">{{ $isMagaluCard ? 'Desc. Vendedor' : 'Subsídio Pix' }}</div>
-                            <div class="font-semibold {{ $isMagaluCard ? 'text-red-600' : 'text-blue-600' }}">R$ {{ number_format($subsidio, 2, ',', '.') }}</div>
+                            <div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">{{ $isMagaluCard ? 'Desc. Vendedor' : 'Subsídio Pix' }}</div>
+                            <div class="font-semibold" style="color:{{ $isMagaluCard ? '#ef4444' : '#60a5fa' }};">R$ {{ number_format($subsidio, 2, ',', '.') }}</div>
                         </div>
                     </div>
                     @endif
 
                     {{-- Lucro destacado --}}
-                    <div class="flex items-center px-4 py-2 rounded-lg {{ $lucroBg }} border {{ $lucro >= 0 ? 'border-green-200 dark:border-green-800' : 'border-red-200 dark:border-red-800' }}">
+                    @php
+                        $lucroBgInline = $lucro >= 0 ? 'background:rgba(6,78,59,0.3);border:1px solid rgba(34,197,94,0.4);' : 'background:rgba(127,29,29,0.3);border:1px solid rgba(239,68,68,0.4);';
+                        $lucroColorInline = $lucro >= 0 ? 'color:#4ade80;' : 'color:#f87171;';
+                    @endphp
+                    <div class="flex items-center px-4 py-2 rounded-lg" style="{{ $lucroBgInline }}">
                         <div>
-                            <div class="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-wide">Lucro</div>
-                            <div class="font-bold text-base {{ $lucroColor }}">
+                            <div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">Lucro</div>
+                            <div class="font-bold text-base" style="{{ $lucroColorInline }}">
                                 R$ {{ number_format($lucro, 2, ',', '.') }}
-                                <span class="text-xs font-normal">({{ $margemPct }}%)</span>
+                                <span style="font-size:12px;font-weight:normal;">({{ $margemPct }}%)</span>
                             </div>
                         </div>
                     </div>
@@ -446,8 +448,14 @@
                 @endphp
                 <div class="flex flex-wrap gap-2 mt-2 text-xs">
                     {{-- Margem Produto --}}
-                    <div class="flex-1 min-w-[200px] rounded-lg px-3 py-2 {{ $margemProd >= 0 ? 'bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700' : 'bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700' }}">
-                        <div class="font-semibold {{ $margemProd >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400' }}">
+                    @php
+                        $margemProdBg = $margemProd >= 0
+                            ? 'background:rgba(6,78,59,0.25);border:1px solid rgba(34,197,94,0.4);'
+                            : 'background:rgba(127,29,29,0.25);border:1px solid rgba(239,68,68,0.4);';
+                        $margemProdColor = $margemProd >= 0 ? 'color:#4ade80;' : 'color:#f87171;';
+                    @endphp
+                    <div class="flex-1 min-w-[200px] rounded-lg px-3 py-2" style="{{ $margemProdBg }}">
+                        <div class="font-semibold" style="{{ $margemProdColor }}">
                             📦 Margem Produto: R$ {{ number_format($margemProd, 2, ',', '.') }}
                             ({{ $totalProd > 0 ? round(($margemProd / $totalProd) * 100, 1) : 0 }}%)
                         </div>
@@ -462,8 +470,14 @@
 
                     {{-- Margem Frete --}}
                     @if($freteCliente > 0 || $custoFrete > 0)
-                    <div class="flex-1 min-w-[200px] rounded-lg px-3 py-2 {{ $margemFrete >= 0 ? 'bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700' : 'bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700' }}">
-                        <div class="font-semibold {{ $margemFrete >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400' }}">
+                    @php
+                        $margemFreteBg = $margemFrete >= 0
+                            ? 'background:rgba(6,78,59,0.25);border:1px solid rgba(34,197,94,0.4);'
+                            : 'background:rgba(127,29,29,0.25);border:1px solid rgba(239,68,68,0.4);';
+                        $margemFreteColor = $margemFrete >= 0 ? 'color:#4ade80;' : 'color:#f87171;';
+                    @endphp
+                    <div class="flex-1 min-w-[200px] rounded-lg px-3 py-2" style="{{ $margemFreteBg }}">
+                        <div class="font-semibold" style="{{ $margemFreteColor }}">
                             🚚 Margem Frete: R$ {{ number_format($margemFrete, 2, ',', '.') }}
                         </div>
                         <div style="color:#9ca3af;font-size:10px;margin-top:2px;">
