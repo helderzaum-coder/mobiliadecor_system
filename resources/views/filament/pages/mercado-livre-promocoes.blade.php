@@ -115,9 +115,8 @@
                             // Comissão sobre o preço que o comprador paga
                             $precoBaseComissao = $buyerPrice > 0 ? $buyerPrice : $precoPromo;
                             $netProceedsCompativel = $netProceedsAmount !== null && abs($precoBaseComissao - $precoPromo) < 0.01;
-                            $comissaoCheia = $comissaoValorBase > 0 && $precoOriginal > 0
-                                ? $comissaoValorBase * ($precoBaseComissao / $precoOriginal)
-                                : $precoBaseComissao * ($comissaoPercent / 100);
+                            // Comissão: usar percentual sobre o preço promo
+                            $comissaoCheia = $precoBaseComissao * ($comissaoPercent / 100);
                             // Participacao do ML no desconto da promocao; nao e abatimento direto de tarifa.
                             $participacaoMl = $temSubsidio ? $precoOriginal * ($meliPercentage / 100) : 0;
                             $deducoesMl = $netProceedsCompativel ? max(0, $precoBaseComissao - $netProceedsAmount) : null;
