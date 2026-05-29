@@ -83,11 +83,14 @@ class VariacaoTamposJob implements ShouldQueue
                 }
                 $saldoBling = self::buscarSaldoGeral($client, (int) $produto['id'], $depositoId);
 
-                // Usar saldo_carcaca interno se preenchido (não nulo), senão usar saldo do Bling
+                // Usar saldo_carcaca interno SEMPRE que disponível
+                // Se saldo_carcaca é null E nunca foi definido, usar 0 (não o saldo do Bling, que pode estar equalizado)
                 $produtoInterno = ProdutoEstoque::where('sku', $config->sku_produto)->where('ativo', true)->first();
                 $saldoCarcaca = ($produtoInterno && $produtoInterno->saldo_carcaca !== null)
-                    ? $produtoInterno->saldo_carcaca
-                    : $saldoBling;
+                    ? (int) $produtoInterno->saldo_carcaca
+                    : 0;
+
+                Log::info("VariacaoTampos: SKU {$config->sku_produto} — saldoBling={$saldoBling}, saldo_carcaca={$saldoCarcaca}" . ($produtoInterno && $produtoInterno->saldo_carcaca === null ? ' (null→0)' : ''));
 
                 $saldosPorSku[$config->sku_produto] = [
                     'config'      => $config,
@@ -157,8 +160,9 @@ class VariacaoTamposJob implements ShouldQueue
                     // Guardar saldo real individual apenas se nunca foi definido (null)
                     // NUNCA sobrescrever com saldo equalizado — saldo_carcaca deve refletir carcaças reais
                     if ($produtoInterno && $produtoInterno->saldo_carcaca === null) {
-                        // Primeira vez: usar o saldo_carcaca informado na busca (que veio do Bling antes da equalização)
-                        ProdutoEstoque::where('sku', (string) $sku)->update(['saldo_carcaca' => max(0, $info['saldo_carcaca'])]);
+                        // Primeira vez: marcar como 0 — o admin deve informar manualmente via botão "Carcaças"
+                        Log::warning("VariacaoTampos: {$sku} saldo_carcaca era null, definido como 0. Ajuste manualmente se necessário.");
+                        ProdutoEstoque::where('sku', (string) $sku)->update(['saldo_carcaca' => 0]);
                     }
                 } else {
                     $resultado['erros']++;
