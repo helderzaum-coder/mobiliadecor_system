@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Services\MercadoLivre\MercadoLivrePromotionService;
+use App\Models\MlItemIgnorado;
 use Filament\Pages\Page;
 use Filament\Notifications\Notification;
 
@@ -59,7 +60,7 @@ class MercadoLivrePromocoes extends Page
     public ?float $aderindoPreco = null;
     public ?array $aderindoInfo = null;
     public ?string $aderindoOfferId = null;
-    public array $itensPulados = [];
+    public array $itensPulados = []; // cache local da sessão
     public string $buscarItemId = '';
     public array $promocoesDoItem = [];
     public string $abaAtiva = 'promocoes';
@@ -102,7 +103,12 @@ class MercadoLivrePromocoes extends Page
         $this->totalItems = 0;
         $this->loading = true;
         $this->needsLoadItems = true;
-        $this->itensPulados = [];
+        // Carregar ignorados persistidos para esta promoção
+        $this->itensPulados = $this->selectedPromotion
+            ? MlItemIgnorado::where('promotion_id', $this->selectedPromotion['id'])
+                ->where('account_key', $this->accountKey)
+                ->pluck('item_id')->toArray()
+            : [];
     }
 
     public function doLoadItems(): void
@@ -237,6 +243,17 @@ class MercadoLivrePromocoes extends Page
     {
         $currentId = $this->aderindoItemId;
         $this->itensPulados[] = $currentId;
+
+        // Persistir no banco
+        if ($this->selectedPromotion) {
+            MlItemIgnorado::firstOrCreate([
+                'item_id' => $currentId,
+                'promotion_id' => $this->selectedPromotion['id'],
+            ], [
+                'account_key' => $this->accountKey,
+            ]);
+        }
+
         $this->cancelarAdesao();
 
         // Encontrar próximo candidate após o atual (que não foi pulado)
@@ -250,6 +267,18 @@ class MercadoLivrePromocoes extends Page
                 $found = true;
             }
         }
+    }
+
+    public function limparIgnorados(): void
+    {
+        if (!$this->selectedPromotion) return;
+
+        MlItemIgnorado::where('promotion_id', $this->selectedPromotion['id'])
+            ->where('account_key', $this->accountKey)
+            ->delete();
+
+        $this->itensPulados = [];
+        Notification::make()->title('Itens ignorados limpos')->success()->send();
     }
 
     public function confirmarAdesao(): void

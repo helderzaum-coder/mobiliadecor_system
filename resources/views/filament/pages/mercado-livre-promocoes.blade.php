@@ -249,6 +249,12 @@
                                         Todos
                                     </x-filament::button>
                                 @endif
+                                @if(!empty($itensPulados))
+                                    <x-filament::button size="xs" color="danger" wire:click="limparIgnorados"
+                                        wire:confirm="Limpar todos os itens ignorados desta promoção?">
+                                        Limpar ignorados ({{ count($itensPulados) }})
+                                    </x-filament::button>
+                                @endif
                             </div>
                         </div>
 
