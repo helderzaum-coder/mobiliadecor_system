@@ -107,7 +107,9 @@
                             $comissaoValorBase = $aderindoInfo['comissao_valor'] ?? 0;
                             $buyerPrice = $aderindoInfo['buyer_price'] ?? 0;
                             $impPercent = $impostoPercent;
-                            $custoProduto = $aderindoInfo['custo_produto'] ?? 0;
+                            $custoProduto = ($aderindoInfo['custo_produto'] ?? 0) > 0
+                                ? $aderindoInfo['custo_produto']
+                                : ($custoManual ?? 0);
                             $temSubsidio = $aderindoInfo['tem_subsidio'] ?? false;
                             $meliPercentage = $aderindoInfo['meli_percentage'] ?? 0;
                             $netProceedsAmount = $aderindoInfo['net_proceeds_amount'] ?? null;
@@ -159,13 +161,18 @@
                                     <span class="text-gray-500 block">Imposto ({{ number_format($impPercent, 1) }}%)</span>
                                     <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($imposto, 2, ',', '.') }}</span>
                                 </div>
-                                <div class="p-2 rounded {{ $custoProduto > 0 ? 'bg-gray-50 dark:bg-gray-900' : 'bg-yellow-50 dark:bg-yellow-900/20' }}">
+                                <div class="p-2 rounded {{ ($custoProduto > 0 || ($custoManual ?? 0) > 0) ? 'bg-gray-50 dark:bg-gray-900' : 'bg-yellow-50 dark:bg-yellow-900/20' }}">
                                     <span class="text-gray-500 block">Custo</span>
                                     @if($custoProduto > 0)
                                         <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($custoProduto, 2, ',', '.') }}</span>
                                         <span class="text-[10px] text-gray-400 block">{{ $aderindoInfo['sku'] ?? '' }}</span>
                                     @else
-                                        <span class="font-semibold text-yellow-600">Sem custo</span>
+                                        <div class="flex items-center gap-1">
+                                            <span class="text-xs text-gray-500">R$</span>
+                                            <input type="number" step="0.01" wire:model.blur="custoManual"
+                                                placeholder="Informar"
+                                                class="w-20 px-1 py-0.5 text-xs rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white">
+                                        </div>
                                     @endif
                                 </div>
                                 @if($temSubsidio)
@@ -376,7 +383,9 @@
                         $frete = $aderindoInfo['frete'] ?? 0;
                         $comissaoPercent = $aderindoInfo['comissao_percent'] ?? 11.5;
                         $impPercent = $impostoPercent;
-                        $custoProduto = $aderindoInfo['custo_produto'] ?? 0;
+                        $custoProduto = ($aderindoInfo['custo_produto'] ?? 0) > 0
+                            ? $aderindoInfo['custo_produto']
+                            : ($custoManual ?? 0);
                         $temSubsidio = $aderindoInfo['tem_subsidio'] ?? false;
                         $meliPercentage = $aderindoInfo['meli_percentage'] ?? 0;
                         $netProceedsAmount = $aderindoInfo['net_proceeds_amount'] ?? null;
@@ -420,15 +429,20 @@
                                 <span class="text-gray-500 block">Imposto ({{ number_format($impPercent, 1) }}%)</span>
                                 <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($imposto, 2, ',', '.') }}</span>
                             </div>
-                            <div class="p-2 rounded {{ $custoProduto > 0 ? 'bg-gray-50 dark:bg-gray-900' : 'bg-yellow-50 dark:bg-yellow-900/20' }}">
+                            <div class="p-2 rounded {{ ($custoProduto > 0 || ($custoManual ?? 0) > 0) ? 'bg-gray-50 dark:bg-gray-900' : 'bg-yellow-50 dark:bg-yellow-900/20' }}">
                                 <span class="text-gray-500 block">Custo Produto</span>
-                                @if($custoProduto > 0)
+                                @if(($aderindoInfo['custo_produto'] ?? 0) > 0)
                                     <span class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($custoProduto, 2, ',', '.') }}</span>
                                     @if($aderindoInfo['sku'] ?? null)
                                         <span class="text-[10px] text-gray-400 block">SKU: {{ $aderindoInfo['sku'] }}</span>
                                     @endif
                                 @else
-                                    <span class="font-semibold text-yellow-600 dark:text-yellow-400">Sem custo</span>
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-xs text-gray-500">R$</span>
+                                        <input type="number" step="0.01" wire:model.blur="custoManual"
+                                            placeholder="Informar"
+                                            class="w-20 px-1 py-0.5 text-xs rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white">
+                                    </div>
                                 @endif
                             </div>
                             @if($temSubsidio)

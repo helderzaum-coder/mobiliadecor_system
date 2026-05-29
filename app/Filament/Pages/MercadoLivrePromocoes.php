@@ -67,6 +67,7 @@ class MercadoLivrePromocoes extends Page
     public float $impostoPercent = 17.8;
     public float $margemDesejada = 15.0;
     public ?array $aderindoPromoData = null; // dados extras da promo para adesão
+    public ?float $custoManual = null;
 
     public function mount(): void
     {
@@ -263,6 +264,7 @@ class MercadoLivrePromocoes extends Page
         $this->aderindoItemId = null;
         $this->aderindoPreco = null;
         $this->aderindoOfferId = null;
+        $this->custoManual = null;
     }
 
     public function pularParaProximo(): void
@@ -314,8 +316,8 @@ class MercadoLivrePromocoes extends Page
             return;
         }
 
-        if (($this->aderindoInfo['custo_produto'] ?? 0) <= 0) {
-            Notification::make()->title('Custo do produto não encontrado')->body('Não é possível aderir sem custo cadastrado no Bling.')->danger()->send();
+        if (($this->aderindoInfo['custo_produto'] ?? 0) <= 0 && ($this->custoManual ?? 0) <= 0) {
+            Notification::make()->title('Custo do produto não encontrado')->body('Não é possível aderir sem custo cadastrado no Bling ou informado manualmente.')->danger()->send();
             return;
         }
 
