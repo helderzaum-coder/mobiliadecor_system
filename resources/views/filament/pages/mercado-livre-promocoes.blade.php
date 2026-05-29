@@ -213,7 +213,11 @@
                                     {{ $selectedPromotion['name'] ?? 'Promoção' }}
                                 </h3>
                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                    {{ count($items) }}/{{ $totalItems }} itens · {{ $selectedPromotion['type'] ?? '' }}
+                                    @php $filteredCount = count($this->getFilteredItems()); @endphp
+                                    {{ $filteredCount }}/{{ $totalItems }} itens · {{ $selectedPromotion['type'] ?? '' }}
+                                    @if($filtroStatus)
+                                        · filtro: {{ $filtroStatus }}
+                                    @endif
                                 </p>
                             </div>
                             <div class="flex items-center gap-2">
