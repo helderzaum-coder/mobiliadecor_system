@@ -409,7 +409,9 @@ class MercadoLivrePromotionService
                     ]);
                 }
             }
-            $info['frete'] = ($item['shipping']['free_shipping'] ?? false) && ($item['shipping']['mode'] ?? '') === 'me2'
+            // Frete: buscar quando mode=me2 (ML cobra frete do vendedor em ME2)
+            $shippingMode = $item['shipping']['mode'] ?? '';
+            $info['frete'] = $shippingMode === 'me2'
                 ? $this->buscarFreteItem($token, $itemId)
                 : 0;
         } catch (\Throwable $e) {
