@@ -159,6 +159,11 @@
                 if ($custoProd <= 0) $alertas[] = 'Sem custo de produto';
                 if ($imposto <= 0) $alertas[] = 'Sem imposto';
 
+                // Dados do canal
+                $conta = $venda->bling_account === 'primary' ? 'Mobilia' : 'HES';
+                $canal = $venda->canal?->nome_canal ?? '-';
+                $isCancelada = (bool) $venda->cancelada;
+
                 // Status da venda
                 $temNfeChave = !empty($venda->nfe_chave_acesso);
                 $fretePagoFlag = (bool) $venda->frete_pago;
@@ -175,243 +180,297 @@
                 $afiliadoOk = (bool) $venda->planilha_afiliado_processada;
                 $freteOk = $fretePagoFlag || $isMlMe2Full || ($freteCliente == 0 && $custoFrete == 0);
                 $completo = $temNfeChave && $freteOk && (!$precisaPlanilha || $planilhaOk) && (!$precisaAfiliado || $afiliadoOk);
-
-                $conta = $venda->bling_account === 'primary' ? 'Mobilia' : 'HES';
-                $canal = $venda->canal?->nome_canal ?? '-';
-                $isCancelada = (bool) $venda->cancelada;
             @endphp
 
             <div class="rounded-xl shadow border-l-4 {{ $borderColor }} p-4 {{ $isCancelada ? 'bg-red-50 dark:bg-red-950/40' : 'bg-white dark:bg-gray-800' }}">
-                {{-- Header --}}
-                <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
-                    <div class="flex items-center gap-3">
-                        <span class="text-sm font-bold text-gray-800 dark:text-white">
-                            #{{ $venda->numero_pedido_canal }}
-                        </span>
-                        <span style="background:#4b5563;color:#e5e7eb;padding:2px 8px;border-radius:4px;font-size:11px;">
-                            {{ $conta }}
-                        </span>
-                        <span style="background:#2563eb;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">
-                            {{ $canal }}
-                        </span>
-                        @if($venda->ml_tipo_frete)
-                            <span style="background:#7c3aed;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">
-                                {{ $venda->ml_tipo_frete }}
+                {{-- Header + Status Cards em layout horizontal --}}
+                <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 mb-3">
+                    {{-- Lado esquerdo: Info do pedido --}}
+                    <div class="flex-1 min-w-0">
+                        <div class="flex flex-wrap items-center gap-2 mb-1">
+                            <span class="text-sm font-bold text-gray-800 dark:text-white">
+                                #{{ $venda->numero_pedido_canal }}
                             </span>
-                        @endif
-                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ $venda->data_venda?->format('d/m/Y') }}</span>
-                        @if($isCancelada)
-                            <span style="background:#dc2626;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">🚫 Cancelado</span>
-                        @endif
-                        @if($completo)
-                            <span style="background:#059669;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">✅ Completo</span>
+                            <span style="background:#4b5563;color:#e5e7eb;padding:2px 8px;border-radius:4px;font-size:11px;">
+                                {{ $conta }}
+                            </span>
+                            <span style="background:#2563eb;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">
+                                {{ $canal }}
+                            </span>
+                            @if($venda->ml_tipo_frete)
+                                <span style="background:#7c3aed;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">
+                                    {{ $venda->ml_tipo_frete }}
+                                </span>
+                            @endif
+                            <span class="text-xs text-gray-500 dark:text-gray-400">{{ $venda->data_venda?->format('d/m/Y') }}</span>
+                            @if($isCancelada)
+                                <span style="background:#dc2626;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">🚫 Cancelado</span>
+                            @endif
+                        </div>
+                        <div class="text-xs text-gray-600 dark:text-gray-400">
+                            {{ $venda->cliente_nome }}
+                            @if($venda->cliente_documento)
+                                <span class="text-gray-400 dark:text-gray-500">·</span>
+                                <span style="cursor:pointer;text-decoration:underline dotted;" title="Clique para copiar"
+                                    onclick="navigator.clipboard.writeText('{{ $venda->cliente_documento }}').then(()=>{this.innerText='Copiado!';setTimeout(()=>this.innerText='{{ $venda->cliente_documento }}',1500)})">
+                                    {{ $venda->cliente_documento }}
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+
+                    {{-- Lado direito: Cards de Status (checklist visual) --}}
+                    <div class="flex flex-wrap gap-2 shrink-0">
+                        {{-- NF-e --}}
+                        @if($temNfeChave)
+                            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800">
+                                <span class="text-green-600 dark:text-green-400 text-sm">✓</span>
+                                <span class="text-xs font-medium text-green-700 dark:text-green-300">NF-e</span>
+                            </div>
                         @else
-                            @if(!$temNfeChave)
+                            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800">
+                                <span class="text-red-500 dark:text-red-400 text-sm">✗</span>
+                                <span class="text-xs font-medium text-red-700 dark:text-red-300">NF-e</span>
                                 @if($venda->data_prevista_envio)
-                                    <span style="background:#7c3aed;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">📦 Envio: {{ $venda->data_prevista_envio->format('d/m') }}</span>
-                                @else
-                                    <span style="background:#dc2626;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">Falta NF-e</span>
+                                    <span class="text-[10px] text-purple-600 dark:text-purple-400 ml-1">📦 {{ $venda->data_prevista_envio->format('d/m') }}</span>
                                 @endif
-                            @endif
-                            @if(!$fretePagoFlag && !$isML && !$isMlMe2Full && $freteCliente > 0)
-                                <span style="background:#d97706;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">Falta Frete</span>
-                            @endif
-                            @if($precisaPlanilha && !$planilhaOk)
-                                <span style="background:#7c3aed;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">Falta Planilha</span>
-                            @endif
-                            @if($precisaAfiliado && !$afiliadoOk)
-                                <span style="background:#db2777;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">Falta Afiliado</span>
+                            </div>
+                        @endif
+
+                        {{-- Frete --}}
+                        @if($freteOk)
+                            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800">
+                                <span class="text-green-600 dark:text-green-400 text-sm">✓</span>
+                                <span class="text-xs font-medium text-green-700 dark:text-green-300">Frete</span>
+                            </div>
+                        @else
+                            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800">
+                                <span class="text-amber-500 dark:text-amber-400 text-sm">✗</span>
+                                <span class="text-xs font-medium text-amber-700 dark:text-amber-300">Frete</span>
+                            </div>
+                        @endif
+
+                        {{-- Planilha (só marketplaces) --}}
+                        @if($precisaPlanilha)
+                            @if($planilhaOk)
+                                <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800">
+                                    <span class="text-green-600 dark:text-green-400 text-sm">✓</span>
+                                    <span class="text-xs font-medium text-green-700 dark:text-green-300">Planilha</span>
+                                </div>
+                            @else
+                                <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800">
+                                    <span class="text-purple-500 dark:text-purple-400 text-sm">✗</span>
+                                    <span class="text-xs font-medium text-purple-700 dark:text-purple-300">Planilha</span>
+                                </div>
                             @endif
                         @endif
+
+                        {{-- Afiliado (só Shopee) --}}
+                        @if($precisaAfiliado)
+                            @if($afiliadoOk)
+                                <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800">
+                                    <span class="text-green-600 dark:text-green-400 text-sm">✓</span>
+                                    <span class="text-xs font-medium text-green-700 dark:text-green-300">Afiliado</span>
+                                </div>
+                            @else
+                                <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink-50 dark:bg-pink-900/30 border border-pink-200 dark:border-pink-800">
+                                    <span class="text-pink-500 dark:text-pink-400 text-sm">✗</span>
+                                    <span class="text-xs font-medium text-pink-700 dark:text-pink-300">Afiliado</span>
+                                </div>
+                            @endif
+                        @endif
+
+                        {{-- Custos --}}
+                        @if($custoProd > 0)
+                            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800">
+                                <span class="text-green-600 dark:text-green-400 text-sm">✓</span>
+                                <span class="text-xs font-medium text-green-700 dark:text-green-300">Custos</span>
+                            </div>
+                        @else
+                            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800">
+                                <span class="text-orange-500 dark:text-orange-400 text-sm">✗</span>
+                                <span class="text-xs font-medium text-orange-700 dark:text-orange-300">Custos</span>
+                            </div>
+                        @endif
+
+                        {{-- Imposto --}}
+                        @if($imposto > 0)
+                            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800">
+                                <span class="text-green-600 dark:text-green-400 text-sm">✓</span>
+                                <span class="text-xs font-medium text-green-700 dark:text-green-300">Imposto</span>
+                            </div>
+                        @else
+                            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800">
+                                <span class="text-orange-500 dark:text-orange-400 text-sm">✗</span>
+                                <span class="text-xs font-medium text-orange-700 dark:text-orange-300">Imposto</span>
+                            </div>
+                        @endif
                     </div>
-                </div>
-                {{-- Cliente --}}
-                <div class="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                    {{ $venda->cliente_nome }}
-                    @if($venda->cliente_documento)
-                        <span class="text-gray-400 dark:text-gray-500">·</span>
-                        <span style="cursor:pointer;text-decoration:underline dotted;" title="Clique para copiar"
-                            onclick="navigator.clipboard.writeText('{{ $venda->cliente_documento }}').then(()=>{this.innerText='Copiado!';setTimeout(()=>this.innerText='{{ $venda->cliente_documento }}',1500)})">
-                            {{ $venda->cliente_documento }}
-                        </span>
-                    @endif
                 </div>
 
-                {{-- Valores --}}
-                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 text-xs">
-                    <div>
-                        <div class="text-gray-500">Total Pedido</div>
-                        <div class="font-semibold text-gray-800 dark:text-white">R$ {{ number_format($total, 2, ',', '.') }}</div>
-                    </div>
-                    <div>
-                        <div class="text-gray-500">Subtotal</div>
-                        <div class="font-semibold text-gray-800 dark:text-white">R$ {{ number_format($totalProd, 2, ',', '.') }}</div>
-                    </div>
-                    <div>
-                        <div class="text-gray-500">Custo Prod.</div>
-                        <div class="font-semibold {{ $custoProd > 0 ? 'text-gray-800 dark:text-white' : 'text-orange-600' }}">
-                            R$ {{ number_format($custoProd, 2, ',', '.') }}
+                {{-- Valores em layout horizontal --}}
+                @php
+                    $mlSaleFee = (float) ($venda->ml_sale_fee ?? 0);
+                    $mlFreteCusto = (float) ($venda->ml_frete_custo ?? 0);
+                    $mlRebate = (float) ($venda->ml_valor_rebate ?? 0);
+                    $temDadosML = $mlSaleFee > 0 || $mlFreteCusto > 0;
+                    $isMagaluRepasse = str_contains(strtolower($canal), 'magalu');
+                    $repasse = $isMagaluRepasse
+                        ? $total - $comissao + $subsidio
+                        : $totalProd + $freteCliente - $comissao;
+                    $fretePago = (bool) $venda->frete_pago;
+                    $freteCotado = (float) ($venda->frete_cotado ?? 0);
+                    $alertaCte = false;
+                    $diffCtePercent = 0;
+                    if ($fretePago && $freteCotado > 0 && $custoFrete > 0 && $freteCotado != $custoFrete) {
+                        $diffCtePercent = round((($custoFrete - $freteCotado) / $freteCotado) * 100, 1);
+                        $alertaCte = abs($diffCtePercent) > 5;
+                    }
+                    $alertaCobrado = false;
+                    $diffCobradoPercent = 0;
+                    if ($freteCotado > 0 && $freteCliente > 0 && $freteCotado != $freteCliente) {
+                        $diffCobradoPercent = round((($freteCliente - $freteCotado) / $freteCotado) * 100, 1);
+                        $alertaCobrado = abs($diffCobradoPercent) > 5;
+                    }
+                    $isMagaluCard = str_contains(strtolower($canal), 'magalu');
+                @endphp
+                <div class="flex flex-wrap items-stretch gap-2 text-xs">
+                    <div class="flex items-center gap-4 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600">
+                        <div>
+                            <div class="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-wide">Total</div>
+                            <div class="font-semibold text-gray-800 dark:text-white">R$ {{ number_format($total, 2, ',', '.') }}</div>
                         </div>
-                    </div>
-                    <div>
-                        <div class="text-gray-500">Comissão</div>
-                        <div class="font-semibold text-gray-800 dark:text-white">R$ {{ number_format($comissao, 2, ',', '.') }}
-                            @if((float) ($venda->comissao_afiliado ?? 0) > 0)
-                                <span style="font-size:10px;color:#db2777;">+ R$ {{ number_format((float) $venda->comissao_afiliado, 2, ',', '.') }} afiliado</span>
-                            @endif
+                        <div class="w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
+                        <div>
+                            <div class="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-wide">Subtotal</div>
+                            <div class="font-semibold text-gray-800 dark:text-white">R$ {{ number_format($totalProd, 2, ',', '.') }}</div>
                         </div>
-                        @php
-                            $mlSaleFee = (float) ($venda->ml_sale_fee ?? 0);
-                            $mlFreteCusto = (float) ($venda->ml_frete_custo ?? 0);
-                            $mlRebate = (float) ($venda->ml_valor_rebate ?? 0);
-                            $temDadosML = $mlSaleFee > 0 || $mlFreteCusto > 0;
-                        @endphp
-                        @if($temDadosML)
-                            <div style="font-size:10px;color:#9ca3af;margin-top:2px;">
-                                Tarifa: R$ {{ number_format($mlSaleFee + $mlRebate, 2, ',', '.') }}
-                                @if($mlRebate > 0) <span style="color:#10b981;">(-{{ number_format($mlRebate, 2, ',', '.') }} estorno)</span> @endif
-                                @if($isMlMe2Full && $mlFreteCusto > 0)
-                                    | Envio: R$ {{ number_format($mlFreteCusto, 2, ',', '.') }}
+                        <div class="w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
+                        <div>
+                            <div class="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-wide">Custo</div>
+                            <div class="font-semibold {{ $custoProd > 0 ? 'text-gray-800 dark:text-white' : 'text-orange-600' }}">R$ {{ number_format($custoProd, 2, ',', '.') }}</div>
+                        </div>
+                        <div class="w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
+                        <div>
+                            <div class="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-wide">Comissão</div>
+                            <div class="font-semibold text-gray-800 dark:text-white">
+                                R$ {{ number_format($comissao, 2, ',', '.') }}
+                                @if((float) ($venda->comissao_afiliado ?? 0) > 0)
+                                    <span style="font-size:9px;color:#db2777;">+{{ number_format((float) $venda->comissao_afiliado, 2, ',', '.') }}</span>
                                 @endif
                             </div>
-                        @endif
-                    </div>
-                    <div>
-                        <div class="text-gray-500">Imposto</div>
-                        <div class="font-semibold text-gray-800 dark:text-white">R$ {{ number_format($imposto, 2, ',', '.') }}</div>
-                    </div>
-                    <div>
-                        <div class="text-gray-500">Repasse</div>
-                        @php
-                            $isMagaluRepasse = str_contains(strtolower($canal), 'magalu');
-                            $repasse = $isMagaluRepasse
-                                ? $total - $comissao + $subsidio
-                                : $totalProd + $freteCliente - $comissao;
-                        @endphp
-                        <div class="font-semibold text-blue-600 dark:text-blue-400">R$ {{ number_format($repasse, 2, ',', '.') }}</div>
-                    </div>
-                    <div>
-                        @php
-                            $fretePago = (bool) $venda->frete_pago;
-                            $freteCotado = (float) ($venda->frete_cotado ?? 0);
-                            // Alerta 1: CT-e vs Cotação (CT-e maior = vermelho, Cotado maior = verde)
-                            $alertaCte = false;
-                            $diffCtePercent = 0;
-                            if ($fretePago && $freteCotado > 0 && $custoFrete > 0 && $freteCotado != $custoFrete) {
-                                $diffCtePercent = round((($custoFrete - $freteCotado) / $freteCotado) * 100, 1);
-                                $alertaCte = abs($diffCtePercent) > 5;
-                            }
-                            // Alerta 2: Cobrado vs Cotação (Cobrado maior = verde, Cotado maior = vermelho)
-                            $alertaCobrado = false;
-                            $diffCobradoPercent = 0;
-                            if ($freteCotado > 0 && $freteCliente > 0 && $freteCotado != $freteCliente) {
-                                $diffCobradoPercent = round((($freteCliente - $freteCotado) / $freteCotado) * 100, 1);
-                                $alertaCobrado = abs($diffCobradoPercent) > 5;
-                            }
-                        @endphp
-                        <div class="text-gray-500">Frete (cobrado → {{ $fretePago ? 'pago' : ($custoFrete > 0 ? 'cotado' : '-') }})</div>
-                        <div class="font-semibold text-gray-800 dark:text-white">
-                            R$ {{ number_format($freteCliente, 2, ',', '.') }} → R$ {{ number_format($custoFrete, 2, ',', '.') }}
-                            @if($custoFrete > 0 && !$fretePago)
-                                <span style="color:#d97706;font-size:10px;">⚠ estimado</span>
+                            @if($temDadosML)
+                                <div style="font-size:9px;color:#9ca3af;">
+                                    Tarifa: {{ number_format($mlSaleFee + $mlRebate, 2, ',', '.') }}
+                                    @if($mlRebate > 0) <span style="color:#10b981;">(-{{ number_format($mlRebate, 2, ',', '.') }})</span> @endif
+                                    @if($isMlMe2Full && $mlFreteCusto > 0) | Envio: {{ number_format($mlFreteCusto, 2, ',', '.') }} @endif
+                                </div>
                             @endif
                         </div>
-                        @if($alertaCobrado)
-                            <div style="margin-top:4px;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;animation:pulse 1.5s infinite;
-                                {{ $diffCobradoPercent > 0 ? 'background:#ecfdf5;border:2px solid #10b981;color:#059669;' : 'background:#fef2f2;border:2px solid #ef4444;color:#dc2626;' }}">
-                                💰 Cobrado {{ $diffCobradoPercent > 0 ? '>' : '<' }} Cotado: {{ $diffCobradoPercent > 0 ? '+' : '' }}{{ $diffCobradoPercent }}%
-                                (Cobrado: R$ {{ number_format($freteCliente, 2, ',', '.') }} | Cotado: R$ {{ number_format($freteCotado, 2, ',', '.') }})
-                            </div>
-                        @endif
-                        @if($alertaCte)
-                            <div style="margin-top:4px;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;animation:pulse 1.5s infinite;
-                                {{ $diffCtePercent > 0 ? 'background:#fef2f2;border:2px solid #ef4444;color:#dc2626;' : 'background:#ecfdf5;border:2px solid #10b981;color:#059669;' }}">
-                                🚨 CT-e {{ $diffCtePercent > 0 ? '>' : '<' }} Cotado: {{ $diffCtePercent > 0 ? '+' : '' }}{{ $diffCtePercent }}%
-                                (CT-e: R$ {{ number_format($custoFrete, 2, ',', '.') }} | Cotado: R$ {{ number_format($freteCotado, 2, ',', '.') }})
-                            </div>
-                        @elseif($fretePago && $freteCotado > 0 && $freteCotado != $custoFrete)
-                            <span style="color:#6b7280;font-size:10px;">(cotado: R$ {{ number_format($freteCotado, 2, ',', '.') }})</span>
-                        @endif
+                        <div class="w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
+                        <div>
+                            <div class="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-wide">Imposto</div>
+                            <div class="font-semibold text-gray-800 dark:text-white">R$ {{ number_format($imposto, 2, ',', '.') }}</div>
+                        </div>
+                        <div class="w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
+                        <div>
+                            <div class="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-wide">Repasse</div>
+                            <div class="font-semibold text-blue-600 dark:text-blue-400">R$ {{ number_format($repasse, 2, ',', '.') }}</div>
+                        </div>
                     </div>
+
+                    {{-- Frete separado --}}
+                    <div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600">
+                        <div>
+                            <div class="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-wide">Frete (cobrado → {{ $fretePago ? 'pago' : ($custoFrete > 0 ? 'cotado' : '-') }})</div>
+                            <div class="font-semibold text-gray-800 dark:text-white">
+                                R$ {{ number_format($freteCliente, 2, ',', '.') }} → R$ {{ number_format($custoFrete, 2, ',', '.') }}
+                                @if($custoFrete > 0 && !$fretePago)
+                                    <span style="color:#d97706;font-size:9px;">⚠ estimado</span>
+                                @endif
+                            </div>
+                            @if($alertaCobrado)
+                                <div style="font-size:10px;font-weight:700;{{ $diffCobradoPercent > 0 ? 'color:#059669;' : 'color:#dc2626;' }}">
+                                    💰 {{ $diffCobradoPercent > 0 ? '+' : '' }}{{ $diffCobradoPercent }}% vs cotado
+                                </div>
+                            @endif
+                            @if($alertaCte)
+                                <div style="font-size:10px;font-weight:700;{{ $diffCtePercent > 0 ? 'color:#dc2626;' : 'color:#059669;' }}">
+                                    🚨 CT-e {{ $diffCtePercent > 0 ? '+' : '' }}{{ $diffCtePercent }}% vs cotado
+                                </div>
+                            @elseif($fretePago && $freteCotado > 0 && $freteCotado != $custoFrete)
+                                <span style="color:#6b7280;font-size:9px;">(cotado: R$ {{ number_format($freteCotado, 2, ',', '.') }})</span>
+                            @endif
+                        </div>
+                    </div>
+
                     @if($subsidio > 0)
-                    <div>
-                        @php
-                            $isMagaluCard = str_contains(strtolower($canal), 'magalu');
-                        @endphp
-                        <div class="text-gray-500">{{ $isMagaluCard ? 'Descontos Vendedor' : 'Subsídio Pix' }}</div>
-                        <div class="font-semibold {{ $isMagaluCard ? 'text-red-600' : 'text-blue-600' }}">R$ {{ number_format($subsidio, 2, ',', '.') }}</div>
+                    <div class="flex items-center px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600">
+                        <div>
+                            <div class="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-wide">{{ $isMagaluCard ? 'Desc. Vendedor' : 'Subsídio Pix' }}</div>
+                            <div class="font-semibold {{ $isMagaluCard ? 'text-red-600' : 'text-blue-600' }}">R$ {{ number_format($subsidio, 2, ',', '.') }}</div>
+                        </div>
                     </div>
                     @endif
-                    <div class="rounded-lg p-2 {{ $lucroBg }}">
-                        <div class="text-gray-500">Lucro Final</div>
-                        <div class="font-bold text-base {{ $lucroColor }}">
-                            R$ {{ number_format($lucro, 2, ',', '.') }}
-                            <span class="text-xs">({{ $margemPct }}%)</span>
+
+                    {{-- Lucro destacado --}}
+                    <div class="flex items-center px-4 py-2 rounded-lg {{ $lucroBg }} border {{ $lucro >= 0 ? 'border-green-200 dark:border-green-800' : 'border-red-200 dark:border-red-800' }}">
+                        <div>
+                            <div class="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-wide">Lucro</div>
+                            <div class="font-bold text-base {{ $lucroColor }}">
+                                R$ {{ number_format($lucro, 2, ',', '.') }}
+                                <span class="text-xs font-normal">({{ $margemPct }}%)</span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {{-- Margens detalhadas --}}
-                <div class="mt-2 text-xs space-y-1">
-                    @php
-                        $comissaoSobreFrete = (bool) ($venda->canal?->comissao_sobre_frete ?? false);
-                        $impostoSobreFrete = (bool) ($venda->canal?->imposto_sobre_frete ?? false);
-                        $pctImposto = (float) $venda->percentual_imposto;
-
-                        // Comissão sobre frete
-                        $comissaoFreteVal = 0;
-                        if ($comissaoSobreFrete && $freteCliente > 0 && $venda->canal) {
-                            $regraCanal = $venda->canal->regrasComissao()->where('ativo', true)->first();
-                            if ($regraCanal) {
-                                $comissaoFreteVal = round($freteCliente * (float) $regraCanal->percentual / 100, 2);
-                            }
+                {{-- Margens detalhadas (horizontal) --}}
+                @php
+                    $comissaoSobreFrete = (bool) ($venda->canal?->comissao_sobre_frete ?? false);
+                    $impostoSobreFrete = (bool) ($venda->canal?->imposto_sobre_frete ?? false);
+                    $pctImposto = (float) $venda->percentual_imposto;
+                    $comissaoFreteVal = 0;
+                    if ($comissaoSobreFrete && $freteCliente > 0 && $venda->canal) {
+                        $regraCanal = $venda->canal->regrasComissao()->where('ativo', true)->first();
+                        if ($regraCanal) {
+                            $comissaoFreteVal = round($freteCliente * (float) $regraCanal->percentual / 100, 2);
                         }
-                        $comissaoProdVal = $comissao - $comissaoFreteVal;
-
-                        // Imposto sobre frete
-                        $impostoFreteVal = ($impostoSobreFrete && $freteCliente > 0 && $pctImposto > 0)
-                            ? round($freteCliente * $pctImposto / 100, 2) : 0;
-                        $impostoProdVal = $imposto - $impostoFreteVal;
-
-                        // Desconto (Magalu)
-                        $isMagaluCard2 = str_contains(strtolower($canal), 'magalu');
-                        $desconto = $total - $totalProd - $freteCliente;
-                    @endphp
-
+                    }
+                    $comissaoProdVal = $comissao - $comissaoFreteVal;
+                    $impostoFreteVal = ($impostoSobreFrete && $freteCliente > 0 && $pctImposto > 0)
+                        ? round($freteCliente * $pctImposto / 100, 2) : 0;
+                    $impostoProdVal = $imposto - $impostoFreteVal;
+                    $isMagaluCard2 = str_contains(strtolower($canal), 'magalu');
+                    $desconto = $total - $totalProd - $freteCliente;
+                @endphp
+                <div class="flex flex-wrap gap-2 mt-2 text-xs">
                     {{-- Margem Produto --}}
-                    <div class="rounded-lg p-2 {{ $margemProd >= 0 ? 'bg-green-50 dark:bg-green-900/10' : 'bg-red-50 dark:bg-red-900/10' }}">
+                    <div class="flex-1 min-w-[200px] rounded-lg px-3 py-2 {{ $margemProd >= 0 ? 'bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800' }}">
                         <div class="font-semibold {{ $margemProd >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400' }}">
                             📦 Margem Produto: R$ {{ number_format($margemProd, 2, ',', '.') }}
                             ({{ $totalProd > 0 ? round(($margemProd / $totalProd) * 100, 1) : 0 }}%)
                         </div>
-                        <div style="color:#9ca3af;font-size:10px;margin-top:2px;padding-left:16px;">
-                            Subtotal: R$ {{ number_format($totalProd, 2, ',', '.') }}
-                            @if($desconto < -0.01 && $isMagaluCard2)
-                                | Desconto: R$ {{ number_format(abs($desconto), 2, ',', '.') }}
-                            @endif
-                            | Custo: R$ {{ number_format($custoProd, 2, ',', '.') }}
-                            | Comissão: R$ {{ number_format($comissaoProdVal, 2, ',', '.') }}
-                            @if($impostoProdVal > 0)
-                                | Imposto: R$ {{ number_format($impostoProdVal, 2, ',', '.') }}
-                            @endif
+                        <div style="color:#9ca3af;font-size:10px;margin-top:2px;">
+                            Sub: {{ number_format($totalProd, 2, ',', '.') }}
+                            @if($desconto < -0.01 && $isMagaluCard2) | Desc: {{ number_format(abs($desconto), 2, ',', '.') }} @endif
+                            | Custo: {{ number_format($custoProd, 2, ',', '.') }}
+                            | Com: {{ number_format($comissaoProdVal, 2, ',', '.') }}
+                            @if($impostoProdVal > 0) | Imp: {{ number_format($impostoProdVal, 2, ',', '.') }} @endif
                         </div>
                     </div>
 
                     {{-- Margem Frete --}}
                     @if($freteCliente > 0 || $custoFrete > 0)
-                    <div class="rounded-lg p-2 {{ $margemFrete >= 0 ? 'bg-green-50 dark:bg-green-900/10' : 'bg-red-50 dark:bg-red-900/10' }}">
+                    <div class="flex-1 min-w-[200px] rounded-lg px-3 py-2 {{ $margemFrete >= 0 ? 'bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800' }}">
                         <div class="font-semibold {{ $margemFrete >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400' }}">
                             🚚 Margem Frete: R$ {{ number_format($margemFrete, 2, ',', '.') }}
                         </div>
-                        <div style="color:#9ca3af;font-size:10px;margin-top:2px;padding-left:16px;">
-                            Cobrado: R$ {{ number_format($freteCliente, 2, ',', '.') }}
-                            | Pago: R$ {{ number_format($custoFrete, 2, ',', '.') }}
-                            @if($comissaoFreteVal > 0)
-                                | Comissão: R$ {{ number_format($comissaoFreteVal, 2, ',', '.') }}
-                            @endif
-                            @if($impostoFreteVal > 0)
-                                | Imposto: R$ {{ number_format($impostoFreteVal, 2, ',', '.') }}
-                            @endif
+                        <div style="color:#9ca3af;font-size:10px;margin-top:2px;">
+                            Cobrado: {{ number_format($freteCliente, 2, ',', '.') }}
+                            | Pago: {{ number_format($custoFrete, 2, ',', '.') }}
+                            @if($comissaoFreteVal > 0) | Com: {{ number_format($comissaoFreteVal, 2, ',', '.') }} @endif
+                            @if($impostoFreteVal > 0) | Imp: {{ number_format($impostoFreteVal, 2, ',', '.') }} @endif
                         </div>
                     </div>
                     @endif
