@@ -241,6 +241,21 @@ class MercadoLivrePromocoes extends Page
                 $this->aderindoPreco = round(($frete + $custo) / $divisor, 2);
             }
         }
+
+        // Recalcular comissão sobre o preço promo real (não sobre o base_price)
+        if ($this->aderindoPreco && $this->aderindoPreco > 0 && !empty($info['listing_type'])) {
+            $comissaoPromo = $service->buscarComissaoParaPreco(
+                $this->aderindoPreco,
+                $info['listing_type'],
+                $info['category_id'] ?? '',
+                $info['logistic_type'] ?? 'xd_drop_off',
+                $info['shipping_mode'] ?? 'me2'
+            );
+            if ($comissaoPromo) {
+                $this->aderindoInfo['comissao_percent'] = $comissaoPromo['percent'];
+                $this->aderindoInfo['comissao_valor'] = $comissaoPromo['valor'];
+            }
+        }
     }
 
     public function cancelarAdesao(): void

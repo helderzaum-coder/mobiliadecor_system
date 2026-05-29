@@ -327,6 +327,9 @@ class MercadoLivrePromotionService
                 $comissaoData = $this->buscarComissaoReal($token, $price, $listingType, $categoryId, $logisticType, $shippingMode);
                 $info['comissao_percent'] = $comissaoData['percent'];
                 $info['comissao_valor'] = $comissaoData['valor'];
+                $info['category_id'] = $categoryId;
+                $info['logistic_type'] = $logisticType;
+                $info['shipping_mode'] = $shippingMode;
 
                 // Log completo para debug
                 Log::info("ML buscarInfoParaAdesao [{$itemId}]: dados completos", [
@@ -504,6 +507,14 @@ class MercadoLivrePromotionService
         }
 
         return 0;
+    }
+
+    public function buscarComissaoParaPreco(float $price, string $listingType, string $categoryId, string $logisticType = 'xd_drop_off', string $shippingMode = 'me2'): ?array
+    {
+        $token = $this->oauth->getAccessToken();
+        if (!$token) return null;
+        $result = $this->buscarComissaoReal($token, $price, $listingType, $categoryId, $logisticType, $shippingMode);
+        return ($result['valor'] > 0 || $result['percent'] > 0) ? $result : null;
     }
 
     private function buscarComissaoReal(string $token, float $price, string $listingType, string $categoryId, string $logisticType = 'xd_drop_off', string $shippingMode = 'me2'): array
