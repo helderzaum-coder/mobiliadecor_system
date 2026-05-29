@@ -257,6 +257,18 @@ class MercadoLivrePromocoes extends Page
                 $this->aderindoInfo['comissao_valor'] = $comissaoPromo['valor'];
             }
         }
+
+        // Se preço sugerido >= preço original, promoção inviável - pular automaticamente
+        $precoOriginal = $this->aderindoInfo['original_price'] ?? 0;
+        if ($this->aderindoPreco && $precoOriginal > 0 && $this->aderindoPreco >= $precoOriginal) {
+            Notification::make()
+                ->title('Promoção inviável')
+                ->body("Preço p/ {$this->margemDesejada}% (R$ " . number_format($this->aderindoPreco, 2, ',', '.') . ") > preço original (R$ " . number_format($precoOriginal, 2, ',', '.') . ")")
+                ->warning()
+                ->send();
+            $this->pularParaProximo();
+            return;
+        }
     }
 
     public function cancelarAdesao(): void
