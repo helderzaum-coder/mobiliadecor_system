@@ -416,6 +416,29 @@ class MercadoLivrePromotionService
 
     private function buscarFreteItem(string $token, string $itemId): float
     {
+        $userId = $this->getSellerId();
+        if ($userId) {
+            try {
+                $freeResp = Http::withToken($token)->withOptions(['verify' => false])->timeout(10)
+                    ->get("{$this->apiBase}/users/{$userId}/shipping_options/free", [
+                        'item_id' => $itemId,
+                    ]);
+
+                if ($freeResp->successful()) {
+                    $freteGratis = $this->extrairValorFrete($freeResp->json());
+                    if ($freteGratis > 0) {
+                        return round($freteGratis, 2);
+                    }
+                } else {
+                    Log::warning("ML buscarInfoParaAdesao [{$itemId}]: free shipping HTTP {$freeResp->status()}", [
+                        'body' => $freeResp->body(),
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                Log::warning("ML buscarInfoParaAdesao [{$itemId}]: free shipping " . $e->getMessage());
+            }
+        }
+
         $freteResp = Http::withToken($token)->withOptions(['verify' => false])->timeout(10)
             ->get("{$this->apiBase}/items/{$itemId}/shipping_options", ['zip_code' => '01310100']);
 
@@ -441,6 +464,46 @@ class MercadoLivrePromotionService
         }
 
         return round($maiorFrete, 2);
+    }
+
+    private function getSellerId(): ?string
+    {
+        $tokenModel = \App\Models\MercadoLivreToken::where('account_key', $this->accountKey)->first();
+        $userId = $tokenModel?->user_id ?? config("mercadolivre.accounts.{$this->accountKey}.user_id");
+
+        return $userId ? (string) $userId : null;
+    }
+
+    private function extrairValorFrete(mixed $data): float
+    {
+        foreach (['list_cost', 'cost', 'amount'] as $key) {
+            $valor = $this->buscarNumeroPorChave($data, $key);
+            if ($valor > 0) {
+                return $valor;
+            }
+        }
+
+        return 0;
+    }
+
+    private function buscarNumeroPorChave(mixed $data, string $key): float
+    {
+        if (!is_array($data)) {
+            return 0;
+        }
+
+        if (isset($data[$key]) && is_numeric($data[$key])) {
+            return (float) $data[$key];
+        }
+
+        foreach ($data as $value) {
+            $found = $this->buscarNumeroPorChave($value, $key);
+            if ($found > 0) {
+                return $found;
+            }
+        }
+
+        return 0;
     }
 
     private function buscarComissaoReal(string $token, float $price, string $listingType, string $categoryId, string $logisticType = 'xd_drop_off', string $shippingMode = 'me2'): array
