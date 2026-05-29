@@ -310,7 +310,6 @@ class MercadoLivrePromotionService
                 Log::warning("ML buscarInfoParaAdesao [{$itemId}]: item inacessível (HTTP {$resp->status()}). Tentando dados alternativos.");
                 // Item inacessível - tentar buscar custo pelo SKU se disponível via promoção
                 $info['erro_api'] = true;
-                return $info;
             }
 
             if ($resp->successful()) {
@@ -407,11 +406,41 @@ class MercadoLivrePromotionService
                     ]);
                 }
             }
+            $info['frete'] = $this->buscarFreteItem($token, $itemId);
         } catch (\Throwable $e) {
             Log::warning("ML buscarInfoParaAdesao [{$itemId}]: " . $e->getMessage());
         }
 
         return $info;
+    }
+
+    private function buscarFreteItem(string $token, string $itemId): float
+    {
+        $freteResp = Http::withToken($token)->withOptions(['verify' => false])->timeout(10)
+            ->get("{$this->apiBase}/items/{$itemId}/shipping_options", ['zip_code' => '01310100']);
+
+        if (!$freteResp->successful()) {
+            Log::warning("ML buscarInfoParaAdesao [{$itemId}]: shipping_options HTTP {$freteResp->status()}", [
+                'body' => $freteResp->body(),
+            ]);
+            return 0;
+        }
+
+        $options = $freteResp->json()['options'] ?? [];
+        if (empty($options)) {
+            Log::warning("ML buscarInfoParaAdesao [{$itemId}]: shipping_options sem opcoes", [
+                'body' => $freteResp->json(),
+            ]);
+            return 0;
+        }
+
+        $maiorFrete = 0;
+        foreach ($options as $opt) {
+            $frete = (float) ($opt['list_cost'] ?? $opt['cost'] ?? $opt['base_cost'] ?? 0);
+            $maiorFrete = max($maiorFrete, $frete);
+        }
+
+        return round($maiorFrete, 2);
     }
 
     private function buscarComissaoReal(string $token, float $price, string $listingType, string $categoryId, string $logisticType = 'xd_drop_off', string $shippingMode = 'me2'): array
