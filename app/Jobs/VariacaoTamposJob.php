@@ -51,7 +51,7 @@ class VariacaoTamposJob implements ShouldQueue
         }
     }
 
-    public static function executar(string $accountKey = 'primary'): array
+    public static function executar(string $accountKey = 'primary', ?string $familiaFiltro = null): array
     {
         $client = new BlingClient($accountKey);
         $resultado = ['grupos' => 0, 'atualizados' => 0, 'erros' => 0, 'sem_estoque' => 0, 'log' => []];
@@ -59,9 +59,10 @@ class VariacaoTamposJob implements ShouldQueue
         $configs = TrocaTampoConfig::where('familia_tampo', '!=', '')
             ->whereNotNull('familia_tampo')
             ->where('equalizacao_ativa', true)
+            ->when($familiaFiltro, fn ($q) => $q->where('familia_tampo', $familiaFiltro))
             ->get();
 
-        Log::info("VariacaoTampos: encontrados {$configs->count()} configs ativos. Famílias: " . $configs->pluck('familia_tampo')->unique()->implode(', '));
+        Log::info("VariacaoTampos: encontrados {$configs->count()} configs ativos" . ($familiaFiltro ? " (filtro família={$familiaFiltro})" : '') . ". Famílias: " . $configs->pluck('familia_tampo')->unique()->implode(', '));
         Log::info("VariacaoTampos: SKUs processados: " . $configs->pluck('sku_produto')->implode(', '));
 
         $depositoId = self::getDepositoGeral($client);
