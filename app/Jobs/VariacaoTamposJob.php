@@ -76,18 +76,34 @@ class VariacaoTamposJob implements ShouldQueue
         foreach ($familias as $familia => $membros) {
             $resultado['grupos']++;
 
-            // Buscar saldo atual de cada SKU no Bling e saldo_carcaca interno
+            // PASSO 1: Calcular total de carcaças por GRUPO+COR usando saldo_carcaca do BANCO LOCAL.
+            // Isso é feito ANTES de qualquer chamada ao Bling, garantindo que falhas de API
+            // não afetem a soma de carcaças (fonte confiável = banco interno).
+            // IMPORTANTE: carcaças NÃO são compartilhadas entre grupos diferentes (ex: Elisa e Jade
+            // compartilham só o TAMPO, não a carcaça). Por isso agrupamos por grupo+cor, não família+cor.
+            $carcacasPorGrupoCor = [];
+            foreach ($membros as $config) {
+                $produtoInterno = ProdutoEstoque::where('sku', $config->sku_produto)->where('ativo', true)->first();
+                $saldoCarcaca = ($produtoInterno && $produtoInterno->saldo_carcaca !== null)
+                    ? (int) $produtoInterno->saldo_carcaca
+                    : 0;
+                $chave = $config->grupo . '|' . $config->cor;
+                $carcacasPorGrupoCor[$chave] = ($carcacasPorGrupoCor[$chave] ?? 0) + max(0, $saldoCarcaca);
+            }
+
+            Log::info("VariacaoTampos: familia {$familia} - carcaças por grupo+cor (do banco local)", $carcacasPorGrupoCor);
+
+            // PASSO 2: Buscar saldo atual de cada SKU no Bling para aplicar o balanço.
             $saldosPorSku = [];
             foreach ($membros as $config) {
                 $produto = $client->getProductBySku($config->sku_produto);
                 if (!$produto) {
-                    $resultado['log'][] = "SKU {$config->sku_produto}: não encontrado no Bling";
+                    $resultado['log'][] = "SKU {$config->sku_produto}: não encontrado no Bling (pulado)";
+                    Log::warning("VariacaoTampos: SKU {$config->sku_produto} não encontrado no Bling — pulado (carcaças já contabilizadas)");
                     continue;
                 }
                 $saldoBling = self::buscarSaldoGeral($client, (int) $produto['id'], $depositoId);
 
-                // Usar saldo_carcaca interno SEMPRE que disponível
-                // Se saldo_carcaca é null E nunca foi definido, usar 0 (não o saldo do Bling, que pode estar equalizado)
                 $produtoInterno = ProdutoEstoque::where('sku', $config->sku_produto)->where('ativo', true)->first();
                 $saldoCarcaca = ($produtoInterno && $produtoInterno->saldo_carcaca !== null)
                     ? (int) $produtoInterno->saldo_carcaca
@@ -103,16 +119,6 @@ class VariacaoTamposJob implements ShouldQueue
                 ];
             }
 
-            // Calcular total de carcaças por GRUPO+COR usando saldo_carcaca
-            // IMPORTANTE: carcaças NÃO são compartilhadas entre grupos diferentes (ex: Elisa e Jade
-            // compartilham só o TAMPO, não a carcaça). Por isso agrupamos por grupo+cor, não família+cor.
-            $carcacasPorGrupoCor = [];
-            foreach ($saldosPorSku as $skuKey => $info) {
-                $chave = $info['config']->grupo . '|' . $info['config']->cor;
-                $carcacasPorGrupoCor[$chave] = ($carcacasPorGrupoCor[$chave] ?? 0) + max(0, $info['saldo_carcaca']);
-            }
-
-            Log::info("VariacaoTampos: familia {$familia} - carcaças por grupo+cor", $carcacasPorGrupoCor);
             Log::info("VariacaoTampos: familia {$familia} - saldos detalhados", collect($saldosPorSku)->map(fn($i) => [
                 'sku' => $i['config']->sku_produto,
                 'grupo' => $i['config']->grupo,
@@ -183,7 +189,11 @@ class VariacaoTamposJob implements ShouldQueue
                     }
                 } else {
                     $resultado['erros']++;
-                    $resultado['log'][] = "{$sku}: erro HTTP " . ($res['http_code'] ?? '?');
+                    $resultado['log'][] = "{$sku}: erro HTTP " . ($res['http_code'] ?? '?') . " — " . json_encode($res['body'] ?? []);
+                    Log::error("VariacaoTampos: FALHA ao atualizar {$sku} para {$saldoFinal}", [
+                        'http_code' => $res['http_code'] ?? null,
+                        'body' => $res['body'] ?? null,
+                    ]);
                 }
             }
         }
