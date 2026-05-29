@@ -230,6 +230,17 @@ class MercadoLivrePromocoes extends Page
             'net_proceeds_amount' => $targetItem['net_proceeds_amount'] ?? null,
             'promo_type'         => $promoType,
         ];
+
+        // Para DEAL ou sem rebate: pré-preencher com preço sugerido baseado na margem desejada
+        if (!$temSubsidio && (!$this->aderindoPreco || $this->aderindoPreco <= 0)) {
+            $frete = $info['frete'] ?? 0;
+            $custo = $info['custo_produto'] ?? 0;
+            $comPercent = $info['comissao_percent'] ?? 11.5;
+            $divisor = 1 - ($comPercent / 100) - ($this->impostoPercent / 100) - ($this->margemDesejada / 100);
+            if ($divisor > 0 && $custo > 0) {
+                $this->aderindoPreco = round(($frete + $custo) / $divisor, 2);
+            }
+        }
     }
 
     public function cancelarAdesao(): void
