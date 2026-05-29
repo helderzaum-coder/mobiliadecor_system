@@ -177,7 +177,7 @@
                                 @endif
                             </div>
 
-                            <div class="flex items-center gap-3 flex-wrap p-2 rounded {{ $margemPercent >= 15 ? 'bg-green-50 dark:bg-green-900/20' : ($margemPercent >= 0 ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-red-50 dark:bg-red-900/20') }}">
+                            <div class="flex items-center gap-3 flex-wrap p-2 rounded {{ $margemPercent >= $margemDesejada ? 'bg-green-50 dark:bg-green-900/20' : ($margemPercent >= 0 ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-red-50 dark:bg-red-900/20') }}">
                                 <div class="flex items-center gap-2">
                                     <span class="text-xs text-gray-500">R$</span>
                                     <input type="number" step="0.01" wire:model.blur="aderindoPreco"
@@ -439,7 +439,7 @@
                             </div>
                             @endif
                         </div>
-                        <div class="flex items-center gap-3 flex-wrap p-2 rounded {{ $margemPercent >= 15 ? 'bg-green-50 dark:bg-green-900/20' : ($margemPercent >= 0 ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-red-50 dark:bg-red-900/20') }}">
+                        <div class="flex items-center gap-3 flex-wrap p-2 rounded {{ $margemPercent >= $margemDesejada ? 'bg-green-50 dark:bg-green-900/20' : ($margemPercent >= 0 ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-red-50 dark:bg-red-900/20') }}">
                             <div class="flex items-center gap-2">
                                 <span class="text-xs text-gray-600 dark:text-gray-400">Preço promo:</span>
                                 <span class="text-xs text-gray-500">R$</span>
