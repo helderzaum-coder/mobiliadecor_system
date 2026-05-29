@@ -61,6 +61,9 @@ class VariacaoTamposJob implements ShouldQueue
             ->where('equalizacao_ativa', true)
             ->get();
 
+        Log::info("VariacaoTampos: encontrados {$configs->count()} configs ativos. Famílias: " . $configs->pluck('familia_tampo')->unique()->implode(', '));
+        Log::info("VariacaoTampos: SKUs processados: " . $configs->pluck('sku_produto')->implode(', '));
+
         $depositoId = self::getDepositoGeral($client);
         if (!$depositoId) {
             Log::error('VariacaoTampos: depósito Geral não encontrado');
@@ -102,12 +105,19 @@ class VariacaoTamposJob implements ShouldQueue
 
             // Calcular total de carcaças por cor usando saldo_carcaca
             $carcacasPorCor = [];
-            foreach ($saldosPorSku as $info) {
+            foreach ($saldosPorSku as $skuKey => $info) {
                 $cor = $info['config']->cor;
                 $carcacasPorCor[$cor] = ($carcacasPorCor[$cor] ?? 0) + max(0, $info['saldo_carcaca']);
             }
 
             Log::info("VariacaoTampos: familia {$familia} - carcaças por cor", $carcacasPorCor);
+            Log::info("VariacaoTampos: familia {$familia} - saldos detalhados", collect($saldosPorSku)->map(fn($i) => [
+                'sku' => $i['config']->sku_produto,
+                'cor' => $i['config']->cor,
+                'saldo_bling' => $i['saldo_atual'],
+                'saldo_carcaca' => $i['saldo_carcaca'],
+                'sku_tampo' => $i['config']->sku_tampo,
+            ])->values()->toArray());
 
             // Para cada produto: estoque = min(carcaças da cor, tampos do tipo)
             foreach ($saldosPorSku as $sku => $info) {
@@ -124,9 +134,12 @@ class VariacaoTamposJob implements ShouldQueue
                     $saldoFinal = $tampo->saldo_fisico;
                 }
 
-                $saldoFinal = max(0, $saldoFinal);
+                $saldoFinal = max(0, (int) $saldoFinal);
 
-                if ($info['saldo_atual'] === $saldoFinal) {
+                Log::info("VariacaoTampos: {$sku} — saldo_atual={$info['saldo_atual']}, saldoFinal={$saldoFinal}, tampo=" . ($tampo ? $tampo->saldo_fisico : 'N/A'));
+
+                if ((int) $info['saldo_atual'] == $saldoFinal) {
+                    Log::info("VariacaoTampos: {$sku} — sem alteração (atual={$info['saldo_atual']} == final={$saldoFinal})");
                     continue;
                 }
 
