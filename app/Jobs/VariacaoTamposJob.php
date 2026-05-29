@@ -145,48 +145,48 @@ class VariacaoTamposJob implements ShouldQueue
 
                 $saldoFinal = max(0, (int) $saldoFinal);
 
-                Log::info("VariacaoTampos: {$sku} — saldo_atual={$info['saldo_atual']}, saldoFinal={$saldoFinal}, tampo=" . ($tampo ? $tampo->saldo_fisico : 'N/A'));
+                $saldoLocalAtual = $produtoInterno ? (int) $produtoInterno->saldo_fisico : 0;
+                $saldoBlingAtual = (int) $info['saldo_atual'];
 
-                // Se o Bling já está com o saldo correto, ainda assim garantir que o saldo local
-                // (saldo_fisico) esteja sincronizado. Sem isso, Bling e banco interno podem divergir.
-                if ((int) $info['saldo_atual'] == $saldoFinal) {
-                    if ($produtoInterno && (int) $produtoInterno->saldo_fisico !== $saldoFinal) {
-                        Log::info("VariacaoTampos: {$sku} — Bling OK ({$saldoFinal}) mas local divergente ({$produtoInterno->saldo_fisico}). Sincronizando local sem reenviar ao Bling.");
-                        EstoqueService::balanco(
-                            $sku,
-                            $saldoFinal,
-                            'variacao_tampos',
-                            "Sincronização local {$info['config']->grupo}/{$info['config']->cor}",
-                            null,
-                            false, // não reenviar ao Bling (já está correto)
-                            'fisico'
-                        );
-                        $resultado['atualizados']++;
-                        $resultado['log'][] = "{$sku}: local sincronizado para {$saldoFinal} (Bling já estava correto)";
-                    } else {
-                        Log::info("VariacaoTampos: {$sku} — sem alteração (atual={$info['saldo_atual']} == final={$saldoFinal})");
-                    }
+                Log::info("VariacaoTampos: {$sku} — saldoFinal={$saldoFinal} | local={$saldoLocalAtual} | bling={$saldoBlingAtual} | tampo=" . ($tampo ? $tampo->saldo_fisico : 'N/A'));
+
+                $grupoCorLabel = $info['config']->grupo . '/' . $info['config']->cor;
+                $precisaBling = ($saldoBlingAtual !== $saldoFinal);
+                $precisaLocal = ($saldoLocalAtual !== $saldoFinal);
+
+                // Nada a fazer: local E Bling já estão no valor calculado
+                if (!$precisaBling && !$precisaLocal) {
+                    Log::info("VariacaoTampos: {$sku} — sem alteração (local e Bling já em {$saldoFinal})");
                     continue;
                 }
 
-                $grupoCorLabel = $info['config']->grupo . '/' . $info['config']->cor;
-                $obs = "Variação Tampos: {$grupoCorLabel} carcaças={$totalCarcacas} tampo=" . ($tampo ? $tampo->saldo_fisico : 'N/A');
+                // 1) Atualizar o Bling (se divergente). O sistema é a fonte da verdade.
+                $blingOk = true;
+                if ($precisaBling) {
+                    $obs = "Variação Tampos: {$grupoCorLabel} carcaças={$totalCarcacas} tampo=" . ($tampo ? $tampo->saldo_fisico : 'N/A');
+                    $res = $client->post('/estoques', [], [
+                        'produto'     => ['id' => $info['produto_id']],
+                        'deposito'    => ['id' => $depositoId],
+                        'operacao'    => 'B',
+                        'preco'       => 0,
+                        'custo'       => 0,
+                        'quantidade'  => $saldoFinal,
+                        'observacoes' => $obs,
+                    ]);
+                    $blingOk = $res['success'];
 
-                $res = $client->post('/estoques', [], [
-                    'produto'     => ['id' => $info['produto_id']],
-                    'deposito'    => ['id' => $depositoId],
-                    'operacao'    => 'B',
-                    'preco'       => 0,
-                    'custo'       => 0,
-                    'quantidade'  => $saldoFinal,
-                    'observacoes' => $obs,
-                ]);
+                    if (!$blingOk) {
+                        $resultado['erros']++;
+                        $resultado['log'][] = "{$sku}: erro HTTP " . ($res['http_code'] ?? '?') . " — " . json_encode($res['body'] ?? []);
+                        Log::error("VariacaoTampos: FALHA ao atualizar {$sku} para {$saldoFinal} no Bling", [
+                            'http_code' => $res['http_code'] ?? null,
+                            'body' => $res['body'] ?? null,
+                        ]);
+                    }
+                }
 
-                if ($res['success']) {
-                    $resultado['atualizados']++;
-                    $resultado['log'][] = "{$sku}: {$info['saldo_atual']} → {$saldoFinal} (carcaças={$totalCarcacas} tampo=" . ($tampo ? $tampo->saldo_fisico : 'N/A') . ")";
-
-                    // Atualizar estoque interno (saldo_fisico = equalizado, saldo_carcaca = real)
+                // 2) Atualizar o saldo local (se divergente). Não reenvia ao Bling — já tratado acima.
+                if ($precisaLocal) {
                     EstoqueService::balanco(
                         $sku,
                         $saldoFinal,
@@ -196,22 +196,24 @@ class VariacaoTamposJob implements ShouldQueue
                         false,
                         'fisico'
                     );
+                }
+
+                if ($blingOk) {
+                    $resultado['atualizados']++;
+                    $detalhe = [];
+                    if ($precisaBling) $detalhe[] = "bling {$saldoBlingAtual}→{$saldoFinal}";
+                    if ($precisaLocal) $detalhe[] = "local {$saldoLocalAtual}→{$saldoFinal}";
+                    $resultado['log'][] = "{$sku}: " . implode(' | ', $detalhe) . " (carcaças={$totalCarcacas} tampo=" . ($tampo ? $tampo->saldo_fisico : 'N/A') . ")";
 
                     // Guardar saldo real individual apenas se nunca foi definido (null)
                     // NUNCA sobrescrever com saldo equalizado — saldo_carcaca deve refletir carcaças reais
                     if ($produtoInterno && $produtoInterno->saldo_carcaca === null) {
-                        // Primeira vez: marcar como 0 — o admin deve informar manualmente via botão "Carcaças"
                         Log::warning("VariacaoTampos: {$sku} saldo_carcaca era null, definido como 0. Ajuste manualmente se necessário.");
                         ProdutoEstoque::where('sku', (string) $sku)->update(['saldo_carcaca' => 0]);
                     }
-                } else {
-                    $resultado['erros']++;
-                    $resultado['log'][] = "{$sku}: erro HTTP " . ($res['http_code'] ?? '?') . " — " . json_encode($res['body'] ?? []);
-                    Log::error("VariacaoTampos: FALHA ao atualizar {$sku} para {$saldoFinal}", [
-                        'http_code' => $res['http_code'] ?? null,
-                        'body' => $res['body'] ?? null,
-                    ]);
                 }
+
+                continue;
             }
         }
 
