@@ -147,8 +147,25 @@ class VariacaoTamposJob implements ShouldQueue
 
                 Log::info("VariacaoTampos: {$sku} — saldo_atual={$info['saldo_atual']}, saldoFinal={$saldoFinal}, tampo=" . ($tampo ? $tampo->saldo_fisico : 'N/A'));
 
+                // Se o Bling já está com o saldo correto, ainda assim garantir que o saldo local
+                // (saldo_fisico) esteja sincronizado. Sem isso, Bling e banco interno podem divergir.
                 if ((int) $info['saldo_atual'] == $saldoFinal) {
-                    Log::info("VariacaoTampos: {$sku} — sem alteração (atual={$info['saldo_atual']} == final={$saldoFinal})");
+                    if ($produtoInterno && (int) $produtoInterno->saldo_fisico !== $saldoFinal) {
+                        Log::info("VariacaoTampos: {$sku} — Bling OK ({$saldoFinal}) mas local divergente ({$produtoInterno->saldo_fisico}). Sincronizando local sem reenviar ao Bling.");
+                        EstoqueService::balanco(
+                            $sku,
+                            $saldoFinal,
+                            'variacao_tampos',
+                            "Sincronização local {$info['config']->grupo}/{$info['config']->cor}",
+                            null,
+                            false, // não reenviar ao Bling (já está correto)
+                            'fisico'
+                        );
+                        $resultado['atualizados']++;
+                        $resultado['log'][] = "{$sku}: local sincronizado para {$saldoFinal} (Bling já estava correto)";
+                    } else {
+                        Log::info("VariacaoTampos: {$sku} — sem alteração (atual={$info['saldo_atual']} == final={$saldoFinal})");
+                    }
                     continue;
                 }
 
