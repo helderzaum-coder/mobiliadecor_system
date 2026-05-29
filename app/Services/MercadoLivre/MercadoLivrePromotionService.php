@@ -384,6 +384,11 @@ class MercadoLivrePromotionService
 
                 if ($freteResp->successful()) {
                     $options = $freteResp->json()['options'] ?? [];
+                    if (empty($options)) {
+                        Log::warning("ML buscarInfoParaAdesao [{$itemId}]: shipping_options sem opcoes", [
+                            'body' => $freteResp->json(),
+                        ]);
+                    }
                         // Pegar o maior custo entre as opções (geralmente a primeira é a mais cara)
                     $maiorFrete = 0;
                     foreach ($options as $opt) {
@@ -395,8 +400,12 @@ class MercadoLivrePromotionService
                         }
                         $maiorFrete = max($maiorFrete, $cost);
                     }
-                    $info['frete'] = $maiorFrete;
-                    }
+                    $info['frete'] = round($maiorFrete, 2);
+                } else {
+                    Log::warning("ML buscarInfoParaAdesao [{$itemId}]: shipping_options HTTP {$freteResp->status()}", [
+                        'body' => $freteResp->body(),
+                    ]);
+                }
             }
         } catch (\Throwable $e) {
             Log::warning("ML buscarInfoParaAdesao [{$itemId}]: " . $e->getMessage());
