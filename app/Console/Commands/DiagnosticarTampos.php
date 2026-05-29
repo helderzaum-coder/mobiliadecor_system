@@ -70,30 +70,33 @@ class DiagnosticarTampos extends Command
         }
 
         foreach ($ativos->groupBy('familia_tampo') as $familia => $membros) {
-            $this->line("Família: <info>{$familia}</info>");
+            $this->line("Família (tampo): <info>{$familia}</info>");
 
-            // Carcaças por cor
-            $carcacasPorCor = [];
+            // Carcaças por GRUPO+COR (carcaças não são compartilhadas entre grupos)
+            $carcacasPorGrupoCor = [];
             foreach ($membros as $config) {
                 $produto = ProdutoEstoque::where('sku', $config->sku_produto)->where('ativo', true)->first();
                 $carcaca = ($produto && $produto->saldo_carcaca !== null) ? (int) $produto->saldo_carcaca : 0;
-                $carcacasPorCor[$config->cor] = ($carcacasPorCor[$config->cor] ?? 0) + max(0, $carcaca);
+                $chave = $config->grupo . '|' . $config->cor;
+                $carcacasPorGrupoCor[$chave] = ($carcacasPorGrupoCor[$chave] ?? 0) + max(0, $carcaca);
             }
 
-            foreach ($carcacasPorCor as $cor => $total) {
-                $this->line("  Cor <comment>{$cor}</comment>: total carcaças = <info>{$total}</info>");
+            foreach ($carcacasPorGrupoCor as $chave => $total) {
+                [$g, $c] = explode('|', $chave);
+                $this->line("  Grupo <comment>{$g}</comment> / Cor <comment>{$c}</comment>: total carcaças = <info>{$total}</info>");
             }
 
             foreach ($membros as $config) {
                 $produto = ProdutoEstoque::where('sku', $config->sku_produto)->where('ativo', true)->first();
                 $tampo = ProdutoEstoque::where('sku', $config->sku_tampo)->where('ativo', true)->first();
-                $totalCarcacas = $carcacasPorCor[$config->cor] ?? 0;
+                $chave = $config->grupo . '|' . $config->cor;
+                $totalCarcacas = $carcacasPorGrupoCor[$chave] ?? 0;
                 $tampoSaldo = $tampo ? $tampo->saldo_fisico : 0;
                 $saldoFinal = min($totalCarcacas, $tampoSaldo);
                 $atual = $produto ? $produto->saldo_fisico : 0;
                 $vaiAlterar = ((int) $atual != (int) $saldoFinal) ? 'SIM' : 'não';
 
-                $this->line("  {$config->sku_produto}: min(carcaças={$totalCarcacas}, tampo={$tampoSaldo}) = <info>{$saldoFinal}</info> | atual={$atual} | altera? <comment>{$vaiAlterar}</comment>");
+                $this->line("  {$config->sku_produto} ({$config->grupo}): min(carcaças={$totalCarcacas}, tampo={$tampoSaldo}) = <info>{$saldoFinal}</info> | atual={$atual} | altera? <comment>{$vaiAlterar}</comment>");
             }
             $this->newLine();
         }

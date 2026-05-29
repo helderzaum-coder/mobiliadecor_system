@@ -103,26 +103,29 @@ class VariacaoTamposJob implements ShouldQueue
                 ];
             }
 
-            // Calcular total de carcaças por cor usando saldo_carcaca
-            $carcacasPorCor = [];
+            // Calcular total de carcaças por GRUPO+COR usando saldo_carcaca
+            // IMPORTANTE: carcaças NÃO são compartilhadas entre grupos diferentes (ex: Elisa e Jade
+            // compartilham só o TAMPO, não a carcaça). Por isso agrupamos por grupo+cor, não família+cor.
+            $carcacasPorGrupoCor = [];
             foreach ($saldosPorSku as $skuKey => $info) {
-                $cor = $info['config']->cor;
-                $carcacasPorCor[$cor] = ($carcacasPorCor[$cor] ?? 0) + max(0, $info['saldo_carcaca']);
+                $chave = $info['config']->grupo . '|' . $info['config']->cor;
+                $carcacasPorGrupoCor[$chave] = ($carcacasPorGrupoCor[$chave] ?? 0) + max(0, $info['saldo_carcaca']);
             }
 
-            Log::info("VariacaoTampos: familia {$familia} - carcaças por cor", $carcacasPorCor);
+            Log::info("VariacaoTampos: familia {$familia} - carcaças por grupo+cor", $carcacasPorGrupoCor);
             Log::info("VariacaoTampos: familia {$familia} - saldos detalhados", collect($saldosPorSku)->map(fn($i) => [
                 'sku' => $i['config']->sku_produto,
+                'grupo' => $i['config']->grupo,
                 'cor' => $i['config']->cor,
                 'saldo_bling' => $i['saldo_atual'],
                 'saldo_carcaca' => $i['saldo_carcaca'],
                 'sku_tampo' => $i['config']->sku_tampo,
             ])->values()->toArray());
 
-            // Para cada produto: estoque = min(carcaças da cor, tampos do tipo)
+            // Para cada produto: estoque = min(carcaças do grupo+cor, tampos do tipo)
             foreach ($saldosPorSku as $sku => $info) {
-                $cor = $info['config']->cor;
-                $totalCarcacas = $carcacasPorCor[$cor] ?? 0;
+                $chaveGrupoCor = $info['config']->grupo . '|' . $info['config']->cor;
+                $totalCarcacas = $carcacasPorGrupoCor[$chaveGrupoCor] ?? 0;
                 $produtoInterno = ProdutoEstoque::where('sku', (string) $sku)->where('ativo', true)->first();
 
                 $saldoFinal = $totalCarcacas;
@@ -143,7 +146,8 @@ class VariacaoTamposJob implements ShouldQueue
                     continue;
                 }
 
-                $obs = "Variação Tampos: {$familia}/{$cor} carcaças={$totalCarcacas} tampo=" . ($tampo ? $tampo->saldo_fisico : 'N/A');
+                $grupoCorLabel = $info['config']->grupo . '/' . $info['config']->cor;
+                $obs = "Variação Tampos: {$grupoCorLabel} carcaças={$totalCarcacas} tampo=" . ($tampo ? $tampo->saldo_fisico : 'N/A');
 
                 $res = $client->post('/estoques', [], [
                     'produto'     => ['id' => $info['produto_id']],
@@ -164,7 +168,7 @@ class VariacaoTamposJob implements ShouldQueue
                         $sku,
                         $saldoFinal,
                         'variacao_tampos',
-                        "Equalização {$familia}/{$cor}",
+                        "Equalização {$grupoCorLabel}",
                         null,
                         false,
                         'fisico'
