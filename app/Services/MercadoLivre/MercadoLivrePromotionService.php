@@ -86,6 +86,7 @@ class MercadoLivrePromotionService
             $originalPrice = $item['original_price'] ?? $preco;
             $dealPrice = $item['deal_price'] ?? null;
             $proposedDealPrice = $item['proposed_deal_price'] ?? null;
+            $netProceeds = $this->extrairNetProceedsAmount($item['net_proceeds'] ?? null);
 
             $items[] = [
                 'id' => $item['id'] ?? '',
@@ -98,6 +99,8 @@ class MercadoLivrePromotionService
                 'buyer_price' => $preco, // preço que o comprador paga (base para comissão)
                 'meli_percentage' => (float) ($item['meli_percentage'] ?? 0),
                 'seller_percentage' => (float) ($item['seller_percentage'] ?? 0),
+                'net_proceeds' => $item['net_proceeds'] ?? null,
+                'net_proceeds_amount' => $netProceeds,
                 'offer_id' => $item['offer_id'] ?? $item['ref_id'] ?? $item['deal_id'] ?? $item['candidate_id'] ?? null,
             ];
         }
@@ -258,6 +261,37 @@ class MercadoLivrePromotionService
         return '';
     }
 
+    private function extrairNetProceedsAmount(mixed $netProceeds): ?float
+    {
+        if (is_numeric($netProceeds)) {
+            return (float) $netProceeds;
+        }
+
+        if (!is_array($netProceeds)) {
+            return null;
+        }
+
+        foreach (['amount', 'value'] as $key) {
+            if (isset($netProceeds[$key]) && is_numeric($netProceeds[$key])) {
+                return (float) $netProceeds[$key];
+            }
+        }
+
+        foreach (['suggested_discounted_price', 'max_discounted_price', 'min_discounted_price'] as $key) {
+            if (!isset($netProceeds[$key]) || !is_array($netProceeds[$key])) {
+                continue;
+            }
+
+            foreach (['amount', 'value'] as $amountKey) {
+                if (isset($netProceeds[$key][$amountKey]) && is_numeric($netProceeds[$key][$amountKey])) {
+                    return (float) $netProceeds[$key][$amountKey];
+                }
+            }
+        }
+
+        return null;
+    }
+
     /**
      * Busca títulos em batch via multiget (até 20 por chamada)
      */
@@ -316,7 +350,7 @@ class MercadoLivrePromotionService
                             $sku = $attr['value_name'] ?? null;
                             break;
                         }
-                    }
+                }
                 }
                 if (!$sku && !empty($item['variations'])) {
                     $sku = $item['variations'][0]['seller_custom_field'] ?? null;
@@ -344,23 +378,25 @@ class MercadoLivrePromotionService
                     }
                 }
 
-                // Frete grátis - buscar custo real via shipping_options do item
-                $freeShipping = $item['shipping']['free_shipping'] ?? false;
-                if ($freeShipping) {
-                    $freteResp = Http::withToken($token)->withOptions(['verify' => false])->timeout(10)
-                        ->get("{$this->apiBase}/items/{$itemId}/shipping_options", ['zip_code' => '01310100']);
+                // Buscar custo real do vendedor via shipping_options.
+                $freteResp = Http::withToken($token)->withOptions(['verify' => false])->timeout(10)
+                    ->get("{$this->apiBase}/items/{$itemId}/shipping_options", ['zip_code' => '01310100']);
 
-                    if ($freteResp->successful()) {
-                        $options = $freteResp->json()['options'] ?? [];
+                if ($freteResp->successful()) {
+                    $options = $freteResp->json()['options'] ?? [];
                         // Pegar o maior custo entre as opções (geralmente a primeira é a mais cara)
-                        $maiorFrete = 0;
-                        foreach ($options as $opt) {
-                            $cost = (float) ($opt['list_cost'] ?? $opt['cost'] ?? 0);
-                            $maiorFrete = max($maiorFrete, $cost);
+                    $maiorFrete = 0;
+                    foreach ($options as $opt) {
+                        $listCost = (float) ($opt['list_cost'] ?? 0);
+                        $buyerCost = (float) ($opt['cost'] ?? 0);
+                        $cost = max(0, $listCost - $buyerCost);
+                        if ($cost <= 0 && !empty($opt['free_shipping'])) {
+                            $cost = $listCost;
                         }
-                        $info['frete'] = $maiorFrete;
+                        $maiorFrete = max($maiorFrete, $cost);
                     }
-                }
+                    $info['frete'] = $maiorFrete;
+                    }
             }
         } catch (\Throwable $e) {
             Log::warning("ML buscarInfoParaAdesao [{$itemId}]: " . $e->getMessage());
@@ -502,6 +538,8 @@ class MercadoLivrePromotionService
         $promotions = [];
 
         foreach ($data as $promo) {
+            $netProceeds = $this->extrairNetProceedsAmount($promo['net_proceeds'] ?? null);
+
             $promotions[] = [
                 'id' => $promo['promotion_id'] ?? $promo['id'] ?? '',
                 'name' => $promo['name'] ?? $promo['promotion_name'] ?? 'Sem nome',
@@ -511,6 +549,8 @@ class MercadoLivrePromotionService
                 'original_price' => $promo['original_price'] ?? null,
                 'meli_percentage' => (float) ($promo['meli_percentage'] ?? 0),
                 'seller_percentage' => (float) ($promo['seller_percentage'] ?? 0),
+                'net_proceeds' => $promo['net_proceeds'] ?? null,
+                'net_proceeds_amount' => $netProceeds,
                 'start_date' => $promo['start_date'] ?? null,
                 'finish_date' => $promo['finish_date'] ?? null,
                 'offer_id' => $promo['offer_id'] ?? $promo['ref_id'] ?? $promo['deal_id'] ?? $promo['candidate_id'] ?? null,

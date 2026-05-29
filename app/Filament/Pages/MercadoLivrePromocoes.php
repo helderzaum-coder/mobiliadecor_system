@@ -209,7 +209,7 @@ class MercadoLivrePromocoes extends Page
 
         $this->aderindoInfo = [
             'title'              => $info['title'] ?? $targetItem['title'] ?? $itemId,
-            'original_price'     => $info['base_price'] ?? $targetItem['price'] ?? 0,
+            'original_price'     => $targetItem['original_price'] ?? $info['base_price'] ?? $targetItem['price'] ?? 0,
             'frete'              => $info['frete'] ?? 0,
             'comissao_percent'   => $info['comissao_percent'] ?? 11.5,
             'comissao_valor'     => $info['comissao_valor'] ?? 0,
@@ -221,6 +221,7 @@ class MercadoLivrePromocoes extends Page
             'tem_subsidio'       => $temSubsidio,
             'meli_percentage'    => $meliPercentage,
             'seller_percentage'  => $sellerPercentage,
+            'net_proceeds_amount' => $targetItem['net_proceeds_amount'] ?? null,
             'promo_type'         => $promoType,
         ];
     }
@@ -436,7 +437,7 @@ class MercadoLivrePromocoes extends Page
 
         $this->aderindoInfo = [
             'title'              => $info['title'] ?? $itemId,
-            'original_price'     => $info['base_price'] ?? $promo['original_price'] ?? 0,
+            'original_price'     => $promo['original_price'] ?? $info['base_price'] ?? 0,
             'frete'              => $info['frete'] ?? 0,
             'comissao_percent'   => $info['comissao_percent'] ?? 11.5,
             'comissao_valor'     => $info['comissao_valor'] ?? 0,
@@ -448,6 +449,7 @@ class MercadoLivrePromocoes extends Page
             'tem_subsidio'       => $meliPercentage > 0,
             'meli_percentage'    => $meliPercentage,
             'seller_percentage'  => $sellerPercentage,
+            'net_proceeds_amount' => $promo['net_proceeds_amount'] ?? null,
             'promo_type'         => $promo['type'],
         ];
     }
