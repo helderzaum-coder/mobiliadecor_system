@@ -114,11 +114,11 @@ class VariacaoTamposJob implements ShouldQueue
 
                 $saldoFinal = $totalCarcacas;
 
-                // Limitar pelo estoque do tampo correspondente
+                // Limitar pelo estoque do tampo correspondente (usar saldo_fisico do tampo, não saldo total)
                 $tampo = ProdutoEstoque::where('sku', $info['config']->sku_tampo)->where('ativo', true)->first();
-                if ($tampo && $tampo->saldo < $saldoFinal) {
-                    Log::info("VariacaoTampos: {$sku} limitado por tampo {$tampo->sku} (tampo={$tampo->saldo}, carcaças={$totalCarcacas})");
-                    $saldoFinal = $tampo->saldo;
+                if ($tampo && $tampo->saldo_fisico < $saldoFinal) {
+                    Log::info("VariacaoTampos: {$sku} limitado por tampo {$tampo->sku} (tampo_fisico={$tampo->saldo_fisico}, carcaças={$totalCarcacas})");
+                    $saldoFinal = $tampo->saldo_fisico;
                 }
 
                 $saldoFinal = max(0, $saldoFinal);
@@ -127,7 +127,7 @@ class VariacaoTamposJob implements ShouldQueue
                     continue;
                 }
 
-                $obs = "Variação Tampos: {$familia}/{$cor} carcaças={$totalCarcacas} tampo=" . ($tampo ? $tampo->saldo : 'N/A');
+                $obs = "Variação Tampos: {$familia}/{$cor} carcaças={$totalCarcacas} tampo=" . ($tampo ? $tampo->saldo_fisico : 'N/A');
 
                 $res = $client->post('/estoques', [], [
                     'produto'     => ['id' => $info['produto_id']],
@@ -141,7 +141,7 @@ class VariacaoTamposJob implements ShouldQueue
 
                 if ($res['success']) {
                     $resultado['atualizados']++;
-                    $resultado['log'][] = "{$sku}: {$info['saldo_atual']} → {$saldoFinal} (carcaças={$totalCarcacas} tampo=" . ($tampo ? $tampo->saldo : 'N/A') . ")";
+                    $resultado['log'][] = "{$sku}: {$info['saldo_atual']} → {$saldoFinal} (carcaças={$totalCarcacas} tampo=" . ($tampo ? $tampo->saldo_fisico : 'N/A') . ")";
 
                     // Atualizar estoque interno (saldo_fisico = equalizado, saldo_carcaca = real)
                     EstoqueService::balanco(
@@ -154,9 +154,11 @@ class VariacaoTamposJob implements ShouldQueue
                         'fisico'
                     );
 
-                    // Guardar saldo real individual apenas se ainda não foi lançado manualmente
-                    if (!$produtoInterno || $produtoInterno->saldo_carcaca === null) {
-                        ProdutoEstoque::where('sku', (string) $sku)->update(['saldo_carcaca' => max(0, $info['saldo_atual'])]);
+                    // Guardar saldo real individual apenas se nunca foi definido (null)
+                    // NUNCA sobrescrever com saldo equalizado — saldo_carcaca deve refletir carcaças reais
+                    if ($produtoInterno && $produtoInterno->saldo_carcaca === null) {
+                        // Primeira vez: usar o saldo_carcaca informado na busca (que veio do Bling antes da equalização)
+                        ProdutoEstoque::where('sku', (string) $sku)->update(['saldo_carcaca' => max(0, $info['saldo_carcaca'])]);
                     }
                 } else {
                     $resultado['erros']++;
