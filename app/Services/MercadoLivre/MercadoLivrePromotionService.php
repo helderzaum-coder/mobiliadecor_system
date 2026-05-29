@@ -409,7 +409,9 @@ class MercadoLivrePromotionService
                     ]);
                 }
             }
-            $info['frete'] = $this->buscarFreteItem($token, $itemId);
+            $info['frete'] = ($item['shipping']['free_shipping'] ?? false) && ($item['shipping']['mode'] ?? '') === 'me2'
+                ? $this->buscarFreteItem($token, $itemId)
+                : 0;
         } catch (\Throwable $e) {
             Log::warning("ML buscarInfoParaAdesao [{$itemId}]: " . $e->getMessage());
         }
