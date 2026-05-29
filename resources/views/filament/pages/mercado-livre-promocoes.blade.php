@@ -189,8 +189,8 @@
                                 @endif
                                 <span class="text-xs">Desc: {{ number_format($desconto, 1) }}%</span>
                                 <span @class(['text-xs font-bold',
-                                    'text-green-700 dark:text-green-400' => $margemPercent >= 15,
-                                    'text-yellow-700 dark:text-yellow-400' => $margemPercent >= 0 && $margemPercent < 15,
+                                    'text-green-700 dark:text-green-400' => $margemPercent >= $margemDesejada,
+                                    'text-yellow-700 dark:text-yellow-400' => $margemPercent >= 0 && $margemPercent < $margemDesejada,
                                     'text-red-700 dark:text-red-400' => $margemPercent < 0,
                                 ])>Margem: R$ {{ number_format($margem, 2, ',', '.') }} ({{ number_format($margemPercent, 1) }}%)</span>
                                 <div class="ml-auto flex gap-2">
@@ -460,8 +460,8 @@
                             <div class="text-xs">
                                 <span class="text-gray-500">Margem:</span>
                                 <span @class(['font-bold',
-                                    'text-green-700 dark:text-green-400' => $margemPercent >= 15,
-                                    'text-yellow-700 dark:text-yellow-400' => $margemPercent >= 0 && $margemPercent < 15,
+                                    'text-green-700 dark:text-green-400' => $margemPercent >= $margemDesejada,
+                                    'text-yellow-700 dark:text-yellow-400' => $margemPercent >= 0 && $margemPercent < $margemDesejada,
                                     'text-red-700 dark:text-red-400' => $margemPercent < 0,
                                 ])>R$ {{ number_format($margem, 2, ',', '.') }} ({{ number_format($margemPercent, 1) }}%)</span>
                             </div>
