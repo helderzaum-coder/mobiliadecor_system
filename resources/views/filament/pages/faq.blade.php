@@ -9,8 +9,8 @@
                         :href="'#section-' + section.slug"
                         class="flex items-center gap-2 px-3 py-2 text-[13px] rounded-lg transition-colors duration-150"
                         :class="activeSection === section.slug
-                            ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 font-medium'
-                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                            ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 font-medium'
+                            : 'text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'"
                         @click.prevent="scrollToSection(section.slug)"
                         x-text="section.title"
                     ></a>
@@ -33,7 +33,7 @@
                         x-model="searchQuery"
                         @input.debounce.300ms="filterSections()"
                         placeholder="Pesquisar perguntas..."
-                        class="block w-full pl-10 pr-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                        class="block w-full pl-10 pr-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                     />
                 </div>
             </div>
@@ -47,7 +47,7 @@
                         class="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                     >
                         <span class="flex items-center gap-3">
-                            <span class="text-lg font-semibold text-gray-900 dark:text-gray-100" x-text="section.title"></span>
+                            <span class="text-lg font-semibold text-gray-900 dark:text-white" x-text="section.title"></span>
                             <span class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full" x-text="section.questions.length + ' perguntas'"></span>
                         </span>
                         <svg
@@ -77,7 +77,7 @@
                                             ? 'hover:bg-amber-100/50 dark:hover:bg-amber-900/20'
                                             : 'hover:bg-gray-50 dark:hover:bg-gray-700/30'"
                                     >
-                                        <span class="flex items-center gap-2 text-base font-medium" :class="item.destructive ? 'text-amber-800 dark:text-amber-300' : 'text-gray-700 dark:text-gray-300'">
+                                        <span class="flex items-center gap-2 text-base font-medium" :class="item.destructive ? 'text-amber-800 dark:text-amber-200' : 'text-gray-800 dark:text-gray-100'">
                                             <span x-show="item.destructive" class="text-amber-500 text-lg">⚠️</span>
                                             <span x-text="item.question"></span>
                                         </span>
@@ -93,7 +93,7 @@
                                     {{-- Answer --}}
                                     <div x-show="expandedQuestions[section.slug + '-' + qIndex]" x-collapse>
                                         <div
-                                            class="px-6 pb-5 text-base text-gray-600 dark:text-gray-300 prose prose-base dark:prose-invert max-w-none leading-relaxed"
+                                            class="px-6 pb-5 text-base text-gray-700 dark:text-gray-100 prose prose-base dark:prose-invert max-w-none leading-relaxed"
                                             x-html="item.answer"
                                         ></div>
                                     </div>
