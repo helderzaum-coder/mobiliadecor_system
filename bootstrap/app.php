@@ -11,6 +11,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ])
     ->withSchedule(function (Schedule $schedule) {
         $schedule->job(new \App\Jobs\VariacaoTamposJob('primary'))->everySixHours();
+        $schedule->job(new \App\Jobs\AplicarLimiteTampoJob())->everySixHours()->withoutOverlapping();
     })
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
