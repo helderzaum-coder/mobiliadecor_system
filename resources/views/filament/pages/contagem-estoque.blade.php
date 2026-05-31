@@ -70,7 +70,7 @@
                                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                         <td class="px-4 py-2 font-mono text-xs text-gray-700 dark:text-gray-200">{{ $item['sku'] }}</td>
                                         <td class="px-4 py-2 font-mono text-xs text-gray-500 dark:text-gray-400">{{ $item['codigo_barras'] ?? '-' }}</td>
-                                        <td class="px-4 py-2 text-gray-700 dark:text-gray-200">{{ \Illuminate\Support\Str::limit($item['nome'], 50) }}</td>
+                                        <td class="px-4 py-2 text-gray-700 dark:text-gray-200 max-w-xs truncate" title="{{ $item['nome'] }}">{{ $item['nome'] }}</td>
                                         <td class="px-4 py-2">
                                             @if($item['grupo_tampo'] ?? null)
                                                 <span class="text-xs bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 px-2 py-0.5 rounded">{{ $item['grupo_tampo'] }}</span>
@@ -128,7 +128,7 @@
                         @foreach($this->divergencias as $div)
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                 <td class="px-4 py-2 font-mono text-xs text-gray-700 dark:text-gray-200">{{ $div['sku'] }}</td>
-                                <td class="px-4 py-2 text-gray-700 dark:text-gray-200">{{ \Illuminate\Support\Str::limit($div['nome'], 50) }}</td>
+                                <td class="px-4 py-2 text-gray-700 dark:text-gray-200 max-w-xs truncate" title="{{ $div['nome'] }}">{{ $div['nome'] }}</td>
                                 <td class="px-4 py-2">
                                     @if($div['grupo_tampo'] ?? null)
                                         <span class="text-xs bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 px-2 py-0.5 rounded">{{ $div['grupo_tampo'] }}</span>
