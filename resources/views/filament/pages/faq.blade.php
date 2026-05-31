@@ -3,11 +3,11 @@
         {{-- Sidebar Navigation (sticky, hidden on screens < lg) --}}
         <nav class="hidden lg:block w-64 shrink-0">
             <div class="sticky top-4 space-y-1 max-h-[calc(100vh-6rem)] overflow-y-auto rounded-xl bg-white dark:bg-gray-800 shadow-md p-4">
-                <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Seções</h3>
+                <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Seções</h3>
                 <template x-for="section in sections" :key="'nav-' + section.slug">
                     <a
                         :href="'#section-' + section.slug"
-                        class="flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors duration-150"
+                        class="flex items-center gap-2 px-3 py-2 text-[13px] rounded-lg transition-colors duration-150"
                         :class="activeSection === section.slug
                             ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 font-medium'
                             : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'"
@@ -33,7 +33,7 @@
                         x-model="searchQuery"
                         @input.debounce.300ms="filterSections()"
                         placeholder="Pesquisar perguntas..."
-                        class="block w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                        class="block w-full pl-10 pr-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                     />
                 </div>
             </div>
@@ -77,8 +77,8 @@
                                             ? 'hover:bg-amber-100/50 dark:hover:bg-amber-900/20'
                                             : 'hover:bg-gray-50 dark:hover:bg-gray-700/30'"
                                     >
-                                        <span class="flex items-center gap-2 text-sm font-medium" :class="item.destructive ? 'text-amber-800 dark:text-amber-300' : 'text-gray-700 dark:text-gray-300'">
-                                            <span x-show="item.destructive" class="text-amber-500 text-base">⚠️</span>
+                                        <span class="flex items-center gap-2 text-base font-medium" :class="item.destructive ? 'text-amber-800 dark:text-amber-300' : 'text-gray-700 dark:text-gray-300'">
+                                            <span x-show="item.destructive" class="text-amber-500 text-lg">⚠️</span>
                                             <span x-text="item.question"></span>
                                         </span>
                                         <svg
@@ -93,7 +93,7 @@
                                     {{-- Answer --}}
                                     <div x-show="expandedQuestions[section.slug + '-' + qIndex]" x-collapse>
                                         <div
-                                            class="px-6 pb-4 text-sm text-gray-600 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none"
+                                            class="px-6 pb-5 text-base text-gray-600 dark:text-gray-300 prose prose-base dark:prose-invert max-w-none leading-relaxed"
                                             x-html="item.answer"
                                         ></div>
                                     </div>
@@ -109,7 +109,7 @@
                 <svg class="mx-auto h-12 w-12 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                 </svg>
-                <p class="mt-4 text-gray-500 dark:text-gray-400">Nenhuma pergunta encontrada para o termo pesquisado</p>
+                <p class="mt-4 text-base text-gray-500 dark:text-gray-400">Nenhuma pergunta encontrada para o termo pesquisado</p>
             </div>
         </div>
     </div>
