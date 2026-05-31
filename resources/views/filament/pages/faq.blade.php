@@ -93,7 +93,7 @@
                                     {{-- Answer --}}
                                     <div x-show="expandedQuestions[section.slug + '-' + qIndex]" x-collapse>
                                         <div
-                                            class="px-6 pb-5 text-base text-gray-700 dark:text-gray-100 prose prose-base dark:prose-invert max-w-none leading-relaxed"
+                                            class="px-6 pb-5 text-base text-gray-700 dark:text-white prose prose-base dark:prose-invert max-w-none leading-relaxed [&_li]:dark:text-white [&_p]:dark:text-white [&_strong]:dark:text-white"
                                             x-html="item.answer"
                                         ></div>
                                     </div>
