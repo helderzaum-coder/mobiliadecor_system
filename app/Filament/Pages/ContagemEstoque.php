@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Jobs\VariacaoTamposJob;
 use App\Models\ProdutoEstoque;
 use App\Models\TrocaTampoConfig;
 use App\Services\EstoqueService;
@@ -153,39 +154,37 @@ class ContagemEstoque extends Page
             }
         }
 
-        // Processar grupos de troca de tampo: distribuir total para todos os SKUs do grupo
+        // Processar grupos de troca de tampo: atualizar saldo_carcaca e disparar equalização
         foreach ($gruposProcessados as $grupoKey => $dados) {
-            $totalGrupo = $dados['total'];
+            $totalCarcacas = $dados['total'];
 
             foreach ($dados['configs'] as $config) {
                 $produto = ProdutoEstoque::where('sku', $config->sku_produto)->where('ativo', true)->first();
                 if (!$produto) continue;
 
-                $saldoAtual = $produto->saldo_fisico;
+                $saldoAnterior = $produto->saldo_carcaca ?? 0;
 
                 $this->divergencias[] = [
                     'sku' => $config->sku_produto,
-                    'nome' => $config->nome_produto,
-                    'saldo_sistema' => $saldoAtual,
-                    'contagem' => $totalGrupo,
-                    'diferenca' => $totalGrupo - $saldoAtual,
+                    'nome' => $config->nome_produto ?? $produto->nome,
+                    'saldo_sistema' => $saldoAnterior,
+                    'contagem' => $totalCarcacas,
+                    'diferenca' => $totalCarcacas - $saldoAnterior,
                     'grupo_tampo' => "{$config->grupo} {$config->cor}",
                 ];
 
-                if ($totalGrupo !== $saldoAtual) {
-                    EstoqueService::balanco(
-                        $config->sku_produto,
-                        $totalGrupo,
-                        'contagem',
-                        "Contagem grupo {$config->grupo} {$config->cor} (total carcaças)",
-                        auth()->id(),
-                        true,
-                        'fisico'
-                    );
+                if ($totalCarcacas !== $saldoAnterior) {
+                    $produto->update(['saldo_carcaca' => $totalCarcacas]);
                     $atualizados++;
                 } else {
                     $semAlteracao++;
                 }
+            }
+
+            // Disparar equalização para a família deste grupo
+            $primeiraConfig = $dados['configs']->first();
+            if ($primeiraConfig && $primeiraConfig->familia_tampo) {
+                VariacaoTamposJob::dispatch('primary', $primeiraConfig->familia_tampo);
             }
         }
 

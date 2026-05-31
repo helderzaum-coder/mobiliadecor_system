@@ -22,7 +22,8 @@ class VariacaoTamposJob implements ShouldQueue
     public int $timeout = 600;
 
     public function __construct(
-        private readonly string $accountKey = 'primary'
+        private readonly string $accountKey = 'primary',
+        private readonly ?string $familiaFiltro = null
     ) {}
 
     public function handle(): void
@@ -35,7 +36,7 @@ class VariacaoTamposJob implements ShouldQueue
         Cache::put($lockKey, true, 600);
 
         try {
-            $resultado = self::executar($this->accountKey);
+            $resultado = self::executar($this->accountKey, $this->familiaFiltro);
 
             $admins = \App\Models\User::role('admin')->get();
             foreach ($admins as $admin) {
