@@ -7,6 +7,7 @@ use App\Models\PedidoBlingStaging;
 use App\Models\ProdutoEstoque;
 use App\Models\Venda;
 use App\Services\MercadoLivre\MercadoLivreOrderService;
+use App\Services\MercadoLivre\MercadoLivreCorrigirContatoBlingService;
 use App\Services\MercadoLivrePlanilhaService;
 use App\Services\AprovacaoVendaService;
 use App\Services\Shopee\ShopeeService;
@@ -358,6 +359,10 @@ class BlingImportService
             if (empty($mlDados['ml_sale_fee']) || $mlDados['ml_sale_fee'] <= 0) {
                 MercadoLivrePlanilhaService::reprocessarPedido($staging);
             }
+
+            // Corrigir telefone, complemento e endereço no contato do Bling
+            $mlAccount = $this->accountKey === 'secondary' ? 'secondary' : 'primary';
+            MercadoLivreCorrigirContatoBlingService::corrigir($staging, $mlAccount);
 
             // ME2/FULL: auto-aprovar (não precisa cotar frete)
             $tipoFrete = $mlDados['ml_tipo_frete'] ?? null;
