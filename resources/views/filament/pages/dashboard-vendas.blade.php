@@ -204,6 +204,9 @@
                             @if($isCancelada)
                                 <span style="background:#dc2626;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;">🚫 Cancelado</span>
                             @endif
+                            @if($venda->repasse_recebido)
+                                <span style="background:#065f46;color:#6ee7b7;padding:2px 8px;border-radius:4px;font-size:10px;">💰 Recebido</span>
+                            @endif
                         </div>
                         <div class="text-xs text-gray-600 dark:text-gray-400">
                             {{ $venda->cliente_nome }}

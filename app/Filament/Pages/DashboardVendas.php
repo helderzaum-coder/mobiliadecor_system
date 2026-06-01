@@ -538,6 +538,8 @@ class DashboardVendas extends Page implements HasForms
                         'envias' => '🚚 Envias',
                         'incompleto' => '❌ Incompleto',
                         'completo' => '✅ Completo',
+                        'recebido' => '💰 Recebido',
+                        'nao_recebido' => '⏳ Não Recebido',
                         'cancelados' => '🚫 Cancelados/Estornos',
                     ])
                     ->placeholder('Todos')
@@ -669,6 +671,10 @@ class DashboardVendas extends Page implements HasForms
             });
         } elseif ($this->status_filtro === 'cancelados') {
             $query->where('cancelada', true);
+        } elseif ($this->status_filtro === 'recebido') {
+            $query->where('repasse_recebido', true);
+        } elseif ($this->status_filtro === 'nao_recebido') {
+            $query->where(fn ($q) => $q->where('repasse_recebido', false)->orWhereNull('repasse_recebido'));
         }
 
         return $query;
