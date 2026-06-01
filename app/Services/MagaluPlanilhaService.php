@@ -13,15 +13,15 @@ class MagaluPlanilhaService
      *
      * Colunas relevantes:
      * E  = Número do pedido (ex: LU-1524770104953718)
-     * AB = Serviços do marketplace total (comissão %)
-     * AF = Tarifa fixa (R$ 5,00 por item)
-     * AN = Pago pelo Magalu - Desconto à Vista
-     * AO = Pago por você (seller) - Desconto à Vista
-     * AP = Pago pelo Magalu - Preço Promocional
-     * AQ = Pago por você (seller) - Preço Promocional
-     * AR = Subsídio Cupom - Pago pelo Magalu
-     * AS = Subsídio Cupom - Pago por você (seller)
-     * AT = Valor líquido estimado a receber
+     * AE = Serviços do marketplace total (comissão %)
+     * AR = Tarifa fixa (R$ 5,00 por item)
+     * AZ = Pago pelo Magalu - Desconto à Vista
+     * BA = Pago por você (seller) - Desconto à Vista
+     * BB = Pago pelo Magalu - Preço Promocional
+     * BC = Pago por você (seller) - Preço Promocional
+     * BD = Subsídio Cupom - Pago pelo Magalu
+     * BE = Subsídio Cupom - Pago por você (seller)
+     * BF = Valor líquido estimado a receber
      */
     public static function processar(string $filePath): array
     {
@@ -60,15 +60,15 @@ class MagaluPlanilhaService
             $numeroPedido = preg_replace('/^LU-/i', '', $numeroPedidoRaw);
 
             try {
-                $comissaoServicos = abs(self::parseDecimal($sheet->getCell("AB{$i}")->getValue()));
-                $tarifaFixa = abs(self::parseDecimal($sheet->getCell("AF{$i}")->getValue()));
-                $subsidioMagaluVista = self::parseDecimal($sheet->getCell("AN{$i}")->getValue());
-                $descontoVendedorVista = abs(self::parseDecimal($sheet->getCell("AO{$i}")->getValue()));
-                $subsidioMagaluPromo = self::parseDecimal($sheet->getCell("AP{$i}")->getValue());
-                $descontoVendedorPromo = abs(self::parseDecimal($sheet->getCell("AQ{$i}")->getValue()));
-                $subsidioCupomMagalu = self::parseDecimal($sheet->getCell("AR{$i}")->getValue());
-                $descontoCupomVendedor = abs(self::parseDecimal($sheet->getCell("AS{$i}")->getValue()));
-                $valorLiquido = self::parseDecimal($sheet->getCell("AT{$i}")->getValue());
+                $comissaoServicos = abs(self::parseDecimal($sheet->getCell("AE{$i}")->getValue()));
+                $tarifaFixa = abs(self::parseDecimal($sheet->getCell("AR{$i}")->getValue()));
+                $subsidioMagaluVista = self::parseDecimal($sheet->getCell("AZ{$i}")->getValue());
+                $descontoVendedorVista = abs(self::parseDecimal($sheet->getCell("BA{$i}")->getValue()));
+                $subsidioMagaluPromo = self::parseDecimal($sheet->getCell("BB{$i}")->getValue());
+                $descontoVendedorPromo = abs(self::parseDecimal($sheet->getCell("BC{$i}")->getValue()));
+                $subsidioCupomMagalu = self::parseDecimal($sheet->getCell("BD{$i}")->getValue());
+                $descontoCupomVendedor = abs(self::parseDecimal($sheet->getCell("BE{$i}")->getValue()));
+                $valorLiquido = self::parseDecimal($sheet->getCell("BF{$i}")->getValue());
 
                 // Comissão real = serviços marketplace + tarifa fixa
                 $comissaoReal = round($comissaoServicos + $tarifaFixa, 2);
