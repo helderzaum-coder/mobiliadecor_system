@@ -312,13 +312,13 @@ class ContaReceberResource extends Resource
                     ->color('gray')
                     ->requiresConfirmation()
                     ->action(function (ContaReceber $record) {
-                        $record->update(['status' => 'pendente', 'data_recebimento' => null]);
+                        $record->update(['status' => 'pendente', 'data_recebimento' => null, 'lote_recebimento_id' => null]);
                         if ($record->venda) {
                             $record->venda->update(['repasse_recebido' => false, 'data_recebimento' => null]);
                         }
                         Notification::make()->title('Recebimento desfeito.')->success()->send();
                     })
-                    ->visible(fn (ContaReceber $record) => $record->status === 'recebido'),
+                    ->visible(fn (ContaReceber $record) => in_array($record->status, ['recebido', 'cancelado'])),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
