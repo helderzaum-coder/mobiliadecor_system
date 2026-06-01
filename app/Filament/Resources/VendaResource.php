@@ -222,6 +222,13 @@ class VendaResource extends Resource
                 Tables\Columns\TextColumn::make('margem_contribuicao')
                     ->label('Lucro %')->suffix('%')
                     ->color(fn ($state) => $state >= 0 ? 'success' : 'danger'),
+                Tables\Columns\IconColumn::make('repasse_recebido')
+                    ->label('Recebido')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-clock')
+                    ->trueColor('success')
+                    ->falseColor('warning'),
             ])
             ->defaultSort('data_venda', 'desc')
             ->filters([
@@ -232,6 +239,12 @@ class VendaResource extends Resource
                 Tables\Filters\SelectFilter::make('id_cnpj')
                     ->label('CNPJ')
                     ->relationship('cnpj', 'razao_social'),
+                Tables\Filters\SelectFilter::make('repasse_recebido')
+                    ->label('Recebimento')
+                    ->options([
+                        '1' => '✅ Recebido',
+                        '0' => '⏳ Pendente',
+                    ]),
                 Tables\Filters\Filter::make('periodo')
                     ->form([
                         Forms\Components\Select::make('periodo_rapido')
