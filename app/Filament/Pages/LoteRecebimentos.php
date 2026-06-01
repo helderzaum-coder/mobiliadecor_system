@@ -27,6 +27,9 @@ class LoteRecebimentos extends Page
     public array $descontos = [];
     public string $desconto_descricao = '';
     public string $desconto_valor = '';
+    public array $entradas_avulsas = [];
+    public string $entrada_descricao = '';
+    public string $entrada_valor = '';
 
     public function mount(): void
     {
@@ -61,9 +64,14 @@ class LoteRecebimentos extends Page
         return collect($this->descontos)->sum('valor');
     }
 
+    public function getTotalEntradasAvulsasProperty(): float
+    {
+        return collect($this->entradas_avulsas)->sum('valor');
+    }
+
     public function getLiquidoLoteProperty(): float
     {
-        return $this->totalLote - $this->totalDescontos;
+        return $this->totalLote + $this->totalEntradasAvulsas - $this->totalDescontos;
     }
 
     public function adicionarDesconto(): void
@@ -86,6 +94,28 @@ class LoteRecebimentos extends Page
     {
         unset($this->descontos[$index]);
         $this->descontos = array_values($this->descontos);
+    }
+
+    public function adicionarEntradaAvulsa(): void
+    {
+        if (empty(trim($this->entrada_descricao)) || (float) $this->entrada_valor <= 0) {
+            Notification::make()->title('Informe descrição e valor da entrada.')->warning()->send();
+            return;
+        }
+
+        $this->entradas_avulsas[] = [
+            'descricao' => trim($this->entrada_descricao),
+            'valor' => round((float) $this->entrada_valor, 2),
+        ];
+
+        $this->entrada_descricao = '';
+        $this->entrada_valor = '';
+    }
+
+    public function removerEntradaAvulsa(int $index): void
+    {
+        unset($this->entradas_avulsas[$index]);
+        $this->entradas_avulsas = array_values($this->entradas_avulsas);
     }
 
     public function adicionarAoLote(int $id): void
@@ -163,7 +193,7 @@ class LoteRecebimentos extends Page
         $isMagalu = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
 
         if ($isMagalu) {
-            $repasse = (float) $venda->valor_total_venda - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0) + (float) $venda->subsidio_pix;
+            $repasse = (float) $venda->valor_total_venda - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
         } else {
             $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
         }
@@ -247,10 +277,29 @@ class LoteRecebimentos extends Page
             ]);
         }
 
-        $msgDescontos = !empty($this->descontos) ? " | " . count($this->descontos) . " desconto(s) lançado(s)" : '';
-        Notification::make()->title("{$count} recebimento(s) confirmado(s){$msgDescontos}. Lote #{$lote->id}")->success()->send();
+        // Lançar entradas avulsas como contas a receber (já recebidas) vinculadas ao lote
+        foreach ($this->entradas_avulsas as $entrada) {
+            ContaReceber::create([
+                'valor_parcela' => $entrada['valor'],
+                'data_vencimento' => $this->data_recebimento,
+                'data_recebimento' => $this->data_recebimento,
+                'status' => 'recebido',
+                'numero_parcela' => 1,
+                'total_parcelas' => 1,
+                'forma_pagamento' => 'Entrada Avulsa',
+                'observacoes' => $entrada['descricao'] . ($this->identificador_lote ? " | {$this->identificador_lote}" : ''),
+                'lancamento_manual' => true,
+                'conta_bancaria_id' => $this->conta_bancaria_id ?: null,
+                'lote_recebimento_id' => $lote->id,
+            ]);
+        }
+
+        $msgDescontos = !empty($this->descontos) ? " | " . count($this->descontos) . " desconto(s)" : '';
+        $msgEntradas = !empty($this->entradas_avulsas) ? " | " . count($this->entradas_avulsas) . " entrada(s) avulsa(s)" : '';
+        Notification::make()->title("{$count} recebimento(s) confirmado(s){$msgDescontos}{$msgEntradas}. Lote #{$lote->id}")->success()->send();
         $this->lote = [];
         $this->descontos = [];
+        $this->entradas_avulsas = [];
         $this->identificador_lote = '';
     }
 

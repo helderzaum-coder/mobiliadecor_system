@@ -111,17 +111,52 @@
                         </div>
                     </div>
 
+                    {{-- Entradas Avulsas --}}
+                    <div class="mb-4">
+                        <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Entradas Avulsas</h4>
+
+                        @foreach($entradas_avulsas as $index => $entrada)
+                            <div class="flex items-center justify-between p-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-sm mb-2">
+                                <span class="text-green-700 dark:text-green-300">{{ $entrada['descricao'] }}</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-semibold text-green-600">+ R$ {{ number_format($entrada['valor'], 2, ',', '.') }}</span>
+                                    <button wire:click="removerEntradaAvulsa({{ $index }})"
+                                        style="color:#ef4444;font-size:14px;cursor:pointer;background:none;border:none;font-weight:bold;">✕</button>
+                                </div>
+                            </div>
+                        @endforeach
+
+                        <div class="flex gap-2">
+                            <input type="text" wire:model="entrada_descricao" placeholder="Ex: Reembolso frete, Bonificação"
+                                style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:13px;">
+                            <input type="number" wire:model="entrada_valor" placeholder="Valor" step="0.01" min="0"
+                                style="width:120px;padding:8px 12px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:13px;">
+                            <button wire:click="adicionarEntradaAvulsa"
+                                style="padding:8px 14px;border-radius:8px;border:none;cursor:pointer;background:#10b981;color:#fff;font-size:12px;font-weight:600;white-space:nowrap;">
+                                + Entrada
+                            </button>
+                        </div>
+                    </div>
+
                     {{-- Totais --}}
                     <div class="space-y-2 mb-3">
                         <div class="flex items-center justify-between">
                             <span class="text-sm text-gray-500">Total Bruto (pedidos):</span>
                             <span class="text-sm font-semibold text-green-600">R$ {{ number_format($this->totalLote, 2, ',', '.') }}</span>
                         </div>
+                        @if(!empty($entradas_avulsas))
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-500">Entradas avulsas:</span>
+                            <span class="text-sm font-semibold text-green-400">+ R$ {{ number_format($this->totalEntradasAvulsas, 2, ',', '.') }}</span>
+                        </div>
+                        @endif
                         @if(!empty($descontos))
                         <div class="flex items-center justify-between">
                             <span class="text-sm text-gray-500">Descontos:</span>
                             <span class="text-sm font-semibold text-red-500">- R$ {{ number_format($this->totalDescontos, 2, ',', '.') }}</span>
                         </div>
+                        @endif
+                        @if(!empty($descontos) || !empty($entradas_avulsas))
                         <div class="flex items-center justify-between pt-2 border-t border-gray-700">
                             <span class="text-sm text-gray-400 font-medium">Líquido (repasse):</span>
                             <span class="text-xl font-bold text-blue-400">R$ {{ number_format($this->liquidoLote, 2, ',', '.') }}</span>
