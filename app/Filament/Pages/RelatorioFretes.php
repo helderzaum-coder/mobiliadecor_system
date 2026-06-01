@@ -20,6 +20,22 @@ class RelatorioFretes extends Page implements HasForms
     protected static string $view = 'filament.pages.relatorio-fretes';
     protected static ?int $navigationSort = 2;
 
+    protected $queryString = [
+        'periodo',
+        'mes_selecionado',
+        'canal',
+        'conta',
+        'filtro_frete',
+        'filtro_uf',
+        'filtro_cidade',
+        'filtro_transportadora',
+        'busca_pedido',
+        'data_inicio',
+        'data_fim',
+        'ordenar_por',
+        'incluir_frete_zerado',
+    ];
+
     public ?string $periodo = 'este_mes';
     public ?string $mes_selecionado = null;
     public ?string $canal = null;
@@ -36,7 +52,9 @@ class RelatorioFretes extends Page implements HasForms
 
     public function mount(): void
     {
-        $this->mes_selecionado = now()->format('Y-m');
+        if (!$this->mes_selecionado) {
+            $this->mes_selecionado = now()->format('Y-m');
+        }
     }
 
     public function exportar()
