@@ -335,6 +335,42 @@ class DashboardVendas extends Page implements HasForms
         \Filament\Notifications\Notification::make()->title(count($ids) . ' venda(s) enviadas para busca de custos.')->info()->send();
     }
 
+    public function recalcularImpostosLote(): void
+    {
+        $vendas = $this->buildQuery()
+            ->where(fn ($q) => $q->whereNotNull('nfe_chave_acesso')->where('nfe_chave_acesso', '!=', ''))
+            ->where(fn ($q) => $q->where('valor_imposto', '<=', 0)->orWhereNull('valor_imposto'))
+            ->get();
+
+        if ($vendas->isEmpty()) {
+            \Filament\Notifications\Notification::make()->title('Nenhuma venda com NF-e e imposto zerado no período.')->warning()->send();
+            return;
+        }
+
+        $count = 0;
+        foreach ($vendas as $venda) {
+            $staging = \App\Models\PedidoBlingStaging::where('bling_id', $venda->bling_id)->first();
+            if (!$staging) continue;
+
+            $percentual = \App\Services\Bling\BlingImportService::buscarPercentualImpostoPublic($staging);
+            if ($percentual <= 0) continue;
+
+            $base = (float) $venda->nfe_valor ?: (float) $venda->valor_total_venda;
+            $valorImposto = round($base * ($percentual / 100), 2);
+
+            $venda->update([
+                'base_imposto' => $base,
+                'percentual_imposto' => $percentual,
+                'valor_imposto' => $valorImposto,
+            ]);
+
+            \App\Services\VendaRecalculoService::recalcularMargens($venda);
+            $count++;
+        }
+
+        \Filament\Notifications\Notification::make()->title("{$count} venda(s) com imposto recalculado.")->success()->send();
+    }
+
     public function aplicarPlanilhaShopeeLote(): void
     {
         $ids = $this->buildQuery()

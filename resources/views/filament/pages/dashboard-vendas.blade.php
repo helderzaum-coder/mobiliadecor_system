@@ -16,6 +16,10 @@
             style="background:#d97706;color:#fff;padding:6px 12px;font-size:11px;border-radius:6px;border:none;cursor:pointer;white-space:nowrap;">
             💰 Custos Lote
         </button>
+        <button wire:click="recalcularImpostosLote" wire:loading.attr="disabled" wire:confirm="Recalcular impostos para vendas com NF-e mas imposto zerado no período filtrado?"
+            style="background:#dc2626;color:#fff;padding:6px 12px;font-size:11px;border-radius:6px;border:none;cursor:pointer;white-space:nowrap;">
+            🏦 Impostos Lote
+        </button>
         <button wire:click="aplicarPlanilhaShopeeLote" wire:loading.attr="disabled" wire:confirm="Aplicar planilha Shopee para todas as vendas Shopee sem planilha no período?"
             style="background:#ea580c;color:#fff;padding:6px 12px;font-size:11px;border-radius:6px;border:none;cursor:pointer;white-space:nowrap;">
             📊 Shopee Lote
