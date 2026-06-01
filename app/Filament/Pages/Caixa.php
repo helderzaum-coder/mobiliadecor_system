@@ -121,7 +121,7 @@ class Caixa extends Page implements HasForms
     {
         [$inicio, $fim] = $this->getDataRange();
 
-        $query = ContaReceber::with(['venda', 'contaBancaria', 'categoria'])
+        $query = ContaReceber::with(['venda', 'contaBancaria', 'categoria', 'loteRecebimento'])
             ->where('status', 'recebido')
             ->whereNotNull('data_recebimento')
             ->whereBetween('data_recebimento', [$inicio, $fim]);
@@ -135,14 +135,37 @@ class Caixa extends Page implements HasForms
 
         $registros = $query->get();
 
-        // Agrupar por lote (observacoes = identificador do lote)
-        $comLote = $registros->filter(fn ($r) => !empty($r->observacoes) && !str_starts_with($r->observacoes, 'Repasse #'));
-        $semLote = $registros->filter(fn ($r) => empty($r->observacoes) || str_starts_with($r->observacoes, 'Repasse #'));
+        // Separar: com lote vs sem lote
+        $comLote = $registros->filter(fn ($r) => !empty($r->lote_recebimento_id));
+        $semLote = $registros->filter(fn ($r) => empty($r->lote_recebimento_id));
 
         $resultado = collect();
 
-        // Lotes agrupados: uma linha por lote
-        foreach ($comLote->groupBy('observacoes') as $loteNome => $itensLote) {
+        // Lotes: uma única linha por lote com valor líquido (entradas - descontos)
+        foreach ($comLote->groupBy('lote_recebimento_id') as $loteId => $itensLote) {
+            $lote = $itensLote->first()->loteRecebimento;
+            $totalEntradas = (float) $itensLote->sum('valor_parcela');
+
+            // Buscar descontos vinculados ao mesmo lote
+            $descontosLote = ContaPagar::where('lote_recebimento_id', $loteId)->sum('valor_parcela');
+            $valorLiquido = $totalEntradas - (float) $descontosLote;
+
+            $descricao = $lote?->descricao ?? $itensLote->first()->observacoes ?? 'Lote #' . $loteId;
+            $resultado->push([
+                'data' => $itensLote->first()->data_recebimento->format('Y-m-d'),
+                'tipo' => 'entrada',
+                'descricao' => $descricao,
+                'categoria' => $itensLote->first()->categoria?->nome ?? $itensLote->first()->forma_pagamento ?? '-',
+                'banco' => $itensLote->first()->contaBancaria?->nome ?? '-',
+                'valor' => round($valorLiquido, 2),
+            ]);
+        }
+
+        // Sem lote: agrupar por observacoes (lotes antigos) ou individual
+        $comObs = $semLote->filter(fn ($r) => !empty($r->observacoes) && !str_starts_with($r->observacoes, 'Repasse #'));
+        $semObs = $semLote->filter(fn ($r) => empty($r->observacoes) || str_starts_with($r->observacoes, 'Repasse #'));
+
+        foreach ($comObs->groupBy('observacoes') as $loteNome => $itensLote) {
             $resultado->push([
                 'data' => $itensLote->first()->data_recebimento->format('Y-m-d'),
                 'tipo' => 'entrada',
@@ -153,8 +176,7 @@ class Caixa extends Page implements HasForms
             ]);
         }
 
-        // Individuais: uma linha por registro
-        foreach ($semLote as $r) {
+        foreach ($semObs as $r) {
             $resultado->push([
                 'data' => $r->data_recebimento->format('Y-m-d'),
                 'tipo' => 'entrada',
@@ -175,7 +197,8 @@ class Caixa extends Page implements HasForms
         $query = ContaPagar::with(['fatura', 'contaBancaria', 'categoria'])
             ->where('status', 'pago')
             ->whereNotNull('data_pagamento')
-            ->whereBetween('data_pagamento', [$inicio, $fim]);
+            ->whereBetween('data_pagamento', [$inicio, $fim])
+            ->whereNull('lote_recebimento_id'); // Descontos de lote já estão abatidos na entrada
 
         if ($this->conta_bancaria_id) {
             $query->where('conta_bancaria_id', $this->conta_bancaria_id);
@@ -206,9 +229,19 @@ class Caixa extends Page implements HasForms
             ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
             ->sum('valor_parcela');
 
+        // Descontos vinculados a lotes já estão abatidos das entradas, excluir das saídas
         $saidasAntes = ContaPagar::where('status', 'pago')
             ->whereNotNull('data_pagamento')
             ->where('data_pagamento', '<', $inicio)
+            ->whereNull('lote_recebimento_id')
+            ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
+            ->sum('valor_parcela');
+
+        // Descontos de lotes (abatidos das entradas)
+        $descontosLotesAntes = ContaPagar::where('status', 'pago')
+            ->whereNotNull('data_pagamento')
+            ->where('data_pagamento', '<', $inicio)
+            ->whereNotNull('lote_recebimento_id')
             ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
             ->sum('valor_parcela');
 
@@ -220,7 +253,7 @@ class Caixa extends Page implements HasForms
             $saldoInicialBanco = (float) ContaBancaria::where('ativo', true)->sum('saldo_inicial');
         }
 
-        return $saldoInicialBanco + (float) $entradasAntes - (float) $saidasAntes;
+        return $saldoInicialBanco + (float) $entradasAntes - (float) $descontosLotesAntes - (float) $saidasAntes;
     }
 
     public function getMovimentacoesProperty(): array
