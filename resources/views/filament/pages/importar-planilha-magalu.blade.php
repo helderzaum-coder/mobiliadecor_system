@@ -11,7 +11,7 @@
 
             <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Colunas utilizadas:</h3>
             <div class="text-sm text-gray-500 dark:text-gray-400">
-                <p>Número do pedido (E), Serviços marketplace (AB), Tarifa fixa (AF), Descontos à vista (AN/AO), Preço Promocional (AP/AQ), Cupom (AR/AS), Valor líquido (AT).</p>
+                <p>Número do pedido (E), Serviços marketplace (AE), Tarifa fixa (AR), Descontos à vista (AZ/BA), Preço Promocional (BB/BC), Cupom (BD/BE), Valor líquido (BF).</p>
             </div>
         </div>
 
