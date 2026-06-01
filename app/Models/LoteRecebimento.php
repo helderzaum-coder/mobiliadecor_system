@@ -25,4 +25,9 @@ class LoteRecebimento extends Model
     {
         return $this->hasMany(ContaReceber::class, 'lote_recebimento_id');
     }
+
+    public function descontos(): HasMany
+    {
+        return $this->hasMany(ContaPagar::class, 'lote_recebimento_id');
+    }
 }

@@ -21,10 +21,20 @@ return new class extends Migration
             $table->unsignedBigInteger('lote_recebimento_id')->nullable()->after('categoria_id');
             $table->foreign('lote_recebimento_id')->references('id')->on('lotes_recebimento')->nullOnDelete();
         });
+
+        Schema::table('contas_pagar', function (Blueprint $table) {
+            $table->unsignedBigInteger('lote_recebimento_id')->nullable()->after('categoria_id');
+            $table->foreign('lote_recebimento_id')->references('id')->on('lotes_recebimento')->nullOnDelete();
+        });
     }
 
     public function down(): void
     {
+        Schema::table('contas_pagar', function (Blueprint $table) {
+            $table->dropForeign(['lote_recebimento_id']);
+            $table->dropColumn('lote_recebimento_id');
+        });
+
         Schema::table('contas_receber', function (Blueprint $table) {
             $table->dropForeign(['lote_recebimento_id']);
             $table->dropColumn('lote_recebimento_id');

@@ -23,6 +23,7 @@ class ContaPagar extends Model
         'lancamento_manual',
         'conta_bancaria_id',
         'categoria_id',
+        'lote_recebimento_id',
     ];
 
     protected $casts = [
@@ -45,5 +46,10 @@ class ContaPagar extends Model
     public function categoria(): BelongsTo
     {
         return $this->belongsTo(CategoriaFinanceira::class, 'categoria_id');
+    }
+
+    public function loteRecebimento(): BelongsTo
+    {
+        return $this->belongsTo(LoteRecebimento::class, 'lote_recebimento_id');
     }
 }

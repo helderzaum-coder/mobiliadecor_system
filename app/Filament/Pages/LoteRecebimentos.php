@@ -2,7 +2,9 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\ContaPagar;
 use App\Models\ContaReceber;
+use App\Models\LoteRecebimento;
 use App\Models\Venda;
 use Filament\Pages\Page;
 use Filament\Notifications\Notification;
@@ -192,6 +194,8 @@ class LoteRecebimentos extends Page
         }
 
         $count = 0;
+        $valorTotal = 0;
+
         foreach ($this->lote as $id) {
             $conta = ContaReceber::find($id);
             if (!$conta || $conta->status !== 'pendente') continue;
@@ -209,12 +213,26 @@ class LoteRecebimentos extends Page
                     'data_recebimento' => $this->data_recebimento,
                 ]);
             }
+            $valorTotal += (float) $conta->valor_parcela;
             $count++;
         }
 
-        // Lançar descontos como contas a pagar (já pagas)
+        // Criar lote
+        $lote = LoteRecebimento::create([
+            'data_recebimento' => $this->data_recebimento,
+            'descricao' => $this->identificador_lote ?: null,
+            'valor_total' => round($valorTotal - collect($this->descontos)->sum('valor'), 2),
+            'quantidade_contas' => $count,
+        ]);
+
+        // Vincular contas ao lote
+        ContaReceber::whereIn('id_conta_receber', $this->lote)
+            ->where('status', 'recebido')
+            ->update(['lote_recebimento_id' => $lote->id]);
+
+        // Lançar descontos como contas a pagar (já pagas) vinculadas ao lote
         foreach ($this->descontos as $desconto) {
-            \App\Models\ContaPagar::create([
+            ContaPagar::create([
                 'valor_parcela' => $desconto['valor'],
                 'data_vencimento' => $this->data_recebimento,
                 'data_pagamento' => $this->data_recebimento,
@@ -225,13 +243,15 @@ class LoteRecebimentos extends Page
                 'observacoes' => $desconto['descricao'] . ($this->identificador_lote ? " | {$this->identificador_lote}" : ''),
                 'lancamento_manual' => true,
                 'conta_bancaria_id' => $this->conta_bancaria_id ?: null,
+                'lote_recebimento_id' => $lote->id,
             ]);
         }
 
         $msgDescontos = !empty($this->descontos) ? " | " . count($this->descontos) . " desconto(s) lançado(s)" : '';
-        Notification::make()->title("{$count} recebimento(s) confirmado(s){$msgDescontos}.")->success()->send();
+        Notification::make()->title("{$count} recebimento(s) confirmado(s){$msgDescontos}. Lote #{$lote->id}")->success()->send();
         $this->lote = [];
         $this->descontos = [];
+        $this->identificador_lote = '';
     }
 
     public static function canAccess(): bool
