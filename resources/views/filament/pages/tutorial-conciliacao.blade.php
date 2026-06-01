@@ -135,8 +135,19 @@
 
             <div class="space-y-4 text-sm text-gray-300">
                 <div class="rounded-lg bg-gray-700/30 p-4">
-                    <h3 style="font-weight:700;color:#e5e7eb;margin-bottom:8px;">📥 Planilha Financeira</h3>
-                    <p>Baixe a planilha financeira do portal Magalu e importe em <strong>Integrações → Planilha Magalu</strong>.</p>
+                    <h3 style="font-weight:700;color:#e5e7eb;margin-bottom:8px;">📥 Passo 1: Solicitar Relatório de Repasses</h3>
+                    <p>Acesse: <a href="https://empresas.magalupay.com.br/statement" target="_blank" style="color:#3b82f6;text-decoration:underline;">Magalu Pay Empresas → Extrato</a></p>
+                    <p class="mt-2">Selecione o <strong>ciclo</strong> que deseja conciliar, clique em <strong>Criar relatório</strong> e depois em <strong>Criar</strong> novamente para confirmar.</p>
+                </div>
+
+                <div class="rounded-lg bg-gray-700/30 p-4">
+                    <h3 style="font-weight:700;color:#e5e7eb;margin-bottom:8px;">📧 Passo 2: Baixar o Relatório</h3>
+                    <p>O relatório será enviado para o <strong>e-mail cadastrado</strong>. Baixe o arquivo anexo.</p>
+                </div>
+
+                <div class="rounded-lg bg-gray-700/30 p-4">
+                    <h3 style="font-weight:700;color:#e5e7eb;margin-bottom:8px;">⬆️ Passo 3: Importar no Sistema</h3>
+                    <p>Importe a planilha baixada em <strong>Integrações → Planilha Magalu</strong>.</p>
                     <p class="mt-2">A planilha atualiza a comissão real (serviços + tarifa fixa) e o subsídio Magalu.</p>
                 </div>
             </div>

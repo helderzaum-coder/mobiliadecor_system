@@ -17,12 +17,18 @@ jobs:
 
     steps:
       - name: Validate required secrets
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          PORT: ${{ secrets.DEPLOY_PORT }}
+          PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
-          test -n "${{ secrets.DEPLOY_HOST }}"
-          test -n "${{ secrets.DEPLOY_USER }}"
-          test -n "${{ secrets.DEPLOY_SSH_KEY }}"
-          test -n "${{ secrets.DEPLOY_PORT }}"
-          test -n "${{ secrets.DEPLOY_PATH }}"
+          test -n "$HOST" || (echo "DEPLOY_HOST esta faltando" && exit 1)
+          test -n "$USER" || (echo "DEPLOY_USER esta faltando" && exit 1)
+          test -n "$KEY"  || (echo "DEPLOY_SSH_KEY esta faltando" && exit 1)
+          test -n "$PORT" || (echo "DEPLOY_PORT esta faltando" && exit 1)
+          test -n "$PATH" || (echo "DEPLOY_PATH esta faltando" && exit 1)
 
       - name: Deploy on server
         uses: appleboy/ssh-action@v1.2.0
@@ -41,30 +47,42 @@ jobs:
               exit 1
             fi
 
+            echo "=== Puxando codigo do Git ==="
             git fetch --all --prune
             git checkout main
             git reset --hard origin/main
 
+            echo "=== Instalando Dependencias do PHP ==="
             composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
 
+            echo "=== Compilando Assets (NPM) ==="
             if command -v npm >/dev/null 2>&1; then
-              npm ci
+              # Trocado para npm install para nao quebrar sem o lockfile
+              npm install
               npm run build
             else
               echo "npm nao encontrado no servidor; mantendo assets atuais."
             fi
 
+            echo "=== Rodando Migrations ==="
             php artisan migrate --force
+
+            echo "=== Limpando e Otimizando Caches ==="
             php artisan optimize:clear
             php artisan optimize
 
-            # Limpar OPcache do web server
-            curl -s "http://localhost/clear_opcache.php" > /dev/null 2>&1 || true
+            echo "=== Limpando OPcache ==="
+            # Atualizado com o seu dominio real em HTTPS
+            curl -s "https://hesmoveis.com.br/clear_opcache.php" > /dev/null 2>&1 || true
 
+            echo "=== Reiniciando Filas ==="
             if php artisan list | grep -q "queue:restart"; then
               php artisan queue:restart
             fi
 
+            echo "=== Executando Filament Upgrade final ==="
             if php artisan list | grep -q "filament:upgrade"; then
               php artisan filament:upgrade --no-interaction || true
             fi
+            
+            echo "=== DEPLOY CONCLUIDO COM SUCESSO ==="
