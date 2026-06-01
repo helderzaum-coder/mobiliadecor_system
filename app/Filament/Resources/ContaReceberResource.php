@@ -340,6 +340,27 @@ class ContaReceberResource extends Resource
                         }
                         Notification::make()->title("{$count} recebimento(s) confirmado(s).")->success()->send();
                     }),
+                Tables\Actions\BulkAction::make('alterar_data_recebimento')
+                    ->label('Corrigir Data Recebimento')
+                    ->icon('heroicon-o-calendar-days')
+                    ->color('warning')
+                    ->form([
+                        Forms\Components\DatePicker::make('data_recebimento')
+                            ->label('Nova Data de Recebimento')
+                            ->required(),
+                    ])
+                    ->action(function ($records, array $data) {
+                        $count = 0;
+                        foreach ($records as $record) {
+                            if ($record->status !== 'recebido') continue;
+                            $record->update(['data_recebimento' => $data['data_recebimento']]);
+                            if ($record->venda) {
+                                $record->venda->update(['data_recebimento' => $data['data_recebimento']]);
+                            }
+                            $count++;
+                        }
+                        Notification::make()->title("{$count} data(s) corrigida(s).")->success()->send();
+                    }),
                 Tables\Actions\BulkAction::make('cancelar_massa')
                     ->label('Cancelar')
                     ->icon('heroicon-o-x-circle')
