@@ -317,11 +317,17 @@ class ContaReceberResource extends Resource
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->form([
+                        Forms\Components\Placeholder::make('aviso')
+                            ->label('')
+                            ->content('⚠️ Confira a data abaixo antes de confirmar. Todos os registros selecionados serão marcados com esta data.'),
                         Forms\Components\DatePicker::make('data_recebimento')
-                            ->label('Data do Recebimento')
-                            ->default(now())
-                            ->required(),
+                            ->label('📅 Data do Recebimento')
+                            ->required()
+                            ->helperText('Informe a data em que o valor foi efetivamente recebido.'),
                     ])
+                    ->modalHeading('Confirmar Recebimento em Lote')
+                    ->modalDescription('Verifique a data de recebimento antes de confirmar.')
+                    ->modalSubmitActionLabel('Confirmar Recebimento')
                     ->action(function ($records, array $data) {
                         $count = 0;
                         foreach ($records as $record) {
