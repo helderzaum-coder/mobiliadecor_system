@@ -17,6 +17,7 @@ class LoteRecebimentoResource extends Resource
     protected static ?string $navigationGroup = 'Financeiro';
     protected static ?string $modelLabel = 'Lote de Recebimento';
     protected static ?string $pluralModelLabel = 'Lotes de Recebimento';
+    protected static ?string $slug = 'lotes-recebimento';
 
     public static function form(Form $form): Form
     {

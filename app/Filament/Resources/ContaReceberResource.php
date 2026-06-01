@@ -144,7 +144,7 @@ class ContaReceberResource extends Resource
                     ->placeholder('-')
                     ->formatStateUsing(fn ($state) => $state ? "#{$state}" : null)
                     ->url(fn ($record) => $record->lote_recebimento_id
-                        ? LoteRecebimentoResource::getUrl('view', ['record' => $record->lote_recebimento_id])
+                        ? '/lotes-recebimento/' . $record->lote_recebimento_id
                         : null
                     )
                     ->color('primary'),
