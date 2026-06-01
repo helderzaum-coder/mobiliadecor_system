@@ -439,6 +439,7 @@
                     $comissaoSobreFrete = (bool) ($venda->canal?->comissao_sobre_frete ?? false);
                     $impostoSobreFrete = (bool) ($venda->canal?->imposto_sobre_frete ?? false);
                     $pctImposto = (float) $venda->percentual_imposto;
+                    $isMagaluCard2 = str_contains(strtolower($canal), 'magalu');
                     $comissaoFreteVal = 0;
                     if ($comissaoSobreFrete && $freteCliente > 0 && $venda->canal) {
                         $regraCanal = $venda->canal->regrasComissao()->where('ativo', true)->first();
@@ -450,7 +451,6 @@
                     $impostoFreteVal = ($impostoSobreFrete && $freteCliente > 0 && $pctImposto > 0)
                         ? round($freteCliente * $pctImposto / 100, 2) : 0;
                     $impostoProdVal = $imposto - $impostoFreteVal;
-                    $isMagaluCard2 = str_contains(strtolower($canal), 'magalu');
                     $desconto = $total - $totalProd - $freteCliente;
                 @endphp
                 <div class="flex flex-wrap gap-2 mt-2 text-xs">
@@ -468,7 +468,6 @@
                         </div>
                         <div style="color:#9ca3af;font-size:10px;margin-top:2px;">
                             Sub: {{ number_format($totalProd, 2, ',', '.') }}
-                            @if($desconto < -0.01 && $isMagaluCard2) | Desc: {{ number_format(abs($desconto), 2, ',', '.') }} @endif
                             | Custo: {{ number_format($custoProd, 2, ',', '.') }}
                             | Com: {{ number_format($comissaoProdVal, 2, ',', '.') }}
                             @if($impostoProdVal > 0) | Imp: {{ number_format($impostoProdVal, 2, ',', '.') }} @endif
