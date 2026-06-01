@@ -362,6 +362,7 @@ class ContaReceberResource extends Resource
                             $count++;
                         }
 
+                        $lote = null;
                         if ($count > 0) {
                             $lote = LoteRecebimento::create([
                                 'data_recebimento' => $data['data_recebimento'],
@@ -376,7 +377,10 @@ class ContaReceberResource extends Resource
                             }
                         }
 
-                        Notification::make()->title("{$count} recebimento(s) confirmado(s) — Lote #{$lote->id ?? ''}")->success()->send();
+                        $titulo = $lote
+                            ? "{$count} recebimento(s) confirmado(s) — Lote #{$lote->id}"
+                            : 'Nenhum registro pendente selecionado.';
+                        Notification::make()->title($titulo)->success()->send();
                     }),
                 Tables\Actions\BulkAction::make('alterar_data_recebimento')
                     ->label('Corrigir Data Recebimento')
