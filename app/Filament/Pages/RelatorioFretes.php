@@ -31,6 +31,7 @@ class RelatorioFretes extends Page implements HasForms
     public ?string $busca_pedido = null;
     public ?string $data_inicio = null;
     public ?string $data_fim = null;
+    public ?string $ordenar_por = 'prejuizo';
     public bool $incluir_frete_zerado = false;
 
     public function mount(): void
@@ -212,6 +213,15 @@ class RelatorioFretes extends Page implements HasForms
                     ->searchable()
                     ->reactive()
                     ->columnSpan(2),
+                Forms\Components\Select::make('ordenar_por')
+                    ->label('Ordenar por')
+                    ->options([
+                        'prejuizo' => 'Maior prejuízo',
+                        'data_desc' => 'Data (recente)',
+                        'data_asc' => 'Data (antigo)',
+                    ])
+                    ->default('prejuizo')
+                    ->reactive(),
                 Forms\Components\TextInput::make('busca_pedido')
                     ->label('Nº Pedido')
                     ->placeholder('Buscar pedido...')
@@ -243,7 +253,9 @@ class RelatorioFretes extends Page implements HasForms
                 $q->whereNull('ml_tipo_frete')
                     ->orWhereNotIn('ml_tipo_frete', ['me2', 'full', 'ME2', 'FULL']);
             })
-            ->orderByRaw('(valor_frete_transportadora - valor_frete_cliente) DESC');
+            ->when($this->ordenar_por === 'data_desc', fn ($q) => $q->orderBy('data_venda', 'desc'))
+            ->when($this->ordenar_por === 'data_asc', fn ($q) => $q->orderBy('data_venda', 'asc'))
+            ->when($this->ordenar_por !== 'data_desc' && $this->ordenar_por !== 'data_asc', fn ($q) => $q->orderByRaw('(valor_frete_transportadora - valor_frete_cliente) DESC'));
 
         $query = match ($this->periodo) {
             'este_mes' => $query->whereBetween('data_venda', [now()->startOfMonth(), now()->endOfMonth()]),
