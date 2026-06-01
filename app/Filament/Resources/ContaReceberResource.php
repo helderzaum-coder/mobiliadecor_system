@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ContaReceberResource\Pages;
 use App\Models\ContaReceber;
+use App\Models\LoteRecebimento;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -138,6 +139,15 @@ class ContaReceberResource extends Resource
                         if ($record->estorno_pendente) return $state . ' ⚠️ Estorno';
                         return $state;
                     }),
+                Tables\Columns\TextColumn::make('lote_recebimento_id')
+                    ->label('Lote')
+                    ->placeholder('-')
+                    ->formatStateUsing(fn ($state) => $state ? "#{$state}" : null)
+                    ->url(fn ($record) => $record->lote_recebimento_id
+                        ? LoteRecebimentoResource::getUrl('view', ['record' => $record->lote_recebimento_id])
+                        : null
+                    )
+                    ->color('primary'),
             ])
             ->defaultSort('data_vencimento', 'asc')
             ->filters([
@@ -324,12 +334,18 @@ class ContaReceberResource extends Resource
                             ->label('📅 Data do Recebimento')
                             ->required()
                             ->helperText('Informe a data em que o valor foi efetivamente recebido.'),
+                        Forms\Components\TextInput::make('descricao')
+                            ->label('Descrição do Lote (opcional)')
+                            ->placeholder('Ex: Repasse ML semana 23')
+                            ->maxLength(255),
                     ])
                     ->modalHeading('Confirmar Recebimento em Lote')
                     ->modalDescription('Verifique a data de recebimento antes de confirmar.')
                     ->modalSubmitActionLabel('Confirmar Recebimento')
+                    ->deselectRecordsAfterCompletion()
                     ->action(function ($records, array $data) {
                         $count = 0;
+                        $valorTotal = 0;
                         foreach ($records as $record) {
                             if ($record->status !== 'pendente') continue;
                             $record->update([
@@ -342,9 +358,25 @@ class ContaReceberResource extends Resource
                                     'data_recebimento' => $data['data_recebimento'],
                                 ]);
                             }
+                            $valorTotal += (float) $record->valor_parcela;
                             $count++;
                         }
-                        Notification::make()->title("{$count} recebimento(s) confirmado(s).")->success()->send();
+
+                        if ($count > 0) {
+                            $lote = LoteRecebimento::create([
+                                'data_recebimento' => $data['data_recebimento'],
+                                'descricao' => $data['descricao'] ?? null,
+                                'valor_total' => round($valorTotal, 2),
+                                'quantidade_contas' => $count,
+                            ]);
+                            foreach ($records as $record) {
+                                if ($record->status === 'recebido' && !$record->lote_recebimento_id) {
+                                    $record->update(['lote_recebimento_id' => $lote->id]);
+                                }
+                            }
+                        }
+
+                        Notification::make()->title("{$count} recebimento(s) confirmado(s) — Lote #{$lote->id ?? ''}")->success()->send();
                     }),
                 Tables\Actions\BulkAction::make('alterar_data_recebimento')
                     ->label('Corrigir Data Recebimento')
