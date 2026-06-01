@@ -35,10 +35,15 @@ class VendaResource extends Resource
                         ->content(fn ($record) => $record ? 'R$ ' . number_format((float) $record->valor_total_venda, 2, ',', '.') : '-'),
                     Forms\Components\Placeholder::make('resumo_repasse')
                         ->label('Repasse Estimado')
-                        ->content(fn ($record) => $record ? 'R$ ' . number_format(
-                            round((float) $record->total_produtos + (float) $record->valor_frete_cliente - (float) $record->comissao, 2),
-                            2, ',', '.'
-                        ) : '-'),
+                        ->content(function ($record) {
+                            if (!$record) return '-';
+                            $canal = $record->canal;
+                            $isMagalu = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
+                            $repasse = $isMagalu
+                                ? (float) $record->valor_total_venda - (float) $record->comissao
+                                : (float) $record->total_produtos + (float) $record->valor_frete_cliente - (float) $record->comissao;
+                            return 'R$ ' . number_format(round($repasse, 2), 2, ',', '.');
+                        }),
                     Forms\Components\Placeholder::make('resumo_lucro')
                         ->label('Lucro Final')
                         ->content(fn ($record) => $record ? 'R$ ' . number_format((float) $record->margem_venda_total, 2, ',', '.') . ' (' . $record->margem_contribuicao . '%)' : '-'),
@@ -211,10 +216,13 @@ class VendaResource extends Resource
                 Tables\Columns\TextColumn::make('repasse_estimado')
                     ->label('Repasse Est.')
                     ->money('BRL')
-                    ->getStateUsing(fn (Venda $r) => round(
-                        (float) $r->total_produtos + (float) $r->valor_frete_cliente - (float) $r->comissao,
-                        2
-                    ))
+                    ->getStateUsing(function (Venda $r) {
+                        $canal = $r->canal;
+                        $isMagalu = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
+                        return $isMagalu
+                            ? round((float) $r->valor_total_venda - (float) $r->comissao, 2)
+                            : round((float) $r->total_produtos + (float) $r->valor_frete_cliente - (float) $r->comissao, 2);
+                    })
                     ->color('info'),
                 Tables\Columns\TextColumn::make('margem_venda_total')
                     ->label('Lucro Final')->money('BRL')

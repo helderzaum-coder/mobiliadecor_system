@@ -73,14 +73,9 @@ class MagaluPlanilhaService
                 // Comissão real = serviços marketplace + tarifa fixa
                 $comissaoReal = round($comissaoServicos + $tarifaFixa, 2);
 
-                // Descontos pagos pelo seller (Promo, Vista, Cupom) — informativo
-                // Já estão descontados do valor líquido pela Magalu, não somar na comissão
+                // Descontos pagos pelo seller (Promo, Vista, Cupom)
+                // Esses valores REDUZEM o repasse — a Magalu desconta do vendedor
                 $descontosVendedor = round($descontoVendedorVista + $descontoVendedorPromo + $descontoCupomVendedor, 2);
-
-                // Subsídio Magalu = valores que a Magalu paga (AN + AP + AR)
-                // Esses valores já estão na base de comissão, mas não no total_pedido do Bling
-                // Repasse real = Total pago - Comissão + Subsídio Magalu
-                $subsidiosMagalu = round(abs($subsidioMagaluVista) + abs($subsidioMagaluPromo) + abs($subsidioCupomMagalu), 2);
 
                 // Buscar venda pelo número do pedido
                 $venda = Venda::where('numero_pedido_canal', $numeroPedido)->first();
@@ -95,17 +90,9 @@ class MagaluPlanilhaService
                     if ($staging) {
                         $staging->update([
                             'comissao_calculada' => $comissaoReal,
-                            'subsidio_pix' => $subsidiosMagalu,
+                            'subsidio_pix' => $descontosVendedor,
                             'planilha_shopee' => true,
                         ]);
-
-                        if ($descontosVendedor > 0) {
-                            $obsAtual = $staging->observacoes ?? '';
-                            $obsDesconto = "Desconto seller Magalu: R$ " . number_format($descontosVendedor, 2, ',', '.');
-                            if (!str_contains($obsAtual, 'Desconto seller Magalu')) {
-                                $staging->update(['observacoes' => trim($obsAtual . "\n" . $obsDesconto)]);
-                            }
-                        }
 
                         $resultado['atualizados']++;
                         continue;
@@ -117,17 +104,9 @@ class MagaluPlanilhaService
 
                 $venda->update([
                     'comissao' => $comissaoReal,
-                    'subsidio_pix' => $subsidiosMagalu,
+                    'subsidio_pix' => $descontosVendedor,
                     'planilha_processada' => true,
                 ]);
-
-                if ($descontosVendedor > 0) {
-                    $obsAtual = $venda->observacoes ?? '';
-                    $obsDesconto = "Desconto seller Magalu: R$ " . number_format($descontosVendedor, 2, ',', '.');
-                    if (!str_contains($obsAtual, 'Desconto seller Magalu')) {
-                        $venda->update(['observacoes' => trim($obsAtual . "\n" . $obsDesconto)]);
-                    }
-                }
 
                 VendaRecalculoService::recalcularMargens($venda);
                 $resultado['atualizados']++;

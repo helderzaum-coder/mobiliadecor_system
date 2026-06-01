@@ -30,7 +30,7 @@ class ContaReceberService
         $isMlMe2Full = in_array($venda->ml_tipo_frete, ['ME2', 'FULL']);
 
         if ($isMagalu) {
-            $repasse = (float) $venda->valor_total_venda - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0) + (float) $venda->subsidio_pix;
+            $repasse = (float) $venda->valor_total_venda - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
         } else {
             $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
         }
@@ -111,7 +111,7 @@ class ContaReceberService
             $isMagalu = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
 
             if ($isMagalu) {
-                $repasseBase = (float) $venda->valor_total_venda - (float) $venda->comissao + (float) $venda->subsidio_pix;
+                $repasseBase = (float) $venda->valor_total_venda - (float) $venda->comissao;
             } else {
                 $repasseBase = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao;
             }

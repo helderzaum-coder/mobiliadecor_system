@@ -57,9 +57,7 @@ jobs:
 
             echo "=== Compilando Assets (NPM) ==="
             if command -v npm >/dev/null 2>&1; then
-              # Trocado para npm install para nao quebrar sem o lockfile
-              npm install
-              npm run build
+              npm install && npm run build
             else
               echo "npm nao encontrado no servidor; mantendo assets atuais."
             fi
