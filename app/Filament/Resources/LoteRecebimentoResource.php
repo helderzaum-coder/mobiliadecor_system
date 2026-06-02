@@ -15,6 +15,7 @@ class LoteRecebimentoResource extends Resource
     protected static ?string $model = LoteRecebimento::class;
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationGroup = 'Financeiro';
+    protected static ?string $navigationLabel = 'Lotes De Recebimento';
     protected static ?string $modelLabel = 'Lote de Recebimento';
     protected static ?string $pluralModelLabel = 'Lotes de Recebimento';
     protected static ?string $slug = 'lotes-recebimento';

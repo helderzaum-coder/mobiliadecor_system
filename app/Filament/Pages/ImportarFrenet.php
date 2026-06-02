@@ -10,7 +10,7 @@ use Filament\Pages\Page;
 class ImportarFrenet extends Page
 {
     protected static ?string $navigationIcon    = 'heroicon-o-truck';
-    protected static ?string $navigationGroup   = 'Integrações';
+    protected static ?string $navigationGroup   = 'Transporte';
     protected static ?string $navigationLabel   = 'Frenet - Fretes';
     protected static ?string $title             = 'Frenet — Fretes';
     protected static string  $view              = 'filament.pages.importar-frenet';

@@ -19,7 +19,7 @@ class TrocaTampos extends Page implements HasForms
     use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-arrows-right-left';
-    protected static ?string $navigationGroup = 'Operações';
+    protected static ?string $navigationGroup = 'Estoque';
     protected static ?string $navigationLabel = 'Troca de Tampos';
     protected static ?string $title = 'Troca de Tampos';
     protected static string $view = 'filament.pages.troca-tampos';

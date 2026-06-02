@@ -16,7 +16,7 @@ class ImportarTabelaTransportadora extends Page implements HasForms
     use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-arrow-up';
-    protected static ?string $navigationGroup = 'Cadastros';
+    protected static ?string $navigationGroup = 'Transporte';
     protected static ?string $navigationLabel = 'Importar Tabela Transportadora';
     protected static ?string $title = 'Importar Tabela de Transportadora';
     protected static string $view = 'filament.pages.importar-tabela-transportadora';

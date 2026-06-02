@@ -14,7 +14,7 @@ class SimuladorFrete extends Page implements HasForms
     use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-calculator';
-    protected static ?string $navigationGroup = 'Cadastros';
+    protected static ?string $navigationGroup = 'Transporte';
     protected static ?string $navigationLabel = 'Simulador de Frete';
     protected static ?string $title = 'Simulador de Frete';
     protected static string $view = 'filament.pages.simulador-frete';

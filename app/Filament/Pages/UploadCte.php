@@ -16,7 +16,7 @@ class UploadCte extends Page implements HasForms
     use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-arrow-up';
-    protected static ?string $navigationGroup = 'Integrações';
+    protected static ?string $navigationGroup = 'Transporte';
     protected static ?string $navigationLabel = 'Upload CT-e';
     protected static ?string $title = 'Upload de CT-e (XML)';
     protected static string $view = 'filament.pages.upload-cte';

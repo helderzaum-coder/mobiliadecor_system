@@ -23,7 +23,7 @@ class PedidoBlingStagingResource extends Resource
 {
     protected static ?string $model = PedidoBlingStaging::class;
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';
-    protected static ?string $navigationGroup = 'Integrações';
+    protected static ?string $navigationGroup = 'Vendas';
     protected static ?string $navigationLabel = 'Revisão de Pedidos';
     protected static ?string $modelLabel = 'Pedido (Revisão)';
     protected static ?string $pluralModelLabel = 'Pedidos (Revisão)';

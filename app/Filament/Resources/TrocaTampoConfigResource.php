@@ -14,7 +14,7 @@ class TrocaTampoConfigResource extends Resource
 {
     protected static ?string $model = TrocaTampoConfig::class;
     protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
-    protected static ?string $navigationGroup = 'Operações';
+    protected static ?string $navigationGroup = 'Estoque';
     protected static ?string $navigationLabel = 'Config. Tampos';
     protected static ?string $modelLabel = 'Configuração de Tampo';
     protected static ?string $pluralModelLabel = 'Configurações de Tampos';

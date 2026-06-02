@@ -16,7 +16,7 @@ class ImportarPlanilhaShopee extends Page implements HasForms
     use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-arrow-up';
-    protected static ?string $navigationGroup = 'Integrações';
+    protected static ?string $navigationGroup = 'Planilhas';
     protected static ?string $navigationLabel = 'Planilha Shopee';
     protected static ?string $title = 'Importar Planilha Shopee';
     protected static string $view = 'filament.pages.importar-planilha-shopee';

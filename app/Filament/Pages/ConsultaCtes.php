@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 class ConsultaCtes extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?string $navigationGroup = 'Integrações';
+    protected static ?string $navigationGroup = 'Transporte';
     protected static ?string $navigationLabel = 'CT-es Importados';
     protected static ?string $title = 'CT-es Importados';
     protected static string $view = 'filament.pages.consulta-ctes';

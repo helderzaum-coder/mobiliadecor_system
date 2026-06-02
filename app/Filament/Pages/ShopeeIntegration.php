@@ -11,7 +11,7 @@ class ShopeeIntegration extends Page
 {
     protected static ?string $navigationIcon  = 'heroicon-o-shopping-bag';
     protected static ?string $navigationGroup = 'Integrações';
-    protected static ?string $navigationLabel = 'Shopee API';
+    protected static ?string $navigationLabel = 'Shopee API (Breve)';
     protected static ?string $title           = 'Integração Shopee';
     protected static string  $view            = 'filament.pages.shopee-integration';
 

@@ -10,7 +10,7 @@ use Filament\Notifications\Notification;
 class MercadoLivrePromocoes extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-tag';
-    protected static ?string $navigationGroup = 'Integrações';
+    protected static ?string $navigationGroup = 'Ferramentas';
     protected static ?string $navigationLabel = 'ML Promoções';
     protected static ?string $title = 'Promoções Mercado Livre';
     protected static string $view = 'filament.pages.mercado-livre-promocoes';

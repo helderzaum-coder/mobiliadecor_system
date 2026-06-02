@@ -14,7 +14,7 @@ class RelatorioFretes extends Page implements HasForms
     use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-truck';
-    protected static ?string $navigationGroup = 'Financeiro';
+    protected static ?string $navigationGroup = 'Transporte';
     protected static ?string $navigationLabel = 'Relatório de Fretes';
     protected static ?string $title = 'Relatório de Fretes';
     protected static string $view = 'filament.pages.relatorio-fretes';

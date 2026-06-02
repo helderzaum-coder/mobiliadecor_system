@@ -12,7 +12,7 @@ use Filament\Pages\Page;
 class ImportarPedidos extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-arrow-down-on-square';
-    protected static ?string $navigationGroup = 'Integrações';
+    protected static ?string $navigationGroup = 'Vendas';
     protected static ?string $navigationLabel = 'Importar Pedidos';
     protected static ?string $title = 'Importar Pedidos do Bling';
     protected static string $view = 'filament.pages.importar-pedidos';

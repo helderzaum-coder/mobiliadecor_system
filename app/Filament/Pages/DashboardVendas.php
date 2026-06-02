@@ -12,12 +12,12 @@ class DashboardVendas extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
-    protected static ?string $navigationGroup = 'Financeiro';
-    protected static ?string $navigationLabel = 'Dashboard Vendas';
+    protected static ?string $navigationIcon = 'heroicon-o-home';
+    protected static ?string $navigationLabel = 'Dashboard';
     protected static ?string $title = 'Dashboard de Vendas';
+    protected static ?string $slug = '/';
     protected static string $view = 'filament.pages.dashboard-vendas';
-    protected static ?int $navigationSort = 0;
+    protected static ?int $navigationSort = -2;
 
     protected $queryString = [
         'periodo'      => ['except' => 'este_mes', 'as' => 'periodo'],

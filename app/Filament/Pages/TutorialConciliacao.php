@@ -7,7 +7,7 @@ use Filament\Pages\Page;
 class TutorialConciliacao extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
-    protected static ?string $navigationGroup = 'Ferramentas';
+    protected static ?string $navigationGroup = 'Ajuda';
     protected static ?string $navigationLabel = 'Tutorial Conciliação';
     protected static ?string $title = 'Tutorial de Conciliação';
     protected static string $view = 'filament.pages.tutorial-conciliacao';

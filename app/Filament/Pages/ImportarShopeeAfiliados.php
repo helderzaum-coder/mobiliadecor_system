@@ -15,7 +15,7 @@ class ImportarShopeeAfiliados extends Page implements HasForms
     use InteractsWithForms;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-arrow-up';
-    protected static ?string $navigationGroup = 'Integrações';
+    protected static ?string $navigationGroup = 'Planilhas';
     protected static ?string $navigationLabel = 'Afiliados Shopee';
     protected static ?string $title = 'Importar Comissão de Afiliados Shopee';
     protected static string $view = 'filament.pages.importar-shopee-afiliados';
