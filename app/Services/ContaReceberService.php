@@ -101,6 +101,7 @@ class ContaReceberService
     {
         $contaExistente = ContaReceber::where('id_venda', $venda->id_venda)
             ->where('status', 'pendente')
+            ->where('forma_pagamento', 'not like', '%Subsídio%')
             ->first();
 
         $afiliado = (float) ($venda->comissao_afiliado ?? 0);

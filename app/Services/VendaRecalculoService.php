@@ -458,6 +458,7 @@ class VendaRecalculoService
             $vendaFresh = $venda->fresh();
             $contaExistente = \App\Models\ContaReceber::where('id_venda', $vendaFresh->id_venda)
                 ->where('status', 'pendente')
+                ->where('forma_pagamento', 'not like', '%Subsídio%')
                 ->first();
 
             if ($contaExistente) {
