@@ -321,7 +321,7 @@
                     $temDadosML = $mlSaleFee > 0 || $mlFreteCusto > 0;
                     $isMagaluRepasse = str_contains(strtolower($canal), 'magalu');
                     $repasse = $isMagaluRepasse
-                        ? $total - $comissao - $subsidio
+                        ? $total - $comissao
                         : $totalProd + $freteCliente - $comissao;
                     $fretePago = (bool) $venda->frete_pago;
                     $freteCotado = (float) ($venda->frete_cotado ?? 0);
