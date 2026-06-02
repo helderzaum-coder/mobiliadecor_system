@@ -385,7 +385,12 @@
                         <div style="width:1px;height:24px;background:#4b5563;"></div>
                         <div>
                             <div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">Repasse</div>
-                            <div class="font-semibold" style="color:#60a5fa;">R$ {{ number_format($repasse, 2, ',', '.') }}</div>
+                            <div class="font-semibold" style="color:#60a5fa;">R$ {{ number_format($repasse + (float)($venda->subsidio_magalu ?? 0), 2, ',', '.') }}</div>
+                            @if((float)($venda->subsidio_magalu ?? 0) > 0)
+                                <div style="color:#9ca3af;font-size:9px;margin-top:1px;">
+                                    {{ number_format($repasse, 2, ',', '.') }} + {{ number_format((float)$venda->subsidio_magalu, 2, ',', '.') }}
+                                </div>
+                            @endif
                         </div>
                     </div>
 
