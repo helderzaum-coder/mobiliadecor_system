@@ -77,6 +77,9 @@ class MagaluPlanilhaService
                 // Esses valores REDUZEM o repasse — a Magalu desconta do vendedor
                 $descontosVendedor = round($descontoVendedorVista + $descontoVendedorPromo + $descontoCupomVendedor, 2);
 
+                // Subsídio que a Magalu devolve (coluna AZ) — recebido em repasse separado
+                $subsidioMagalu = round(abs($subsidioMagaluVista) + abs($subsidioMagaluPromo) + abs($subsidioCupomMagalu), 2);
+
                 // Buscar venda pelo número do pedido
                 $venda = Venda::where('numero_pedido_canal', $numeroPedido)->first();
 
@@ -105,8 +108,30 @@ class MagaluPlanilhaService
                 $venda->update([
                     'comissao' => $comissaoReal,
                     'subsidio_pix' => $descontosVendedor,
+                    'subsidio_magalu' => $subsidioMagalu,
                     'planilha_processada' => true,
                 ]);
+
+                // Gerar conta a receber separada para o subsídio Magalu
+                if ($subsidioMagalu > 0) {
+                    $jaExiste = \App\Models\ContaReceber::where('id_venda', $venda->id_venda)
+                        ->where('observacoes', 'like', '%Subsídio Magalu%')
+                        ->exists();
+
+                    if (!$jaExiste) {
+                        \App\Models\ContaReceber::create([
+                            'id_venda' => $venda->id_venda,
+                            'valor_parcela' => $subsidioMagalu,
+                            'data_vencimento' => $venda->data_venda,
+                            'status' => 'pendente',
+                            'numero_parcela' => 1,
+                            'total_parcelas' => 1,
+                            'forma_pagamento' => 'Magalu - Subsídio',
+                            'observacoes' => "Subsídio Magalu (desconto à vista/promo/cupom) — Pedido #{$venda->numero_pedido_canal}",
+                            'lancamento_manual' => false,
+                        ]);
+                    }
+                }
 
                 VendaRecalculoService::recalcularMargens($venda);
                 $resultado['atualizados']++;

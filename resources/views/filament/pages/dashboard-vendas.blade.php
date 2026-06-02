@@ -321,7 +321,7 @@
                     $temDadosML = $mlSaleFee > 0 || $mlFreteCusto > 0;
                     $isMagaluRepasse = str_contains(strtolower($canal), 'magalu');
                     $repasse = $isMagaluRepasse
-                        ? $total - $comissao
+                        ? $total - $comissao - $subsidio
                         : $totalProd + $freteCliente - $comissao;
                     $fretePago = (bool) $venda->frete_pago;
                     $freteCotado = (float) ($venda->frete_cotado ?? 0);
@@ -419,6 +419,16 @@
                         <div>
                             <div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">{{ $isMagaluCard ? 'Desc. Vendedor' : 'Subsídio Pix' }}</div>
                             <div class="font-semibold" style="color:{{ $isMagaluCard ? '#ef4444' : '#60a5fa' }};">R$ {{ number_format($subsidio, 2, ',', '.') }}</div>
+                        </div>
+                    </div>
+                    @endif
+
+                    @php $subsidioMagalu = (float) ($venda->subsidio_magalu ?? 0); @endphp
+                    @if($subsidioMagalu > 0)
+                    <div class="flex items-center px-3 py-2 rounded-lg" style="background:rgba(31,41,55,0.5);border:1px solid rgba(75,85,99,0.6);">
+                        <div>
+                            <div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">Subsídio Magalu</div>
+                            <div class="font-semibold" style="color:#10b981;">+R$ {{ number_format($subsidioMagalu, 2, ',', '.') }}</div>
                         </div>
                     </div>
                     @endif

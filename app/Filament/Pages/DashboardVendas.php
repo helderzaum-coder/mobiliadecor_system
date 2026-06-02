@@ -208,7 +208,7 @@ class DashboardVendas extends Page implements HasForms
         $canal = $venda->canal?->nome_canal ?? 'Marketplace';
         $isMagalu = str_contains(strtolower($canal), 'magalu');
         $repasse = $isMagalu
-            ? (float) $venda->valor_total_venda - (float) $venda->comissao + (float) $venda->subsidio_pix
+            ? (float) $venda->valor_total_venda - (float) $venda->comissao - (float) ($venda->subsidio_pix ?? 0)
             : (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao;
 
         // Gerar conta a receber se não existe (forçar mesmo sem NF-e)
@@ -261,7 +261,7 @@ class DashboardVendas extends Page implements HasForms
         $canal = $venda->canal?->nome_canal ?? 'Marketplace';
         $isMagalu = str_contains(strtolower($canal), 'magalu');
         $repasse = $isMagalu
-            ? (float) $venda->valor_total_venda - (float) $venda->comissao + (float) $venda->subsidio_pix
+            ? (float) $venda->valor_total_venda - (float) $venda->comissao - (float) ($venda->subsidio_pix ?? 0)
             : (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao;
 
         $contaReceber = \App\Models\ContaReceber::where('id_venda', $venda->id_venda)->first();
