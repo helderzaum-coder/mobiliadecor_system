@@ -352,6 +352,11 @@
                         </div>
                         <div style="width:1px;height:24px;background:#4b5563;"></div>
                         <div>
+                            <div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">Frete Recebido</div>
+                            <div class="font-semibold" style="color:#fff;">R$ {{ number_format($freteCliente, 2, ',', '.') }}</div>
+                        </div>
+                        <div style="width:1px;height:24px;background:#4b5563;"></div>
+                        <div>
                             <div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">Custo</div>
                             <div class="font-semibold" style="color:{{ $custoProd > 0 ? '#fff' : '#f97316' }};">R$ {{ number_format($custoProd, 2, ',', '.') }}</div>
                         </div>
