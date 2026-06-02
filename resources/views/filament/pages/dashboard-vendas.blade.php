@@ -471,9 +471,9 @@
                     $comissaoFreteVal = 0;
                     if ($comissaoSobreFrete && $freteCliente > 0 && $venda->canal) {
                         if ($isMagaluCard2) {
-                            $baseRealD = $totalProd + $freteCliente - $subsidio;
-                            if ($baseRealD > 0) {
-                                $comissaoFreteVal = round($comissao * ($freteCliente / $baseRealD), 2);
+                            $baseDist = $totalProd + $freteCliente;
+                            if ($baseDist > 0) {
+                                $comissaoFreteVal = round($comissao * ($freteCliente / $baseDist), 2);
                             }
                         } else {
                             $regraCanal = $venda->canal->regrasComissao()->where('ativo', true)->first();

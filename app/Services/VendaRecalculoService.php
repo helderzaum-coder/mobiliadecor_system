@@ -403,10 +403,10 @@ class VendaRecalculoService
         if ($comissaoSobreFrete && $frete > 0 && $canal) {
             $isMagaluDist = str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
             if ($isMagaluDist) {
-                // Magalu: base real = subtotal + frete - desc. vendedor (subsidio_pix)
-                $baseReal = $totalProdutos + $frete - $subsidioPix;
-                if ($baseReal > 0) {
-                    $comissaoFrete = round($comissao * ($frete / $baseReal), 2);
+                // Magalu: distribuição proporcional sobre subtotal + frete
+                $baseDist = $totalProdutos + $frete;
+                if ($baseDist > 0) {
+                    $comissaoFrete = round($comissao * ($frete / $baseDist), 2);
                 }
             } else {
                 $regra = $canal->regrasComissao()->where('ativo', true)->first();
