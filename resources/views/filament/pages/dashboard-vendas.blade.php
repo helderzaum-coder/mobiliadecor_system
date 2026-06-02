@@ -437,6 +437,7 @@
                     @php
                         $lucroBgInline = $lucro >= 0 ? 'background:rgba(6,78,59,0.3);border:1px solid rgba(34,197,94,0.4);' : 'background:rgba(127,29,29,0.3);border:1px solid rgba(239,68,68,0.4);';
                         $lucroColorInline = $lucro >= 0 ? 'color:#4ade80;' : 'color:#f87171;';
+                        $subsidioMagaluCard = (float) ($venda->subsidio_magalu ?? 0);
                     @endphp
                     <div class="flex items-center px-4 py-2 rounded-lg" style="{{ $lucroBgInline }}">
                         <div>
@@ -445,6 +446,13 @@
                                 R$ {{ number_format($lucro, 2, ',', '.') }}
                                 <span style="font-size:12px;font-weight:normal;">({{ $margemPct }}%)</span>
                             </div>
+                            @if($subsidioMagaluCard > 0)
+                                <div style="color:#9ca3af;font-size:10px;margin-top:2px;">
+                                    📦 {{ number_format($margemProd, 2, ',', '.') }}
+                                    🚚 {{ number_format($margemFrete, 2, ',', '.') }}
+                                    💰 +{{ number_format($subsidioMagaluCard, 2, ',', '.') }}
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
