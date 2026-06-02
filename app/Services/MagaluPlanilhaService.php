@@ -158,4 +158,89 @@ class MagaluPlanilhaService
         $value = preg_replace('/[^0-9.\-]/', '', $value);
         return (float) $value;
     }
+
+    /**
+     * Reprocessa planilha aplicando APENAS o subsídio Magalu (AZ+BB+BD)
+     * em vendas já processadas que não tinham esse campo preenchido.
+     */
+    public static function reprocessarSubsidios(string $filePath): array
+    {
+        $resultado = ['atualizados' => 0, 'nao_encontrados' => 0, 'erros' => 0];
+
+        try {
+            $spreadsheet = IOFactory::load($filePath);
+            $sheet = $spreadsheet->getActiveSheet();
+        } catch (\Exception $e) {
+            return ['atualizados' => 0, 'nao_encontrados' => 0, 'erros' => 1];
+        }
+
+        $highestRow = $sheet->getHighestRow();
+
+        $linhaInicio = null;
+        for ($i = 1; $i <= min(10, $highestRow); $i++) {
+            $val = (string) $sheet->getCell("E{$i}")->getValue();
+            if (stripos($val, 'pedido') !== false || stripos($val, 'mero') !== false) {
+                $linhaInicio = $i + 1;
+                break;
+            }
+        }
+        if (!$linhaInicio) $linhaInicio = 2;
+
+        for ($i = $linhaInicio; $i <= $highestRow; $i++) {
+            $numeroPedidoRaw = trim((string) $sheet->getCell("E{$i}")->getValue());
+            if (empty($numeroPedidoRaw)) continue;
+
+            $numeroPedido = preg_replace('/^LU-/i', '', $numeroPedidoRaw);
+
+            try {
+                $subsidioMagaluVista = self::parseDecimal($sheet->getCell("AZ{$i}")->getValue());
+                $subsidioMagaluPromo = self::parseDecimal($sheet->getCell("BB{$i}")->getValue());
+                $subsidioCupomMagalu = self::parseDecimal($sheet->getCell("BD{$i}")->getValue());
+                $subsidioMagalu = round(abs($subsidioMagaluVista) + abs($subsidioMagaluPromo) + abs($subsidioCupomMagalu), 2);
+
+                if ($subsidioMagalu <= 0) continue;
+
+                $venda = Venda::where('numero_pedido_canal', $numeroPedido)->first();
+                if (!$venda) {
+                    $resultado['nao_encontrados']++;
+                    continue;
+                }
+
+                // Pular se já tem subsídio
+                if ((float) ($venda->subsidio_magalu ?? 0) > 0) continue;
+
+                $venda->update(['subsidio_magalu' => $subsidioMagalu]);
+
+                // Gerar conta a receber separada
+                $jaExiste = \App\Models\ContaReceber::where('id_venda', $venda->id_venda)
+                    ->where('observacoes', 'like', '%Subsídio Magalu%')
+                    ->exists();
+
+                if (!$jaExiste) {
+                    \App\Models\ContaReceber::create([
+                        'id_venda' => $venda->id_venda,
+                        'valor_parcela' => $subsidioMagalu,
+                        'data_vencimento' => $venda->data_venda,
+                        'status' => 'pendente',
+                        'numero_parcela' => 1,
+                        'total_parcelas' => 1,
+                        'forma_pagamento' => 'Magalu - Subsídio',
+                        'observacoes' => "Subsídio Magalu (desconto à vista/promo/cupom) — Pedido #{$venda->numero_pedido_canal}",
+                        'lancamento_manual' => false,
+                    ]);
+                }
+
+                VendaRecalculoService::recalcularMargens($venda);
+                $resultado['atualizados']++;
+
+            } catch (\Exception $e) {
+                $resultado['erros']++;
+            }
+        }
+
+        $spreadsheet->disconnectWorksheets();
+        unset($spreadsheet);
+
+        return $resultado;
+    }
 }

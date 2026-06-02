@@ -42,30 +42,8 @@ class ImportarPlanilhaMagalu extends Page implements HasForms
 
     public function processar(): void
     {
-        try {
-            $data = $this->form->getState();
-        } catch (\Exception $e) {
-            $this->data = [];
-            $this->form->fill();
-            Notification::make()->title('O arquivo enviado expirou. Faça o upload novamente.')->danger()->send();
-            return;
-        }
-
-        $arquivo = $data['arquivo'] ?? null;
-
-        if (!$arquivo) {
-            Notification::make()->title('Selecione um arquivo.')->danger()->send();
-            return;
-        }
-
-        $filePath = storage_path('app/public/' . $arquivo);
-        if (!file_exists($filePath)) {
-            $filePath = storage_path('app/' . $arquivo);
-        }
-        if (!file_exists($filePath)) {
-            Notification::make()->title('Arquivo não encontrado.')->danger()->send();
-            return;
-        }
+        $filePath = $this->resolverArquivo();
+        if (!$filePath) return;
 
         $resultado = MagaluPlanilhaService::processar($filePath);
 
@@ -85,6 +63,57 @@ class ImportarPlanilhaMagalu extends Page implements HasForms
 
         $this->data = [];
         $this->form->fill();
+    }
+
+    /**
+     * Reprocessa a planilha aplicando apenas o subsídio Magalu (col AZ/BB/BD)
+     * em vendas que já foram processadas mas não tinham esse campo.
+     */
+    public function reprocessarSubsidios(): void
+    {
+        $filePath = $this->resolverArquivo();
+        if (!$filePath) return;
+
+        $resultado = MagaluPlanilhaService::reprocessarSubsidios($filePath);
+
+        $msg = "Subsídios aplicados: {$resultado['atualizados']}";
+        if ($resultado['nao_encontrados'] > 0) {
+            $msg .= " | Sem venda: {$resultado['nao_encontrados']}";
+        }
+
+        Notification::make()->title($msg)->{$resultado['atualizados'] > 0 ? 'success' : 'warning'}()->send();
+
+        $this->data = [];
+        $this->form->fill();
+    }
+
+    private function resolverArquivo(): ?string
+    {
+        try {
+            $data = $this->form->getState();
+        } catch (\Exception $e) {
+            $this->data = [];
+            $this->form->fill();
+            Notification::make()->title('O arquivo enviado expirou. Faça o upload novamente.')->danger()->send();
+            return null;
+        }
+
+        $arquivo = $data['arquivo'] ?? null;
+        if (!$arquivo) {
+            Notification::make()->title('Selecione um arquivo.')->danger()->send();
+            return null;
+        }
+
+        $filePath = storage_path('app/public/' . $arquivo);
+        if (!file_exists($filePath)) {
+            $filePath = storage_path('app/' . $arquivo);
+        }
+        if (!file_exists($filePath)) {
+            Notification::make()->title('Arquivo não encontrado.')->danger()->send();
+            return null;
+        }
+
+        return $filePath;
     }
 
     public static function canAccess(): bool
