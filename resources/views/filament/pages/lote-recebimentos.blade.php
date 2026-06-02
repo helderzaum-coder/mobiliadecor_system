@@ -12,16 +12,16 @@
                 @if($this->resultadosBusca->isNotEmpty())
                 <div class="mt-3 space-y-2">
                     @foreach($this->resultadosBusca as $conta)
-                        <div class="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50 text-sm">
-                            <div>
-                                <span class="font-mono text-xs text-gray-600 dark:text-gray-300">{{ $conta->venda?->numero_pedido_canal }}</span>
-                                <span class="text-gray-400 mx-1">·</span>
-                                <span class="text-gray-500 dark:text-gray-400">{{ $conta->forma_pagamento }}</span>
-                                <span class="text-gray-400 mx-1">·</span>
-                                <span class="font-semibold text-green-600">R$ {{ number_format($conta->valor_parcela, 2, ',', '.') }}</span>
+                        <div class="flex items-center justify-between p-3 rounded-lg bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-mono text-xs text-gray-800 dark:text-gray-100 font-semibold">{{ $conta->venda?->numero_pedido_canal }}</span>
+                                <span class="text-gray-400">·</span>
+                                <span class="text-xs text-gray-600 dark:text-gray-300">{{ $conta->forma_pagamento }}</span>
+                                <span class="text-gray-400">·</span>
+                                <span class="font-semibold text-green-500 dark:text-green-400">R$ {{ number_format($conta->valor_parcela, 2, ',', '.') }}</span>
                             </div>
                             <button wire:click="adicionarAoLote({{ $conta->id_conta_receber }})"
-                                style="background:#10b981;color:#fff;padding:4px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                                style="background:#10b981;color:#fff;padding:6px 12px;font-size:12px;border-radius:6px;border:none;cursor:pointer;font-weight:600;">
                                 + Adicionar
                             </button>
                         </div>
