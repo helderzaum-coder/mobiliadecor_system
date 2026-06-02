@@ -237,6 +237,15 @@ class BlingImportService
                         $maiorLargura = max($maiorLargura, $largura);
                         $maiorAltura = max($maiorAltura, $altura);
                         $maiorComprimento = max($maiorComprimento, $comprimento);
+
+                        // Salvar observações do produto para uso no Telegram
+                        $obsApi = $produtoDetalhe['observacoes'] ?? null;
+                        if ($obsApi) {
+                            $prodLocal = ProdutoEstoque::where('sku', $sku)->first();
+                            if ($prodLocal && !$prodLocal->observacoes) {
+                                $prodLocal->update(['observacoes' => $obsApi]);
+                            }
+                        }
                     }
                 }
             }
@@ -764,39 +773,27 @@ class BlingImportService
     private function notificarTelegram(PedidoBlingStaging $staging, array $itens): void
     {
         $pedidoCanal = $staging->numero_loja ?? $staging->numero_pedido;
-        $totalPedido = (float) $staging->total_pedido;
-        $frete = (float) $staging->frete;
 
         $msg = "\xF0\x9F\x9B\x92 <b>Novo Pedido!</b>\n"
-            . "Pedido: {$staging->numero_pedido}\n"
-            . "Pedido Canal: #{$pedidoCanal}\n"
+            . "Pedido Bling: #{$staging->numero_pedido}\n"
+            . "Pedido Marketplace: #{$pedidoCanal}\n"
             . "Canal: {$staging->canal}\n"
-            . "Cliente: {$staging->cliente_nome}\n"
-            . "Subtotal: R$ " . number_format((float) $staging->total_produtos, 2, ',', '.') . "\n";
-        if ($frete > 0) {
-            $msg .= "Frete: R$ " . number_format($frete, 2, ',', '.') . "\n";
-        }
-        $msg .= "Total: R$ " . number_format($totalPedido, 2, ',', '.') . "\n";
-
-        $custoProdutos = 0;
-        foreach ($itens as $item) {
-            $custoProdutos += ((float) ($item['custo'] ?? 0)) * ((int) ($item['quantidade'] ?? 1));
-        }
-        $msg .= "Custo produto: R$ " . number_format($custoProdutos, 2, ',', '.') . "\n"
-            . "Imposto: R$ " . number_format((float) $staging->valor_imposto, 2, ',', '.') . "\n";
+            . "Cliente: {$staging->cliente_nome}\n";
 
         foreach ($itens as $item) {
             $sku = $item['codigo'] ?? '-';
-            $nome = $item['descricao'] ?? '-';
-            $msg .= "\nSKU: {$sku}\nProduto: {$nome}\n";
-
             $produto = ProdutoEstoque::where('sku', $sku)->where('ativo', true)->first();
+            $nomeProduto = ($produto?->observacoes ?? $produto?->nome) ?: ($item['descricao'] ?? '-');
+
+            $msg .= "\n<b>SKU:</b> {$sku}\n";
+            $msg .= "<b>Produto:</b> {$nomeProduto}\n";
+
             if ($produto && $produto->isKit()) {
+                $msg .= "<b>Componentes:</b>\n";
                 foreach ($produto->componentes as $comp) {
-                    $msg .= "  \xE2\x80\xA2 {$comp->sku}: saldo {$comp->saldo}\n";
+                    $nomeComp = $comp->observacoes ?? $comp->nome;
+                    $msg .= "  \xE2\x80\xA2 {$comp->sku} — {$nomeComp}\n";
                 }
-            } elseif ($produto) {
-                $msg .= "  \xE2\x80\xA2 Estoque: {$produto->saldo}\n";
             }
         }
 

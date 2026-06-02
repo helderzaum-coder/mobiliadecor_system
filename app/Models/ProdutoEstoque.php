@@ -21,6 +21,7 @@ class ProdutoEstoque extends Model
         'sku',
         'codigo_barras',
         'nome',
+        'observacoes',
         'formato',
         'saldo',
         'saldo_fisico',

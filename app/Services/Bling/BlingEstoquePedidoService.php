@@ -117,12 +117,17 @@ class BlingEstoquePedidoService
 
         $formato = strtoupper($produto['formato'] ?? 'S');
         $nome = $produto['nome'] ?? $sku;
+        $observacoes = $produto['observacoes'] ?? null;
 
         // Cadastrar no sistema
         $produtoEstoque = ProdutoEstoque::firstOrCreate(
             ['sku' => $sku],
-            ['nome' => $nome, 'formato' => $formato, 'saldo' => 0]
+            ['nome' => $nome, 'observacoes' => $observacoes, 'formato' => $formato, 'saldo' => 0]
         );
+        // Atualizar observações se veio da API e estava vazio
+        if ($observacoes && !$produtoEstoque->observacoes) {
+            $produtoEstoque->update(['observacoes' => $observacoes]);
+        }
 
         // Se é kit, resolver componentes
         if (in_array($formato, ['E', 'C'])) {
@@ -144,10 +149,14 @@ class BlingEstoquePedidoService
                     $qtdComponente = (int) ($comp['quantidade'] ?? 1);
 
                     // Cadastrar componente
+                    $compObs = $compDetalhe['observacoes'] ?? null;
                     $compEstoque = ProdutoEstoque::firstOrCreate(
                         ['sku' => $compSku],
-                        ['nome' => $compDetalhe['nome'] ?? $compSku, 'formato' => 'S', 'saldo' => 0]
+                        ['nome' => $compDetalhe['nome'] ?? $compSku, 'observacoes' => $compObs, 'formato' => 'S', 'saldo' => 0]
                     );
+                    if ($compObs && !$compEstoque->observacoes) {
+                        $compEstoque->update(['observacoes' => $compObs]);
+                    }
 
                     $syncData[$compEstoque->id] = ['quantidade' => $qtdComponente];
                     $skus[] = ['sku' => $compSku, 'quantidade' => $qtdComponente * $qtdPedido];

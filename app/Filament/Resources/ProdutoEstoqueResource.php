@@ -30,6 +30,8 @@ class ProdutoEstoqueResource extends Resource
             Forms\Components\TextInput::make('sku')->label('SKU')->required()->unique(ignoreRecord: true),
             Forms\Components\TextInput::make('codigo_barras')->label('Código de Barras')->maxLength(255),
             Forms\Components\TextInput::make('nome')->label('Nome')->required(),
+            Forms\Components\TextInput::make('observacoes')->label('Observações (Nome simplificado)')->maxLength(255)
+                ->helperText('Nome simplificado do produto para notificações Telegram'),
             Forms\Components\Select::make('formato')->label('Formato')->options([
                 'S' => 'Simples',
                 'E' => 'Kit/Estrutura',

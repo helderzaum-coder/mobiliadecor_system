@@ -74,15 +74,22 @@ class ImportarProdutosBlingJob implements ShouldQueue
 
                 $produtoEstoque = ProdutoEstoque::where('sku', $sku)->first();
 
-                // Buscar código de barras do detalhe do produto
+                // Buscar código de barras e observações do detalhe do produto
                 $codigoBarras = null;
+                $observacoes = null;
                 $detalhe = $client->getProductById((int) $produto['id']);
                 if ($detalhe) {
                     $codigoBarras = $detalhe['gtin'] ?? $detalhe['codigoBarras'] ?? null;
+                    $observacoes = $detalhe['observacoes'] ?? null;
                 }
 
                 if ($produtoEstoque) {
-                    $produtoEstoque->update(['nome' => $nome, 'formato' => $formato, 'codigo_barras' => $codigoBarras ?? $produtoEstoque->codigo_barras]);
+                    $produtoEstoque->update([
+                        'nome' => $nome,
+                        'formato' => $formato,
+                        'codigo_barras' => $codigoBarras ?? $produtoEstoque->codigo_barras,
+                        'observacoes' => $observacoes ?? $produtoEstoque->observacoes,
+                    ]);
                     $resultado['atualizados']++;
                 } else {
                     $saldo = 0;
@@ -94,6 +101,7 @@ class ImportarProdutosBlingJob implements ShouldQueue
                         'sku' => $sku,
                         'codigo_barras' => $codigoBarras,
                         'nome' => $nome,
+                        'observacoes' => $observacoes,
                         'formato' => $formato,
                         'saldo_virtual' => $saldo,
                         'saldo_fisico' => 0,
@@ -132,10 +140,14 @@ class ImportarProdutosBlingJob implements ShouldQueue
             if (!$compSku) continue;
 
             // Garantir que o componente existe no cadastro
+            $compObs = $compDetalhe['observacoes'] ?? null;
             $compEstoque = ProdutoEstoque::firstOrCreate(
                 ['sku' => $compSku],
-                ['nome' => $compDetalhe['nome'] ?? $compSku, 'formato' => 'S']
+                ['nome' => $compDetalhe['nome'] ?? $compSku, 'observacoes' => $compObs, 'formato' => 'S']
             );
+            if ($compObs && !$compEstoque->observacoes) {
+                $compEstoque->update(['observacoes' => $compObs]);
+            }
 
             $syncData[$compEstoque->id] = ['quantidade' => (int) ($comp['quantidade'] ?? 1)];
         }

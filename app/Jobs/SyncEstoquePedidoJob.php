@@ -50,7 +50,15 @@ class SyncEstoquePedidoJob implements ShouldQueue
         if ($resultado['success']) {
             $msg = "📦 <b>Estoque atualizado — Pedido #{$pedido->numero_pedido}</b>\n";
             foreach ($resultado['log'] as $linha) {
-                $msg .= "• {$linha}\n";
+                // Extrair SKU da linha (formato: "SKU: -X → saldo Y")
+                $skuLog = explode(':', $linha)[0] ?? '';
+                $prod = \App\Models\ProdutoEstoque::where('sku', trim($skuLog))->first();
+                $nomeProd = $prod ? ($prod->observacoes ?? $prod->nome) : '';
+                $msg .= "• {$linha}";
+                if ($nomeProd) {
+                    $msg .= " — {$nomeProd}";
+                }
+                $msg .= "\n";
             }
             TelegramService::enviar($msg);
         }
