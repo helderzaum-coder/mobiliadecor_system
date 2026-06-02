@@ -470,9 +470,16 @@
                     $isMagaluCard2 = str_contains(strtolower($canal), 'magalu');
                     $comissaoFreteVal = 0;
                     if ($comissaoSobreFrete && $freteCliente > 0 && $venda->canal) {
-                        $regraCanal = $venda->canal->regrasComissao()->where('ativo', true)->first();
-                        if ($regraCanal) {
-                            $comissaoFreteVal = round($freteCliente * (float) $regraCanal->percentual / 100, 2);
+                        if ($isMagaluCard2) {
+                            $baseRealD = $totalProd + $freteCliente - $subsidio;
+                            if ($baseRealD > 0) {
+                                $comissaoFreteVal = round($comissao * ($freteCliente / $baseRealD), 2);
+                            }
+                        } else {
+                            $regraCanal = $venda->canal->regrasComissao()->where('ativo', true)->first();
+                            if ($regraCanal) {
+                                $comissaoFreteVal = round($freteCliente * (float) $regraCanal->percentual / 100, 2);
+                            }
                         }
                     }
                     $comissaoProdVal = $comissao - $comissaoFreteVal;

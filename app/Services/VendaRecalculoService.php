@@ -398,12 +398,21 @@ class VendaRecalculoService
         $comissaoSobreFrete = (bool) ($canal->comissao_sobre_frete ?? false);
         $impostoSobreFrete = (bool) ($canal->imposto_sobre_frete ?? false);
 
-        // Comissão sobre frete
+        // Comissão sobre frete (distribuição proporcional)
         $comissaoFrete = 0;
         if ($comissaoSobreFrete && $frete > 0 && $canal) {
-            $regra = $canal->regrasComissao()->where('ativo', true)->first();
-            if ($regra) {
-                $comissaoFrete = round($frete * (float) $regra->percentual / 100, 2);
+            $isMagaluDist = str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
+            if ($isMagaluDist) {
+                // Magalu: base real = subtotal + frete - desc. vendedor (subsidio_pix)
+                $baseReal = $totalProdutos + $frete - $subsidioPix;
+                if ($baseReal > 0) {
+                    $comissaoFrete = round($comissao * ($frete / $baseReal), 2);
+                }
+            } else {
+                $regra = $canal->regrasComissao()->where('ativo', true)->first();
+                if ($regra) {
+                    $comissaoFrete = round($frete * (float) $regra->percentual / 100, 2);
+                }
             }
         }
 
