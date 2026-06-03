@@ -230,7 +230,7 @@ class TransportadoraResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('nome_transportadora')->label('Nome')->searchable(),
+                Tables\Columns\TextColumn::make('nome_transportadora')->label('Nome')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('cnpj')->label('CNPJ')->searchable(),
                 Tables\Columns\TextColumn::make('ufsAtendidas.uf')
                     ->label('UFs')
@@ -244,6 +244,7 @@ class TransportadoraResource extends Resource
                     ->counts('taxas'),
                 Tables\Columns\IconColumn::make('ativo')->boolean(),
             ])
+            ->defaultSort('nome_transportadora')
             ->filters([
                 Tables\Filters\TernaryFilter::make('ativo'),
             ])
