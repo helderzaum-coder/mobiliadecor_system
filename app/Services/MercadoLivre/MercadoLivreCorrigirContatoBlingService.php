@@ -132,9 +132,8 @@ class MercadoLivreCorrigirContatoBlingService
                 if (!empty($contatoData['celular']))  $payload['celular']  = $contatoData['celular'];
             }
 
-            // Endereço: ML é a fonte verdadeira
-            // Prioridade: receiver_address (shipping) > billing_info > Bling existente
-            $endAtual = $contatoData['endereco']['geral'] ?? $contatoData['endereco'] ?? [];
+            // Endereço: Bling v3 espera endereco.geral.{campo}
+            $endAtual = $contatoData['endereco']['geral'] ?? [];
 
             $mlUf = $receiverAddress['state']['id'] ?? $billingAddress['state'] ?? '';
             if (str_contains($mlUf, '-')) {
@@ -148,13 +147,15 @@ class MercadoLivreCorrigirContatoBlingService
             $mlCep = $receiverAddress['zip_code'] ?? $billingAddress['zip_code'] ?? null;
 
             $payload['endereco'] = [
-                'endereco'    => $mlEndereco ?: ($endAtual['endereco'] ?? ''),
-                'numero'      => $mlNumero ?: ($endAtual['numero'] ?? ''),
-                'bairro'      => $mlBairro ?: ($endAtual['bairro'] ?? ''),
-                'municipio'   => $mlCidade ?: ($endAtual['municipio'] ?? ''),
-                'uf'          => $mlUf ?: ($endAtual['uf'] ?? ''),
-                'cep'         => $mlCep ?: ($endAtual['cep'] ?? ''),
-                'complemento' => $complemento ?: ($endAtual['complemento'] ?? ''),
+                'geral' => [
+                    'endereco'    => $mlEndereco ?: ($endAtual['endereco'] ?? ''),
+                    'numero'      => $mlNumero ?: ($endAtual['numero'] ?? ''),
+                    'bairro'      => $mlBairro ?: ($endAtual['bairro'] ?? ''),
+                    'municipio'   => $mlCidade ?: ($endAtual['municipio'] ?? ''),
+                    'uf'          => $mlUf ?: ($endAtual['uf'] ?? ''),
+                    'cep'         => $mlCep ?: ($endAtual['cep'] ?? ''),
+                    'complemento' => $complemento ?: ($endAtual['complemento'] ?? ''),
+                ],
             ];
 
             $res = $blingClient->put("/contatos/{$contatoId}", [], $payload);
