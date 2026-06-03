@@ -22,25 +22,38 @@ class MercadoLivreCorrigirContatoBlingService
         try {
             $mlClient = new MercadoLivreClient($mlAccount);
 
-            // Buscar shipping para pegar receiver_address (telefone, complemento, endereço)
-            $shippingId = $staging->ml_shipping_id;
+            // Buscar order para pegar buyer.phone e shipping_id
+            $orderRes = $mlClient->get("/orders/{$orderId}");
+            if (!$orderRes['success']) return false;
 
-            if (!$shippingId) {
-                $orderRes = $mlClient->get("/orders/{$orderId}");
-                if (!$orderRes['success']) return false;
-                $shippingId = $orderRes['body']['shipping']['id'] ?? null;
+            $orderBody = $orderRes['body'];
+            $shippingId = $staging->ml_shipping_id ?: ($orderBody['shipping']['id'] ?? null);
+
+            // Telefone: tentar buyer.phone da order primeiro
+            $telefone = null;
+            $buyerPhone = $orderBody['buyer']['phone'] ?? [];
+            if (!empty($buyerPhone['number'])) {
+                $areaCode = $buyerPhone['area_code'] ?? '';
+                $telefone = $areaCode . $buyerPhone['number'];
             }
 
-            if (!$shippingId) return false;
+            $receiverAddress = [];
+            $complemento = null;
 
-            $shippingRes = $mlClient->get("/shipments/{$shippingId}");
-            if (!$shippingRes['success']) return false;
+            if ($shippingId) {
+                $shippingRes = $mlClient->get("/shipments/{$shippingId}");
+                if ($shippingRes['success']) {
+                    $receiverAddress = $shippingRes['body']['receiver_address'] ?? [];
+                    $complemento = $receiverAddress['comment'] ?? null;
 
-            $receiverAddress = $shippingRes['body']['receiver_address'] ?? [];
-            $telefone = $receiverAddress['receiver_phone'] ?? null;
-            $complemento = $receiverAddress['comment'] ?? null;
+                    // Fallback: telefone do receiver_address se buyer.phone veio vazio
+                    if (!$telefone && !empty($receiverAddress['receiver_phone'])) {
+                        $telefone = $receiverAddress['receiver_phone'];
+                    }
+                }
+            }
 
-            if (!$telefone && !$complemento) return false;
+            if (!$telefone && !$complemento && empty($receiverAddress)) return false;
 
             // Buscar contato ID no pedido Bling
             $blingClient = new BlingClient($staging->bling_account);
@@ -58,10 +71,21 @@ class MercadoLivreCorrigirContatoBlingService
 
             // Buscar CPF do billing_info se contato estiver sem documento
             $cpfMl = null;
+            $billingData = [];
             if (empty($contatoData['numeroDocumento'])) {
                 $billingRes = $mlClient->get("/orders/{$orderId}/billing_info");
                 if ($billingRes['success']) {
-                    $cpfMl = $billingRes['body']['billing_info']['doc_number'] ?? null;
+                    $billingData = $billingRes['body']['billing_info'] ?? $billingRes['body'] ?? [];
+                    $cpfMl = $billingData['doc_number'] ?? null;
+                    // Fallback: buscar em taxes.taxpayer_id
+                    if (!$cpfMl) {
+                        $cpfMl = $billingData['taxes']['taxpayer_id'] ?? null;
+                    }
+                }
+
+                // Fallback telefone: phone da billing_info
+                if (!$telefone && !empty($billingData['phone']['number'] ?? null)) {
+                    $telefone = ($billingData['phone']['area_code'] ?? '') . $billingData['phone']['number'];
                 }
             }
 
@@ -115,7 +139,10 @@ class MercadoLivreCorrigirContatoBlingService
 
             if ($res['success']) {
                 $staging->update(['bling_dados_corrigidos' => true]);
-                Log::info("ML corrigir contato: pedido {$orderId} atualizado (contato {$contatoId})");
+                Log::info("ML corrigir contato: pedido {$orderId} atualizado (contato {$contatoId})", [
+                    'telefone_encontrado' => !empty($telefone),
+                    'complemento_encontrado' => !empty($complemento),
+                ]);
                 return true;
             }
 
