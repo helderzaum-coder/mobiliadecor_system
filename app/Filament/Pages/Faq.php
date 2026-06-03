@@ -79,7 +79,7 @@ class Faq extends Page
                 'icon' => 'heroicon-o-banknotes',
                 'questions' => [
                     [
-                        'question' => 'Quais filtros estão disponíveis na página Caixa e como utilizá-los??',
+                        'question' => 'Quais filtros estão disponíveis na página Caixa e como utilizá-los?',
                         'answer' => '<p>A página Caixa (Fluxo de Caixa) oferece os seguintes filtros para controlar a visualização das movimentações financeiras:</p><ul><li><strong>Período</strong>: define o intervalo de datas. Opções disponíveis:<ul><li>Este mês (padrão)</li><li>Mês passado</li><li>Selecionar mês (escolha um mês específico dos últimos 12 meses)</li><li>Customizado (defina data de início e fim manualmente)</li></ul></li><li><strong>Conta bancária</strong>: filtra movimentações de uma conta específica. Quando selecionado "Todos", exibe movimentações de todas as contas ativas.</li><li><strong>Categoria financeira</strong>: filtra por categoria (ex: Vendas, Fornecedores, Impostos, Frete). Quando selecionado "Todas", exibe todas as categorias.</li><li><strong>Visão</strong>: alterna entre visão diária (📅) e visão por categoria (📊).</li><li><strong>Exibir saldo anterior</strong>: toggle que controla se o saldo anterior ao período é considerado no cálculo do saldo acumulado.</li></ul><p>Os filtros são combináveis e a página atualiza automaticamente ao alterar qualquer filtro.</p>',
                         'destructive' => false,
                     ],
