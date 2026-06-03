@@ -183,15 +183,15 @@ class Caixa extends Page implements HasForms
             ]);
         }
 
-        // Sem lote: agrupar por observacoes (lotes antigos) ou individual
+        // Sem lote: agrupar por observacoes+data (lotes antigos) ou individual
         $comObs = $semLote->filter(fn ($r) => !empty($r->observacoes) && !str_starts_with($r->observacoes, 'Repasse #'));
         $semObs = $semLote->filter(fn ($r) => empty($r->observacoes) || str_starts_with($r->observacoes, 'Repasse #'));
 
-        foreach ($comObs->groupBy('observacoes') as $loteNome => $itensLote) {
+        foreach ($comObs->groupBy(fn ($r) => $r->observacoes . '|' . $r->data_recebimento->format('Y-m-d')) as $chave => $itensLote) {
             $resultado->push([
                 'data' => $itensLote->first()->data_recebimento->format('Y-m-d'),
                 'tipo' => 'entrada',
-                'descricao' => $loteNome,
+                'descricao' => $itensLote->first()->observacoes,
                 'categoria' => $itensLote->first()->categoria?->nome ?? $itensLote->first()->forma_pagamento ?? '-',
                 'banco' => $itensLote->first()->contaBancaria?->nome ?? '-',
                 'valor' => (float) $itensLote->sum('valor_parcela'),
