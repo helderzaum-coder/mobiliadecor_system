@@ -56,7 +56,39 @@ class MercadoLivreCorrigirContatoBlingService
                 }
             }
 
-            if (!$telefone && !$complemento && empty($receiverAddress)) return false;
+            // Sempre buscar billing_info — tem endereço completo e documento
+            $billingRes = $mlClient->get("/orders/{$orderId}/billing_info");
+            $billingData = [];
+            $billingAddress = [];
+            $cpfMl = null;
+
+            if ($billingRes['success']) {
+                $billingData = $billingRes['body']['billing_info'] ?? $billingRes['body'] ?? [];
+                $cpfMl = $billingData['doc_number'] ?? null;
+
+                // Extrair dados de endereço do additional_info
+                $additionalInfo = $billingData['additional_info'] ?? [];
+                foreach ($additionalInfo as $info) {
+                    $type = $info['type'] ?? '';
+                    $value = $info['value'] ?? '';
+                    match ($type) {
+                        'STREET_NAME' => $billingAddress['street_name'] = $value,
+                        'STREET_NUMBER' => $billingAddress['street_number'] = $value,
+                        'NEIGHBORHOOD' => $billingAddress['neighborhood'] = $value,
+                        'CITY_NAME' => $billingAddress['city'] = $value,
+                        'STATE_CODE' => $billingAddress['state'] = $value,
+                        'ZIP_CODE' => $billingAddress['zip_code'] = $value,
+                        default => null,
+                    };
+                }
+
+                // Fallback telefone: phone da billing_info
+                if (!$telefone && !empty($billingData['phone']['number'] ?? null)) {
+                    $telefone = ($billingData['phone']['area_code'] ?? '') . $billingData['phone']['number'];
+                }
+            }
+
+            if (!$telefone && !$complemento && empty($receiverAddress) && empty($billingAddress)) return false;
 
             // Buscar contato ID no pedido Bling
             $blingClient = new BlingClient($staging->bling_account);
@@ -71,25 +103,6 @@ class MercadoLivreCorrigirContatoBlingService
             if (!$contatoRes['success']) return false;
 
             $contatoData = $contatoRes['body']['data'] ?? [];
-
-            // Buscar CPF do billing_info se contato estiver sem documento
-            $cpfMl = null;
-            $billingData = [];
-            if (empty($contatoData['numeroDocumento'])) {
-                $billingRes = $mlClient->get("/orders/{$orderId}/billing_info");
-                if ($billingRes['success']) {
-                    $billingData = $billingRes['body']['billing_info'] ?? $billingRes['body'] ?? [];
-                    $cpfMl = $billingData['doc_number'] ?? null;
-                    if (!$cpfMl) {
-                        $cpfMl = $billingData['taxes']['taxpayer_id'] ?? null;
-                    }
-                }
-
-                // Fallback telefone: phone da billing_info
-                if (!$telefone && !empty($billingData['phone']['number'] ?? null)) {
-                    $telefone = ($billingData['phone']['area_code'] ?? '') . $billingData['phone']['number'];
-                }
-            }
 
             // Montar payload preservando dados do Bling que não vêm do ML
             $payload = [
@@ -119,20 +132,20 @@ class MercadoLivreCorrigirContatoBlingService
                 if (!empty($contatoData['celular']))  $payload['celular']  = $contatoData['celular'];
             }
 
-            // Endereço: ML é a fonte verdadeira — usar dados do ML quando disponíveis,
-            // fallback para Bling apenas se ML não tem o campo
+            // Endereço: ML é a fonte verdadeira
+            // Prioridade: receiver_address (shipping) > billing_info > Bling existente
             $endAtual = $contatoData['endereco']['geral'] ?? $contatoData['endereco'] ?? [];
 
-            $mlUf = $receiverAddress['state']['id'] ?? '';
+            $mlUf = $receiverAddress['state']['id'] ?? $billingAddress['state'] ?? '';
             if (str_contains($mlUf, '-')) {
                 $mlUf = explode('-', $mlUf)[1];
             }
 
-            $mlEndereco = $receiverAddress['street_name'] ?? null;
-            $mlNumero = $receiverAddress['street_number'] ?? null;
-            $mlBairro = $receiverAddress['neighborhood']['name'] ?? null;
-            $mlCidade = $receiverAddress['city']['name'] ?? null;
-            $mlCep = $receiverAddress['zip_code'] ?? null;
+            $mlEndereco = $receiverAddress['street_name'] ?? $billingAddress['street_name'] ?? null;
+            $mlNumero = $receiverAddress['street_number'] ?? $billingAddress['street_number'] ?? null;
+            $mlBairro = $receiverAddress['neighborhood']['name'] ?? $billingAddress['neighborhood'] ?? null;
+            $mlCidade = $receiverAddress['city']['name'] ?? $billingAddress['city'] ?? null;
+            $mlCep = $receiverAddress['zip_code'] ?? $billingAddress['zip_code'] ?? null;
 
             $payload['endereco'] = [
                 'endereco'    => $mlEndereco ?: ($endAtual['endereco'] ?? ''),
@@ -152,6 +165,7 @@ class MercadoLivreCorrigirContatoBlingService
                     'telefone_encontrado' => !empty($telefone),
                     'complemento_encontrado' => !empty($complemento),
                     'numero_casa' => $mlNumero,
+                    'fonte_numero' => !empty($receiverAddress['street_number']) ? 'shipping' : (!empty($billingAddress['street_number']) ? 'billing_info' : 'nenhuma'),
                 ]);
                 return true;
             }
