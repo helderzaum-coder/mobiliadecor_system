@@ -70,7 +70,7 @@ jobs:
             php artisan optimize
 
             echo "=== Limpando OPcache ==="
-            # Atualizado com o seu dominio real em HTTPS
+            # Atualizado com o seu dominio real em HTTPS --
             curl -s "https://hesmoveis.com.br/clear_opcache.php" > /dev/null 2>&1 || true
 
             echo "=== Reiniciando Filas ==="
