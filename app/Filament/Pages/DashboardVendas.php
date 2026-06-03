@@ -19,6 +19,11 @@ class DashboardVendas extends Page implements HasForms
     protected static string $view = 'filament.pages.dashboard-vendas';
     protected static ?int $navigationSort = -2;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasRole('admin') ?? false;
+    }
+
     protected $queryString = [
         'periodo'      => ['except' => 'este_mes', 'as' => 'periodo'],
         'mes_selecionado' => ['except' => '', 'as' => 'mes'],
@@ -44,6 +49,11 @@ class DashboardVendas extends Page implements HasForms
 
     public function mount(): void
     {
+        if (!auth()->user()?->hasRole('admin')) {
+            $this->redirect('/faq');
+            return;
+        }
+
         if (empty($this->mes_selecionado)) {
             $this->mes_selecionado = now()->format('Y-m');
         }
@@ -822,6 +832,6 @@ class DashboardVendas extends Page implements HasForms
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->hasRole('admin') ?? false;
+        return true;
     }
 }
