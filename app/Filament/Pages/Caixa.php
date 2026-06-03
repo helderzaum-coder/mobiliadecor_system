@@ -312,7 +312,6 @@ class Caixa extends Page implements HasForms
         foreach ($movimentacoes->groupBy('data') as $data => $itens) {
             $entradasDia = $itens->where('tipo', 'entrada')->sum('valor');
             $saidasDia = $itens->where('tipo', 'saida')->sum('valor');
-            $saldoAcumulado += $entradasDia - $saidasDia;
 
             $dias[] = [
                 'data' => $data,
@@ -320,8 +319,11 @@ class Caixa extends Page implements HasForms
                 'entradas' => $entradasDia,
                 'saidas' => $saidasDia,
                 'saldo_dia' => $entradasDia - $saidasDia,
-                'saldo_acumulado' => $saldoAcumulado,
+                'saldo_inicio_dia' => $saldoAcumulado,
+                'saldo_acumulado' => $saldoAcumulado + $entradasDia - $saidasDia,
             ];
+
+            $saldoAcumulado += $entradasDia - $saidasDia;
         }
 
         return $dias;
