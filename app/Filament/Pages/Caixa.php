@@ -33,6 +33,7 @@ class Caixa extends Page implements HasForms
     public ?string $categoria_id = null;
     public ?string $visao = 'diaria';
     public bool $exibir_saldo_anterior = true;
+    public bool $exibir_transferencias = false;
 
     public function mount(): void
     {
@@ -94,6 +95,10 @@ class Caixa extends Page implements HasForms
                     ->label('Exibir saldo anterior')
                     ->default(true)
                     ->reactive(),
+                Forms\Components\Toggle::make('exibir_transferencias')
+                    ->label('Exibir transferências')
+                    ->default(false)
+                    ->reactive(),
             ]),
         ]);
     }
@@ -125,6 +130,11 @@ class Caixa extends Page implements HasForms
             ->where('status', 'recebido')
             ->whereNotNull('data_recebimento')
             ->whereBetween('data_recebimento', [$inicio, $fim]);
+
+        // Ocultar transferências se toggle desligado e sem filtro de banco
+        if (!$this->exibir_transferencias && !$this->conta_bancaria_id) {
+            $query->where('forma_pagamento', '!=', 'Transferência');
+        }
 
         if ($this->conta_bancaria_id) {
             $query->where('conta_bancaria_id', $this->conta_bancaria_id);
@@ -200,6 +210,11 @@ class Caixa extends Page implements HasForms
             ->whereBetween('data_pagamento', [$inicio, $fim])
             ->whereNull('lote_recebimento_id'); // Descontos de lote já estão abatidos na entrada
 
+        // Ocultar transferências se toggle desligado e sem filtro de banco
+        if (!$this->exibir_transferencias && !$this->conta_bancaria_id) {
+            $query->where('forma_pagamento', '!=', 'Transferência');
+        }
+
         if ($this->conta_bancaria_id) {
             $query->where('conta_bancaria_id', $this->conta_bancaria_id);
         }
@@ -226,6 +241,7 @@ class Caixa extends Page implements HasForms
         $entradasAntes = ContaReceber::where('status', 'recebido')
             ->whereNotNull('data_recebimento')
             ->where('data_recebimento', '<', $inicio)
+            ->when(!$this->exibir_transferencias && !$this->conta_bancaria_id, fn ($q) => $q->where('forma_pagamento', '!=', 'Transferência'))
             ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
             ->sum('valor_parcela');
 
@@ -234,6 +250,7 @@ class Caixa extends Page implements HasForms
             ->whereNotNull('data_pagamento')
             ->where('data_pagamento', '<', $inicio)
             ->whereNull('lote_recebimento_id')
+            ->when(!$this->exibir_transferencias && !$this->conta_bancaria_id, fn ($q) => $q->where('forma_pagamento', '!=', 'Transferência'))
             ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
             ->sum('valor_parcela');
 
