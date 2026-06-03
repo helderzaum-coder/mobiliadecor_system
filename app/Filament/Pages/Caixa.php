@@ -242,7 +242,7 @@ class Caixa extends Page implements HasForms
         return $query->get()->map(fn ($r) => [
             'data' => $r->data_pagamento->format('Y-m-d'),
             'tipo' => 'saida',
-            'descricao' => $r->observacoes ?: ($r->fatura ? "Fatura #{$r->fatura->id_fatura}" : 'Pagamento'),
+            'descricao' => $r->descricao ?: $r->observacoes ?: ($r->fatura ? "Fatura #{$r->fatura->id_fatura}" : 'Pagamento'),
             'categoria' => $r->categoria?->nome ?? $r->forma_pagamento ?? '-',
             'banco' => $r->contaBancaria?->nome ?? '-',
             'valor' => (float) $r->valor_parcela,
@@ -295,7 +295,7 @@ class Caixa extends Page implements HasForms
         $entradas = $this->getEntradas();
         $saidas = $this->getSaidas();
 
-        $todas = $entradas->merge($saidas)->sortBy('data')->values();
+        $todas = $entradas->concat($saidas)->sortBy('data')->values();
 
         if ($this->visao === 'categoria') {
             return $this->agruparPorCategoria($todas);
@@ -316,7 +316,7 @@ class Caixa extends Page implements HasForms
 
             $dias[] = [
                 'data' => $data,
-                'itens' => $itens->toArray(),
+                'itens' => $itens->values()->toArray(),
                 'entradas' => $entradasDia,
                 'saidas' => $saidasDia,
                 'saldo_dia' => $entradasDia - $saidasDia,
