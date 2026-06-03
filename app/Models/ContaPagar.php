@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Carbon\Carbon;
 
+
 class ContaPagar extends Model
 {
     protected $table = 'contas_pagar';
@@ -27,6 +28,7 @@ class ContaPagar extends Model
         'juros_atraso',
         'tipo_juros',
         'grupo_recorrencia',
+        'transferencia_id',
         'forma_pagamento',
         'observacoes',
         'lancamento_manual',
@@ -34,6 +36,15 @@ class ContaPagar extends Model
         'categoria_id',
         'lote_recebimento_id',
     ];
+
+    protected static function booted(): void
+    {
+        static::deleting(function (ContaPagar $conta) {
+            if ($conta->transferencia_id) {
+                ContaReceber::where('transferencia_id', $conta->transferencia_id)->delete();
+            }
+        });
+    }
 
     protected $casts = [
         'valor_parcela' => 'decimal:2',

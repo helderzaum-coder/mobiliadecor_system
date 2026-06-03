@@ -13,6 +13,7 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class Caixa extends Page implements HasForms
 {
@@ -388,19 +389,23 @@ class Caixa extends Page implements HasForms
                     $destino = ContaBancaria::find($data['conta_destino_id']);
                     $valor = round((float) $data['valor'], 2);
                     $desc = $data['descricao'] ?: "Transferência {$origem->nome} → {$destino->nome}";
+                    $transferenciaId = Str::uuid()->toString();
 
                     // Saída na conta origem
                     ContaPagar::create([
                         'valor_parcela' => $valor,
                         'data_vencimento' => $data['data'],
                         'data_pagamento' => $data['data'],
+                        'data_lancamento' => now()->toDateString(),
                         'status' => 'pago',
                         'numero_parcela' => 1,
                         'total_parcelas' => 1,
                         'forma_pagamento' => 'Transferência',
+                        'descricao' => $desc,
                         'observacoes' => "↗ {$desc}",
                         'lancamento_manual' => true,
                         'conta_bancaria_id' => $data['conta_origem_id'],
+                        'transferencia_id' => $transferenciaId,
                     ]);
 
                     // Entrada na conta destino
@@ -415,6 +420,7 @@ class Caixa extends Page implements HasForms
                         'observacoes' => "↙ {$desc}",
                         'lancamento_manual' => true,
                         'conta_bancaria_id' => $data['conta_destino_id'],
+                        'transferencia_id' => $transferenciaId,
                     ]);
 
                     Notification::make()

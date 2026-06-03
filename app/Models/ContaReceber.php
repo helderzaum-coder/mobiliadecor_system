@@ -25,7 +25,17 @@ class ContaReceber extends Model
         'conta_bancaria_id',
         'categoria_id',
         'lote_recebimento_id',
+        'transferencia_id',
     ];
+
+    protected static function booted(): void
+    {
+        static::deleting(function (ContaReceber $conta) {
+            if ($conta->transferencia_id) {
+                ContaPagar::where('transferencia_id', $conta->transferencia_id)->delete();
+            }
+        });
+    }
 
     protected $casts = [
         'valor_parcela' => 'decimal:2',
