@@ -302,6 +302,43 @@ class ContaPagarResource extends Resource
                         Notification::make()->title('Pagamento desfeito.')->success()->send();
                     })
                     ->visible(fn (ContaPagar $record) => $record->status === 'pago'),
+                Tables\Actions\Action::make('duplicar')
+                    ->label('Duplicar')
+                    ->icon('heroicon-o-document-duplicate')
+                    ->color('info')
+                    ->form(fn (ContaPagar $record) => [
+                        Forms\Components\TextInput::make('descricao')
+                            ->label('Descrição')
+                            ->default($record->descricao)
+                            ->required(),
+                        Forms\Components\TextInput::make('valor_parcela')
+                            ->label('Valor')
+                            ->numeric()
+                            ->prefix('R$')
+                            ->default($record->valor_parcela)
+                            ->required(),
+                        Forms\Components\DatePicker::make('data_vencimento')
+                            ->label('Vencimento')
+                            ->default(now())
+                            ->required(),
+                        Forms\Components\DatePicker::make('data_pagamento')
+                            ->label('Data do Pagamento (se já pago)'),
+                    ])
+                    ->action(function (ContaPagar $record, array $data) {
+                        $novo = $record->replicate(['data_pagamento', 'grupo_recorrencia']);
+                        $novo->descricao = $data['descricao'];
+                        $novo->valor_parcela = $data['valor_parcela'];
+                        $novo->data_vencimento = $data['data_vencimento'];
+                        $novo->data_lancamento = now();
+                        $novo->data_pagamento = $data['data_pagamento'] ?? null;
+                        $novo->status = $data['data_pagamento'] ? 'pago' : 'pendente';
+                        $novo->numero_parcela = 1;
+                        $novo->total_parcelas = 1;
+                        $novo->recorrente = false;
+                        $novo->save();
+
+                        Notification::make()->title('Conta duplicada com sucesso.')->success()->send();
+                    }),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])
