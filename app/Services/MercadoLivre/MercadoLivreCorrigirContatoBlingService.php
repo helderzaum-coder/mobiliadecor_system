@@ -11,6 +11,9 @@ class MercadoLivreCorrigirContatoBlingService
     /**
      * Busca telefone, complemento e endereço do ML e atualiza o contato no Bling.
      * Chamado automaticamente após importar pedido ML no staging.
+     *
+     * O ML é a fonte verdadeira dos dados — a integração nativa do Bling com ML
+     * frequentemente perde número da casa, complemento e telefone.
      */
     public static function corrigir(PedidoBlingStaging $staging, string $mlAccount = 'primary'): bool
     {
@@ -77,7 +80,6 @@ class MercadoLivreCorrigirContatoBlingService
                 if ($billingRes['success']) {
                     $billingData = $billingRes['body']['billing_info'] ?? $billingRes['body'] ?? [];
                     $cpfMl = $billingData['doc_number'] ?? null;
-                    // Fallback: buscar em taxes.taxpayer_id
                     if (!$cpfMl) {
                         $cpfMl = $billingData['taxes']['taxpayer_id'] ?? null;
                     }
@@ -89,7 +91,7 @@ class MercadoLivreCorrigirContatoBlingService
                 }
             }
 
-            // Montar payload preservando tudo que já existe
+            // Montar payload preservando dados do Bling que não vêm do ML
             $payload = [
                 'nome'            => $contatoData['nome'] ?? $staging->cliente_nome,
                 'tipo'            => $contatoData['tipo'] ?? 'F',
@@ -117,7 +119,8 @@ class MercadoLivreCorrigirContatoBlingService
                 if (!empty($contatoData['celular']))  $payload['celular']  = $contatoData['celular'];
             }
 
-            // Endereço: preserva existente, preenche com ML se vazio
+            // Endereço: ML é a fonte verdadeira — usar dados do ML quando disponíveis,
+            // fallback para Bling apenas se ML não tem o campo
             $endAtual = $contatoData['endereco']['geral'] ?? $contatoData['endereco'] ?? [];
 
             $mlUf = $receiverAddress['state']['id'] ?? '';
@@ -125,13 +128,19 @@ class MercadoLivreCorrigirContatoBlingService
                 $mlUf = explode('-', $mlUf)[1];
             }
 
+            $mlEndereco = $receiverAddress['street_name'] ?? null;
+            $mlNumero = $receiverAddress['street_number'] ?? null;
+            $mlBairro = $receiverAddress['neighborhood']['name'] ?? null;
+            $mlCidade = $receiverAddress['city']['name'] ?? null;
+            $mlCep = $receiverAddress['zip_code'] ?? null;
+
             $payload['endereco'] = [
-                'endereco'    => $endAtual['endereco']  ?? '' ?: ($receiverAddress['street_name']          ?? ''),
-                'numero'      => $endAtual['numero']    ?? '' ?: ($receiverAddress['street_number']        ?? ''),
-                'bairro'      => $endAtual['bairro']    ?? '' ?: ($receiverAddress['neighborhood']['name'] ?? ''),
-                'municipio'   => $endAtual['municipio'] ?? '' ?: ($receiverAddress['city']['name']         ?? ''),
-                'uf'          => $endAtual['uf']        ?? '' ?: $mlUf,
-                'cep'         => $endAtual['cep']       ?? '' ?: ($receiverAddress['zip_code']             ?? ''),
+                'endereco'    => $mlEndereco ?: ($endAtual['endereco'] ?? ''),
+                'numero'      => $mlNumero ?: ($endAtual['numero'] ?? ''),
+                'bairro'      => $mlBairro ?: ($endAtual['bairro'] ?? ''),
+                'municipio'   => $mlCidade ?: ($endAtual['municipio'] ?? ''),
+                'uf'          => $mlUf ?: ($endAtual['uf'] ?? ''),
+                'cep'         => $mlCep ?: ($endAtual['cep'] ?? ''),
                 'complemento' => $complemento ?: ($endAtual['complemento'] ?? ''),
             ];
 
@@ -142,6 +151,7 @@ class MercadoLivreCorrigirContatoBlingService
                 Log::info("ML corrigir contato: pedido {$orderId} atualizado (contato {$contatoId})", [
                     'telefone_encontrado' => !empty($telefone),
                     'complemento_encontrado' => !empty($complemento),
+                    'numero_casa' => $mlNumero,
                 ]);
                 return true;
             }
