@@ -123,24 +123,35 @@ class Caixa extends Page implements HasForms
         };
     }
 
+    private function isCategoriaTransferencia(): bool
+    {
+        if (!$this->categoria_id) return false;
+        return CategoriaFinanceira::where('id', $this->categoria_id)->where('sistema', true)->where('nome', 'Transferência')->exists();
+    }
+
     private function getEntradas(): Collection
     {
         [$inicio, $fim] = $this->getDataRange();
+        $filtrandoTransferencia = $this->isCategoriaTransferencia();
 
         $query = ContaReceber::with(['venda', 'contaBancaria', 'categoria', 'loteRecebimento'])
             ->where('status', 'recebido')
             ->whereNotNull('data_recebimento')
             ->whereBetween('data_recebimento', [$inicio, $fim]);
 
-        // Ocultar transferências se toggle desligado e sem filtro de banco
-        if (!$this->exibir_transferencias && !$this->conta_bancaria_id) {
+        // Ocultar transferências se toggle desligado, sem filtro de banco e sem filtro de categoria transferência
+        if (!$this->exibir_transferencias && !$this->conta_bancaria_id && !$filtrandoTransferencia) {
             $query->where('forma_pagamento', '!=', 'Transferência');
         }
 
         if ($this->conta_bancaria_id) {
             $query->where('conta_bancaria_id', $this->conta_bancaria_id);
         }
-        if ($this->categoria_id) {
+
+        // Se filtrando por categoria Transferência, buscar por categoria_id OU forma_pagamento (registros antigos)
+        if ($filtrandoTransferencia) {
+            $query->where(fn ($q) => $q->where('categoria_id', $this->categoria_id)->orWhere('forma_pagamento', 'Transferência'));
+        } elseif ($this->categoria_id) {
             $query->where('categoria_id', $this->categoria_id);
         }
 
@@ -204,6 +215,7 @@ class Caixa extends Page implements HasForms
     private function getSaidas(): Collection
     {
         [$inicio, $fim] = $this->getDataRange();
+        $filtrandoTransferencia = $this->isCategoriaTransferencia();
 
         $query = ContaPagar::with(['fatura', 'contaBancaria', 'categoria'])
             ->where('status', 'pago')
@@ -211,15 +223,19 @@ class Caixa extends Page implements HasForms
             ->whereBetween('data_pagamento', [$inicio, $fim])
             ->whereNull('lote_recebimento_id'); // Descontos de lote já estão abatidos na entrada
 
-        // Ocultar transferências se toggle desligado e sem filtro de banco
-        if (!$this->exibir_transferencias && !$this->conta_bancaria_id) {
+        // Ocultar transferências se toggle desligado, sem filtro de banco e sem filtro de categoria transferência
+        if (!$this->exibir_transferencias && !$this->conta_bancaria_id && !$filtrandoTransferencia) {
             $query->where('forma_pagamento', '!=', 'Transferência');
         }
 
         if ($this->conta_bancaria_id) {
             $query->where('conta_bancaria_id', $this->conta_bancaria_id);
         }
-        if ($this->categoria_id) {
+
+        // Se filtrando por categoria Transferência, buscar por categoria_id OU forma_pagamento (registros antigos)
+        if ($filtrandoTransferencia) {
+            $query->where(fn ($q) => $q->where('categoria_id', $this->categoria_id)->orWhere('forma_pagamento', 'Transferência'));
+        } elseif ($this->categoria_id) {
             $query->where('categoria_id', $this->categoria_id);
         }
 
