@@ -390,6 +390,7 @@ class Caixa extends Page implements HasForms
                     $valor = round((float) $data['valor'], 2);
                     $desc = $data['descricao'] ?: "Transferência {$origem->nome} → {$destino->nome}";
                     $transferenciaId = Str::uuid()->toString();
+                    $categoriaTransf = CategoriaFinanceira::where('nome', 'Transferência')->where('sistema', true)->first()?->id;
 
                     // Saída na conta origem
                     ContaPagar::create([
@@ -405,6 +406,7 @@ class Caixa extends Page implements HasForms
                         'observacoes' => "↗ {$desc}",
                         'lancamento_manual' => true,
                         'conta_bancaria_id' => $data['conta_origem_id'],
+                        'categoria_id' => $categoriaTransf,
                         'transferencia_id' => $transferenciaId,
                     ]);
 
@@ -420,6 +422,7 @@ class Caixa extends Page implements HasForms
                         'observacoes' => "↙ {$desc}",
                         'lancamento_manual' => true,
                         'conta_bancaria_id' => $data['conta_destino_id'],
+                        'categoria_id' => $categoriaTransf,
                         'transferencia_id' => $transferenciaId,
                     ]);
 

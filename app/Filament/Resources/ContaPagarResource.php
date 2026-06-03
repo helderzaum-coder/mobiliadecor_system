@@ -38,7 +38,7 @@ class ContaPagarResource extends Resource
                     ->placeholder('Nenhuma (lançamento avulso)'),
                 Forms\Components\Select::make('categoria_id')
                     ->label('Categoria')
-                    ->options(fn () => \App\Models\CategoriaFinanceira::whereIn('tipo', ['saida', 'ambos'])->where('ativo', true)->orderBy('nome')->pluck('nome', 'id')->toArray())
+                    ->options(fn () => \App\Models\CategoriaFinanceira::whereIn('tipo', ['saida', 'ambos'])->where('ativo', true)->where('sistema', false)->orderBy('nome')->pluck('nome', 'id')->toArray())
                     ->searchable()
                     ->placeholder('Selecione a categoria')
                     ->createOptionForm([

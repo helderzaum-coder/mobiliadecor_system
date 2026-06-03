@@ -12,9 +12,11 @@ class CategoriaFinanceira extends Model
         'nome',
         'tipo',
         'ativo',
+        'sistema',
     ];
 
     protected $casts = [
         'ativo' => 'boolean',
+        'sistema' => 'boolean',
     ];
 }
