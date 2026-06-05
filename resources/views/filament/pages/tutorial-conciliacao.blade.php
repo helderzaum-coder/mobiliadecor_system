@@ -80,6 +80,7 @@
                     </ul>
                     <p class="mt-2">Representam <strong>Pix ou transferências</strong> que você fez da conta do Mercado Pago para alguém (saídas manuais).</p>
                     <p class="mt-2" style="color:#9ca3af;">💡 Não são vendas nem estornos — são movimentações financeiras avulsas.</p>
+                    <p class="mt-2" style="color:#9ca3af;">💡 As colunas <code style="background:#374151;padding:2px 6px;border-radius:4px;">pre_payout</code> e <code style="background:#374151;padding:2px 6px;border-radius:4px;">pos_payout</code> simbolizam apenas o saldo antes e depois da operação, mas <strong>não devem influenciar na conciliação</strong>.</p>
                 </div>
 
                 <div class="rounded-lg bg-gray-700/30 p-4">
