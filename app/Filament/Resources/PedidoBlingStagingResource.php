@@ -755,8 +755,22 @@ class PedidoBlingStagingResource extends Resource
                     ->color('gray')
                     ->requiresConfirmation()
                     ->modalHeading('Cancelar Pedido')
-                    ->modalDescription('O pedido será marcado como cancelado. A venda será removida da dashboard mas o pedido não volta para a fila de importação.')
+                    ->modalDescription(function (PedidoBlingStaging $record) {
+                        $venda = \App\Models\Venda::where('bling_id', $record->bling_id)->first();
+                        if ($venda && $venda->repasse_recebido) {
+                            return '⚠️ ATENÇÃO: Esta venda já teve repasse recebido! Use a Dashboard para cancelar com estorno.';
+                        }
+                        return 'O pedido será marcado como cancelado. A venda será removida da dashboard mas o pedido não volta para a fila de importação.';
+                    })
                     ->action(function (PedidoBlingStaging $record) {
+                        $venda = \App\Models\Venda::where('bling_id', $record->bling_id)->first();
+                        if ($venda && $venda->repasse_recebido) {
+                            Notification::make()
+                                ->title('Não é possível cancelar: repasse já recebido.')
+                                ->body('Use a Dashboard de Vendas para cancelar com estorno.')
+                                ->danger()->send();
+                            return;
+                        }
                         \App\Models\Venda::where('bling_id', $record->bling_id)->delete();
                         $record->update(['status' => 'cancelado']);
                         Notification::make()->title('Pedido cancelado.')->success()->send();
