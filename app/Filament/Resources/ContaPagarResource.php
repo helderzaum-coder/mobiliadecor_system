@@ -168,9 +168,10 @@ class ContaPagarResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('descricao')
                     ->label('Descrição')
-                    ->searchable()
+                    ->searchable(['descricao', 'observacoes'])
                     ->limit(40)
-                    ->tooltip(fn ($record) => $record->descricao),
+                    ->getStateUsing(fn ($record) => $record->descricao ?: $record->observacoes)
+                    ->tooltip(fn ($record) => $record->descricao ?? $record->observacoes),
                 Tables\Columns\TextColumn::make('categoria.nome')
                     ->label('Categoria')
                     ->badge()
