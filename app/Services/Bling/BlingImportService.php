@@ -783,7 +783,7 @@ class BlingImportService
         foreach ($itens as $item) {
             $sku = $item['codigo'] ?? '-';
             $produto = ProdutoEstoque::where('sku', $sku)->where('ativo', true)->first();
-            $nomeProduto = ($produto?->observacoes ?? $produto?->nome) ?: ($item['descricao'] ?? '-');
+            $nomeProduto = $produto ? ($produto->observacoes ?: $produto->nome) : ($item['descricao'] ?? '-');
 
             $msg .= "\n<b>SKU:</b> {$sku}\n";
             $msg .= "<b>Produto:</b> {$nomeProduto}\n";
@@ -791,7 +791,7 @@ class BlingImportService
             if ($produto && $produto->isKit()) {
                 $msg .= "<b>Componentes:</b>\n";
                 foreach ($produto->componentes as $comp) {
-                    $nomeComp = $comp->observacoes ?? $comp->nome;
+                    $nomeComp = $comp->observacoes ?: $comp->nome;
                     $msg .= "  \xE2\x80\xA2 {$comp->sku} — {$nomeComp}\n";
                 }
             }
