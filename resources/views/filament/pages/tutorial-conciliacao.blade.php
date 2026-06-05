@@ -87,11 +87,12 @@
                     <h3 style="font-weight:700;color:#e5e7eb;margin-bottom:8px;">🔄 Reservas (reserve_for_debt_payment / reserve_for_payment)</h3>
                     <p>Na planilha de liberações, registros com:</p>
                     <ul style="list-style:disc;padding-left:20px;margin-top:8px;">
-                        <li><code style="background:#374151;padding:2px 6px;border-radius:4px;">reserve_for_debt_payment</code></li>
+                        <li><code style="background:#374151;padding:2px 6px;border-radius:4px;">reserve_for_debt_payment</code> — não afeta, é apenas reserva</li>
                         <li><code style="background:#374151;padding:2px 6px;border-radius:4px;">reserve_for_payment</code></li>
                     </ul>
                     <p class="mt-2">Esses dois registros <strong>devem se anular</strong> (um é débito e outro é crédito da mesma operação).</p>
                     <p class="mt-2" style="color:#f59e0b;">✅ <strong>Validação:</strong> Filtre pelos dois e confira se a soma final dá <strong>R$ 0,00</strong>. Se não der zero, investigue.</p>
+                    <p class="mt-2" style="color:#9ca3af;">💡 <code>reserve_for_debt_payment</code> não afeta a conciliação — é apenas uma reserva interna do Mercado Pago.</p>
                 </div>
 
                 <div class="rounded-lg bg-gray-700/30 p-4">
