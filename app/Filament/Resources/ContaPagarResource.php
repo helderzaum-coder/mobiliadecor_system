@@ -157,8 +157,6 @@ class ContaPagarResource extends Resource
                     ->label('Observações')
                     ->columnSpanFull()
                     ->rows(3),
-                Forms\Components\Toggle::make('lancamento_manual')
-                    ->label('Lançamento Manual'),
             ]),
         ]);
     }
