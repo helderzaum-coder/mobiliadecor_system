@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('contas:processar-recorrentes')->daily();
+Schedule::command('bling:importar-automatico')->everyThreeHours();
