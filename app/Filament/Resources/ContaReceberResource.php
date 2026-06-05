@@ -23,68 +23,85 @@ class ContaReceberResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Select::make('id_venda')
-                ->label('Venda')
-                ->relationship('venda', 'numero_pedido_canal')
-                ->required()
-                ->searchable()
-                ->preload(),
-            Forms\Components\TextInput::make('valor_parcela')
-                ->label('Valor da Parcela')
-                ->required()
-                ->numeric()
-                ->prefix('R$'),
-            Forms\Components\DatePicker::make('data_vencimento')
-                ->label('Vencimento')
-                ->required(),
-            Forms\Components\DatePicker::make('data_recebimento')
-                ->label('Recebimento'),
-            Forms\Components\Select::make('status')
-                ->label('Status')
-                ->options([
-                    'pendente' => 'Pendente',
-                    'recebido' => 'Recebido',
-                    'atrasado' => 'Atrasado',
-                    'cancelado' => 'Cancelado',
-                ])
-                ->required(),
-            Forms\Components\Select::make('conta_bancaria_id')
-                ->label('Banco')
-                ->relationship('contaBancaria', 'nome')
-                ->searchable()
-                ->preload()
-                ->placeholder('Selecione o banco')
-                ->createOptionForm([
-                    Forms\Components\TextInput::make('nome')->label('Nome')->required()->maxLength(100),
-                    Forms\Components\TextInput::make('banco')->label('Banco')->maxLength(100),
-                ]),
-            Forms\Components\Select::make('categoria_id')
-                ->label('Categoria')
-                ->options(fn () => \App\Models\CategoriaFinanceira::whereIn('tipo', ['entrada', 'ambos'])->where('ativo', true)->orderBy('nome')->pluck('nome', 'id')->toArray())
-                ->searchable()
-                ->placeholder('Selecione a categoria')
-                ->createOptionForm([
-                    Forms\Components\TextInput::make('nome')->label('Nome')->required()->maxLength(100),
-                    Forms\Components\Select::make('tipo')->label('Tipo')->options(['entrada' => 'Entrada', 'saida' => 'Saída', 'ambos' => 'Ambos'])->default('entrada')->required(),
-                ])
-                ->createOptionUsing(function (array $data) {
-                    return \App\Models\CategoriaFinanceira::create($data)->id;
-                }),
-            Forms\Components\TextInput::make('numero_parcela')
-                ->label('Nº Parcela')
-                ->required()
-                ->numeric(),
-            Forms\Components\TextInput::make('total_parcelas')
-                ->label('Total Parcelas')
-                ->required()
-                ->numeric(),
-            Forms\Components\TextInput::make('forma_pagamento')
-                ->label('Forma de Pagamento')
-                ->required()
-                ->maxLength(50),
-            Forms\Components\Textarea::make('observacoes')
-                ->label('Observações')
-                ->columnSpanFull(),
+            Forms\Components\Section::make('Identificação')->schema([
+                Forms\Components\TextInput::make('observacoes')
+                    ->label('Descrição')
+                    ->placeholder('Ex: Repasse Shopee, Saque, Entrada avulsa...')
+                    ->columnSpanFull(),
+                Forms\Components\Select::make('id_venda')
+                    ->label('Venda (opcional)')
+                    ->relationship('venda', 'numero_pedido_canal')
+                    ->searchable()
+                    ->preload()
+                    ->placeholder('Nenhuma (entrada avulsa)'),
+            ])->columns(1),
+
+            Forms\Components\Section::make('Valores e Pagamento')->schema([
+                Forms\Components\TextInput::make('valor_parcela')
+                    ->label('Valor')
+                    ->required()
+                    ->numeric()
+                    ->prefix('R$'),
+                Forms\Components\Select::make('forma_pagamento')
+                    ->label('Forma / Canal')
+                    ->options([
+                        'Pix' => 'Pix',
+                        'Boleto' => 'Boleto',
+                        'Transferência' => 'Transferência',
+                        'Mercadolivre' => 'Mercadolivre',
+                        'Shopee' => 'Shopee',
+                        'Magalu' => 'Magalu',
+                        'Outro' => 'Outro',
+                    ])
+                    ->required()
+                    ->placeholder('Selecione...'),
+                Forms\Components\Select::make('conta_bancaria_id')
+                    ->label('Banco')
+                    ->relationship('contaBancaria', 'nome')
+                    ->searchable()
+                    ->preload()
+                    ->placeholder('Selecione o banco'),
+                Forms\Components\Select::make('categoria_id')
+                    ->label('Categoria')
+                    ->options(fn () => \App\Models\CategoriaFinanceira::whereIn('tipo', ['entrada', 'ambos'])->where('ativo', true)->where('sistema', false)->orderBy('nome')->pluck('nome', 'id')->toArray())
+                    ->searchable()
+                    ->placeholder('Selecione a categoria')
+                    ->createOptionForm([
+                        Forms\Components\TextInput::make('nome')->label('Nome')->required()->maxLength(100),
+                        Forms\Components\Select::make('tipo')->label('Tipo')->options(['entrada' => 'Entrada', 'saida' => 'Saída', 'ambos' => 'Ambos'])->default('entrada')->required(),
+                    ])
+                    ->createOptionUsing(fn (array $data) => \App\Models\CategoriaFinanceira::create($data)->id),
+                Forms\Components\Select::make('status')
+                    ->label('Status')
+                    ->options([
+                        'pendente' => 'Pendente',
+                        'recebido' => 'Recebido',
+                        'cancelado' => 'Cancelado',
+                    ])
+                    ->required()
+                    ->default('pendente'),
+            ])->columns(2),
+
+            Forms\Components\Section::make('Datas')->schema([
+                Forms\Components\DatePicker::make('data_vencimento')
+                    ->label('Data de Vencimento')
+                    ->required()
+                    ->default(now()),
+                Forms\Components\DatePicker::make('data_recebimento')
+                    ->label('Data do Recebimento')
+                    ->helperText('Preencha apenas quando efetivamente recebido'),
+            ])->columns(2),
+
+            Forms\Components\Section::make('Parcelas')->schema([
+                Forms\Components\TextInput::make('numero_parcela')
+                    ->label('Nº Parcela')
+                    ->numeric()
+                    ->default(1),
+                Forms\Components\TextInput::make('total_parcelas')
+                    ->label('Total Parcelas')
+                    ->numeric()
+                    ->default(1),
+            ])->columns(2),
         ]);
     }
 
