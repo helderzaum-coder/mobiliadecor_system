@@ -272,6 +272,9 @@ class BlingImportService
 
         $isMlMe2Full = in_array($mlDados['ml_tipo_frete'] ?? null, ['ME2', 'FULL']);
 
+        // Guardar data_despacho no pedido para uso no Telegram
+        $pedido['_data_despacho'] = $mlDados['data_despacho'] ?? null;
+
         $comissaoData = $this->preCalcularComissao($canal, $itens, $mlDados['ml_tipo_anuncio'] ?? null, $mlDados['ml_tipo_frete'] ?? null, (float) ($pedido['transporte']['frete'] ?? 0));
 
         // Para ML com dados da API, usar sale_fee real em vez do pré-cálculo
@@ -402,6 +405,7 @@ class BlingImportService
             'ml_frete_receita' => 0,
             'ml_order_id' => null,
             'ml_shipping_id' => null,
+            'data_despacho' => null,
         ];
 
         if (!str_contains(strtolower($canal), 'mercado')
@@ -438,6 +442,7 @@ class BlingImportService
                     'ml_frete_receita' => $dados['frete_ml_receita'],
                     'ml_order_id' => $dados['order_id'],
                     'ml_shipping_id' => $dados['shipping_id'],
+                    'data_despacho' => $dados['data_despacho'] ?? null,
                 ];
             }
         } catch (\Exception $e) {
@@ -779,6 +784,17 @@ class BlingImportService
             . "Pedido Marketplace: #{$pedidoCanal}\n"
             . "Canal: {$staging->canal}\n"
             . "Cliente: {$staging->cliente_nome}\n";
+
+        // ME2/FULL: exibir data de despacho se disponível
+        if (in_array($staging->ml_tipo_frete, ['ME2', 'FULL'])) {
+            $dataDespacho = $staging->dados_originais['_data_despacho'] ?? null;
+            if ($dataDespacho) {
+                try {
+                    $dt = \Carbon\Carbon::parse($dataDespacho);
+                    $msg .= "\xF0\x9F\x93\x85 <b>Libera etiqueta:</b> {$dt->format('d/m/Y H:i')}\n";
+                } catch (\Exception $e) {}
+            }
+        }
 
         foreach ($itens as $item) {
             $sku = $item['codigo'] ?? '-';

@@ -94,6 +94,7 @@ class MercadoLivreOrderService
             $resultado['tipo_frete'] = $dadosFrete['tipo_frete'];
             $resultado['frete_ml_custo'] = $dadosFrete['frete_ml_custo'];
             $resultado['frete_ml_receita'] = $dadosFrete['frete_ml_receita'];
+            $resultado['data_despacho'] = $dadosFrete['data_despacho'] ?? null;
         }
 
         // Rebate = tarifa bruta - sale_fee
@@ -185,7 +186,7 @@ class MercadoLivreOrderService
 
         if (!$response['success']) {
             Log::warning("ML: Erro ao buscar shipping {$shippingId}");
-            return ['tipo_frete' => null, 'frete_ml_custo' => 0, 'frete_ml_receita' => 0];
+            return ['tipo_frete' => null, 'frete_ml_custo' => 0, 'frete_ml_receita' => 0, 'data_despacho' => null];
         }
 
         $shipping = $response['body'];
@@ -202,13 +203,17 @@ class MercadoLivreOrderService
 
         // Custos de frete do shipping
         $shippingOption = $shipping['shipping_option'] ?? [];
-        $listCost = (float) ($shippingOption['list_cost'] ?? 0);  // custo cobrado pelo ML do vendedor
-        $cost = (float) ($shippingOption['cost'] ?? 0);            // valor pago pelo comprador
+        $listCost = (float) ($shippingOption['list_cost'] ?? 0);
+        $cost = (float) ($shippingOption['cost'] ?? 0);
+
+        // Data limite para despacho (quando libera etiqueta)
+        $dataDespacho = $shippingOption['estimated_handling_limit']['date'] ?? ($shipping['estimated_handling_limit']['date'] ?? null);
 
         return [
             'tipo_frete' => $tipoFrete,
-            'frete_ml_custo' => $listCost,   // tarifa de envio do ML (list_cost)
-            'frete_ml_receita' => $cost,      // valor pago pelo comprador (cost)
+            'frete_ml_custo' => $listCost,
+            'frete_ml_receita' => $cost,
+            'data_despacho' => $dataDespacho,
         ];
     }
 
