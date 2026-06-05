@@ -70,6 +70,8 @@ class ProcessarContasRecorrentes extends Command
                             'data_vencimento' => $proximaData->toDateString(),
                             'data_lancamento' => now()->toDateString(),
                             'status' => 'pendente',
+                            'numero_parcela' => 1,
+                            'total_parcelas' => 1,
                             'recorrente' => true,
                             'intervalo_recorrencia' => $modelo->intervalo_recorrencia,
                             'data_fim_recorrencia' => $modelo->data_fim_recorrencia,
