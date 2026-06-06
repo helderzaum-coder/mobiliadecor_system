@@ -403,53 +403,168 @@ class Caixa extends Page implements HasForms
                         ->placeholder('Ex: Transferência para pagar fornecedor'),
                 ])
                 ->action(function (array $data) {
-                    $origem = ContaBancaria::find($data['conta_origem_id']);
-                    $destino = ContaBancaria::find($data['conta_destino_id']);
-                    $valor = round((float) $data['valor'], 2);
-                    $desc = $data['descricao'] ?: "Transferência {$origem->nome} → {$destino->nome}";
-                    $transferenciaId = Str::uuid()->toString();
-                    $categoriaTransf = CategoriaFinanceira::where('nome', 'Transferência')->where('sistema', true)->first()?->id;
-
-                    // Saída na conta origem
-                    ContaPagar::create([
-                        'valor_parcela' => $valor,
-                        'data_vencimento' => $data['data'],
-                        'data_pagamento' => $data['data'],
-                        'data_lancamento' => now()->toDateString(),
-                        'status' => 'pago',
-                        'numero_parcela' => 1,
-                        'total_parcelas' => 1,
-                        'forma_pagamento' => 'Transferência',
-                        'descricao' => $desc,
-                        'observacoes' => "↗ {$desc}",
-                        'lancamento_manual' => true,
-                        'conta_bancaria_id' => $data['conta_origem_id'],
-                        'categoria_id' => $categoriaTransf,
-                        'transferencia_id' => $transferenciaId,
-                    ]);
-
-                    // Entrada na conta destino
-                    ContaReceber::create([
-                        'valor_parcela' => $valor,
-                        'data_vencimento' => $data['data'],
-                        'data_recebimento' => $data['data'],
-                        'status' => 'recebido',
-                        'numero_parcela' => 1,
-                        'total_parcelas' => 1,
-                        'forma_pagamento' => 'Transferência',
-                        'observacoes' => "↙ {$desc}",
-                        'lancamento_manual' => true,
-                        'conta_bancaria_id' => $data['conta_destino_id'],
-                        'categoria_id' => $categoriaTransf,
-                        'transferencia_id' => $transferenciaId,
-                    ]);
-
-                    Notification::make()
-                        ->title("Transferência de R$ " . number_format($valor, 2, ',', '.') . " realizada")
-                        ->body("{$origem->nome} → {$destino->nome}")
-                        ->success()
-                        ->send();
+                    $this->executarTransferencia($data);
+                }),
+            Actions\Action::make('importar_transferencias')
+                ->label('Importar Transferências')
+                ->icon('heroicon-o-arrow-up-tray')
+                ->color('warning')
+                ->form([
+                    Forms\Components\FileUpload::make('arquivo')
+                        ->label('Planilha CSV')
+                        ->acceptedFileTypes(['text/csv', 'text/plain', 'application/vnd.ms-excel'])
+                        ->helperText('Formato: banco_origem;banco_destino;valor;data (dd/mm/aaaa). Separador: ponto-e-vírgula.')
+                        ->required()
+                        ->disk('local')
+                        ->directory('temp-imports'),
+                ])
+                ->action(function (array $data) {
+                    $this->importarTransferencias($data);
                 }),
         ];
+    }
+
+    private function executarTransferencia(array $data): void
+    {
+        $origem = ContaBancaria::find($data['conta_origem_id']);
+        $destino = ContaBancaria::find($data['conta_destino_id']);
+        $valor = round((float) $data['valor'], 2);
+        $desc = $data['descricao'] ?: "Transferência {$origem->nome} → {$destino->nome}";
+        $transferenciaId = Str::uuid()->toString();
+        $categoriaTransf = CategoriaFinanceira::where('nome', 'Transferência')->where('sistema', true)->first()?->id;
+
+        ContaPagar::create([
+            'valor_parcela' => $valor,
+            'data_vencimento' => $data['data'],
+            'data_pagamento' => $data['data'],
+            'data_lancamento' => now()->toDateString(),
+            'status' => 'pago',
+            'numero_parcela' => 1,
+            'total_parcelas' => 1,
+            'forma_pagamento' => 'Transferência',
+            'descricao' => $desc,
+            'observacoes' => "↗ {$desc}",
+            'lancamento_manual' => true,
+            'conta_bancaria_id' => $data['conta_origem_id'],
+            'categoria_id' => $categoriaTransf,
+            'transferencia_id' => $transferenciaId,
+        ]);
+
+        ContaReceber::create([
+            'valor_parcela' => $valor,
+            'data_vencimento' => $data['data'],
+            'data_recebimento' => $data['data'],
+            'status' => 'recebido',
+            'numero_parcela' => 1,
+            'total_parcelas' => 1,
+            'forma_pagamento' => 'Transferência',
+            'observacoes' => "↙ {$desc}",
+            'lancamento_manual' => true,
+            'conta_bancaria_id' => $data['conta_destino_id'],
+            'categoria_id' => $categoriaTransf,
+            'transferencia_id' => $transferenciaId,
+        ]);
+
+        Notification::make()
+            ->title("Transferência de R$ " . number_format($valor, 2, ',', '.') . " realizada")
+            ->body("{$origem->nome} → {$destino->nome}")
+            ->success()
+            ->send();
+    }
+
+    private function importarTransferencias(array $data): void
+    {
+        $path = storage_path('app/' . $data['arquivo']);
+        if (!file_exists($path)) {
+            Notification::make()->title('Arquivo não encontrado.')->danger()->send();
+            return;
+        }
+
+        $conteudo = file_get_contents($path);
+        $linhas = array_filter(explode("\n", str_replace("\r", '', $conteudo)));
+        $bancos = ContaBancaria::where('ativo', true)->get()->keyBy(fn ($b) => mb_strtolower(trim($b->nome)));
+
+        $importados = 0;
+        $erros = [];
+
+        foreach ($linhas as $i => $linha) {
+            $num = $i + 1;
+            $linha = trim($linha);
+            if (empty($linha)) continue;
+
+            // Pular cabeçalho
+            if ($num === 1 && (str_contains(mb_strtolower($linha), 'origem') || str_contains(mb_strtolower($linha), 'banco'))) {
+                continue;
+            }
+
+            $cols = str_getcsv($linha, ';');
+            if (count($cols) < 4) {
+                $erros[] = "Linha {$num}: formato inválido (menos de 4 colunas)";
+                continue;
+            }
+
+            $nomeOrigem = mb_strtolower(trim($cols[0]));
+            $nomeDestino = mb_strtolower(trim($cols[1]));
+            $valorStr = trim($cols[2]);
+            $dataStr = trim($cols[3]);
+
+            $origem = $bancos[$nomeOrigem] ?? null;
+            $destino = $bancos[$nomeDestino] ?? null;
+
+            if (!$origem) {
+                $erros[] = "Linha {$num}: banco origem '{$cols[0]}' não encontrado";
+                continue;
+            }
+            if (!$destino) {
+                $erros[] = "Linha {$num}: banco destino '{$cols[1]}' não encontrado";
+                continue;
+            }
+            if ($origem->id === $destino->id) {
+                $erros[] = "Linha {$num}: origem e destino são iguais";
+                continue;
+            }
+
+            // Parsear valor (aceita vírgula como decimal)
+            $valor = (float) str_replace(['.', ','], ['', '.'], $valorStr);
+            if ($valor <= 0) {
+                $erros[] = "Linha {$num}: valor inválido '{$valorStr}'";
+                continue;
+            }
+
+            // Parsear data (dd/mm/aaaa ou aaaa-mm-dd)
+            $dataParsed = null;
+            if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $dataStr, $m)) {
+                $dataParsed = "{$m[3]}-{$m[2]}-{$m[1]}";
+            } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataStr)) {
+                $dataParsed = $dataStr;
+            }
+
+            if (!$dataParsed) {
+                $erros[] = "Linha {$num}: data inválida '{$dataStr}'";
+                continue;
+            }
+
+            $this->executarTransferencia([
+                'conta_origem_id' => $origem->id,
+                'conta_destino_id' => $destino->id,
+                'valor' => $valor,
+                'data' => $dataParsed,
+                'descricao' => '',
+            ]);
+
+            $importados++;
+        }
+
+        @unlink($path);
+
+        $msg = "{$importados} transferência(s) importada(s).";
+        if (!empty($erros)) {
+            $msg .= " " . count($erros) . " erro(s): " . implode(' | ', array_slice($erros, 0, 5));
+        }
+
+        Notification::make()
+            ->title($msg)
+            ->{$importados > 0 ? 'success' : 'warning'}()
+            ->send();
     }
 }
