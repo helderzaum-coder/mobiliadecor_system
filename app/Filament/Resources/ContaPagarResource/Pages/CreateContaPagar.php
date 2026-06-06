@@ -16,6 +16,13 @@ class CreateContaPagar extends CreateRecord
     {
         $data['data_lancamento'] = $data['data_lancamento'] ?? now()->toDateString();
 
+        // Se datas não foram diferenciadas, usar data_lancamento para todas
+        if (empty($data['datas_diferentes'])) {
+            $data['data_vencimento'] = $data['data_lancamento'];
+            $data['data_pagamento'] = $data['data_lancamento'];
+        }
+        unset($data['datas_diferentes']);
+
         if (!empty($data['recorrente']) && !empty($data['intervalo_recorrencia'])) {
             return $this->criarRecorrencias($data);
         }

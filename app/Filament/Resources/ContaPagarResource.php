@@ -85,18 +85,22 @@ class ContaPagarResource extends Resource
 
             Forms\Components\Section::make('Datas')->schema([
                 Forms\Components\DatePicker::make('data_lancamento')
-                    ->label('Data do Lançamento')
+                    ->label('Data')
                     ->default(now())
-                    ->required(),
+                    ->required()
+                    ->columnSpanFull(),
+                Forms\Components\Toggle::make('datas_diferentes')
+                    ->label('Vencimento/Pagamento em datas diferentes')
+                    ->default(false)
+                    ->reactive()
+                    ->columnSpanFull(),
                 Forms\Components\DatePicker::make('data_vencimento')
                     ->label('Data de Vencimento')
-                    ->default(now())
-                    ->required(),
+                    ->visible(fn ($get) => $get('datas_diferentes')),
                 Forms\Components\DatePicker::make('data_pagamento')
                     ->label('Data do Pagamento')
-                    ->default(now())
-                    ->helperText('Preencha apenas quando efetivamente pago'),
-            ])->columns(3),
+                    ->visible(fn ($get) => $get('datas_diferentes')),
+            ])->columns(2),
 
             Forms\Components\Section::make('Parcelas / Recorrência')->schema([
                 Forms\Components\Toggle::make('recorrente')

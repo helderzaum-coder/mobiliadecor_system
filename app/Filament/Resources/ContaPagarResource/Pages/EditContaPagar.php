@@ -62,8 +62,24 @@ class EditContaPagar extends EditRecord
         ];
     }
 
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $data['datas_diferentes'] = (
+            ($data['data_vencimento'] ?? null) !== ($data['data_lancamento'] ?? null) ||
+            ($data['data_pagamento'] ?? null) !== ($data['data_lancamento'] ?? null)
+        );
+
+        return $data;
+    }
+
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        if (empty($data['datas_diferentes'])) {
+            $data['data_vencimento'] = $data['data_lancamento'];
+            $data['data_pagamento'] = $data['data_lancamento'];
+        }
+        unset($data['datas_diferentes']);
+
         if (!empty($data['recorrente']) && empty($data['grupo_recorrencia'])) {
             $data['grupo_recorrencia'] = Str::uuid()->toString();
         }
