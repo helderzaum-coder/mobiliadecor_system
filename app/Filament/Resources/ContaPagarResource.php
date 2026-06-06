@@ -226,6 +226,10 @@ class ContaPagarResource extends Resource
                         ? 'Recorrente'
                         : "{$record->numero_parcela}/{$record->total_parcelas}")
                     ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('contaBancaria.nome')
+                    ->label('Banco')
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('data_vencimento', 'asc')
             ->filters([
@@ -245,6 +249,9 @@ class ContaPagarResource extends Resource
                     ->placeholder('Todos')
                     ->trueLabel('Somente recorrentes')
                     ->falseLabel('Somente avulsos'),
+                Tables\Filters\SelectFilter::make('conta_bancaria_id')
+                    ->label('Banco')
+                    ->relationship('contaBancaria', 'nome'),
                 Tables\Filters\Filter::make('periodo')
                     ->form([
                         Forms\Components\Select::make('periodo_rapido')
