@@ -87,21 +87,14 @@ class ContaPagarResource extends Resource
                 Forms\Components\DatePicker::make('data_lancamento')
                     ->label('Data do Lançamento')
                     ->default(now())
-                    ->required()
-                    ->live(onBlur: true)
-                    ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
-                        if ($state && !$get('data_vencimento')) {
-                            $set('data_vencimento', $state);
-                        }
-                        if ($state && !$get('data_pagamento')) {
-                            $set('data_pagamento', $state);
-                        }
-                    }),
+                    ->required(),
                 Forms\Components\DatePicker::make('data_vencimento')
                     ->label('Data de Vencimento')
+                    ->default(now())
                     ->required(),
                 Forms\Components\DatePicker::make('data_pagamento')
                     ->label('Data do Pagamento')
+                    ->default(now())
                     ->helperText('Preencha apenas quando efetivamente pago'),
             ])->columns(3),
 
