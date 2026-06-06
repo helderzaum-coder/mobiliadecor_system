@@ -217,12 +217,18 @@ class DashboardVendas extends Page implements HasForms
 
         $canal = $venda->canal?->nome_canal ?? 'Marketplace';
         $isMagalu = str_contains(strtolower($canal), 'magalu');
+        $afiliado = (float) ($venda->comissao_afiliado ?? 0);
         $repasse = $isMagalu
-            ? (float) $venda->valor_total_venda - (float) $venda->comissao
-            : (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao;
+            ? (float) $venda->valor_total_venda - (float) $venda->comissao - $afiliado
+            : (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - $afiliado;
 
         // Gerar conta a receber se não existe (forçar mesmo sem NF-e)
         $contaReceber = \App\Models\ContaReceber::where('id_venda', $venda->id_venda)->first();
+
+        // Usar valor da conta a receber existente (valor real recebido)
+        if ($contaReceber) {
+            $repasse = (float) $contaReceber->valor_parcela;
+        }
         if (!$contaReceber) {
             $contaReceber = \App\Models\ContaReceber::create([
                 'id_venda' => $venda->id_venda,
@@ -270,12 +276,16 @@ class DashboardVendas extends Page implements HasForms
 
         $canal = $venda->canal?->nome_canal ?? 'Marketplace';
         $isMagalu = str_contains(strtolower($canal), 'magalu');
+        $afiliado = (float) ($venda->comissao_afiliado ?? 0);
         $repasse = $isMagalu
-            ? (float) $venda->valor_total_venda - (float) $venda->comissao
-            : (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao;
+            ? (float) $venda->valor_total_venda - (float) $venda->comissao - $afiliado
+            : (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - $afiliado;
 
         $contaReceber = \App\Models\ContaReceber::where('id_venda', $venda->id_venda)->first();
+
+        // Usar valor da conta a receber existente (valor real recebido)
         if ($contaReceber) {
+            $repasse = (float) $contaReceber->valor_parcela;
             $contaReceber->update(['estorno_pendente' => true]);
         }
 
