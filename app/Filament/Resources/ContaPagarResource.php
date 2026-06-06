@@ -329,21 +329,48 @@ class ContaPagarResource extends Resource
                             ->prefix('R$')
                             ->default($record->valor_parcela)
                             ->required(),
+                        Forms\Components\Select::make('categoria_id')
+                            ->label('Categoria')
+                            ->options(fn () => \App\Models\CategoriaFinanceira::whereIn('tipo', ['saida', 'ambos'])->where('ativo', true)->where('sistema', false)->orderBy('nome')->pluck('nome', 'id')->toArray())
+                            ->default($record->categoria_id)
+                            ->searchable(),
+                        Forms\Components\Select::make('conta_bancaria_id')
+                            ->label('Banco')
+                            ->options(fn () => \App\Models\ContaBancaria::orderBy('nome')->pluck('nome', 'id')->toArray())
+                            ->default($record->conta_bancaria_id)
+                            ->searchable(),
+                        Forms\Components\Select::make('forma_pagamento')
+                            ->label('Forma de Pagamento')
+                            ->options(['pix' => 'Pix', 'boleto' => 'Boleto', 'cartao' => 'Cartão', 'transferencia' => 'Transferência', 'dinheiro' => 'Dinheiro', 'debito_automatico' => 'Débito Automático'])
+                            ->default($record->forma_pagamento),
+                        Forms\Components\DatePicker::make('data_lancamento')
+                            ->label('Data')
+                            ->default($record->data_lancamento)
+                            ->required(),
+                        Forms\Components\Toggle::make('datas_diferentes')
+                            ->label('Vencimento/Pagamento em datas diferentes')
+                            ->default(false)
+                            ->reactive(),
                         Forms\Components\DatePicker::make('data_vencimento')
                             ->label('Vencimento')
-                            ->default(now())
-                            ->required(),
+                            ->default($record->data_vencimento)
+                            ->visible(fn ($get) => $get('datas_diferentes')),
                         Forms\Components\DatePicker::make('data_pagamento')
-                            ->label('Data do Pagamento (se já pago)'),
+                            ->label('Data do Pagamento')
+                            ->default($record->data_pagamento)
+                            ->visible(fn ($get) => $get('datas_diferentes')),
                     ])
                     ->action(function (ContaPagar $record, array $data) {
                         $novo = $record->replicate(['data_pagamento', 'grupo_recorrencia']);
                         $novo->descricao = $data['descricao'];
                         $novo->valor_parcela = $data['valor_parcela'];
-                        $novo->data_vencimento = $data['data_vencimento'];
-                        $novo->data_lancamento = now();
-                        $novo->data_pagamento = $data['data_pagamento'] ?? null;
-                        $novo->status = $data['data_pagamento'] ? 'pago' : 'pendente';
+                        $novo->categoria_id = $data['categoria_id'] ?? $record->categoria_id;
+                        $novo->conta_bancaria_id = $data['conta_bancaria_id'] ?? $record->conta_bancaria_id;
+                        $novo->forma_pagamento = $data['forma_pagamento'] ?? $record->forma_pagamento;
+                        $novo->data_lancamento = $data['data_lancamento'];
+                        $novo->data_vencimento = !empty($data['datas_diferentes']) ? $data['data_vencimento'] : $data['data_lancamento'];
+                        $novo->data_pagamento = !empty($data['datas_diferentes']) ? ($data['data_pagamento'] ?? null) : $data['data_lancamento'];
+                        $novo->status = $novo->data_pagamento ? 'pago' : 'pendente';
                         $novo->numero_parcela = 1;
                         $novo->total_parcelas = 1;
                         $novo->recorrente = false;
