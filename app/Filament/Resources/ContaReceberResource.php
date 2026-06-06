@@ -156,6 +156,10 @@ class ContaReceberResource extends Resource
                         if ($record->estorno_pendente) return $state . ' ⚠️ Estorno';
                         return $state;
                     }),
+                Tables\Columns\TextColumn::make('contaBancaria.nome')
+                    ->label('Banco')
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('lote_recebimento_id')
                     ->label('Lote')
                     ->placeholder('-')
@@ -187,6 +191,9 @@ class ContaReceberResource extends Resource
                         ? $query->whereHas('venda', fn ($q) => $q->where('bling_account', $data['value']))
                         : $query
                     ),
+                Tables\Filters\SelectFilter::make('conta_bancaria_id')
+                    ->label('Banco')
+                    ->relationship('contaBancaria', 'nome'),
                 Tables\Filters\Filter::make('periodo')
                     ->form([
                         Forms\Components\Select::make('filtrar_por')
