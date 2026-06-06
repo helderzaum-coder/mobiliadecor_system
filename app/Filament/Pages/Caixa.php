@@ -474,9 +474,35 @@ class Caixa extends Page implements HasForms
 
     private function importarTransferencias(array $data): void
     {
-        $path = storage_path('app/' . $data['arquivo']);
-        if (!file_exists($path)) {
-            Notification::make()->title('Arquivo não encontrado.')->danger()->send();
+        $arquivo = $data['arquivo'];
+        // FileUpload pode retornar string ou array, e pode estar em disco 'local' ou 'private'
+        $relativePath = is_array($arquivo) ? reset($arquivo) : $arquivo;
+
+        $possiblePaths = [
+            storage_path('app/' . $relativePath),
+            storage_path('app/private/' . $relativePath),
+            storage_path('app/livewire-tmp/' . $relativePath),
+        ];
+
+        $path = null;
+        foreach ($possiblePaths as $p) {
+            if (file_exists($p)) {
+                $path = $p;
+                break;
+            }
+        }
+
+        if (!$path) {
+            // Tentar via Storage facade
+            if (\Illuminate\Support\Facades\Storage::disk('local')->exists($relativePath)) {
+                $path = \Illuminate\Support\Facades\Storage::disk('local')->path($relativePath);
+            } elseif (\Illuminate\Support\Facades\Storage::disk('local')->exists('temp-imports/' . basename($relativePath))) {
+                $path = \Illuminate\Support\Facades\Storage::disk('local')->path('temp-imports/' . basename($relativePath));
+            }
+        }
+
+        if (!$path || !file_exists($path)) {
+            Notification::make()->title('Arquivo não encontrado: ' . $relativePath)->danger()->send();
             return;
         }
 
