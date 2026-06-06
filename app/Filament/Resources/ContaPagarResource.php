@@ -88,7 +88,7 @@ class ContaPagarResource extends Resource
                     ->label('Data do Lançamento')
                     ->default(now())
                     ->required()
-                    ->reactive()
+                    ->live(onBlur: true)
                     ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
                         if ($state && !$get('data_vencimento')) {
                             $set('data_vencimento', $state);
