@@ -58,6 +58,10 @@ class CalculadoraML extends Page
         $tipoNotaWebcon = $webconDB->tipo_nota ?? 'cheia';
         $impostoSobreFreteWebcon = (bool) ($webconDB->imposto_sobre_frete ?? false);
 
+        $mmDB = $canaisDB->get('Madeira Madeira');
+        $tipoNotaMM = $mmDB->tipo_nota ?? 'cheia';
+        $impostoSobreFreteMM = (bool) ($mmDB->imposto_sobre_frete ?? false);
+
         return [
             'ml_premium_1'  => ['label' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣', 'comissao_pct' => 16.5, 'fixo' => 0, 'tipo_nota' => $tipoNotaML, 'imposto_sobre_frete' => $impostoSobreFreteML, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
             'ml_classico_1' => ['label' => 'ML Clássico', 'cor' => '#6366f1', 'icone' => '🔵', 'comissao_pct' => 11.5, 'fixo' => 0, 'tipo_nota' => $tipoNotaML, 'imposto_sobre_frete' => $impostoSobreFreteML, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
@@ -67,6 +71,7 @@ class CalculadoraML extends Page
             'shopee_2'      => ['label' => 'Shopee', 'cor' => '#ea580c', 'icone' => '🟠', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => $tipoNotaShopee, 'imposto_sobre_frete' => $impostoSobreFreteShopee, 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'shopee'],
             'magalu_1'      => ['label' => 'Magalu', 'cor' => '#2563eb', 'icone' => '🔷', 'comissao_pct' => 18, 'fixo' => 5, 'tipo_nota' => $tipoNotaMagalu, 'imposto_sobre_frete' => $impostoSobreFreteMagalu, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
             'webcon_1'      => ['label' => 'Webcontinental', 'cor' => '#0891b2', 'icone' => '🌐', 'comissao_pct' => 22, 'fixo' => 0, 'tipo_nota' => $tipoNotaWebcon, 'imposto_sobre_frete' => $impostoSobreFreteWebcon, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+            'madeiramadeira_1' => ['label' => 'Madeira Madeira', 'cor' => '#16a34a', 'icone' => '🌳', 'comissao_pct' => 19, 'fixo' => 0, 'tipo_nota' => $tipoNotaMM, 'imposto_sobre_frete' => $impostoSobreFreteMM, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
         ];
     }
 
