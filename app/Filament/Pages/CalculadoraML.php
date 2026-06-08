@@ -78,6 +78,10 @@ class CalculadoraML extends Page
         $tipoNotaLeroy = $leroyDB->tipo_nota ?? 'produto';
         $impostoSobreFreteLeroy = (bool) ($leroyDB->imposto_sobre_frete ?? false);
 
+        $siteDB = $canaisDB->get('Site Mob\u00edlia') ?? $canaisDB->first(fn($c) => str_contains($c->nome_canal, 'Mob'));
+        $tipoNotaSite = $siteDB->tipo_nota ?? 'cheia';
+        $impostoSobreFreteSite = (bool) ($siteDB->imposto_sobre_frete ?? false);
+
         return [
             'ml_premium_1'  => ['label' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣', 'comissao_pct' => 16.5, 'fixo' => 0, 'tipo_nota' => $tipoNotaML, 'imposto_sobre_frete' => $impostoSobreFreteML, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
             'ml_classico_1' => ['label' => 'ML Clássico', 'cor' => '#6366f1', 'icone' => '🔵', 'comissao_pct' => 11.5, 'fixo' => 0, 'tipo_nota' => $tipoNotaML, 'imposto_sobre_frete' => $impostoSobreFreteML, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
@@ -92,6 +96,8 @@ class CalculadoraML extends Page
             'via_1'            => ['label' => 'Via (Cnova)', 'cor' => '#dc2626', 'icone' => '🔴', 'comissao_pct' => 17, 'fixo' => 0, 'tipo_nota' => $tipoNotaVia, 'imposto_sobre_frete' => $impostoSobreFreteVia, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
             'tiktok_1'         => ['label' => 'Tiktokshop', 'cor' => '#000000', 'icone' => '🎵', 'comissao_pct' => 12, 'fixo' => 4, 'tipo_nota' => $tipoNotaTiktok, 'imposto_sobre_frete' => $impostoSobreFreteTiktok, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
             'leroy_1'          => ['label' => 'LeroyMerlin', 'cor' => '#65a30d', 'icone' => '🏠', 'comissao_pct' => 18, 'fixo' => 0, 'tipo_nota' => $tipoNotaLeroy, 'imposto_sobre_frete' => $impostoSobreFreteLeroy, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+            'site_cartao_1'    => ['label' => 'Site (Cartão 6x)', 'cor' => '#7c3aed', 'icone' => '💳', 'comissao_pct' => 11.87, 'fixo' => 0, 'tipo_nota' => $tipoNotaSite, 'imposto_sobre_frete' => $impostoSobreFreteSite, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+            'site_pix_1'       => ['label' => 'Site (Pix -15%)', 'cor' => '#059669', 'icone' => '💲', 'comissao_pct' => 0, 'fixo' => 0.99, 'tipo_nota' => $tipoNotaSite, 'imposto_sobre_frete' => $impostoSobreFreteSite, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'site_pix'],
         ];
     }
 
@@ -307,6 +313,31 @@ class CalculadoraML extends Page
                 $comissaoPct = $a['pct'];
                 $comissaoFixa = $a['fixo'];
                 $frete = 0;
+            } elseif ($cfg['tipo'] === 'site_pix') {
+                // Pix: preço é o de venda com 15% de desconto
+                $precoPix = round($preco * 0.85, 2);
+                $comissao = $cfg['fixo'];
+                $comissaoPct = 0;
+                $comissaoFixa = $cfg['fixo'];
+                $frete = 0;
+                $imposto = $this->calcularImposto($precoPix, 0, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete']);
+                $recebe = round($precoPix - $comissao, 2);
+                $margem = round($recebe - $custoTotal - $imposto, 2);
+
+                $canais[] = [
+                    'key' => $key,
+                    'canal' => $cfg['label'], 'cor' => $cfg['cor'], 'icone' => $cfg['icone'],
+                    'cnpj_label' => $cfg['cnpj_label'], 'id_cnpj' => $cfg['id_cnpj'],
+                    'comissao_pct' => 0, 'comissao' => $comissao,
+                    'comissao_fixa' => $cfg['fixo'],
+                    'frete' => 0, 'recebe' => $recebe,
+                    'imposto_pct' => $impostoPct, 'imposto' => $imposto,
+                    'tipo_nota' => $cfg['tipo_nota'],
+                    'preco_pix' => $precoPix,
+                    'margem' => $margem,
+                    'margem_pct' => $precoPix > 0 ? round(($margem / $precoPix) * 100, 1) : 0,
+                ];
+                continue;
             } else { // fixo (magalu etc)
                 $comissao = round($preco * $cfg['comissao_pct'] / 100 + $cfg['fixo'], 2);
                 $comissaoPct = $cfg['comissao_pct'];
@@ -365,6 +396,29 @@ class CalculadoraML extends Page
             $impostoPct = (float) ($impostos[$cfg['id_cnpj']] ?? 0);
 
             foreach ($margens as $tipo => $mp) {
+                // site_pix: usa o preço do site_cartao com -15%
+                if ($cfg['tipo'] === 'site_pix') {
+                    $precoCartao = $canais['site_cartao_1'][$tipo]['preco_venda'] ?? null;
+                    if (!$precoCartao) continue;
+                    $precoPix = round($precoCartao * 0.85, 2);
+                    $comissao = $cfg['fixo'];
+                    $imposto = $this->calcularImposto($precoPix, 0, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete']);
+                    $recebe = round($precoPix - $comissao, 2);
+                    $margem = round($recebe - $custoTotal - $imposto, 2);
+
+                    $canais[$key][$tipo] = [
+                        'preco_venda' => $precoPix,
+                        'comissao_pct' => 0, 'comissao' => $comissao,
+                        'comissao_fixa' => $cfg['fixo'],
+                        'frete' => 0, 'recebe' => $recebe,
+                        'imposto_pct' => $impostoPct, 'imposto' => $imposto,
+                        'tipo_nota' => $cfg['tipo_nota'],
+                        'margem' => $margem,
+                        'margem_pct' => $precoPix > 0 ? round(($margem / $precoPix) * 100, 1) : 0,
+                    ];
+                    continue;
+                }
+
                 $preco = $this->calcularPrecoIterativo($custoTotal, $pesoTotal, $cfg, $impostoPct, $mp);
                 if (!$preco) continue;
 
@@ -483,6 +537,9 @@ class CalculadoraML extends Page
                 $preco = $novoPreco;
             }
             return $preco;
+
+        } elseif ($cfg['tipo'] === 'site_pix') {
+            return null; // calculado a partir do site_cartao
 
         } else {
             // Fixo (magalu etc): imposto sobre preço total (cheia)

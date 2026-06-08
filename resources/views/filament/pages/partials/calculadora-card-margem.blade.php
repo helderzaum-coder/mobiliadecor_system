@@ -2,6 +2,7 @@
     $mc = $canal['margem'] >= 0 ? '#10b981' : '#ef4444';
     $statusMsg = $canal['margem_pct'] >= 25 ? '🎉 Excelente' : ($canal['margem_pct'] >= 15 ? '✅ Saudável' : ($canal['margem_pct'] >= 5 ? '⚠️ Baixa' : '🚨 Crítica'));
     $tipoNotaLabel = match($canal['tipo_nota']) { 'meia_nota' => '½ nota', 'produto' => 's/ frete', default => 'cheia' };
+    $precoExibido = $canal['preco_pix'] ?? $r['preco_venda'];
 @endphp
 <div style="flex:1;min-width:260px;border-radius:12px;border:2px solid {{ $canal['cor'] }};background:rgba(0,0,0,.2);padding:16px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
@@ -11,6 +12,13 @@
     <div style="font-size:10px;color:#6b7280;margin-bottom:10px;">
         {{ $canal['imposto_pct'] }}% ({{ $tipoNotaLabel }})
     </div>
+
+    @if(isset($canal['preco_pix']))
+    <div style="text-align:center;padding:6px;margin-bottom:10px;border-radius:6px;background:rgba(5,150,105,.1);border:1px solid #059669;">
+        <div style="font-size:10px;color:#9ca3af;">Preço Pix (-15%)</div>
+        <div style="font-size:16px;font-weight:700;color:#059669;">R$ {{ number_format($canal['preco_pix'], 2, ',', '.') }}</div>
+    </div>
+    @endif
 
     <div style="text-align:center;padding:8px;margin-bottom:10px;border-radius:8px;border:1px solid {{ $mc }};background:{{ $mc }}11;">
         <div style="font-size:10px;color:#9ca3af;">Margem</div>
