@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Cnpj;
+use App\Models\ImpostoMensal;
 use Filament\Pages\Page;
 
 class CalculadoraML extends Page
@@ -18,7 +20,6 @@ class CalculadoraML extends Page
     public ?float $preco_venda = null;
     public ?float $preco_de_pct = null;
     public ?float $preco_por_pct = null;
-    public ?float $percentual_imposto = null;
     public ?float $peso_unitario = null;
     public int $quantidade = 1;
 
@@ -34,6 +35,42 @@ class CalculadoraML extends Page
     public bool $frete_manual_override = false;
 
     public ?array $resultados = null;
+
+    // ─── Canais config ─────────────────────────────────────────
+    // canal_key => [label, cor, icone, comissao_pct, fixo, tipo_nota, cnpjs[]]
+    private function getCanaisConfig(): array
+    {
+        return [
+            'ml_premium_1'  => ['label' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣', 'comissao_pct' => 16.5, 'fixo' => 0, 'tipo_nota' => 'produto', 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
+            'ml_classico_1' => ['label' => 'ML Clássico', 'cor' => '#6366f1', 'icone' => '🔵', 'comissao_pct' => 11.5, 'fixo' => 0, 'tipo_nota' => 'produto', 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
+            'ml_premium_2'  => ['label' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣', 'comissao_pct' => 16.5, 'fixo' => 0, 'tipo_nota' => 'produto', 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'ml'],
+            'ml_classico_2' => ['label' => 'ML Clássico', 'cor' => '#6366f1', 'icone' => '🔵', 'comissao_pct' => 11.5, 'fixo' => 0, 'tipo_nota' => 'produto', 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'ml'],
+            'shopee_1'      => ['label' => 'Shopee', 'cor' => '#ea580c', 'icone' => '🟠', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => 'meia_nota', 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'shopee'],
+            'shopee_2'      => ['label' => 'Shopee', 'cor' => '#ea580c', 'icone' => '🟠', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => 'meia_nota', 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'shopee'],
+            'magalu_1'      => ['label' => 'Magalu', 'cor' => '#2563eb', 'icone' => '🔷', 'comissao_pct' => 18, 'fixo' => 5, 'tipo_nota' => 'cheia', 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+        ];
+    }
+
+    private function getImpostosPorCnpj(): array
+    {
+        $mes = now()->month;
+        $ano = now()->year;
+        $impostos = ImpostoMensal::where('mes_referencia', $mes)
+            ->where('ano_referencia', $ano)
+            ->pluck('percentual_imposto', 'id_cnpj')
+            ->toArray();
+
+        // Fallback: se não tiver do mês atual, pega o mais recente
+        if (empty($impostos)) {
+            $impostos = ImpostoMensal::orderByDesc('ano_referencia')
+                ->orderByDesc('mes_referencia')
+                ->get()
+                ->pluck('percentual_imposto', 'id_cnpj')
+                ->toArray();
+        }
+
+        return $impostos;
+    }
 
     // ─── Tabelas ───────────────────────────────────────────────
 
@@ -79,9 +116,6 @@ class CalculadoraML extends Page
         [200, 499.99, 14, 26], [500, 999999, 14, 26],
     ];
 
-    private static float $magaluComissaoPct = 18;
-    private static float $magaluFixo = 5;
-
     // ─── Helpers ───────────────────────────────────────────────
 
     private function getPesoCubado(): float
@@ -96,6 +130,7 @@ class CalculadoraML extends Page
         $pesoCubado = $this->getPesoCubado() * $this->quantidade;
         return max($pesoReal, $pesoCubado);
     }
+
     private function getCustoTotal(): float { return round(($this->custo_produto ?? 0) * $this->quantidade, 2); }
 
     private function detectarFaixaPeso(float $peso): string
@@ -152,13 +187,20 @@ class CalculadoraML extends Page
         return ['comissao' => round($preco * $last[2] / 100 + $last[3], 2), 'pct' => $last[2], 'fixo' => $last[3]];
     }
 
-    private function calcularComissaoMagalu(float $preco): array
+    /**
+     * Calcula imposto baseado no tipo_nota do canal
+     * cheia = imposto sobre preço total
+     * produto = imposto sobre (preço - frete)
+     * meia_nota = imposto sobre metade do preço
+     */
+    private function calcularImposto(float $preco, float $frete, string $tipoNota, float $impostoPct): float
     {
-        return [
-            'comissao' => round($preco * self::$magaluComissaoPct / 100 + self::$magaluFixo, 2),
-            'pct' => self::$magaluComissaoPct,
-            'fixo' => self::$magaluFixo,
-        ];
+        $base = match ($tipoNota) {
+            'produto' => $preco - $frete,
+            'meia_nota' => $preco / 2,
+            default => $preco, // cheia
+        };
+        return round(max(0, $base) * $impostoPct / 100, 2);
     }
 
     // ─── Cálculos ──────────────────────────────────────────────
@@ -181,61 +223,51 @@ class CalculadoraML extends Page
         $preco = $this->preco_venda;
         $custoTotal = $this->getCustoTotal();
         $pesoTotal = $this->getPesoTotal();
-        $impostoPct = (float) ($this->percentual_imposto ?? 0);
-        $imposto = round($preco * $impostoPct / 100, 2);
+        $impostos = $this->getImpostosPorCnpj();
+        $canaisConfig = $this->getCanaisConfig();
 
         $canais = [];
-
-        // ML Premium (16.5%)
-        $comissaoMLPremium = round($preco * 16.5 / 100, 2);
         $freteML = $this->calcularFreteML($preco, $pesoTotal);
-        $recebeMLPremium = round($preco - $comissaoMLPremium - $freteML, 2);
-        $margemMLPremium = round($recebeMLPremium - $custoTotal - $imposto, 2);
-        $canais[] = [
-            'canal' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣',
-            'comissao_pct' => 16.5, 'comissao' => $comissaoMLPremium,
-            'frete' => $freteML, 'recebe' => $recebeMLPremium,
-            'margem' => $margemMLPremium,
-            'margem_pct' => $preco > 0 ? round(($margemMLPremium / $preco) * 100, 1) : 0,
-        ];
 
-        // ML Clássico (11.5%)
-        $comissaoMLClassico = round($preco * 11.5 / 100, 2);
-        $recebeMLClassico = round($preco - $comissaoMLClassico - $freteML, 2);
-        $margemMLClassico = round($recebeMLClassico - $custoTotal - $imposto, 2);
-        $canais[] = [
-            'canal' => 'ML Clássico', 'cor' => '#3b82f6', 'icone' => '🔵',
-            'comissao_pct' => 11.5, 'comissao' => $comissaoMLClassico,
-            'frete' => $freteML, 'recebe' => $recebeMLClassico,
-            'margem' => $margemMLClassico,
-            'margem_pct' => $preco > 0 ? round(($margemMLClassico / $preco) * 100, 1) : 0,
-        ];
+        foreach ($canaisConfig as $key => $cfg) {
+            $impostoPct = (float) ($impostos[$cfg['id_cnpj']] ?? 0);
 
-        // Shopee
-        $s = $this->calcularComissaoShopee($preco);
-        $recebeShopee = round($preco - $s['comissao'], 2);
-        $margemShopee = round($recebeShopee - $custoTotal - $imposto, 2);
-        $canais[] = [
-            'canal' => 'Shopee', 'cor' => '#ea580c', 'icone' => '🟠',
-            'comissao_pct' => $s['pct'], 'comissao' => $s['comissao'],
-            'comissao_fixa' => $s['fixo'],
-            'frete' => 0, 'recebe' => $recebeShopee,
-            'margem' => $margemShopee,
-            'margem_pct' => $preco > 0 ? round(($margemShopee / $preco) * 100, 1) : 0,
-        ];
+            // Calcular comissão
+            if ($cfg['tipo'] === 'shopee') {
+                $s = $this->calcularComissaoShopee($preco);
+                $comissao = $s['comissao'];
+                $comissaoPct = $s['pct'];
+                $comissaoFixa = $s['fixo'];
+                $frete = 0;
+            } elseif ($cfg['tipo'] === 'ml') {
+                $comissao = round($preco * $cfg['comissao_pct'] / 100, 2);
+                $comissaoPct = $cfg['comissao_pct'];
+                $comissaoFixa = null;
+                $frete = $freteML;
+            } else { // fixo (magalu etc)
+                $comissao = round($preco * $cfg['comissao_pct'] / 100 + $cfg['fixo'], 2);
+                $comissaoPct = $cfg['comissao_pct'];
+                $comissaoFixa = $cfg['fixo'];
+                $frete = 0;
+            }
 
-        // Magalu
-        $mg = $this->calcularComissaoMagalu($preco);
-        $recebeMagalu = round($preco - $mg['comissao'], 2);
-        $margemMagalu = round($recebeMagalu - $custoTotal - $imposto, 2);
-        $canais[] = [
-            'canal' => 'Magalu', 'cor' => '#2563eb', 'icone' => '🔷',
-            'comissao_pct' => $mg['pct'], 'comissao' => $mg['comissao'],
-            'comissao_fixa' => $mg['fixo'],
-            'frete' => 0, 'recebe' => $recebeMagalu,
-            'margem' => $margemMagalu,
-            'margem_pct' => $preco > 0 ? round(($margemMagalu / $preco) * 100, 1) : 0,
-        ];
+            $imposto = $this->calcularImposto($preco, $frete, $cfg['tipo_nota'], $impostoPct);
+            $recebe = round($preco - $comissao - $frete, 2);
+            $margem = round($recebe - $custoTotal - $imposto, 2);
+
+            $canais[] = [
+                'key' => $key,
+                'canal' => $cfg['label'], 'cor' => $cfg['cor'], 'icone' => $cfg['icone'],
+                'cnpj_label' => $cfg['cnpj_label'], 'id_cnpj' => $cfg['id_cnpj'],
+                'comissao_pct' => $comissaoPct, 'comissao' => $comissao,
+                'comissao_fixa' => $comissaoFixa,
+                'frete' => $frete, 'recebe' => $recebe,
+                'imposto_pct' => $impostoPct, 'imposto' => $imposto,
+                'tipo_nota' => $cfg['tipo_nota'],
+                'margem' => $margem,
+                'margem_pct' => $preco > 0 ? round(($margem / $preco) * 100, 1) : 0,
+            ];
+        }
 
         $faixaPeso = $pesoTotal > 0 ? $this->getFaixaPesoLabel($this->detectarFaixaPeso($pesoTotal)) : null;
         if (!$this->frete_manual_override && $this->tipo_frete === 'ME2') $this->custo_frete_manual = $freteML;
@@ -248,8 +280,6 @@ class CalculadoraML extends Page
             'quantidade' => $this->quantidade,
             'peso_total' => $pesoTotal,
             'faixa_peso' => $faixaPeso,
-            'imposto_pct' => $impostoPct,
-            'imposto' => $imposto,
             'canais' => $canais,
         ];
     }
@@ -258,31 +288,57 @@ class CalculadoraML extends Page
     {
         $custoTotal = $this->getCustoTotal();
         $pesoTotal = $this->getPesoTotal();
-        $impostoPct = (float) ($this->percentual_imposto ?? 0);
+        $impostos = $this->getImpostosPorCnpj();
+        $canaisConfig = $this->getCanaisConfig();
         $faixaPeso = $pesoTotal > 0 ? $this->getFaixaPesoLabel($this->detectarFaixaPeso($pesoTotal)) : null;
-
-        $canais = [];
 
         $margens = [];
         if ($this->preco_de_pct) $margens['preco_de'] = $this->preco_de_pct;
         if ($this->preco_por_pct) $margens['preco_por'] = $this->preco_por_pct;
 
-        foreach ($margens as $tipo => $mp) {
-            // ML Premium
-            $p = $this->calcularPrecoIterativoML($custoTotal, $pesoTotal, 16.5, $impostoPct, $mp);
-            if ($p) $canais['ml_premium'][$tipo] = $this->montarResultadoCanal($p, $custoTotal, $pesoTotal, 16.5, $impostoPct, 'ml');
+        $canais = [];
 
-            // ML Clássico
-            $p = $this->calcularPrecoIterativoML($custoTotal, $pesoTotal, 11.5, $impostoPct, $mp);
-            if ($p) $canais['ml_classico'][$tipo] = $this->montarResultadoCanal($p, $custoTotal, $pesoTotal, 11.5, $impostoPct, 'ml');
+        foreach ($canaisConfig as $key => $cfg) {
+            $impostoPct = (float) ($impostos[$cfg['id_cnpj']] ?? 0);
 
-            // Shopee
-            $p = $this->calcularPrecoIterativoShopee($custoTotal, $impostoPct, $mp);
-            if ($p) $canais['shopee'][$tipo] = $this->montarResultadoCanal($p, $custoTotal, $pesoTotal, 0, $impostoPct, 'shopee');
+            foreach ($margens as $tipo => $mp) {
+                $preco = $this->calcularPrecoIterativo($custoTotal, $pesoTotal, $cfg, $impostoPct, $mp);
+                if (!$preco) continue;
 
-            // Magalu
-            $p = $this->calcularPrecoIterativoFixo($custoTotal, self::$magaluComissaoPct, self::$magaluFixo, $impostoPct, $mp);
-            if ($p) $canais['magalu'][$tipo] = $this->montarResultadoCanal($p, $custoTotal, $pesoTotal, 0, $impostoPct, 'magalu');
+                // Recalcular detalhes com o preço encontrado
+                if ($cfg['tipo'] === 'shopee') {
+                    $s = $this->calcularComissaoShopee($preco);
+                    $comissao = $s['comissao'];
+                    $comissaoPct = $s['pct'];
+                    $comissaoFixa = $s['fixo'];
+                    $frete = 0;
+                } elseif ($cfg['tipo'] === 'ml') {
+                    $comissao = round($preco * $cfg['comissao_pct'] / 100, 2);
+                    $comissaoPct = $cfg['comissao_pct'];
+                    $comissaoFixa = null;
+                    $frete = $this->calcularFreteML($preco, $pesoTotal);
+                } else {
+                    $comissao = round($preco * $cfg['comissao_pct'] / 100 + $cfg['fixo'], 2);
+                    $comissaoPct = $cfg['comissao_pct'];
+                    $comissaoFixa = $cfg['fixo'];
+                    $frete = 0;
+                }
+
+                $imposto = $this->calcularImposto($preco, $frete, $cfg['tipo_nota'], $impostoPct);
+                $recebe = round($preco - $comissao - $frete, 2);
+                $margem = round($recebe - $custoTotal - $imposto, 2);
+
+                $canais[$key][$tipo] = [
+                    'preco_venda' => $preco,
+                    'comissao_pct' => $comissaoPct, 'comissao' => $comissao,
+                    'comissao_fixa' => $comissaoFixa,
+                    'frete' => $frete, 'recebe' => $recebe,
+                    'imposto_pct' => $impostoPct, 'imposto' => $imposto,
+                    'tipo_nota' => $cfg['tipo_nota'],
+                    'margem' => $margem,
+                    'margem_pct' => $preco > 0 ? round(($margem / $preco) * 100, 1) : 0,
+                ];
+            }
         }
 
         $this->resultados = [
@@ -292,81 +348,67 @@ class CalculadoraML extends Page
             'quantidade' => $this->quantidade,
             'peso_total' => $pesoTotal,
             'faixa_peso' => $faixaPeso,
-            'imposto_pct' => $impostoPct,
             'preco_de_pct' => $this->preco_de_pct,
             'preco_por_pct' => $this->preco_por_pct,
             'canais' => $canais,
+            'canais_config' => $canaisConfig,
         ];
     }
 
-    private function montarResultadoCanal(float $preco, float $custoTotal, float $pesoTotal, float $comissaoPct, float $impostoPct, string $tipo): array
+    private function calcularPrecoIterativo(float $custoTotal, float $pesoTotal, array $cfg, float $impostoPct, float $margemPct): ?float
     {
-        if ($tipo === 'shopee') {
-            $s = $this->calcularComissaoShopee($preco);
-            $comissao = $s['comissao'];
-            $frete = 0;
-            $extra = ['comissao_pct' => $s['pct'], 'comissao_fixa' => $s['fixo']];
-        } elseif ($tipo === 'magalu') {
-            $mg = $this->calcularComissaoMagalu($preco);
-            $comissao = $mg['comissao'];
-            $frete = 0;
-            $extra = ['comissao_pct' => $mg['pct'], 'comissao_fixa' => $mg['fixo']];
+        // Ajustar imposto efetivo conforme tipo_nota
+        $impostoEfetivo = match ($cfg['tipo_nota']) {
+            'meia_nota' => $impostoPct / 2,
+            'produto' => $impostoPct, // será ajustado iterativamente para ML
+            default => $impostoPct,
+        };
+
+        if ($cfg['tipo'] === 'ml') {
+            // ML: imposto sobre (preço - frete), precisa iteração
+            $divisorBase = 1 - ($cfg['comissao_pct'] / 100) - ($impostoPct / 100) - ($margemPct / 100);
+            if ($divisorBase <= 0) return null;
+
+            if ($this->tipo_frete === 'ME1' || $pesoTotal <= 0) {
+                $frete = (float) ($this->custo_frete_manual ?? 0);
+                // produto: imposto sobre (preco - frete) => preco*(1 - com% - imp% - marg%) = custo + frete - frete*imp%
+                // Simplificando iterativamente
+                $preco = ($custoTotal + $frete) / $divisorBase;
+                // Ajustar: imposto é sobre (preco-frete), não sobre preco
+                $impCredito = round($frete * $impostoPct / 100, 2);
+                return round(($custoTotal + $frete - $impCredito) / (1 - ($cfg['comissao_pct'] / 100) - ($impostoPct / 100) - ($margemPct / 100)) + $impCredito / (1 - ($cfg['comissao_pct'] / 100) - ($margemPct / 100)), 2);
+            }
+
+            // Iteração com frete variável
+            $preco = $custoTotal * 2;
+            for ($i = 0; $i < 25; $i++) {
+                $frete = $this->calcularFreteML($preco, $pesoTotal);
+                $imposto = $this->calcularImposto($preco, $frete, 'produto', $impostoPct);
+                $comissao = $preco * $cfg['comissao_pct'] / 100;
+                $novoPreco = round(($custoTotal + $frete + $imposto + $comissao) / (1 - ($margemPct / 100)), 2);
+                if (abs($novoPreco - $preco) < 0.01) break;
+                $preco = $novoPreco;
+            }
+            return $preco;
+
+        } elseif ($cfg['tipo'] === 'shopee') {
+            // Shopee: imposto sobre metade do preço
+            $preco = $custoTotal * 2;
+            for ($i = 0; $i < 30; $i++) {
+                $s = $this->calcularComissaoShopee($preco);
+                $imposto = $this->calcularImposto($preco, 0, 'meia_nota', $impostoPct);
+                $novoPreco = round(($custoTotal + $s['fixo'] + $imposto) / (1 - ($s['pct'] / 100) - ($margemPct / 100)), 2);
+                if (abs($novoPreco - $preco) < 0.01) break;
+                $preco = $novoPreco;
+            }
+            return $preco;
+
         } else {
-            $comissao = round($preco * $comissaoPct / 100, 2);
-            $frete = $this->calcularFreteML($preco, $pesoTotal);
-            $extra = ['comissao_pct' => $comissaoPct];
-        }
-        $imposto = round($preco * $impostoPct / 100, 2);
-        $recebe = round($preco - $comissao - $frete, 2);
-        $margem = round($recebe - $custoTotal - $imposto, 2);
-
-        return array_merge($extra, [
-            'preco_venda' => $preco, 'comissao' => $comissao,
-            'frete' => $frete, 'recebe' => $recebe,
-            'margem' => $margem,
-            'margem_pct' => $preco > 0 ? round(($margem / $preco) * 100, 1) : 0,
-        ]);
-    }
-
-    private function calcularPrecoIterativoML(float $custoTotal, float $pesoTotal, float $comissaoPct, float $impostoPct, float $margemPct): ?float
-    {
-        $divisor = 1 - ($comissaoPct / 100) - ($impostoPct / 100) - ($margemPct / 100);
-        if ($divisor <= 0) return null;
-
-        if ($this->tipo_frete === 'ME1' || $pesoTotal <= 0) {
-            $frete = (float) ($this->custo_frete_manual ?? 0);
-            return round(($custoTotal + $frete) / $divisor, 2);
-        }
-
-        $preco = $custoTotal * 2;
-        for ($i = 0; $i < 20; $i++) {
-            $frete = $this->calcularFreteML($preco, $pesoTotal);
-            $novoPreco = round(($custoTotal + $frete) / $divisor, 2);
-            if (abs($novoPreco - $preco) < 0.01) break;
-            $preco = $novoPreco;
-        }
-        return $preco;
-    }
-
-    private function calcularPrecoIterativoShopee(float $custoTotal, float $impostoPct, float $margemPct): ?float
-    {
-        $preco = $custoTotal * 2;
-        for ($i = 0; $i < 30; $i++) {
-            $s = $this->calcularComissaoShopee($preco);
-            $divisor = 1 - ($s['pct'] / 100) - ($impostoPct / 100) - ($margemPct / 100);
+            // Fixo (magalu etc): imposto sobre preço total (cheia)
+            $divisor = 1 - ($cfg['comissao_pct'] / 100) - ($impostoPct / 100) - ($margemPct / 100);
             if ($divisor <= 0) return null;
-            $novo = round(($custoTotal + $s['fixo']) / $divisor, 2);
-            if (abs($novo - $preco) < 0.01) break;
-            $preco = $novo;
+            return round(($custoTotal + $cfg['fixo']) / $divisor, 2);
         }
-        return $preco;
-    }
-
-    private function calcularPrecoIterativoFixo(float $custoTotal, float $comissaoPct, float $fixo, float $impostoPct, float $margemPct): ?float
-    {
-        $divisor = 1 - ($comissaoPct / 100) - ($impostoPct / 100) - ($margemPct / 100);
-        if ($divisor <= 0) return null;
-        return round(($custoTotal + $fixo) / $divisor, 2);
     }
 
     public function limpar(): void
@@ -375,7 +417,6 @@ class CalculadoraML extends Page
         $this->preco_venda = null;
         $this->preco_de_pct = null;
         $this->preco_por_pct = null;
-        $this->percentual_imposto = null;
         $this->custo_frete_manual = null;
         $this->peso_unitario = null;
         $this->quantidade = 1;
