@@ -132,21 +132,22 @@ class LoteEnvioBling extends Page
                 continue;
             }
 
-            // Fallback: buscar NF-e direto na API do Bling
-            $nfeRes = $client->getNfes(['numero' => ltrim($nfeNumero, '0')]);
+            // Fallback: buscar NF-e direto na API do Bling (formato com zeros à esquerda, 6 dígitos)
+            $nfeNumeroFormatado = str_pad(ltrim($nfeNumero, '0'), 6, '0', STR_PAD_LEFT);
+            $nfeRes = $client->getNfes(['numero' => $nfeNumeroFormatado]);
             $nfeData = $nfeRes['body']['data'][0] ?? null;
 
             if ($nfeData) {
-                // Buscar detalhe da NF-e para pegar o pedido vinculado
-                $nfeDetalhe = $client->getNfe((int) $nfeData['id']);
-                $pedidoVinculado = $nfeDetalhe['body']['data']['pedidoVenda']['id'] ?? null;
+                // Buscar pedido vinculado à NF-e
+                $pedidoRes = $client->getPedidos(['idNotaFiscal' => (int) $nfeData['id']]);
+                $pedidoVinculado = $pedidoRes['body']['data'][0] ?? null;
 
                 if ($pedidoVinculado) {
-                    $res = $client->alterarSituacaoPedido((int) $pedidoVinculado, $this->situacaoId);
+                    $res = $client->alterarSituacaoPedido((int) $pedidoVinculado['id'], $this->situacaoId);
                     $erro = $res['body']['error']['message'] ?? $res['body']['error']['description'] ?? null;
                     $this->resultados[] = [
                         'nfe' => $nfeNumero,
-                        'pedido' => 'Bling #' . $pedidoVinculado,
+                        'pedido' => '#' . ($pedidoVinculado['numero'] ?? $pedidoVinculado['id']),
                         'success' => $res['success'],
                         'msg' => $res['success'] ? 'OK (via API)' : ('HTTP ' . ($res['http_code'] ?? '?') . ($erro ? " - {$erro}" : '')),
                     ];
