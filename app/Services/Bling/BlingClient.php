@@ -201,6 +201,25 @@ class BlingClient
     }
 
     /**
+     * Busca situações (status) de um módulo.
+     * Módulo 9 = Pedidos de Venda na API Bling v3.
+     */
+    public function getSituacoes(int $idModulo = 9): array
+    {
+        return $this->get("/situacoes/modulos/{$idModulo}");
+    }
+
+    /**
+     * Altera a situação de um pedido de venda.
+     */
+    public function alterarSituacaoPedido(int $pedidoId, int $situacaoId): array
+    {
+        return $this->patch("/pedidos/vendas/{$pedidoId}", [], [
+            'situacao' => ['id' => $situacaoId],
+        ]);
+    }
+
+    /**
      * Busca NF-e vinculada a um pedido pelo numeroPedidoLoja
      */
     public function getNfePorPedidoLoja(string $numeroPedidoLoja): ?array
