@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\CanalVenda;
 use App\Models\Cnpj;
 use App\Models\ImpostoMensal;
 use Filament\Pages\Page;
@@ -37,17 +38,30 @@ class CalculadoraML extends Page
     public ?array $resultados = null;
 
     // ─── Canais config ─────────────────────────────────────────
-    // canal_key => [label, cor, icone, comissao_pct, fixo, tipo_nota, cnpjs[]]
+
     private function getCanaisConfig(): array
     {
+        // Buscar tipo_nota e imposto_sobre_frete do cadastro
+        $canaisDB = CanalVenda::where('ativo', true)->get()->keyBy('nome_canal');
+        $mlDB = $canaisDB->get('Mercadolivre');
+        $shopeeDB = $canaisDB->get('Shopee');
+        $magaluDB = $canaisDB->get('Magalu');
+
+        $tipoNotaML = $mlDB->tipo_nota ?? 'produto';
+        $impostoSobreFreteML = (bool) ($mlDB->imposto_sobre_frete ?? false);
+        $tipoNotaShopee = $shopeeDB->tipo_nota ?? 'meia_nota';
+        $impostoSobreFreteShopee = (bool) ($shopeeDB->imposto_sobre_frete ?? false);
+        $tipoNotaMagalu = $magaluDB->tipo_nota ?? 'cheia';
+        $impostoSobreFreteMagalu = (bool) ($magaluDB->imposto_sobre_frete ?? false);
+
         return [
-            'ml_premium_1'  => ['label' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣', 'comissao_pct' => 16.5, 'fixo' => 0, 'tipo_nota' => 'produto', 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
-            'ml_classico_1' => ['label' => 'ML Clássico', 'cor' => '#6366f1', 'icone' => '🔵', 'comissao_pct' => 11.5, 'fixo' => 0, 'tipo_nota' => 'produto', 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
-            'ml_premium_2'  => ['label' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣', 'comissao_pct' => 16.5, 'fixo' => 0, 'tipo_nota' => 'produto', 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'ml'],
-            'ml_classico_2' => ['label' => 'ML Clássico', 'cor' => '#6366f1', 'icone' => '🔵', 'comissao_pct' => 11.5, 'fixo' => 0, 'tipo_nota' => 'produto', 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'ml'],
-            'shopee_1'      => ['label' => 'Shopee', 'cor' => '#ea580c', 'icone' => '🟠', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => 'meia_nota', 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'shopee'],
-            'shopee_2'      => ['label' => 'Shopee', 'cor' => '#ea580c', 'icone' => '🟠', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => 'meia_nota', 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'shopee'],
-            'magalu_1'      => ['label' => 'Magalu', 'cor' => '#2563eb', 'icone' => '🔷', 'comissao_pct' => 18, 'fixo' => 5, 'tipo_nota' => 'cheia', 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+            'ml_premium_1'  => ['label' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣', 'comissao_pct' => 16.5, 'fixo' => 0, 'tipo_nota' => $tipoNotaML, 'imposto_sobre_frete' => $impostoSobreFreteML, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
+            'ml_classico_1' => ['label' => 'ML Clássico', 'cor' => '#6366f1', 'icone' => '🔵', 'comissao_pct' => 11.5, 'fixo' => 0, 'tipo_nota' => $tipoNotaML, 'imposto_sobre_frete' => $impostoSobreFreteML, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
+            'ml_premium_2'  => ['label' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣', 'comissao_pct' => 16.5, 'fixo' => 0, 'tipo_nota' => $tipoNotaML, 'imposto_sobre_frete' => $impostoSobreFreteML, 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'ml'],
+            'ml_classico_2' => ['label' => 'ML Clássico', 'cor' => '#6366f1', 'icone' => '🔵', 'comissao_pct' => 11.5, 'fixo' => 0, 'tipo_nota' => $tipoNotaML, 'imposto_sobre_frete' => $impostoSobreFreteML, 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'ml'],
+            'shopee_1'      => ['label' => 'Shopee', 'cor' => '#ea580c', 'icone' => '🟠', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => $tipoNotaShopee, 'imposto_sobre_frete' => $impostoSobreFreteShopee, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'shopee'],
+            'shopee_2'      => ['label' => 'Shopee', 'cor' => '#ea580c', 'icone' => '🟠', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => $tipoNotaShopee, 'imposto_sobre_frete' => $impostoSobreFreteShopee, 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'shopee'],
+            'magalu_1'      => ['label' => 'Magalu', 'cor' => '#2563eb', 'icone' => '🔷', 'comissao_pct' => 18, 'fixo' => 5, 'tipo_nota' => $tipoNotaMagalu, 'imposto_sobre_frete' => $impostoSobreFreteMagalu, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
         ];
     }
 
@@ -188,16 +202,16 @@ class CalculadoraML extends Page
     }
 
     /**
-     * Calcula imposto baseado no tipo_nota do canal
+     * Calcula imposto baseado no tipo_nota e imposto_sobre_frete do canal
      * cheia = imposto sobre preço total
-     * produto = imposto sobre (preço - frete)
+     * produto = imposto sobre (preço - frete), a menos que imposto_sobre_frete=true
      * meia_nota = imposto sobre metade do preço
      */
-    private function calcularImposto(float $preco, float $frete, string $tipoNota, float $impostoPct): float
+    private function calcularImposto(float $preco, float $frete, string $tipoNota, float $impostoPct, bool $impostoSobreFrete = false): float
     {
         $base = match ($tipoNota) {
-            'produto' => $preco - $frete,
-            'meia_nota' => $preco / 2,
+            'produto' => $impostoSobreFrete ? $preco : ($preco - $frete),
+            'meia_nota' => $impostoSobreFrete ? ($preco + $frete) / 2 : $preco / 2,
             default => $preco, // cheia
         };
         return round(max(0, $base) * $impostoPct / 100, 2);
@@ -251,7 +265,7 @@ class CalculadoraML extends Page
                 $frete = 0;
             }
 
-            $imposto = $this->calcularImposto($preco, $frete, $cfg['tipo_nota'], $impostoPct);
+            $imposto = $this->calcularImposto($preco, $frete, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete']);
             $recebe = round($preco - $comissao - $frete, 2);
             $margem = round($recebe - $custoTotal - $imposto, 2);
 
@@ -324,7 +338,7 @@ class CalculadoraML extends Page
                     $frete = 0;
                 }
 
-                $imposto = $this->calcularImposto($preco, $frete, $cfg['tipo_nota'], $impostoPct);
+                $imposto = $this->calcularImposto($preco, $frete, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete']);
                 $recebe = round($preco - $comissao - $frete, 2);
                 $margem = round($recebe - $custoTotal - $imposto, 2);
 
@@ -383,7 +397,7 @@ class CalculadoraML extends Page
             $preco = $custoTotal * 2;
             for ($i = 0; $i < 25; $i++) {
                 $frete = $this->calcularFreteML($preco, $pesoTotal);
-                $imposto = $this->calcularImposto($preco, $frete, 'produto', $impostoPct);
+                $imposto = $this->calcularImposto($preco, $frete, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete'] ?? false);
                 $comissao = $preco * $cfg['comissao_pct'] / 100;
                 $novoPreco = round(($custoTotal + $frete + $imposto + $comissao) / (1 - ($margemPct / 100)), 2);
                 if (abs($novoPreco - $preco) < 0.01) break;
@@ -396,7 +410,7 @@ class CalculadoraML extends Page
             $preco = $custoTotal * 2;
             for ($i = 0; $i < 30; $i++) {
                 $s = $this->calcularComissaoShopee($preco);
-                $imposto = $this->calcularImposto($preco, 0, 'meia_nota', $impostoPct);
+                $imposto = $this->calcularImposto($preco, 0, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete'] ?? false);
                 $novoPreco = round(($custoTotal + $s['fixo'] + $imposto) / (1 - ($s['pct'] / 100) - ($margemPct / 100)), 2);
                 if (abs($novoPreco - $preco) < 0.01) break;
                 $preco = $novoPreco;
