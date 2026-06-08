@@ -18,6 +18,7 @@ class CompararEstoqueBling extends Page
     protected static string $view = 'filament.pages.comparar-estoque-bling';
 
     public string $filtro = 'divergencias';
+    public string $filtroTipo = 'todos';
     public string $buscaSku = '';
     public array $resultados = [];
     public bool $consultaRealizada = false;
@@ -42,7 +43,7 @@ class CompararEstoqueBling extends Page
     {
         if (empty($this->buscaSku)) {
             // Consulta completa: rodar via Job
-            \App\Jobs\CompararEstoqueBlingJob::dispatch($this->filtro, auth()->id());
+            \App\Jobs\CompararEstoqueBlingJob::dispatch($this->filtro, auth()->id(), $this->filtroTipo);
             $this->jobRodando = true;
             Notification::make()->title('Comparação iniciada em background. Recarregue a página em alguns minutos.')->info()->send();
             return;
@@ -68,6 +69,12 @@ class CompararEstoqueBling extends Page
                 $q->where('sku', 'like', "%{$this->buscaSku}%")
                   ->orWhere('nome', 'like', "%{$this->buscaSku}%");
             });
+
+        if ($this->filtroTipo === 'simples') {
+            $query->whereNotIn('formato', ['E', 'C']);
+        } elseif ($this->filtroTipo === 'kit') {
+            $query->whereIn('formato', ['E', 'C']);
+        }
         $produtos = $query->orderBy('sku')->limit(20)->get();
 
         $resultados = [];

@@ -3,12 +3,20 @@
 
         {{-- Filtros --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Modo</label>
                     <select wire:model="filtro" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-sm">
                         <option value="divergencias">Somente Divergências</option>
                         <option value="todos">Todos os Produtos</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo</label>
+                    <select wire:model="filtroTipo" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-sm">
+                        <option value="todos">Todos</option>
+                        <option value="simples">Simples</option>
+                        <option value="kit">Kit / Composto</option>
                     </select>
                 </div>
                 <div class="md:col-span-2">

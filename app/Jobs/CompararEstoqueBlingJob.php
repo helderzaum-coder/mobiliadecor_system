@@ -21,7 +21,8 @@ class CompararEstoqueBlingJob implements ShouldQueue
 
     public function __construct(
         private readonly string $filtro = 'divergencias',
-        private readonly ?int $userId = null
+        private readonly ?int $userId = null,
+        private readonly string $filtroTipo = 'todos'
     ) {}
 
     public function handle(): void
@@ -40,7 +41,15 @@ class CompararEstoqueBlingJob implements ShouldQueue
                 return;
             }
 
-            $produtos = ProdutoEstoque::where('ativo', true)->orderBy('sku')->get();
+            $query = ProdutoEstoque::where('ativo', true)->orderBy('sku');
+
+            if ($this->filtroTipo === 'simples') {
+                $query->whereNotIn('formato', ['E', 'C']);
+            } elseif ($this->filtroTipo === 'kit') {
+                $query->whereIn('formato', ['E', 'C']);
+            }
+
+            $produtos = $query->get();
             $resultados = [];
             $totalProdutos = 0;
             $totalDivergencias = 0;
