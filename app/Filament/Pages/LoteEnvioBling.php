@@ -30,20 +30,30 @@ class LoteEnvioBling extends Page
     public function carregarSituacoes(): void
     {
         $client = new BlingClient($this->blingAccount);
-        $response = $client->getSituacoes(9); // 9 = Pedidos de Venda
+
+        // Primeiro descobrir o ID do módulo "Vendas" dinamicamente
+        $modulos = $client->get('/situacoes/modulos');
+        $moduloVendasId = null;
+
+        if ($modulos['success']) {
+            foreach ($modulos['body']['data'] ?? [] as $mod) {
+                if ($mod['nome'] === 'Vendas') {
+                    $moduloVendasId = $mod['id'];
+                    break;
+                }
+            }
+        }
+
+        if (!$moduloVendasId) {
+            return;
+        }
+
+        $response = $client->getSituacoes($moduloVendasId);
 
         if ($response['success']) {
             $this->situacoes = collect($response['body']['data'] ?? [])
                 ->map(fn ($s) => ['id' => $s['id'], 'nome' => $s['nome']])
                 ->toArray();
-        } else {
-            // Tentar módulo 5 (Vendas) como fallback
-            $response = $client->getSituacoes(5);
-            if ($response['success']) {
-                $this->situacoes = collect($response['body']['data'] ?? [])
-                    ->map(fn ($s) => ['id' => $s['id'], 'nome' => $s['nome']])
-                    ->toArray();
-            }
         }
     }
 
