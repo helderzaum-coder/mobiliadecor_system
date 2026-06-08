@@ -101,11 +101,12 @@ class LoteEnvioBling extends Page
 
                 if ($venda && $venda->bling_id) {
                     $res = $client->alterarSituacaoPedido((int) $venda->bling_id, $this->situacaoId);
+                    $erro = $res['body']['error']['message'] ?? $res['body']['error']['description'] ?? null;
                     $this->resultados[] = [
                         'nfe' => $nfeNumero,
                         'pedido' => $venda->numero_pedido_canal,
                         'success' => $res['success'],
-                        'msg' => $res['success'] ? 'OK' : ('Erro HTTP ' . ($res['http_code'] ?? '?')),
+                        'msg' => $res['success'] ? 'OK' : ('HTTP ' . ($res['http_code'] ?? '?') . ($erro ? " - {$erro}" : '')),
                     ];
                     $res['success'] ? $sucesso++ : $erros++;
                     continue;
@@ -133,11 +134,12 @@ class LoteEnvioBling extends Page
             }
 
             $res = $client->alterarSituacaoPedido((int) $staging->bling_id, $this->situacaoId);
+            $erro = $res['body']['error']['message'] ?? $res['body']['error']['description'] ?? null;
             $this->resultados[] = [
                 'nfe' => $nfeNumero,
                 'pedido' => $staging->numero_pedido,
                 'success' => $res['success'],
-                'msg' => $res['success'] ? 'OK' : ('Erro HTTP ' . ($res['http_code'] ?? '?')),
+                'msg' => $res['success'] ? 'OK' : ('HTTP ' . ($res['http_code'] ?? '?') . ($erro ? " - {$erro}" : '')),
             ];
             $res['success'] ? $sucesso++ : $erros++;
         }
