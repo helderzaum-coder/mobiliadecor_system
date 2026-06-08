@@ -183,6 +183,18 @@
                                 @endif
                             </div>
 
+                            @php
+                                $comissaoAtual = $precoOriginal * ($comissaoPercentEfetivo / 100);
+                                $impostoAtual = $precoOriginal * ($impPercent / 100);
+                                $custoTotalAtual = $frete + $comissaoAtual + $impostoAtual + $custoProduto;
+                                $margemAtual = $precoOriginal - $custoTotalAtual;
+                                $margemAtualPercent = $precoOriginal > 0 ? ($margemAtual / $precoOriginal) * 100 : 0;
+                            @endphp
+                            <div class="p-2 rounded bg-gray-50 dark:bg-gray-900/50 mb-1 flex items-center gap-3">
+                                <span class="text-xs text-gray-500">Margem atual (s/ promo):</span>
+                                <span class="text-xs font-bold" style="color: {{ $margemAtualPercent >= $margemDesejada ? '#15803d' : ($margemAtualPercent >= 0 ? '#a16207' : '#dc2626') }}">R$ {{ number_format($margemAtual, 2, ',', '.') }} ({{ number_format($margemAtualPercent, 1) }}%)</span>
+                            </div>
+
                             <div class="flex items-center gap-3 flex-wrap p-2 rounded {{ $margemPercent >= $margemDesejada ? 'bg-green-50 dark:bg-green-900/20' : ($margemPercent >= 0 ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-red-50 dark:bg-red-900/20') }}">
                                 <div class="flex items-center gap-2">
                                     <span class="text-xs text-gray-500">R$</span>
@@ -452,6 +464,18 @@
                             </div>
                             @endif
                         </div>
+                        @php
+                            $comissaoAtual2 = $precoOriginal * ($comissaoPercent / 100);
+                            $impostoAtual2 = $precoOriginal * ($impPercent / 100);
+                            $custoTotalAtual2 = $frete + $comissaoAtual2 + $impostoAtual2 + $custoProduto;
+                            $margemAtual2 = $precoOriginal - $custoTotalAtual2;
+                            $margemAtualPercent2 = $precoOriginal > 0 ? ($margemAtual2 / $precoOriginal) * 100 : 0;
+                        @endphp
+                        <div class="p-2 rounded bg-gray-50 dark:bg-gray-900/50 mb-1 flex items-center gap-3">
+                            <span class="text-xs text-gray-500">Margem atual (s/ promo):</span>
+                            <span class="text-xs font-bold" style="color: {{ $margemAtualPercent2 >= $margemDesejada ? '#15803d' : ($margemAtualPercent2 >= 0 ? '#a16207' : '#dc2626') }}">R$ {{ number_format($margemAtual2, 2, ',', '.') }} ({{ number_format($margemAtualPercent2, 1) }}%)</span>
+                        </div>
+
                         <div class="flex items-center gap-3 flex-wrap p-2 rounded {{ $margemPercent >= $margemDesejada ? 'bg-green-50 dark:bg-green-900/20' : ($margemPercent >= 0 ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-red-50 dark:bg-red-900/20') }}">
                             <div class="flex items-center gap-2">
                                 <span class="text-xs text-gray-600 dark:text-gray-400">Preço promo:</span>
