@@ -229,10 +229,16 @@
                                 <span style="color:#6b7280;">Recebe</span>
                                 <span style="color:#f59e0b;font-weight:600;">R$ {{ number_format($canal['recebe'], 2, ',', '.') }}</span>
                             </div>
-                            <div style="display:flex;justify-content:space-between;padding:4px 0;">
+                            <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1f2937;">
                                 <span style="color:#6b7280;">Custo ({{ $r['quantidade'] }} × R$ {{ number_format($r['custo_unitario'], 2, ',', '.') }})</span>
                                 <span style="color:#ef4444;">- R$ {{ number_format($r['custo_total'], 2, ',', '.') }}</span>
                             </div>
+                            @if(($r['imposto_pct'] ?? 0) > 0)
+                            <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1f2937;">
+                                <span style="color:#6b7280;">Imposto ({{ $r['imposto_pct'] }}%)</span>
+                                <span style="color:#ef4444;">- R$ {{ number_format($r['imposto'], 2, ',', '.') }}</span>
+                            </div>
+                            @endif
                         </div>
                     </div>
                 @endforeach
@@ -287,10 +293,16 @@
                                     <span style="color:#6b7280;">Recebe</span>
                                     <span style="color:#f59e0b;font-weight:600;">R$ {{ number_format($det['recebe'], 2, ',', '.') }}</span>
                                 </div>
-                                <div style="display:flex;justify-content:space-between;padding:4px 0;">
+                                <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1f2937;">
                                     <span style="color:#6b7280;">Custo</span>
                                     <span style="color:#ef4444;">- R$ {{ number_format($r['custo_total'], 2, ',', '.') }}</span>
                                 </div>
+                                @if(($r['imposto_pct'] ?? 0) > 0)
+                                <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1f2937;">
+                                    <span style="color:#6b7280;">Imposto ({{ $r['imposto_pct'] }}%)</span>
+                                    <span style="color:#ef4444;">- R$ {{ number_format($det['preco_venda'] * $r['imposto_pct'] / 100, 2, ',', '.') }}</span>
+                                </div>
+                                @endif
                             </div>
                         @endif
                     </div>
