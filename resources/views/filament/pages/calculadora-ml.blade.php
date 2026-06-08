@@ -52,7 +52,7 @@
         </div>
         @endif
 
-        {{-- Preço de Venda OU Margem Desejada --}}
+        {{-- Preço de Venda OU Margens De/Por --}}
         <div style="display:flex;gap:16px;">
             @if($modo === 'margem')
             <div style="flex:1;">
@@ -63,9 +63,16 @@
             </div>
             @else
             <div style="flex:1;">
-                <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">Margem Desejada (%) *</label>
-                <input type="number" step="0.1" wire:model="margem_desejada" placeholder="20"
+                <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">% "Preço De" (margem vitrine)</label>
+                <input type="number" step="0.1" wire:model="preco_de_pct" placeholder="30"
                     style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:16px;">
+                <div style="font-size:10px;color:#6b7280;margin-top:2px;">Preço cheio / "riscado"</div>
+            </div>
+            <div style="flex:1;">
+                <label style="font-size:12px;font-weight:600;color:#9ca3af;display:block;margin-bottom:4px;">% "Preço Por" (margem promo)</label>
+                <input type="number" step="0.1" wire:model="preco_por_pct" placeholder="20"
+                    style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:16px;">
+                <div style="font-size:10px;color:#6b7280;margin-top:2px;">Preço promocional / final</div>
             </div>
             @endif
             <div style="flex:1;">
@@ -129,9 +136,17 @@
                 ⚠️ {{ $resultados['erro'] }}
             </div>
         @else
-            @php $r = $resultados; @endphp
+            @php
+                $r = $resultados;
+                $canalConfig = [
+                    'ml_premium' => ['label' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣'],
+                    'ml_classico' => ['label' => 'ML Clássico', 'cor' => '#3b82f6', 'icone' => '🔵'],
+                    'shopee' => ['label' => 'Shopee', 'cor' => '#ea580c', 'icone' => '🟠'],
+                ];
+            @endphp
 
-            {{-- Cards por canal --}}
+            @if($r['modo'] === 'margem')
+            {{-- Modo Margem: cards por canal --}}
             <div style="display:flex;gap:16px;margin-top:20px;flex-wrap:wrap;">
                 @foreach($r['canais'] as $canal)
                     @php
@@ -139,32 +154,15 @@
                         $statusMsg = $canal['margem_pct'] >= 25 ? '🎉 Excelente' : ($canal['margem_pct'] >= 15 ? '✅ Saudável' : ($canal['margem_pct'] >= 5 ? '⚠️ Baixa' : '🚨 Crítica'));
                     @endphp
                     <div style="flex:1;min-width:280px;border-radius:12px;border:2px solid {{ $canal['cor'] }};background:rgba(0,0,0,.2);padding:20px;">
-                        {{-- Header canal --}}
                         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                            <div style="font-size:16px;font-weight:700;color:{{ $canal['cor'] }};">
-                                {{ $canal['icone'] }} {{ $canal['canal'] }}
-                            </div>
-                            <div style="font-size:11px;padding:4px 8px;border-radius:6px;background:{{ $mc }}22;color:{{ $mc }};font-weight:600;">
-                                {{ $statusMsg }}
-                            </div>
+                            <div style="font-size:16px;font-weight:700;color:{{ $canal['cor'] }};">{{ $canal['icone'] }} {{ $canal['canal'] }}</div>
+                            <div style="font-size:11px;padding:4px 8px;border-radius:6px;background:{{ $mc }}22;color:{{ $mc }};font-weight:600;">{{ $statusMsg }}</div>
                         </div>
-
-                        {{-- Preço ideal (modo preco_ideal) --}}
-                        @if($r['modo'] === 'preco_ideal' && isset($canal['preco_venda']))
-                        <div style="text-align:center;padding:12px;margin-bottom:12px;border-radius:8px;background:rgba(255,255,255,.05);">
-                            <div style="font-size:11px;color:#9ca3af;">Preço de Venda</div>
-                            <div style="font-size:28px;font-weight:800;color:{{ $canal['cor'] }};">R$ {{ number_format($canal['preco_venda'], 2, ',', '.') }}</div>
-                        </div>
-                        @endif
-
-                        {{-- Margem --}}
                         <div style="text-align:center;padding:10px;margin-bottom:12px;border-radius:8px;border:1px solid {{ $mc }};background:{{ $mc }}11;">
                             <div style="font-size:11px;color:#9ca3af;">Margem</div>
                             <div style="font-size:22px;font-weight:800;color:{{ $mc }};">R$ {{ number_format($canal['margem'], 2, ',', '.') }} <span style="font-size:14px;">({{ $canal['margem_pct'] }}%)</span></div>
                         </div>
-
-                        {{-- Detalhes --}}
-                        <div style="font-size:12px;space-y:4px;">
+                        <div style="font-size:12px;">
                             <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1f2937;">
                                 <span style="color:#6b7280;">Comissão ({{ $canal['comissao_pct'] }}%{{ isset($canal['comissao_fixa']) ? ' + R$'.$canal['comissao_fixa'] : '' }})</span>
                                 <span style="color:#ef4444;">- R$ {{ number_format($canal['comissao'], 2, ',', '.') }}</span>
@@ -179,20 +177,74 @@
                                 <span style="color:#6b7280;">Recebe</span>
                                 <span style="color:#f59e0b;font-weight:600;">R$ {{ number_format($canal['recebe'], 2, ',', '.') }}</span>
                             </div>
-                            <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1f2937;">
+                            <div style="display:flex;justify-content:space-between;padding:4px 0;">
                                 <span style="color:#6b7280;">Custo ({{ $r['quantidade'] }} × R$ {{ number_format($r['custo_unitario'], 2, ',', '.') }})</span>
                                 <span style="color:#ef4444;">- R$ {{ number_format($r['custo_total'], 2, ',', '.') }}</span>
                             </div>
-                            @if(($r['imposto_pct'] ?? 0) > 0)
-                            <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1f2937;">
-                                <span style="color:#6b7280;">Imposto ({{ $r['imposto_pct'] }}%)</span>
-                                <span style="color:#ef4444;">- R$ {{ number_format(($canal['preco_venda'] ?? $r['preco_venda'] ?? 0) * $r['imposto_pct'] / 100, 2, ',', '.') }}</span>
-                            </div>
-                            @endif
                         </div>
                     </div>
                 @endforeach
             </div>
+
+            @else
+            {{-- Modo Preço Ideal: De / Por por canal --}}
+            <div style="display:flex;gap:16px;margin-top:20px;flex-wrap:wrap;">
+                @foreach($r['canais'] as $key => $dados)
+                    @php $cfg = $canalConfig[$key]; @endphp
+                    <div style="flex:1;min-width:280px;border-radius:12px;border:2px solid {{ $cfg['cor'] }};background:rgba(0,0,0,.2);padding:20px;">
+                        <div style="font-size:16px;font-weight:700;color:{{ $cfg['cor'] }};margin-bottom:16px;">{{ $cfg['icone'] }} {{ $cfg['label'] }}</div>
+
+                        {{-- Preços De / Por --}}
+                        <div style="text-align:center;margin-bottom:16px;">
+                            @if(isset($dados['preco_de']))
+                            <div style="margin-bottom:8px;">
+                                <span style="font-size:11px;color:#9ca3af;">De:</span>
+                                <span style="font-size:20px;font-weight:700;color:#9ca3af;text-decoration:line-through;margin-left:4px;">R$ {{ number_format($dados['preco_de']['preco_venda'], 2, ',', '.') }}</span>
+                                <span style="font-size:10px;color:#6b7280;margin-left:4px;">({{ $r['preco_de_pct'] }}%)</span>
+                            </div>
+                            @endif
+                            @if(isset($dados['preco_por']))
+                            <div>
+                                <span style="font-size:11px;color:#10b981;">Por:</span>
+                                <span style="font-size:28px;font-weight:800;color:{{ $cfg['cor'] }};margin-left:4px;">R$ {{ number_format($dados['preco_por']['preco_venda'], 2, ',', '.') }}</span>
+                                <span style="font-size:10px;color:#6b7280;margin-left:4px;">({{ $r['preco_por_pct'] }}%)</span>
+                            </div>
+                            @endif
+                        </div>
+
+                        {{-- Detalhes do Preço Por (ou De se só tem De) --}}
+                        @php $det = $dados['preco_por'] ?? $dados['preco_de'] ?? null; @endphp
+                        @if($det)
+                            @php $mc = $det['margem'] >= 0 ? '#10b981' : '#ef4444'; @endphp
+                            <div style="text-align:center;padding:8px;margin-bottom:12px;border-radius:8px;border:1px solid {{ $mc }};background:{{ $mc }}11;">
+                                <div style="font-size:10px;color:#9ca3af;">Margem (preço final)</div>
+                                <div style="font-size:18px;font-weight:700;color:{{ $mc }};">R$ {{ number_format($det['margem'], 2, ',', '.') }} ({{ $det['margem_pct'] }}%)</div>
+                            </div>
+                            <div style="font-size:12px;">
+                                <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1f2937;">
+                                    <span style="color:#6b7280;">Comissão ({{ $det['comissao_pct'] }}%{{ isset($det['comissao_fixa']) ? ' + R$'.$det['comissao_fixa'] : '' }})</span>
+                                    <span style="color:#ef4444;">- R$ {{ number_format($det['comissao'], 2, ',', '.') }}</span>
+                                </div>
+                                @if($det['frete'] > 0)
+                                <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1f2937;">
+                                    <span style="color:#6b7280;">Frete ({{ $r['faixa_peso'] ?? 'N/A' }})</span>
+                                    <span style="color:#ef4444;">- R$ {{ number_format($det['frete'], 2, ',', '.') }}</span>
+                                </div>
+                                @endif
+                                <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1f2937;">
+                                    <span style="color:#6b7280;">Recebe</span>
+                                    <span style="color:#f59e0b;font-weight:600;">R$ {{ number_format($det['recebe'], 2, ',', '.') }}</span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;padding:4px 0;">
+                                    <span style="color:#6b7280;">Custo</span>
+                                    <span style="color:#ef4444;">- R$ {{ number_format($r['custo_total'], 2, ',', '.') }}</span>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+            @endif
         @endif
     @endif
 </x-filament-panels::page>
