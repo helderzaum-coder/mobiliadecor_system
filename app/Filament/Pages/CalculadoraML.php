@@ -79,6 +79,9 @@ class CalculadoraML extends Page
         [200, 499.99, 14, 26], [500, 999999, 14, 26],
     ];
 
+    private static float $magaluComissaoPct = 18;
+    private static float $magaluFixo = 5;
+
     // ─── Helpers ───────────────────────────────────────────────
 
     private function getPesoCubado(): float
@@ -149,6 +152,15 @@ class CalculadoraML extends Page
         return ['comissao' => round($preco * $last[2] / 100 + $last[3], 2), 'pct' => $last[2], 'fixo' => $last[3]];
     }
 
+    private function calcularComissaoMagalu(float $preco): array
+    {
+        return [
+            'comissao' => round($preco * self::$magaluComissaoPct / 100 + self::$magaluFixo, 2),
+            'pct' => self::$magaluComissaoPct,
+            'fixo' => self::$magaluFixo,
+        ];
+    }
+
     // ─── Cálculos ──────────────────────────────────────────────
 
     public function calcular(): void
@@ -212,6 +224,19 @@ class CalculadoraML extends Page
             'margem_pct' => $preco > 0 ? round(($margemShopee / $preco) * 100, 1) : 0,
         ];
 
+        // Magalu
+        $mg = $this->calcularComissaoMagalu($preco);
+        $recebeMagalu = round($preco - $mg['comissao'], 2);
+        $margemMagalu = round($recebeMagalu - $custoTotal - $imposto, 2);
+        $canais[] = [
+            'canal' => 'Magalu', 'cor' => '#2563eb', 'icone' => '🔷',
+            'comissao_pct' => $mg['pct'], 'comissao' => $mg['comissao'],
+            'comissao_fixa' => $mg['fixo'],
+            'frete' => 0, 'recebe' => $recebeMagalu,
+            'margem' => $margemMagalu,
+            'margem_pct' => $preco > 0 ? round(($margemMagalu / $preco) * 100, 1) : 0,
+        ];
+
         $faixaPeso = $pesoTotal > 0 ? $this->getFaixaPesoLabel($this->detectarFaixaPeso($pesoTotal)) : null;
         if (!$this->frete_manual_override && $this->tipo_frete === 'ME2') $this->custo_frete_manual = $freteML;
 
@@ -254,6 +279,10 @@ class CalculadoraML extends Page
             // Shopee
             $p = $this->calcularPrecoIterativoShopee($custoTotal, $impostoPct, $mp);
             if ($p) $canais['shopee'][$tipo] = $this->montarResultadoCanal($p, $custoTotal, $pesoTotal, 0, $impostoPct, 'shopee');
+
+            // Magalu
+            $p = $this->calcularPrecoIterativoFixo($custoTotal, self::$magaluComissaoPct, self::$magaluFixo, $impostoPct, $mp);
+            if ($p) $canais['magalu'][$tipo] = $this->montarResultadoCanal($p, $custoTotal, $pesoTotal, 0, $impostoPct, 'magalu');
         }
 
         $this->resultados = [
@@ -277,6 +306,11 @@ class CalculadoraML extends Page
             $comissao = $s['comissao'];
             $frete = 0;
             $extra = ['comissao_pct' => $s['pct'], 'comissao_fixa' => $s['fixo']];
+        } elseif ($tipo === 'magalu') {
+            $mg = $this->calcularComissaoMagalu($preco);
+            $comissao = $mg['comissao'];
+            $frete = 0;
+            $extra = ['comissao_pct' => $mg['pct'], 'comissao_fixa' => $mg['fixo']];
         } else {
             $comissao = round($preco * $comissaoPct / 100, 2);
             $frete = $this->calcularFreteML($preco, $pesoTotal);
@@ -326,6 +360,13 @@ class CalculadoraML extends Page
             $preco = $novo;
         }
         return $preco;
+    }
+
+    private function calcularPrecoIterativoFixo(float $custoTotal, float $comissaoPct, float $fixo, float $impostoPct, float $margemPct): ?float
+    {
+        $divisor = 1 - ($comissaoPct / 100) - ($impostoPct / 100) - ($margemPct / 100);
+        if ($divisor <= 0) return null;
+        return round(($custoTotal + $fixo) / $divisor, 2);
     }
 
     public function limpar(): void

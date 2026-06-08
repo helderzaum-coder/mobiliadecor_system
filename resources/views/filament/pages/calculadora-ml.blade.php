@@ -193,6 +193,7 @@
                     'ml_premium' => ['label' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣'],
                     'ml_classico' => ['label' => 'ML Clássico', 'cor' => '#3b82f6', 'icone' => '🔵'],
                     'shopee' => ['label' => 'Shopee', 'cor' => '#ea580c', 'icone' => '🟠'],
+                    'magalu' => ['label' => 'Magalu', 'cor' => '#2563eb', 'icone' => '🔷'],
                 ];
             @endphp
 
