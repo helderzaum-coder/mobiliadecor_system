@@ -136,9 +136,43 @@ class LoteEnvioBling extends Page
             $nfeData = $nfeRes['body']['data'][0] ?? null;
 
             if ($nfeData) {
-                // Buscar pedido vinculado à NF-e
-                $pedidoRes = $client->getPedidos(['idNotaFiscal' => (int) $nfeData['id']]);
-                $pedidoVinculado = $pedidoRes['body']['data'][0] ?? null;
+                // Buscar detalhes da NF-e para pegar valor e contato
+                $nfeDetalhe = $client->getNfe((int) $nfeData['id']);
+                $nfeInfo = $nfeDetalhe['body']['data'] ?? $nfeData;
+                $nfeValor = (float) ($nfeInfo['valorNota'] ?? 0);
+                $contatoId = $nfeInfo['contato']['id'] ?? $nfeData['contato']['id'] ?? null;
+
+                $pedidoVinculado = null;
+
+                if ($contatoId) {
+                    // Buscar pedidos deste contato
+                    $pedidosRes = $client->getPedidos(['idContato' => (int) $contatoId]);
+                    $pedidos = $pedidosRes['body']['data'] ?? [];
+
+                    // Priorizar pedido com valor total próximo ao valor da NF-e
+                    // e situação que permite transição (Verificado, checkout, ML Etiqueta, Em andamento)
+                    $situacoesValidas = [24, 131906, 393372, 15, 733117, 733670];
+                    foreach ($pedidos as $p) {
+                        $sitId = $p['situacao']['id'] ?? 0;
+                        if (!in_array($sitId, $situacoesValidas)) continue;
+
+                        // Se valor bate (tolerância de R$1), é o pedido certo
+                        if ($nfeValor > 0 && abs((float) $p['total'] - $nfeValor) <= 1.00) {
+                            $pedidoVinculado = $p;
+                            break;
+                        }
+                    }
+
+                    // Se não achou por valor, pegar o primeiro com situação válida
+                    if (!$pedidoVinculado) {
+                        foreach ($pedidos as $p) {
+                            if (in_array($p['situacao']['id'] ?? 0, $situacoesValidas)) {
+                                $pedidoVinculado = $p;
+                                break;
+                            }
+                        }
+                    }
+                }
 
                 if ($pedidoVinculado) {
                     $res = $client->alterarSituacaoPedido((int) $pedidoVinculado['id'], $this->situacaoId);
