@@ -36,6 +36,47 @@
             </div>
         </div>
 
+        {{-- Cubagem ML (toggle) --}}
+        <div>
+            <button wire:click="$set('usar_cubagem', {{ $usar_cubagem ? 'false' : 'true' }})"
+                style="padding:8px 14px;font-size:12px;border-radius:8px;border:1px solid {{ $usar_cubagem ? '#3b82f6' : '#374151' }};cursor:pointer;
+                background:{{ $usar_cubagem ? 'rgba(59,130,246,.15)' : 'transparent' }};color:{{ $usar_cubagem ? '#3b82f6' : '#9ca3af' }};">
+                📦 {{ $usar_cubagem ? 'Fechar Cubagem' : 'Calcular Cubagem (ML)' }}
+            </button>
+
+            @if($usar_cubagem)
+            <div style="display:flex;gap:12px;margin-top:10px;padding:12px 16px;border-radius:8px;border:1px solid #3b82f6;background:#111827;">
+                <div style="flex:1;">
+                    <label style="font-size:11px;color:#9ca3af;display:block;margin-bottom:2px;">Altura (cm)</label>
+                    <input type="number" step="0.1" wire:model="cubagem_altura" placeholder="0"
+                        style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid #374151;background:#1f2937;color:#fff;font-size:14px;">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:11px;color:#9ca3af;display:block;margin-bottom:2px;">Comprimento (cm)</label>
+                    <input type="number" step="0.1" wire:model="cubagem_comprimento" placeholder="0"
+                        style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid #374151;background:#1f2937;color:#fff;font-size:14px;">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:11px;color:#9ca3af;display:block;margin-bottom:2px;">Largura (cm)</label>
+                    <input type="number" step="0.1" wire:model="cubagem_largura" placeholder="0"
+                        style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid #374151;background:#1f2937;color:#fff;font-size:14px;">
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;">
+                    @if($cubagem_altura && $cubagem_comprimento && $cubagem_largura)
+                        @php $pesoCubado = round(($cubagem_altura * $cubagem_comprimento * $cubagem_largura) / 6000, 3); @endphp
+                        <div style="font-size:11px;color:#6b7280;">Peso Cubado:</div>
+                        <div style="font-size:16px;font-weight:700;color:#3b82f6;">{{ number_format($pesoCubado, 3, ',', '.') }} kg</div>
+                        @if($peso_unitario && $pesoCubado > $peso_unitario)
+                            <div style="font-size:10px;color:#f59e0b;">⚠️ Cubado > Real (será usado)</div>
+                        @endif
+                    @else
+                        <div style="font-size:11px;color:#6b7280;">A×C×L / 6000</div>
+                    @endif
+                </div>
+            </div>
+            @endif
+        </div>
+
         {{-- Info calculada --}}
         @if($custo_produto && $quantidade > 0)
         <div style="display:flex;gap:16px;padding:10px 16px;border-radius:8px;background:#1f2937;">
@@ -43,10 +84,20 @@
                 <span style="color:#6b7280;">Custo Total:</span>
                 <span style="color:#e5e7eb;font-weight:600;">R$ {{ number_format(($custo_produto ?? 0) * $quantidade, 2, ',', '.') }}</span>
             </div>
-            @if($peso_unitario)
+            @if($peso_unitario || ($usar_cubagem && $cubagem_altura && $cubagem_comprimento && $cubagem_largura))
             <div style="flex:1;font-size:12px;">
-                <span style="color:#6b7280;">Peso Total:</span>
-                <span style="color:#e5e7eb;font-weight:600;">{{ number_format(($peso_unitario ?? 0) * $quantidade, 3, ',', '.') }} kg</span>
+                <span style="color:#6b7280;">Peso p/ Frete:</span>
+                @php
+                    $pesoReal = ($peso_unitario ?? 0) * $quantidade;
+                    $pesoCubadoTotal = $usar_cubagem && $cubagem_altura && $cubagem_comprimento && $cubagem_largura
+                        ? round(($cubagem_altura * $cubagem_comprimento * $cubagem_largura) / 6000, 3) * $quantidade
+                        : 0;
+                    $pesoUsado = max($pesoReal, $pesoCubadoTotal);
+                @endphp
+                <span style="color:#e5e7eb;font-weight:600;">{{ number_format($pesoUsado, 3, ',', '.') }} kg</span>
+                @if($pesoCubadoTotal > $pesoReal)
+                    <span style="font-size:10px;color:#3b82f6;">(cubado)</span>
+                @endif
             </div>
             @endif
         </div>

@@ -22,6 +22,12 @@ class CalculadoraML extends Page
     public ?float $peso_unitario = null;
     public int $quantidade = 1;
 
+    // Cubagem ML
+    public bool $usar_cubagem = false;
+    public ?float $cubagem_altura = null;
+    public ?float $cubagem_comprimento = null;
+    public ?float $cubagem_largura = null;
+
     // Frete ML
     public string $tipo_frete = 'ME2';
     public ?float $custo_frete_manual = null;
@@ -75,7 +81,18 @@ class CalculadoraML extends Page
 
     // ─── Helpers ───────────────────────────────────────────────
 
-    private function getPesoTotal(): float { return round(($this->peso_unitario ?? 0) * $this->quantidade, 3); }
+    private function getPesoCubado(): float
+    {
+        if (!$this->usar_cubagem || !$this->cubagem_altura || !$this->cubagem_comprimento || !$this->cubagem_largura) return 0;
+        return round(($this->cubagem_altura * $this->cubagem_comprimento * $this->cubagem_largura) / 6000, 3);
+    }
+
+    private function getPesoTotal(): float
+    {
+        $pesoReal = round(($this->peso_unitario ?? 0) * $this->quantidade, 3);
+        $pesoCubado = $this->getPesoCubado() * $this->quantidade;
+        return max($pesoReal, $pesoCubado);
+    }
     private function getCustoTotal(): float { return round(($this->custo_produto ?? 0) * $this->quantidade, 2); }
 
     private function detectarFaixaPeso(float $peso): string
@@ -323,6 +340,10 @@ class CalculadoraML extends Page
         $this->quantidade = 1;
         $this->resultados = null;
         $this->frete_manual_override = false;
+        $this->usar_cubagem = false;
+        $this->cubagem_altura = null;
+        $this->cubagem_comprimento = null;
+        $this->cubagem_largura = null;
     }
 
     public function updatedModo(): void { $this->resultados = null; }
