@@ -66,6 +66,10 @@ class CalculadoraML extends Page
         $tipoNotaAmazon = $amazonDB->tipo_nota ?? 'produto';
         $impostoSobreFreteAmazon = (bool) ($amazonDB->imposto_sobre_frete ?? false);
 
+        $viaDB = $canaisDB->get('Via (Cnova)');
+        $tipoNotaVia = $viaDB->tipo_nota ?? 'produto';
+        $impostoSobreFreteVia = (bool) ($viaDB->imposto_sobre_frete ?? false);
+
         return [
             'ml_premium_1'  => ['label' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣', 'comissao_pct' => 16.5, 'fixo' => 0, 'tipo_nota' => $tipoNotaML, 'imposto_sobre_frete' => $impostoSobreFreteML, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
             'ml_classico_1' => ['label' => 'ML Clássico', 'cor' => '#6366f1', 'icone' => '🔵', 'comissao_pct' => 11.5, 'fixo' => 0, 'tipo_nota' => $tipoNotaML, 'imposto_sobre_frete' => $impostoSobreFreteML, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
@@ -77,6 +81,7 @@ class CalculadoraML extends Page
             'webcon_1'      => ['label' => 'Webcontinental', 'cor' => '#0891b2', 'icone' => '🌐', 'comissao_pct' => 22, 'fixo' => 0, 'tipo_nota' => $tipoNotaWebcon, 'imposto_sobre_frete' => $impostoSobreFreteWebcon, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
             'madeiramadeira_1' => ['label' => 'Madeira Madeira', 'cor' => '#16a34a', 'icone' => '🌳', 'comissao_pct' => 19, 'fixo' => 0, 'tipo_nota' => $tipoNotaMM, 'imposto_sobre_frete' => $impostoSobreFreteMM, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
             'amazon_1'         => ['label' => 'Amazon', 'cor' => '#f59e0b', 'icone' => '📦', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => $tipoNotaAmazon, 'imposto_sobre_frete' => $impostoSobreFreteAmazon, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'amazon'],
+            'via_1'            => ['label' => 'Via (Cnova)', 'cor' => '#dc2626', 'icone' => '🔴', 'comissao_pct' => 17, 'fixo' => 0, 'tipo_nota' => $tipoNotaVia, 'imposto_sobre_frete' => $impostoSobreFreteVia, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
         ];
     }
 
