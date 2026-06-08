@@ -62,6 +62,10 @@ class CalculadoraML extends Page
         $tipoNotaMM = $mmDB->tipo_nota ?? 'cheia';
         $impostoSobreFreteMM = (bool) ($mmDB->imposto_sobre_frete ?? false);
 
+        $amazonDB = $canaisDB->get('Amazon');
+        $tipoNotaAmazon = $amazonDB->tipo_nota ?? 'produto';
+        $impostoSobreFreteAmazon = (bool) ($amazonDB->imposto_sobre_frete ?? false);
+
         return [
             'ml_premium_1'  => ['label' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣', 'comissao_pct' => 16.5, 'fixo' => 0, 'tipo_nota' => $tipoNotaML, 'imposto_sobre_frete' => $impostoSobreFreteML, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
             'ml_classico_1' => ['label' => 'ML Clássico', 'cor' => '#6366f1', 'icone' => '🔵', 'comissao_pct' => 11.5, 'fixo' => 0, 'tipo_nota' => $tipoNotaML, 'imposto_sobre_frete' => $impostoSobreFreteML, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
@@ -72,6 +76,7 @@ class CalculadoraML extends Page
             'magalu_1'      => ['label' => 'Magalu', 'cor' => '#2563eb', 'icone' => '🔷', 'comissao_pct' => 18, 'fixo' => 5, 'tipo_nota' => $tipoNotaMagalu, 'imposto_sobre_frete' => $impostoSobreFreteMagalu, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
             'webcon_1'      => ['label' => 'Webcontinental', 'cor' => '#0891b2', 'icone' => '🌐', 'comissao_pct' => 22, 'fixo' => 0, 'tipo_nota' => $tipoNotaWebcon, 'imposto_sobre_frete' => $impostoSobreFreteWebcon, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
             'madeiramadeira_1' => ['label' => 'Madeira Madeira', 'cor' => '#16a34a', 'icone' => '🌳', 'comissao_pct' => 19, 'fixo' => 0, 'tipo_nota' => $tipoNotaMM, 'imposto_sobre_frete' => $impostoSobreFreteMM, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+            'amazon_1'         => ['label' => 'Amazon', 'cor' => '#f59e0b', 'icone' => '📦', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => $tipoNotaAmazon, 'imposto_sobre_frete' => $impostoSobreFreteAmazon, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'amazon'],
         ];
     }
 
@@ -140,7 +145,20 @@ class CalculadoraML extends Page
         [200, 499.99, 14, 26], [500, 999999, 14, 26],
     ];
 
-    // ─── Helpers ───────────────────────────────────────────────
+    private static array $tabelaAmazon = [
+        [0.01, 199.99, 15, 0], [200, 999999, 10, 30],
+    ];
+
+    private function calcularComissaoAmazon(float $preco): array
+    {
+        foreach (self::$tabelaAmazon as [$min, $max, $pct, $fixo]) {
+            if ($preco >= $min && $preco <= $max) {
+                return ['comissao' => round($preco * $pct / 100 + $fixo, 2), 'pct' => $pct, 'fixo' => $fixo];
+            }
+        }
+        $last = end(self::$tabelaAmazon);
+        return ['comissao' => round($preco * $last[2] / 100 + $last[3], 2), 'pct' => $last[2], 'fixo' => $last[3]];
+    }
 
     private function getPesoCubado(): float
     {
@@ -268,6 +286,12 @@ class CalculadoraML extends Page
                 $comissaoPct = $cfg['comissao_pct'];
                 $comissaoFixa = null;
                 $frete = $freteML;
+            } elseif ($cfg['tipo'] === 'amazon') {
+                $a = $this->calcularComissaoAmazon($preco);
+                $comissao = $a['comissao'];
+                $comissaoPct = $a['pct'];
+                $comissaoFixa = $a['fixo'];
+                $frete = 0;
             } else { // fixo (magalu etc)
                 $comissao = round($preco * $cfg['comissao_pct'] / 100 + $cfg['fixo'], 2);
                 $comissaoPct = $cfg['comissao_pct'];
@@ -341,6 +365,12 @@ class CalculadoraML extends Page
                     $comissaoPct = $cfg['comissao_pct'];
                     $comissaoFixa = null;
                     $frete = $this->calcularFreteML($preco, $pesoTotal);
+                } elseif ($cfg['tipo'] === 'amazon') {
+                    $a = $this->calcularComissaoAmazon($preco);
+                    $comissao = $a['comissao'];
+                    $comissaoPct = $a['pct'];
+                    $comissaoFixa = $a['fixo'];
+                    $frete = 0;
                 } else {
                     $comissao = round($preco * $cfg['comissao_pct'] / 100 + $cfg['fixo'], 2);
                     $comissaoPct = $cfg['comissao_pct'];
@@ -422,6 +452,18 @@ class CalculadoraML extends Page
                 $s = $this->calcularComissaoShopee($preco);
                 $imposto = $this->calcularImposto($preco, 0, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete'] ?? false);
                 $novoPreco = round(($custoTotal + $s['fixo'] + $imposto) / (1 - ($s['pct'] / 100) - ($margemPct / 100)), 2);
+                if (abs($novoPreco - $preco) < 0.01) break;
+                $preco = $novoPreco;
+            }
+            return $preco;
+
+        } elseif ($cfg['tipo'] === 'amazon') {
+            // Amazon: faixas de comissão iterativas
+            $preco = $custoTotal * 2;
+            for ($i = 0; $i < 30; $i++) {
+                $a = $this->calcularComissaoAmazon($preco);
+                $imposto = $this->calcularImposto($preco, 0, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete'] ?? false);
+                $novoPreco = round(($custoTotal + $a['fixo'] + $imposto) / (1 - ($a['pct'] / 100) - ($margemPct / 100)), 2);
                 if (abs($novoPreco - $preco) < 0.01) break;
                 $preco = $novoPreco;
             }
