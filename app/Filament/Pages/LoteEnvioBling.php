@@ -100,14 +100,13 @@ class LoteEnvioBling extends Page
 
             if ($venda && $venda->bling_id) {
                 $res = $client->alterarSituacaoPedido((int) $venda->bling_id, $this->situacaoId);
-                $erro = $res['body']['error']['message'] ?? $res['body']['error']['description'] ?? null;
                 $this->resultados[] = [
                     'nfe' => $nfeNumero,
                     'pedido' => $venda->numero_pedido_canal,
-                    'success' => $res['success'],
-                    'msg' => $res['success'] ? 'OK' : ('HTTP ' . ($res['http_code'] ?? '?') . ($erro ? " - {$erro}" : '')),
+                    'success' => $res['success'] || $res['http_code'] === 204,
+                    'msg' => $this->extrairMsgErro($res),
                 ];
-                $res['success'] ? $sucesso++ : $erros++;
+                ($res['success'] || $res['http_code'] === 204) ? $sucesso++ : $erros++;
                 continue;
             }
 
@@ -121,14 +120,13 @@ class LoteEnvioBling extends Page
 
             if ($staging && $staging->bling_id) {
                 $res = $client->alterarSituacaoPedido((int) $staging->bling_id, $this->situacaoId);
-                $erro = $res['body']['error']['message'] ?? $res['body']['error']['description'] ?? null;
                 $this->resultados[] = [
                     'nfe' => $nfeNumero,
                     'pedido' => $staging->numero_pedido,
-                    'success' => $res['success'],
-                    'msg' => $res['success'] ? 'OK' : ('HTTP ' . ($res['http_code'] ?? '?') . ($erro ? " - {$erro}" : '')),
+                    'success' => $res['success'] || $res['http_code'] === 204,
+                    'msg' => $this->extrairMsgErro($res),
                 ];
-                $res['success'] ? $sucesso++ : $erros++;
+                ($res['success'] || $res['http_code'] === 204) ? $sucesso++ : $erros++;
                 continue;
             }
 
@@ -144,14 +142,13 @@ class LoteEnvioBling extends Page
 
                 if ($pedidoVinculado) {
                     $res = $client->alterarSituacaoPedido((int) $pedidoVinculado['id'], $this->situacaoId);
-                    $erro = $res['body']['error']['message'] ?? $res['body']['error']['description'] ?? null;
                     $this->resultados[] = [
                         'nfe' => $nfeNumero,
                         'pedido' => '#' . ($pedidoVinculado['numero'] ?? $pedidoVinculado['id']),
-                        'success' => $res['success'],
-                        'msg' => $res['success'] ? 'OK (via API)' : ('HTTP ' . ($res['http_code'] ?? '?') . ($erro ? " - {$erro}" : '')),
+                        'success' => $res['success'] || $res['http_code'] === 204,
+                        'msg' => $this->extrairMsgErro($res),
                     ];
-                    $res['success'] ? $sucesso++ : $erros++;
+                    ($res['success'] || $res['http_code'] === 204) ? $sucesso++ : $erros++;
                     continue;
                 }
             }
@@ -178,5 +175,20 @@ class LoteEnvioBling extends Page
             ->title("Processado: {$sucesso} OK, {$erros} erros")
             ->color($erros > 0 ? 'warning' : 'success')
             ->send();
+    }
+
+    private function extrairMsgErro(array $res): string
+    {
+        if ($res['success'] || ($res['http_code'] ?? 0) === 204) {
+            return 'OK';
+        }
+
+        // Extrair mensagem detalhada dos fields
+        $fields = $res['body']['error']['fields'] ?? [];
+        if (!empty($fields)) {
+            return $fields[0]['msg'] ?? ($res['body']['error']['message'] ?? 'Erro');
+        }
+
+        return $res['body']['error']['message'] ?? ('HTTP ' . ($res['http_code'] ?? '?'));
     }
 }

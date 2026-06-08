@@ -214,9 +214,7 @@ class BlingClient
      */
     public function alterarSituacaoPedido(int $pedidoId, int $situacaoId): array
     {
-        return $this->patch("/pedidos/vendas/{$pedidoId}", [], [
-            'situacao' => ['id' => $situacaoId],
-        ]);
+        return $this->patch("/pedidos/vendas/{$pedidoId}/situacoes/{$situacaoId}", [], []);
     }
 
     /**
