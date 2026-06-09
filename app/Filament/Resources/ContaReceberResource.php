@@ -456,12 +456,11 @@ class ContaReceberResource extends Resource
                             ->placeholder('Ex: Repasse ML semana 23')
                             ->maxLength(255),
                     ])
-                    ->modalHeading('Confirmar Recebimento em Lote')
-                    ->modalDescription(function ($records) {
+                    ->modalHeading(function ($records) {
                         $pendentes = $records->where('status', 'pendente');
                         $total = $pendentes->sum('valor_parcela');
                         $qtd = $pendentes->count();
-                        return "⚠️ {$qtd} registro(s) pendente(s) — Total: R$ " . number_format((float) $total, 2, ',', '.');
+                        return "Confirmar Recebimento — {$qtd} registro(s) — R$ " . number_format((float) $total, 2, ',', '.');
                     })
                     ->modalSubmitActionLabel('Confirmar Recebimento')
                     ->deselectRecordsAfterCompletion()
