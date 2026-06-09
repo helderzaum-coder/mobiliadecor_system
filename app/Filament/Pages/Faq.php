@@ -227,6 +227,43 @@ class Faq extends Page
                 ],
             ],
             [
+                'slug' => 'conciliacao-madeira-madeira',
+                'title' => 'Conciliação Madeira Madeira',
+                'icon' => 'heroicon-o-clipboard-document-check',
+                'questions' => [
+                    [
+                        'question' => 'Como funciona o repasse da Madeira Madeira?',
+                        'answer' => '<p>O repasse da Madeira Madeira é <strong>parcelado</strong> de acordo com a quantidade de parcelas que o cliente pagou na compra. Se o cliente pagou em 3x, você receberá o repasse em 3 parcelas. A exceção é quando você solicita antecipação — nesse caso o valor total é creditado de uma vez (com desconto de taxa de antecipação).</p><p><strong>Exemplo:</strong></p><ul><li>Venda de R$ 600,00 — cliente pagou em 3x</li><li>Repasse total (descontada comissão): R$ 510,00</li><li>Você receberá: 3 parcelas de R$ 170,00</li></ul>',
+                        'destructive' => false,
+                    ],
+                    [
+                        'question' => 'Como conciliar o repasse parcelado da Madeira Madeira no sistema?',
+                        'answer' => '<p>Para conciliar repasses parcelados da Madeira Madeira, use a funcionalidade de <strong>Baixa Parcial</strong> nas Contas a Receber:</p><ol><li>Acesse <strong>Financeiro → Contas a Receber</strong></li><li>Busque o pedido pelo número (ex: 9642183)</li><li>Remova o filtro "Status: Pendente" se necessário para ver todas as parcelas</li><li>Clique no botão <strong>"Baixa Parcial"</strong> (ícone de tesoura ✂️)</li><li>Informe a <strong>quantidade total de parcelas</strong> do repasse (ex: 3)</li><li>Informe a <strong>data do 1º recebimento</strong></li><li>Confirme</li></ol><p>O sistema irá:</p><ul><li>Dividir o valor total pelo número de parcelas</li><li>Marcar a 1ª parcela como recebida</li><li>Criar um registro pendente com o valor restante (parcelas 2 a N)</li></ul>',
+                        'destructive' => false,
+                    ],
+                    [
+                        'question' => 'Como dar baixa nas parcelas seguintes?',
+                        'answer' => '<p>Quando receber a próxima parcela do repasse:</p><ol><li>Acesse <strong>Financeiro → Contas a Receber</strong> e busque o pedido</li><li>Localize o registro <strong>pendente</strong> (mostrará algo como "parcelas 2-3")</li><li>Você tem duas opções:<ul><li><strong>Baixa Parcial novamente</strong>: se ainda faltam parcelas. Informe o número de parcelas restantes</li><li><strong>Recebido (baixa total)</strong>: se recebeu todo o restante de uma vez (antecipação)</li></ul></li></ol><p><strong>Exemplo com 3 parcelas:</strong></p><ul><li>1º mês: Baixa Parcial (3 parcelas) → R$ 170 recebido, R$ 340 pendente</li><li>2º mês: Baixa Parcial (2 parcelas) no restante → R$ 170 recebido, R$ 170 pendente</li><li>3º mês: "Recebido" no restante → R$ 170 recebido, tudo quitado</li></ul>',
+                        'destructive' => false,
+                    ],
+                    [
+                        'question' => 'E se eu antecipar o repasse na Madeira Madeira?',
+                        'answer' => '<p>Se você solicitou antecipação e recebeu o valor total de uma vez:</p><ol><li>Busque o pedido em <strong>Contas a Receber</strong></li><li>Clique em <strong>"Recebido"</strong> (baixa total) no registro pendente</li><li>Informe a data do recebimento</li></ol><p>O valor completo será marcado como recebido. Se houve desconto de taxa de antecipação, você pode ajustar o valor manualmente antes de confirmar, ou lançar a diferença como conta a pagar (despesa de antecipação).</p>',
+                        'destructive' => false,
+                    ],
+                    [
+                        'question' => 'Como identificar pedidos Madeira Madeira com repasse pendente?',
+                        'answer' => '<p>Para ver todos os repasses pendentes da Madeira Madeira:</p><ol><li>Acesse <strong>Financeiro → Contas a Receber</strong></li><li>No filtro de <strong>Status</strong>, selecione "Pendente"</li><li>No filtro de <strong>Canal</strong>, selecione "Madeira Madeira"</li></ol><p>A listagem mostrará todas as contas pendentes. As colunas <strong>"Parcela"</strong> e <strong>"Já Recebido"</strong> indicam:</p><ul><li><strong>Parcela</strong>: ex "2/3" = parcela 2 de 3 total</li><li><strong>Já Recebido</strong>: valor total já recebido daquela venda (em verde)</li></ul><p>Se o campo parcela estiver vazio (sem badge), significa que o repasse é integral (1 parcela única).</p>',
+                        'destructive' => false,
+                    ],
+                    [
+                        'question' => 'Como funciona o frete "Madeira Envios"?',
+                        'answer' => '<p>Alguns pedidos da Madeira Madeira usam o <strong>"Madeira Envios"</strong> (etiqueta do marketplace), onde o frete é gerenciado e pago pelo marketplace. Funciona igual ao "Envias" e "ME2/FULL":</p><ul><li>O frete cobrado do cliente fica <strong>zerado</strong></li><li>O custo do frete para a empresa é <strong>zero</strong></li><li>O frete é marcado como <strong>pago</strong></li></ul><p>Para marcar um pedido como Madeira Envios:</p><ol><li>No <strong>Dashboard de Vendas</strong>, localize o pedido</li><li>Clique no botão <strong>"📦 Madeira Envios"</strong></li><li>Confirme a ação</li></ol><p>O sistema zerará os campos de frete e recalculará as margens automaticamente.</p>',
+                        'destructive' => false,
+                    ],
+                ],
+            ],
+            [
                 'slug' => 'importar-planilha-madeiramadeira',
                 'title' => 'Importar Planilha MadeiraMadeira',
                 'icon' => 'heroicon-o-document-arrow-up',
