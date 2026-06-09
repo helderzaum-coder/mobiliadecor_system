@@ -16,7 +16,13 @@
                 for (const div of textos) {
                     const t = div.textContent.trim();
                     if (t.startsWith('R$') && !div.closest('[class*=badge]')) {
-                        const v = parseFloat(t.replace('R$', '').replace(/\./g, '').replace(',', '.').trim());
+                        const raw = t.replace('R$', '').trim();
+                        let v;
+                        if (raw.includes(',')) {
+                            v = parseFloat(raw.replace(/\./g, '').replace(',', '.'));
+                        } else {
+                            v = parseFloat(raw);
+                        }
                         if (!isNaN(v) && v > 0) {
                             soma += v;
                             count++;
