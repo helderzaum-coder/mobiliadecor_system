@@ -330,6 +330,62 @@ class ContaReceberResource extends Resource
                         Notification::make()->title('Recebimento confirmado.')->success()->send();
                     })
                     ->visible(fn (ContaReceber $record) => $record->status === 'pendente'),
+                Tables\Actions\Action::make('baixa_parcial')
+                    ->label('Baixa Parcial')
+                    ->icon('heroicon-o-scissors')
+                    ->color('warning')
+                    ->form([
+                        Forms\Components\Placeholder::make('info')
+                            ->label('')
+                            ->content(fn (ContaReceber $record) => 'Valor total pendente: R$ ' . number_format((float) $record->valor_parcela, 2, ',', '.')),
+                        Forms\Components\TextInput::make('valor_recebido')
+                            ->label('Valor recebido agora')
+                            ->numeric()
+                            ->prefix('R$')
+                            ->required(),
+                        Forms\Components\DatePicker::make('data_recebimento')
+                            ->label('Data do Recebimento')
+                            ->default(now())
+                            ->required(),
+                    ])
+                    ->action(function (ContaReceber $record, array $data) {
+                        $valorRecebido = (float) $data['valor_recebido'];
+                        $valorTotal = (float) $record->valor_parcela;
+                        $restante = round($valorTotal - $valorRecebido, 2);
+
+                        if ($valorRecebido <= 0 || $valorRecebido >= $valorTotal) {
+                            Notification::make()->title('Valor inválido. Use "Recebido" para baixa total.')->warning()->send();
+                            return;
+                        }
+
+                        // Atualizar registro atual com valor parcial recebido
+                        $record->update([
+                            'valor_parcela' => $valorRecebido,
+                            'status' => 'recebido',
+                            'data_recebimento' => $data['data_recebimento'],
+                        ]);
+
+                        // Criar novo registro com o restante
+                        ContaReceber::create([
+                            'id_venda' => $record->id_venda,
+                            'valor_parcela' => $restante,
+                            'data_vencimento' => $record->data_vencimento,
+                            'status' => 'pendente',
+                            'numero_parcela' => $record->numero_parcela + 1,
+                            'total_parcelas' => $record->total_parcelas + 1,
+                            'forma_pagamento' => $record->forma_pagamento,
+                            'observacoes' => ($record->observacoes ?? '') . ' (restante)',
+                            'lancamento_manual' => false,
+                            'conta_bancaria_id' => $record->conta_bancaria_id,
+                            'categoria_id' => $record->categoria_id,
+                        ]);
+
+                        Notification::make()
+                            ->title('Baixa parcial: R$ ' . number_format($valorRecebido, 2, ',', '.') . ' recebido. Restante: R$ ' . number_format($restante, 2, ',', '.'))
+                            ->success()
+                            ->send();
+                    })
+                    ->visible(fn (ContaReceber $record) => $record->status === 'pendente'),
                 Tables\Actions\Action::make('desfazer')
                     ->label('Desfazer')
                     ->icon('heroicon-o-arrow-uturn-left')
