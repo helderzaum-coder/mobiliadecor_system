@@ -188,8 +188,7 @@ class ContaReceberResource extends Resource
                 Tables\Columns\TextColumn::make('observacoes')
                     ->label('Obs')
                     ->limit(30)
-                    ->placeholder('-')
-                    ->toggleable(),
+                    ->placeholder('-'),
                 Tables\Columns\TextColumn::make('lote_recebimento_id')
                     ->label('Lote')
                     ->placeholder('-')
