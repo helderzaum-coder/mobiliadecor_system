@@ -441,24 +441,15 @@ class ContaReceberResource extends Resource
                     ->label('Confirmar Recebimento')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->form(fn (Tables\Actions\BulkAction $action) => [
-                        Forms\Components\Placeholder::make('aviso')
-                            ->label('')
-                            ->content(function () use ($action) {
-                                $records = $action->getRecords();
-                                $total = $records->where('status', 'pendente')->sum('valor_parcela');
-                                $qtd = $records->where('status', 'pendente')->count();
-                                return "⚠️ {$qtd} registro(s) selecionado(s) — Total: R$ " . number_format((float) $total, 2, ',', '.');
-                            }),
+                    ->form([
                         Forms\Components\DatePicker::make('data_recebimento')
                             ->label('📅 Data do Recebimento')
                             ->required()
                             ->helperText('Informe a data em que o valor foi efetivamente recebido.'),
                         Forms\Components\Select::make('conta_bancaria_id')
                             ->label('Banco')
-                            ->relationship('contaBancaria', 'nome')
+                            ->options(fn () => \App\Models\ContaBancaria::orderBy('nome')->pluck('nome', 'id')->toArray())
                             ->searchable()
-                            ->preload()
                             ->placeholder('Selecione o banco (opcional)'),
                         Forms\Components\TextInput::make('descricao')
                             ->label('Descrição do Lote (opcional)')
@@ -466,7 +457,12 @@ class ContaReceberResource extends Resource
                             ->maxLength(255),
                     ])
                     ->modalHeading('Confirmar Recebimento em Lote')
-                    ->modalDescription('Verifique a data de recebimento antes de confirmar.')
+                    ->modalDescription(function ($records) {
+                        $pendentes = $records->where('status', 'pendente');
+                        $total = $pendentes->sum('valor_parcela');
+                        $qtd = $pendentes->count();
+                        return "⚠️ {$qtd} registro(s) pendente(s) — Total: R$ " . number_format((float) $total, 2, ',', '.');
+                    })
                     ->modalSubmitActionLabel('Confirmar Recebimento')
                     ->deselectRecordsAfterCompletion()
                     ->action(function ($records, array $data) {
