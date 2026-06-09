@@ -109,6 +109,7 @@ class ContaReceberResource extends Resource
     {
         return $table
             ->defaultPaginationPageOption(25)
+            ->contentFooter(view('filament.resources.conta-receber.soma-selecionados'))
             ->columns([
                 Tables\Columns\TextColumn::make('venda.data_venda')
                     ->label('Data Venda')
@@ -133,10 +134,7 @@ class ContaReceberResource extends Resource
                     ->label('Valor')
                     ->money('BRL')
                     ->sortable()
-                    ->summarize([
-                        Tables\Columns\Summarizers\Sum::make()->money('BRL')->label('Total'),
-                        Tables\Columns\Summarizers\Sum::make('selecionados')->money('BRL')->label('Selecionados')->selectedState(true),
-                    ]),
+                    ->summarize(Tables\Columns\Summarizers\Sum::make()->money('BRL')->label('Total')),
                 Tables\Columns\TextColumn::make('parcela_info')
                     ->label('Parcela')
                     ->getStateUsing(function (ContaReceber $record) {
