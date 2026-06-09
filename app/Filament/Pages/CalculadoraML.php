@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Models\CanalVenda;
 use App\Models\Cnpj;
 use App\Models\ImpostoMensal;
+use App\Models\RegraComissao;
 use Filament\Pages\Page;
 
 class CalculadoraML extends Page
@@ -41,63 +42,67 @@ class CalculadoraML extends Page
 
     private function getCanaisConfig(): array
     {
-        // Buscar tipo_nota e imposto_sobre_frete do cadastro
-        $canaisDB = CanalVenda::where('ativo', true)->get()->keyBy('nome_canal');
+        $canaisDB = CanalVenda::where('ativo', true)->with(['regrasComissao' => fn($q) => $q->where('ativo', true)])->get()->keyBy('nome_canal');
+
+        // Helper: busca regra de comissão de um canal, com filtro opcional de tipo anúncio/frete ML
+        $getRegra = function (?CanalVenda $canal, ?string $tipoAnuncio = null, ?string $tipoFrete = null) {
+            if (!$canal) return ['pct' => 0, 'fixo' => 0];
+            $regras = $canal->regrasComissao;
+            if ($tipoAnuncio) {
+                $regras = $regras->filter(fn($r) => !$r->ml_tipo_anuncio || $r->ml_tipo_anuncio === $tipoAnuncio);
+            }
+            if ($tipoFrete) {
+                $regras = $regras->filter(fn($r) => !$r->ml_tipo_frete || $r->ml_tipo_frete === $tipoFrete);
+            }
+            $regra = $regras->first();
+            return ['pct' => (float) ($regra->percentual ?? 0), 'fixo' => (float) ($regra->valor_fixo ?? 0)];
+        };
+
         $mlDB = $canaisDB->get('Mercadolivre');
         $shopeeDB = $canaisDB->get('Shopee');
         $magaluDB = $canaisDB->get('Magalu');
-
-        $tipoNotaML = $mlDB->tipo_nota ?? 'produto';
-        $impostoSobreFreteML = (bool) ($mlDB->imposto_sobre_frete ?? false);
-        $tipoNotaShopee = $shopeeDB->tipo_nota ?? 'meia_nota';
-        $impostoSobreFreteShopee = (bool) ($shopeeDB->imposto_sobre_frete ?? false);
-        $tipoNotaMagalu = $magaluDB->tipo_nota ?? 'cheia';
-        $impostoSobreFreteMagalu = (bool) ($magaluDB->imposto_sobre_frete ?? false);
-
         $webconDB = $canaisDB->get('Webcontinental');
-        $tipoNotaWebcon = $webconDB->tipo_nota ?? 'cheia';
-        $impostoSobreFreteWebcon = (bool) ($webconDB->imposto_sobre_frete ?? false);
-
         $mmDB = $canaisDB->get('Madeira Madeira');
-        $tipoNotaMM = $mmDB->tipo_nota ?? 'cheia';
-        $impostoSobreFreteMM = (bool) ($mmDB->imposto_sobre_frete ?? false);
-
         $amazonDB = $canaisDB->get('Amazon');
-        $tipoNotaAmazon = $amazonDB->tipo_nota ?? 'produto';
-        $impostoSobreFreteAmazon = (bool) ($amazonDB->imposto_sobre_frete ?? false);
-
         $viaDB = $canaisDB->get('Via (Cnova)');
-        $tipoNotaVia = $viaDB->tipo_nota ?? 'produto';
-        $impostoSobreFreteVia = (bool) ($viaDB->imposto_sobre_frete ?? false);
-
         $tiktokDB = $canaisDB->get('Tiktokshop');
-        $tipoNotaTiktok = $tiktokDB->tipo_nota ?? 'cheia';
-        $impostoSobreFreteTiktok = (bool) ($tiktokDB->imposto_sobre_frete ?? false);
-
         $leroyDB = $canaisDB->get('LeroyMerlin');
-        $tipoNotaLeroy = $leroyDB->tipo_nota ?? 'produto';
-        $impostoSobreFreteLeroy = (bool) ($leroyDB->imposto_sobre_frete ?? false);
+        $siteDB = $canaisDB->get('Site Mobília') ?? $canaisDB->first(fn($c) => str_contains($c->nome_canal, 'Mob'));
 
-        $siteDB = $canaisDB->get('Site Mob\u00edlia') ?? $canaisDB->first(fn($c) => str_contains($c->nome_canal, 'Mob'));
-        $tipoNotaSite = $siteDB->tipo_nota ?? 'cheia';
-        $impostoSobreFreteSite = (bool) ($siteDB->imposto_sobre_frete ?? false);
+        $tipoFreteAtual = $this->tipo_frete;
+
+        // Comissões do banco
+        $mlPremium = $getRegra($mlDB, 'Premium', $tipoFreteAtual);
+        $mlClassico = $getRegra($mlDB, 'Clássico', $tipoFreteAtual);
+        $magalu = $getRegra($magaluDB);
+        $webcon = $getRegra($webconDB);
+        $mm = $getRegra($mmDB);
+        $via = $getRegra($viaDB);
+        $tiktok = $getRegra($tiktokDB);
+        $leroy = $getRegra($leroyDB);
+        $siteCartao = $getRegra($siteDB, null, null);
+        $sitePix = $siteDB ? $siteDB->regrasComissao->first(fn($r) => str_contains(strtolower($r->nome_regra ?? ''), 'pix')) : null;
+        $sitePixFixo = (float) ($sitePix->valor_fixo ?? 0.99);
+
+        $nota = fn(?CanalVenda $c, string $default) => $c->tipo_nota ?? $default;
+        $impFrete = fn(?CanalVenda $c) => (bool) ($c->imposto_sobre_frete ?? false);
 
         return [
-            'ml_premium_1'  => ['label' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣', 'comissao_pct' => 16.5, 'fixo' => 0, 'tipo_nota' => $tipoNotaML, 'imposto_sobre_frete' => $impostoSobreFreteML, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
-            'ml_classico_1' => ['label' => 'ML Clássico', 'cor' => '#6366f1', 'icone' => '🔵', 'comissao_pct' => 11.5, 'fixo' => 0, 'tipo_nota' => $tipoNotaML, 'imposto_sobre_frete' => $impostoSobreFreteML, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
-            'ml_premium_2'  => ['label' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣', 'comissao_pct' => 16.5, 'fixo' => 0, 'tipo_nota' => $tipoNotaML, 'imposto_sobre_frete' => $impostoSobreFreteML, 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'ml'],
-            'ml_classico_2' => ['label' => 'ML Clássico', 'cor' => '#6366f1', 'icone' => '🔵', 'comissao_pct' => 11.5, 'fixo' => 0, 'tipo_nota' => $tipoNotaML, 'imposto_sobre_frete' => $impostoSobreFreteML, 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'ml'],
-            'shopee_1'      => ['label' => 'Shopee', 'cor' => '#ea580c', 'icone' => '🟠', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => $tipoNotaShopee, 'imposto_sobre_frete' => $impostoSobreFreteShopee, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'shopee'],
-            'shopee_2'      => ['label' => 'Shopee', 'cor' => '#ea580c', 'icone' => '🟠', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => $tipoNotaShopee, 'imposto_sobre_frete' => $impostoSobreFreteShopee, 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'shopee'],
-            'magalu_1'      => ['label' => 'Magalu', 'cor' => '#2563eb', 'icone' => '🔷', 'comissao_pct' => 18, 'fixo' => 5, 'tipo_nota' => $tipoNotaMagalu, 'imposto_sobre_frete' => $impostoSobreFreteMagalu, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
-            'webcon_1'      => ['label' => 'Webcontinental', 'cor' => '#0891b2', 'icone' => '🌐', 'comissao_pct' => 22, 'fixo' => 0, 'tipo_nota' => $tipoNotaWebcon, 'imposto_sobre_frete' => $impostoSobreFreteWebcon, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
-            'madeiramadeira_1' => ['label' => 'Madeira Madeira', 'cor' => '#16a34a', 'icone' => '🌳', 'comissao_pct' => 19, 'fixo' => 0, 'tipo_nota' => $tipoNotaMM, 'imposto_sobre_frete' => $impostoSobreFreteMM, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
-            'amazon_1'         => ['label' => 'Amazon', 'cor' => '#f59e0b', 'icone' => '📦', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => $tipoNotaAmazon, 'imposto_sobre_frete' => $impostoSobreFreteAmazon, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'amazon'],
-            'via_1'            => ['label' => 'Via (Cnova)', 'cor' => '#dc2626', 'icone' => '🔴', 'comissao_pct' => 17, 'fixo' => 0, 'tipo_nota' => $tipoNotaVia, 'imposto_sobre_frete' => $impostoSobreFreteVia, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
-            'tiktok_1'         => ['label' => 'Tiktokshop', 'cor' => '#000000', 'icone' => '🎵', 'comissao_pct' => 12, 'fixo' => 4, 'tipo_nota' => $tipoNotaTiktok, 'imposto_sobre_frete' => $impostoSobreFreteTiktok, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
-            'leroy_1'          => ['label' => 'LeroyMerlin', 'cor' => '#65a30d', 'icone' => '🏠', 'comissao_pct' => 18, 'fixo' => 0, 'tipo_nota' => $tipoNotaLeroy, 'imposto_sobre_frete' => $impostoSobreFreteLeroy, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
-            'site_cartao_1'    => ['label' => 'Site (Cartão 6x)', 'cor' => '#7c3aed', 'icone' => '💳', 'comissao_pct' => 11.87, 'fixo' => 0, 'tipo_nota' => $tipoNotaSite, 'imposto_sobre_frete' => $impostoSobreFreteSite, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
-            'site_pix_1'       => ['label' => 'Site (Pix -15%)', 'cor' => '#059669', 'icone' => '💲', 'comissao_pct' => 0, 'fixo' => 0.99, 'tipo_nota' => $tipoNotaSite, 'imposto_sobre_frete' => $impostoSobreFreteSite, 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'site_pix'],
+            'ml_premium_1'  => ['label' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣', 'comissao_pct' => $mlPremium['pct'], 'fixo' => $mlPremium['fixo'], 'tipo_nota' => $nota($mlDB, 'produto'), 'imposto_sobre_frete' => $impFrete($mlDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
+            'ml_classico_1' => ['label' => 'ML Clássico', 'cor' => '#6366f1', 'icone' => '🔵', 'comissao_pct' => $mlClassico['pct'], 'fixo' => $mlClassico['fixo'], 'tipo_nota' => $nota($mlDB, 'produto'), 'imposto_sobre_frete' => $impFrete($mlDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
+            'ml_premium_2'  => ['label' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣', 'comissao_pct' => $mlPremium['pct'], 'fixo' => $mlPremium['fixo'], 'tipo_nota' => $nota($mlDB, 'produto'), 'imposto_sobre_frete' => $impFrete($mlDB), 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'ml'],
+            'ml_classico_2' => ['label' => 'ML Clássico', 'cor' => '#6366f1', 'icone' => '🔵', 'comissao_pct' => $mlClassico['pct'], 'fixo' => $mlClassico['fixo'], 'tipo_nota' => $nota($mlDB, 'produto'), 'imposto_sobre_frete' => $impFrete($mlDB), 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'ml'],
+            'shopee_1'      => ['label' => 'Shopee', 'cor' => '#ea580c', 'icone' => '🟠', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => $nota($shopeeDB, 'meia_nota'), 'imposto_sobre_frete' => $impFrete($shopeeDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'shopee'],
+            'shopee_2'      => ['label' => 'Shopee', 'cor' => '#ea580c', 'icone' => '🟠', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => $nota($shopeeDB, 'meia_nota'), 'imposto_sobre_frete' => $impFrete($shopeeDB), 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'shopee'],
+            'magalu_1'      => ['label' => 'Magalu', 'cor' => '#2563eb', 'icone' => '🔷', 'comissao_pct' => $magalu['pct'], 'fixo' => $magalu['fixo'], 'tipo_nota' => $nota($magaluDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($magaluDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+            'webcon_1'      => ['label' => 'Webcontinental', 'cor' => '#0891b2', 'icone' => '🌐', 'comissao_pct' => $webcon['pct'], 'fixo' => $webcon['fixo'], 'tipo_nota' => $nota($webconDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($webconDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+            'madeiramadeira_1' => ['label' => 'Madeira Madeira', 'cor' => '#16a34a', 'icone' => '🌳', 'comissao_pct' => $mm['pct'], 'fixo' => $mm['fixo'], 'tipo_nota' => $nota($mmDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($mmDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+            'amazon_1'         => ['label' => 'Amazon', 'cor' => '#f59e0b', 'icone' => '📦', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => $nota($amazonDB, 'produto'), 'imposto_sobre_frete' => $impFrete($amazonDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'amazon'],
+            'via_1'            => ['label' => 'Via (Cnova)', 'cor' => '#dc2626', 'icone' => '🔴', 'comissao_pct' => $via['pct'], 'fixo' => $via['fixo'], 'tipo_nota' => $nota($viaDB, 'produto'), 'imposto_sobre_frete' => $impFrete($viaDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+            'tiktok_1'         => ['label' => 'Tiktokshop', 'cor' => '#000000', 'icone' => '🎵', 'comissao_pct' => $tiktok['pct'], 'fixo' => $tiktok['fixo'], 'tipo_nota' => $nota($tiktokDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($tiktokDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+            'leroy_1'          => ['label' => 'LeroyMerlin', 'cor' => '#65a30d', 'icone' => '🏠', 'comissao_pct' => $leroy['pct'], 'fixo' => $leroy['fixo'], 'tipo_nota' => $nota($leroyDB, 'produto'), 'imposto_sobre_frete' => $impFrete($leroyDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+            'site_cartao_1'    => ['label' => 'Site (Cartão 6x)', 'cor' => '#7c3aed', 'icone' => '💳', 'comissao_pct' => $siteCartao['pct'], 'fixo' => $siteCartao['fixo'], 'tipo_nota' => $nota($siteDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($siteDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+            'site_pix_1'       => ['label' => 'Site (Pix -15%)', 'cor' => '#059669', 'icone' => '💲', 'comissao_pct' => 0, 'fixo' => $sitePixFixo, 'tipo_nota' => $nota($siteDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($siteDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'site_pix'],
         ];
     }
 
