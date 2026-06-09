@@ -133,7 +133,10 @@ class ContaReceberResource extends Resource
                     ->label('Valor')
                     ->money('BRL')
                     ->sortable()
-                    ->summarize(Tables\Columns\Summarizers\Sum::make()->money('BRL')->label('Total')),
+                    ->summarize([
+                        Tables\Columns\Summarizers\Sum::make()->money('BRL')->label('Total'),
+                        Tables\Columns\Summarizers\Sum::make('selecionados')->money('BRL')->label('Selecionados')->selectedState(),
+                    ]),
                 Tables\Columns\TextColumn::make('parcela_info')
                     ->label('Parcela')
                     ->getStateUsing(function (ContaReceber $record) {
@@ -456,12 +459,7 @@ class ContaReceberResource extends Resource
                             ->placeholder('Ex: Repasse ML semana 23')
                             ->maxLength(255),
                     ])
-                    ->modalHeading(function ($records) {
-                        $pendentes = $records->where('status', 'pendente');
-                        $total = $pendentes->sum('valor_parcela');
-                        $qtd = $pendentes->count();
-                        return "Confirmar Recebimento — {$qtd} registro(s) — R$ " . number_format((float) $total, 2, ',', '.');
-                    })
+                    ->modalHeading('Confirmar Recebimento em Lote')
                     ->modalSubmitActionLabel('Confirmar Recebimento')
                     ->deselectRecordsAfterCompletion()
                     ->action(function ($records, array $data) {
