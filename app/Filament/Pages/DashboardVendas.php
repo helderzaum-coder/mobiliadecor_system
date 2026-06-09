@@ -592,6 +592,7 @@ class DashboardVendas extends Page implements HasForms
                         'me2_full' => '📦 ME2/FULL',
                         'shopee_xpress' => '🚚 Shopee Xpress',
                         'envias' => '🚚 Envias',
+                        'madeira_envios' => '🚚 Madeira Envios',
                         'incompleto' => '❌ Incompleto',
                         'completo' => '✅ Completo',
                         'recebido' => '💰 Recebido',
@@ -677,6 +678,11 @@ class DashboardVendas extends Page implements HasForms
             $query->where(fn ($q) => $q->where('canal_nome', 'like', '%via%')->orWhere('canal_nome', 'like', '%cnova%'))
                 ->where('valor_frete_cliente', 0)
                 ->where('valor_frete_transportadora', 0);
+        } elseif ($this->status_filtro === 'madeira_envios') {
+            $query->where('canal_nome', 'like', '%adeira%')
+                ->where('valor_frete_cliente', 0)
+                ->where('valor_frete_transportadora', 0)
+                ->where('frete_pago', true);
         } elseif ($this->status_filtro === 'incompleto') {
             // Incompleto: tudo que NÃO é completo
             $query->where(function ($q) {

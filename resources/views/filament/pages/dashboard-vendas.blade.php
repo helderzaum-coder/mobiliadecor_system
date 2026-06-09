@@ -603,6 +603,16 @@
                                 📦 Shopee Xpress
                             </button>
                         @endif
+                        @php
+                            $isMadeiraMadeiraFrete = str_contains(strtolower($canal), 'madeira');
+                        @endphp
+                        @if($isMadeiraMadeiraFrete)
+                            <button wire:click="marcarFreteEnvias({{ $venda->id_venda }})" wire:loading.attr="disabled"
+                                wire:confirm="Marcar como Madeira Envios? Frete será zerado (etiqueta marketplace)."
+                                style="background:#92400e;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                                📦 Madeira Envios
+                            </button>
+                        @endif
                         <div x-data="{ open: false, valor: '', transp: '' }" style="display:inline-block;">
                             <button @click="open = !open" type="button"
                                 style="background:#065f46;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
