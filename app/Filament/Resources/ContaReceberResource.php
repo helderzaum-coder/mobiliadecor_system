@@ -441,10 +441,15 @@ class ContaReceberResource extends Resource
                     ->label('Confirmar Recebimento')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->form([
+                    ->form(fn (Tables\Actions\BulkAction $action) => [
                         Forms\Components\Placeholder::make('aviso')
                             ->label('')
-                            ->content('⚠️ Confira a data abaixo antes de confirmar. Todos os registros selecionados serão marcados com esta data.'),
+                            ->content(function () use ($action) {
+                                $records = $action->getRecords();
+                                $total = $records->where('status', 'pendente')->sum('valor_parcela');
+                                $qtd = $records->where('status', 'pendente')->count();
+                                return "⚠️ {$qtd} registro(s) selecionado(s) — Total: R$ " . number_format((float) $total, 2, ',', '.');
+                            }),
                         Forms\Components\DatePicker::make('data_recebimento')
                             ->label('📅 Data do Recebimento')
                             ->required()
