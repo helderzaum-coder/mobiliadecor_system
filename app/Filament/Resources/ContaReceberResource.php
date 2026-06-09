@@ -449,6 +449,12 @@ class ContaReceberResource extends Resource
                             ->label('📅 Data do Recebimento')
                             ->required()
                             ->helperText('Informe a data em que o valor foi efetivamente recebido.'),
+                        Forms\Components\Select::make('conta_bancaria_id')
+                            ->label('Banco')
+                            ->relationship('contaBancaria', 'nome')
+                            ->searchable()
+                            ->preload()
+                            ->placeholder('Selecione o banco (opcional)'),
                         Forms\Components\TextInput::make('descricao')
                             ->label('Descrição do Lote (opcional)')
                             ->placeholder('Ex: Repasse ML semana 23')
@@ -466,6 +472,7 @@ class ContaReceberResource extends Resource
                             $record->update([
                                 'status' => 'recebido',
                                 'data_recebimento' => $data['data_recebimento'],
+                                'conta_bancaria_id' => $data['conta_bancaria_id'] ?? null,
                             ]);
                             if ($record->venda) {
                                 $record->venda->update([
