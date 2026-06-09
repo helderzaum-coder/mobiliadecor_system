@@ -135,7 +135,7 @@ class ContaReceberResource extends Resource
                     ->sortable()
                     ->summarize([
                         Tables\Columns\Summarizers\Sum::make()->money('BRL')->label('Total'),
-                        Tables\Columns\Summarizers\Sum::make('selecionados')->money('BRL')->label('Selecionados')->selectedState(),
+                        Tables\Columns\Summarizers\Sum::make('selecionados')->money('BRL')->label('Selecionados')->selectedState(true),
                     ]),
                 Tables\Columns\TextColumn::make('parcela_info')
                     ->label('Parcela')
