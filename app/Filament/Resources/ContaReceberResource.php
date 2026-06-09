@@ -134,6 +134,27 @@ class ContaReceberResource extends Resource
                     ->money('BRL')
                     ->sortable()
                     ->summarize(Tables\Columns\Summarizers\Sum::make()->money('BRL')->label('Total')),
+                Tables\Columns\TextColumn::make('parcela_info')
+                    ->label('Parcela')
+                    ->getStateUsing(function (ContaReceber $record) {
+                        if ($record->total_parcelas <= 1) return null;
+                        return $record->numero_parcela . '/' . $record->total_parcelas;
+                    })
+                    ->badge()
+                    ->color('info')
+                    ->placeholder('-'),
+                Tables\Columns\TextColumn::make('valor_ja_recebido')
+                    ->label('Já Recebido')
+                    ->getStateUsing(function (ContaReceber $record) {
+                        if (!$record->id_venda || $record->total_parcelas <= 1) return null;
+                        $recebido = ContaReceber::where('id_venda', $record->id_venda)
+                            ->where('status', 'recebido')
+                            ->sum('valor_parcela');
+                        return $recebido > 0 ? $recebido : null;
+                    })
+                    ->money('BRL')
+                    ->color('success')
+                    ->placeholder('-'),
                 Tables\Columns\TextColumn::make('data_vencimento')
                     ->label('Vencimento')
                     ->date('d/m/Y')
@@ -154,10 +175,18 @@ class ContaReceberResource extends Resource
                     })
                     ->formatStateUsing(function ($state, $record) {
                         if ($record->estorno_pendente) return $state . ' ⚠️ Estorno';
+                        if ($state === 'pendente' && $record->total_parcelas > 1) {
+                            return "pendente ({$record->numero_parcela}/{$record->total_parcelas})";
+                        }
                         return $state;
                     }),
                 Tables\Columns\TextColumn::make('contaBancaria.nome')
                     ->label('Banco')
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('observacoes')
+                    ->label('Obs')
+                    ->limit(30)
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('lote_recebimento_id')
