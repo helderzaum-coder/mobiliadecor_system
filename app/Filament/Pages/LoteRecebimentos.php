@@ -194,11 +194,18 @@ class LoteRecebimentos extends Page
 
         $canal = $venda->canal;
         $isMagalu = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
+        $isShopee = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'shopee');
 
         if ($isMagalu) {
             $repasse = (float) $venda->valor_total_venda - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
         } else {
             $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
+        }
+
+        // Subsídio pix: para canais onde o marketplace repassa ao vendedor
+        $subsidioPix = (float) ($venda->subsidio_pix ?? 0);
+        if ($subsidioPix > 0 && !$isShopee && !$isMagalu) {
+            $repasse += $subsidioPix;
         }
 
         return ContaReceber::create([

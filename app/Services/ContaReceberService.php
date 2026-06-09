@@ -27,12 +27,18 @@ class ContaReceberService
         // Calcular repasse
         $canal = $venda->canal;
         $isMagalu = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
-        $isMlMe2Full = in_array($venda->ml_tipo_frete, ['ME2', 'FULL']);
+        $isShopee = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'shopee');
 
         if ($isMagalu) {
             $repasse = (float) $venda->valor_total_venda - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
         } else {
             $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
+        }
+
+        // Subsídio pix: para canais onde o marketplace repassa o subsídio ao vendedor (exceto Shopee e Magalu)
+        $subsidioPix = (float) ($venda->subsidio_pix ?? 0);
+        if ($subsidioPix > 0 && !$isShopee && !$isMagalu) {
+            $repasse += $subsidioPix;
         }
 
         ContaReceber::create([
@@ -105,19 +111,25 @@ class ContaReceberService
             ->first();
 
         $afiliado = (float) ($venda->comissao_afiliado ?? 0);
+        $canal = $venda->canal;
+        $isMagalu = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
+        $isShopee = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'shopee');
+
+        if ($isMagalu) {
+            $repasseBase = (float) $venda->valor_total_venda - (float) $venda->comissao;
+        } else {
+            $repasseBase = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao;
+        }
+
+        $repasse = round($repasseBase - $afiliado, 2);
+
+        // Subsídio pix: para canais onde o marketplace repassa ao vendedor (exceto Shopee e Magalu)
+        $subsidioPix = (float) ($venda->subsidio_pix ?? 0);
+        if ($subsidioPix > 0 && !$isShopee && !$isMagalu) {
+            $repasse += $subsidioPix;
+        }
 
         if ($contaExistente) {
-            // Recalcular: repasse original (sem afiliado) - afiliado
-            $canal = $venda->canal;
-            $isMagalu = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
-
-            if ($isMagalu) {
-                $repasseBase = (float) $venda->valor_total_venda - (float) $venda->comissao;
-            } else {
-                $repasseBase = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao;
-            }
-
-            $repasse = round($repasseBase - $afiliado, 2);
             $contaExistente->update(['valor_parcela' => $repasse]);
             return true;
         }
