@@ -44,13 +44,21 @@
 
     {{-- KPI Cards --}}
     <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;">
+        <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid #3b82f6;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <span style="font-size:11px;font-weight:700;color:#3b82f6;text-transform:uppercase;letter-spacing:.5px;">Vendas</span>
+                <span style="width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,.15);display:flex;align-items:center;justify-content:center;font-size:16px;">🛒</span>
+            </div>
+            <div style="font-size:28px;font-weight:800;color:var(--kpi-text,#1f2937);">{{ $totais['qtd'] }}</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">pedidos no período</div>
+        </div>
         <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid #6366f1;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
                 <span style="font-size:11px;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.5px;">Pedidos</span>
                 <span style="width:32px;height:32px;border-radius:8px;background:rgba(99,102,241,.15);display:flex;align-items:center;justify-content:center;font-size:16px;">📦</span>
             </div>
             <div style="font-size:28px;font-weight:800;color:var(--kpi-text,#1f2937);">R$ {{ number_format($totais['total_produtos'], 2, ',', '.') }}</div>
-            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">{{ $totais['qtd'] }} pedidos (s/ frete)</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">valor s/ frete</div>
         </div>
         <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid {{ $totais['lucro_produto'] >= 0 ? '#10b981' : '#ef4444' }};">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
@@ -66,7 +74,7 @@
                 <span style="width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,.15);display:flex;align-items:center;justify-content:center;font-size:16px;">🚚</span>
             </div>
             <div style="font-size:28px;font-weight:800;color:var(--kpi-text,#1f2937);">R$ {{ number_format($totais['total_frete'], 2, ',', '.') }}</div>
-            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">frete cobrado dos clientes</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">frete cobrado</div>
         </div>
         <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid {{ $totais['margem_frete'] >= 0 ? '#10b981' : '#ef4444' }};">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
@@ -83,6 +91,14 @@
             </div>
             <div style="font-size:28px;font-weight:800;color:var(--kpi-text,#1f2937);">R$ {{ number_format($totais['ticket_medio'], 2, ',', '.') }}</div>
             <div style="font-size:11px;color:#9ca3af;margin-top:4px;">por pedido</div>
+        </div>
+        <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid {{ $totais['lucro'] >= 0 ? '#10b981' : '#ef4444' }};">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <span style="font-size:11px;font-weight:700;color:{{ $totais['lucro'] >= 0 ? '#10b981' : '#ef4444' }};text-transform:uppercase;letter-spacing:.5px;">Lucro Total</span>
+                <span style="width:32px;height:32px;border-radius:8px;background:{{ $totais['lucro'] >= 0 ? 'rgba(16,185,129,.15)' : 'rgba(239,68,68,.15)' }};display:flex;align-items:center;justify-content:center;font-size:16px;">💰</span>
+            </div>
+            <div style="font-size:28px;font-weight:800;color:{{ $totais['lucro'] >= 0 ? '#059669' : '#dc2626' }};">R$ {{ number_format($totais['lucro'], 2, ',', '.') }}</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">margem {{ $totais['margem'] }}%</div>
         </div>
     </div>
     <style>
