@@ -17,12 +17,8 @@
                     const t = div.textContent.trim();
                     if (t.startsWith('R$') && !div.closest('[class*=badge]')) {
                         const raw = t.replace('R$', '').trim();
-                        let v;
-                        if (raw.includes(',')) {
-                            v = parseFloat(raw.replace(/\./g, '').replace(',', '.'));
-                        } else {
-                            v = parseFloat(raw);
-                        }
+                        // Formato do Filament money('BRL'): R$2,184.19 (virgula=milhar, ponto=decimal)
+                        const v = parseFloat(raw.replace(/,/g, ''));
                         if (!isNaN(v) && v > 0) {
                             soma += v;
                             count++;
