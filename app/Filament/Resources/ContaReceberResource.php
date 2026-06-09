@@ -499,6 +499,73 @@ class ContaReceberResource extends Resource
                             : 'Nenhum registro pendente selecionado.';
                         Notification::make()->title($titulo)->success()->send();
                     }),
+                Tables\Actions\BulkAction::make('agrupar_lote')
+                    ->label('Agrupar em Lote')
+                    ->icon('heroicon-o-rectangle-stack')
+                    ->color('info')
+                    ->form([
+                        Forms\Components\Select::make('conta_bancaria_id')
+                            ->label('Banco')
+                            ->options(fn () => \App\Models\ContaBancaria::where('ativo', true)->orderBy('nome')->pluck('nome', 'id')->toArray())
+                            ->searchable()
+                            ->placeholder('Selecione o banco'),
+                        Forms\Components\TextInput::make('descricao')
+                            ->label('Descrição do Lote')
+                            ->placeholder('Ex: Repasse Madeira Madeira 11/05')
+                            ->maxLength(255),
+                    ])
+                    ->modalHeading('Agrupar em Lote')
+                    ->modalDescription('Agrupa os registros selecionados em um único lote no Caixa.')
+                    ->modalSubmitActionLabel('Agrupar')
+                    ->deselectRecordsAfterCompletion()
+                    ->action(function ($records, array $data) {
+                        if ($records->isEmpty()) {
+                            Notification::make()->title('Nenhum registro selecionado.')->warning()->send();
+                            return;
+                        }
+
+                        $valorTotal = (float) $records->sum('valor_parcela');
+                        $dataRecebimento = $records->first()->data_recebimento ?? now()->toDateString();
+
+                        $lote = \App\Models\LoteRecebimento::create([
+                            'data_recebimento' => $dataRecebimento,
+                            'descricao' => $data['descricao'] ?? null,
+                            'valor_total' => round($valorTotal, 2),
+                            'quantidade_contas' => $records->count(),
+                        ]);
+
+                        foreach ($records as $record) {
+                            $record->update([
+                                'lote_recebimento_id' => $lote->id,
+                                'conta_bancaria_id' => $data['conta_bancaria_id'] ?? $record->conta_bancaria_id,
+                            ]);
+                        }
+
+                        Notification::make()
+                            ->title($records->count() . ' registro(s) agrupados no Lote #' . $lote->id . ' — R$ ' . number_format($valorTotal, 2, ',', '.'))
+                            ->success()
+                            ->send();
+                    }),
+                    ->label('Corrigir Data Recebimento')
+                    ->icon('heroicon-o-calendar-days')
+                    ->color('warning')
+                    ->form([
+                        Forms\Components\DatePicker::make('data_recebimento')
+                            ->label('Nova Data de Recebimento')
+                            ->required(),
+                    ])
+                    ->action(function ($records, array $data) {
+                        $count = 0;
+                        foreach ($records as $record) {
+                            if ($record->status !== 'recebido') continue;
+                            $record->update(['data_recebimento' => $data['data_recebimento']]);
+                            if ($record->venda) {
+                                $record->venda->update(['data_recebimento' => $data['data_recebimento']]);
+                            }
+                            $count++;
+                        }
+                        Notification::make()->title("{$count} data(s) corrigida(s).")->success()->send();
+                    }),
                 Tables\Actions\BulkAction::make('alterar_data_recebimento')
                     ->label('Corrigir Data Recebimento')
                     ->icon('heroicon-o-calendar-days')
