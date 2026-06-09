@@ -338,50 +338,56 @@ class ContaReceberResource extends Resource
                         Forms\Components\Placeholder::make('info')
                             ->label('')
                             ->content(fn (ContaReceber $record) => 'Valor total pendente: R$ ' . number_format((float) $record->valor_parcela, 2, ',', '.')),
-                        Forms\Components\TextInput::make('valor_recebido')
-                            ->label('Valor recebido agora')
+                        Forms\Components\TextInput::make('total_parcelas')
+                            ->label('Quantidade de parcelas')
                             ->numeric()
-                            ->prefix('R$')
-                            ->required(),
+                            ->required()
+                            ->default(2)
+                            ->minValue(2)
+                            ->helperText('O valor será dividido igualmente entre as parcelas'),
                         Forms\Components\DatePicker::make('data_recebimento')
-                            ->label('Data do Recebimento')
+                            ->label('Data do 1º recebimento')
                             ->default(now())
                             ->required(),
                     ])
                     ->action(function (ContaReceber $record, array $data) {
-                        $valorRecebido = (float) $data['valor_recebido'];
+                        $totalParcelas = (int) $data['total_parcelas'];
                         $valorTotal = (float) $record->valor_parcela;
-                        $restante = round($valorTotal - $valorRecebido, 2);
+                        $valorParcela = round($valorTotal / $totalParcelas, 2);
+                        // Ajustar centavos na última parcela
+                        $valorRestante = round($valorTotal - $valorParcela, 2);
 
-                        if ($valorRecebido <= 0 || $valorRecebido >= $valorTotal) {
-                            Notification::make()->title('Valor inválido. Use "Recebido" para baixa total.')->warning()->send();
+                        if ($totalParcelas < 2) {
+                            Notification::make()->title('Mínimo 2 parcelas.')->warning()->send();
                             return;
                         }
 
-                        // Atualizar registro atual com valor parcial recebido
+                        // Marcar 1ª parcela como recebida
                         $record->update([
-                            'valor_parcela' => $valorRecebido,
+                            'valor_parcela' => $valorParcela,
                             'status' => 'recebido',
                             'data_recebimento' => $data['data_recebimento'],
+                            'numero_parcela' => 1,
+                            'total_parcelas' => $totalParcelas,
                         ]);
 
-                        // Criar novo registro com o restante
+                        // Criar registro com o restante (parcelas 2 a N)
                         ContaReceber::create([
                             'id_venda' => $record->id_venda,
-                            'valor_parcela' => $restante,
+                            'valor_parcela' => $valorRestante,
                             'data_vencimento' => $record->data_vencimento,
                             'status' => 'pendente',
-                            'numero_parcela' => $record->numero_parcela + 1,
-                            'total_parcelas' => $record->total_parcelas + 1,
+                            'numero_parcela' => 2,
+                            'total_parcelas' => $totalParcelas,
                             'forma_pagamento' => $record->forma_pagamento,
-                            'observacoes' => ($record->observacoes ?? '') . ' (restante)',
+                            'observacoes' => ($record->observacoes ?? '') . " (parcelas 2-{$totalParcelas})",
                             'lancamento_manual' => false,
                             'conta_bancaria_id' => $record->conta_bancaria_id,
                             'categoria_id' => $record->categoria_id,
                         ]);
 
                         Notification::make()
-                            ->title('Baixa parcial: R$ ' . number_format($valorRecebido, 2, ',', '.') . ' recebido. Restante: R$ ' . number_format($restante, 2, ',', '.'))
+                            ->title("Parcela 1/{$totalParcelas}: R$ " . number_format($valorParcela, 2, ',', '.') . " recebida. Restante: R$ " . number_format($valorRestante, 2, ',', '.'))
                             ->success()
                             ->send();
                     })
