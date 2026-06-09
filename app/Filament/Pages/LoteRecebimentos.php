@@ -30,6 +30,7 @@ class LoteRecebimentos extends Page
     public array $entradas_avulsas = [];
     public string $entrada_descricao = '';
     public string $entrada_valor = '';
+    public string $entrada_canal = '';
 
     public function mount(): void
     {
@@ -106,10 +107,12 @@ class LoteRecebimentos extends Page
         $this->entradas_avulsas[] = [
             'descricao' => trim($this->entrada_descricao),
             'valor' => round((float) $this->entrada_valor, 2),
+            'canal' => trim($this->entrada_canal) ?: 'Entrada Avulsa',
         ];
 
         $this->entrada_descricao = '';
         $this->entrada_valor = '';
+        $this->entrada_canal = '';
     }
 
     public function removerEntradaAvulsa(int $index): void
@@ -286,7 +289,7 @@ class LoteRecebimentos extends Page
                 'status' => 'recebido',
                 'numero_parcela' => 1,
                 'total_parcelas' => 1,
-                'forma_pagamento' => 'Entrada Avulsa',
+                'forma_pagamento' => $entrada['canal'] ?? 'Entrada Avulsa',
                 'observacoes' => $entrada['descricao'] . ($this->identificador_lote ? " | {$this->identificador_lote}" : ''),
                 'lancamento_manual' => true,
                 'conta_bancaria_id' => $this->conta_bancaria_id ?: null,

@@ -129,6 +129,14 @@
                         <div class="flex gap-2">
                             <input type="text" wire:model="entrada_descricao" placeholder="Ex: Reembolso frete, Bonificação"
                                 style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:13px;">
+                            <select wire:model="entrada_canal"
+                                style="width:160px;padding:8px 12px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:13px;">
+                                <option value="">Canal...</option>
+                                @foreach(\App\Models\CanalVenda::where('ativo', true)->orderBy('nome_canal')->get() as $c)
+                                    <option value="{{ $c->nome_canal }}">{{ $c->nome_canal }}</option>
+                                @endforeach
+                                <option value="Entrada Avulsa">Entrada Avulsa</option>
+                            </select>
                             <input type="number" wire:model="entrada_valor" placeholder="Valor" step="0.01" min="0"
                                 style="width:120px;padding:8px 12px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:13px;">
                             <button wire:click="adicionarEntradaAvulsa"

@@ -189,7 +189,7 @@ class ContaReceberResource extends Resource
                     ->label('Obs')
                     ->limit(30)
                     ->placeholder('-')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('lote_recebimento_id')
                     ->label('Lote')
                     ->placeholder('-')
