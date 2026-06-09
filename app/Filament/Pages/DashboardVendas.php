@@ -772,78 +772,32 @@ class DashboardVendas extends Page implements HasForms
     public function getTotaisProperty(): array
     {
         $query = $this->buildQuery();
-        $total = (clone $query)->sum('valor_total_venda');
-        $lucro = (clone $query)->sum('margem_venda_total');
         $count = (clone $query)->count();
-        $comLucro = (clone $query)->where('margem_venda_total', '>=', 0)->count();
-        $comPrejuizo = $count - $comLucro;
+        $totalProdutos = (float) (clone $query)->sum('total_produtos');
+        $totalFrete = (float) (clone $query)->sum('valor_frete_cliente');
+        $lucroProduto = (float) (clone $query)->sum('margem_produto');
+        $margemFrete = (float) (clone $query)->sum('margem_frete');
+        $lucroTotal = (float) (clone $query)->sum('margem_venda_total');
+        $total = (float) (clone $query)->sum('valor_total_venda');
 
         return [
             'qtd' => $count,
             'total' => $total,
-            'lucro' => $lucro,
-            'margem' => $total > 0 ? round(($lucro / $total) * 100, 1) : 0,
-            'com_lucro' => $comLucro,
-            'com_prejuizo' => $comPrejuizo,
+            'total_produtos' => $totalProdutos,
+            'lucro_produto' => $lucroProduto,
+            'margem_produto_pct' => $totalProdutos > 0 ? round(($lucroProduto / $totalProdutos) * 100, 1) : 0,
+            'total_frete' => $totalFrete,
+            'margem_frete' => $margemFrete,
+            'margem_frete_pct' => $totalFrete > 0 ? round(($margemFrete / $totalFrete) * 100, 1) : 0,
+            'ticket_medio' => $count > 0 ? round($total / $count, 2) : 0,
+            'lucro' => $lucroTotal,
+            'margem' => $total > 0 ? round(($lucroTotal / $total) * 100, 1) : 0,
         ];
     }
 
     public function getTotalPaginasProperty(): int
     {
         return max(1, (int) ceil($this->totais['qtd'] / $this->porPagina));
-    }
-
-    public function getGraficoVendasDiariasProperty(): array
-    {
-        $rows = $this->buildQuery()
-            ->reorder()
-            ->selectRaw('DATE(data_venda) as dia, SUM(valor_total_venda) as faturamento, SUM(margem_venda_total) as lucro, COUNT(*) as qtd')
-            ->groupByRaw('DATE(data_venda)')
-            ->orderBy('dia')
-            ->get();
-
-        return [
-            'labels' => $rows->pluck('dia')->map(fn ($d) => \Carbon\Carbon::parse($d)->format('d/m'))->toArray(),
-            'faturamento' => $rows->pluck('faturamento')->map(fn ($v) => round((float) $v, 2))->toArray(),
-            'lucro' => $rows->pluck('lucro')->map(fn ($v) => round((float) $v, 2))->toArray(),
-        ];
-    }
-
-    public function getVendasPorCanalProperty(): array
-    {
-        $dados = $this->buildQuery()
-            ->reorder()
-            ->selectRaw('COALESCE(canal_nome, "Outros") as canal, COUNT(*) as qtd, SUM(valor_total_venda) as total, SUM(margem_venda_total) as lucro')
-            ->groupBy('canal_nome')
-            ->orderByDesc('total')
-            ->get()
-            ->map(fn ($r) => [
-                'canal' => $r->canal,
-                'qtd' => $r->qtd,
-                'total' => round((float) $r->total, 2),
-                'lucro' => round((float) $r->lucro, 2),
-            ])
-            ->toArray();
-
-        // Agrupar canais com apenas 1 venda ou nomes inválidos em "Outros"
-        $principais = [];
-        $outros = ['canal' => 'Outros', 'qtd' => 0, 'total' => 0, 'lucro' => 0];
-
-        foreach ($dados as $d) {
-            if ($d['qtd'] >= 2 && strlen($d['canal']) <= 30) {
-                $principais[] = $d;
-            } else {
-                $outros['qtd'] += $d['qtd'];
-                $outros['total'] += $d['total'];
-                $outros['lucro'] += $d['lucro'];
-            }
-        }
-
-        if ($outros['qtd'] > 0) {
-            $principais[] = $outros;
-        }
-
-        return $principais;
     }
 
     public static function canAccess(): bool

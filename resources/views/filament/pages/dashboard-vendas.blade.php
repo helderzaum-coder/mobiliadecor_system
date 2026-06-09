@@ -40,101 +40,55 @@
     {{-- Resumo horizontal compacto --}}
     @php
         $totais = $this->totais;
-        $grafico = $this->graficoVendasDiarias;
-        $porCanal = $this->vendasPorCanal;
-        $ticketMedio = $totais['qtd'] > 0 ? $totais['total'] / $totais['qtd'] : 0;
     @endphp
 
     {{-- KPI Cards --}}
     <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;">
-        <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid #3b82f6;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                <span style="font-size:11px;font-weight:700;color:#3b82f6;text-transform:uppercase;letter-spacing:.5px;">Vendas</span>
-                <span style="width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,.15);display:flex;align-items:center;justify-content:center;font-size:16px;">🛒</span>
-            </div>
-            <div style="font-size:28px;font-weight:800;color:var(--kpi-text,#1f2937);">{{ $totais['qtd'] }}</div>
-            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">pedidos no período</div>
-        </div>
         <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid #6366f1;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                <span style="font-size:11px;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.5px;">Faturamento</span>
-                <span style="width:32px;height:32px;border-radius:8px;background:rgba(99,102,241,.15);display:flex;align-items:center;justify-content:center;font-size:16px;">💰</span>
+                <span style="font-size:11px;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.5px;">Pedidos</span>
+                <span style="width:32px;height:32px;border-radius:8px;background:rgba(99,102,241,.15);display:flex;align-items:center;justify-content:center;font-size:16px;">📦</span>
             </div>
-            <div style="font-size:28px;font-weight:800;color:var(--kpi-text,#1f2937);">R$ {{ number_format($totais['total'], 2, ',', '.') }}</div>
-            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">ticket médio R$ {{ number_format($ticketMedio, 2, ',', '.') }}</div>
+            <div style="font-size:28px;font-weight:800;color:var(--kpi-text,#1f2937);">R$ {{ number_format($totais['total_produtos'], 2, ',', '.') }}</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">{{ $totais['qtd'] }} pedidos (s/ frete)</div>
         </div>
-        <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid {{ $totais['lucro'] >= 0 ? '#10b981' : '#ef4444' }};">
+        <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid {{ $totais['lucro_produto'] >= 0 ? '#10b981' : '#ef4444' }};">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                <span style="font-size:11px;font-weight:700;color:{{ $totais['lucro'] >= 0 ? '#10b981' : '#ef4444' }};text-transform:uppercase;letter-spacing:.5px;">Lucro</span>
-                <span style="width:32px;height:32px;border-radius:8px;background:{{ $totais['lucro'] >= 0 ? 'rgba(16,185,129,.15)' : 'rgba(239,68,68,.15)' }};display:flex;align-items:center;justify-content:center;font-size:16px;">📈</span>
+                <span style="font-size:11px;font-weight:700;color:{{ $totais['lucro_produto'] >= 0 ? '#10b981' : '#ef4444' }};text-transform:uppercase;letter-spacing:.5px;">Lucro Pedidos</span>
+                <span style="width:32px;height:32px;border-radius:8px;background:{{ $totais['lucro_produto'] >= 0 ? 'rgba(16,185,129,.15)' : 'rgba(239,68,68,.15)' }};display:flex;align-items:center;justify-content:center;font-size:16px;">📈</span>
             </div>
-            <div style="font-size:28px;font-weight:800;color:{{ $totais['lucro'] >= 0 ? '#059669' : '#dc2626' }};">R$ {{ number_format($totais['lucro'], 2, ',', '.') }}</div>
-            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">margem {{ $totais['margem'] }}%</div>
+            <div style="font-size:28px;font-weight:800;color:{{ $totais['lucro_produto'] >= 0 ? '#059669' : '#dc2626' }};">R$ {{ number_format($totais['lucro_produto'], 2, ',', '.') }}</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">margem {{ $totais['margem_produto_pct'] }}%</div>
         </div>
-        <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid #10b981;">
+        <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid #3b82f6;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                <span style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.5px;">Com Lucro</span>
-                <span style="width:32px;height:32px;border-radius:8px;background:rgba(16,185,129,.15);display:flex;align-items:center;justify-content:center;font-size:16px;">✅</span>
+                <span style="font-size:11px;font-weight:700;color:#3b82f6;text-transform:uppercase;letter-spacing:.5px;">Fretes</span>
+                <span style="width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,.15);display:flex;align-items:center;justify-content:center;font-size:16px;">🚚</span>
             </div>
-            <div style="font-size:28px;font-weight:800;color:#059669;">{{ $totais['com_lucro'] }}</div>
-            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">{{ $totais['qtd'] > 0 ? round(($totais['com_lucro'] / $totais['qtd']) * 100, 1) : 0 }}% do total</div>
+            <div style="font-size:28px;font-weight:800;color:var(--kpi-text,#1f2937);">R$ {{ number_format($totais['total_frete'], 2, ',', '.') }}</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">frete cobrado dos clientes</div>
         </div>
-        <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid #ef4444;">
+        <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid {{ $totais['margem_frete'] >= 0 ? '#10b981' : '#ef4444' }};">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                <span style="font-size:11px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:.5px;">Com Prejuízo</span>
-                <span style="width:32px;height:32px;border-radius:8px;background:rgba(239,68,68,.15);display:flex;align-items:center;justify-content:center;font-size:16px;">⚠️</span>
+                <span style="font-size:11px;font-weight:700;color:{{ $totais['margem_frete'] >= 0 ? '#10b981' : '#ef4444' }};text-transform:uppercase;letter-spacing:.5px;">Margem Frete</span>
+                <span style="width:32px;height:32px;border-radius:8px;background:{{ $totais['margem_frete'] >= 0 ? 'rgba(16,185,129,.15)' : 'rgba(239,68,68,.15)' }};display:flex;align-items:center;justify-content:center;font-size:16px;">📊</span>
             </div>
-            <div style="font-size:28px;font-weight:800;color:#dc2626;">{{ $totais['com_prejuizo'] }}</div>
-            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">{{ $totais['qtd'] > 0 ? round(($totais['com_prejuizo'] / $totais['qtd']) * 100, 1) : 0 }}% do total</div>
+            <div style="font-size:28px;font-weight:800;color:{{ $totais['margem_frete'] >= 0 ? '#059669' : '#dc2626' }};">R$ {{ number_format($totais['margem_frete'], 2, ',', '.') }}</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">margem {{ $totais['margem_frete_pct'] }}%</div>
+        </div>
+        <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid #f59e0b;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <span style="font-size:11px;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:.5px;">Ticket Médio</span>
+                <span style="width:32px;height:32px;border-radius:8px;background:rgba(245,158,11,.15);display:flex;align-items:center;justify-content:center;font-size:16px;">🎯</span>
+            </div>
+            <div style="font-size:28px;font-weight:800;color:var(--kpi-text,#1f2937);">R$ {{ number_format($totais['ticket_medio'], 2, ',', '.') }}</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">por pedido</div>
         </div>
     </div>
     <style>
         .dark { --kpi-bg: #1f2937; --kpi-text: #f9fafb; }
         :root { --kpi-bg: #fff; --kpi-text: #1f2937; }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
     </style>
-
-    {{-- Gráficos --}}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
-        {{-- Gráfico de barras - Faturamento/Lucro diário --}}
-        <div class="lg:col-span-2 rounded-2xl bg-white dark:bg-gray-800 shadow-md p-5">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Faturamento & Lucro Diário</h3>
-            </div>
-            <div style="position:relative;height:220px;">
-                <canvas id="chartVendasDiarias"></canvas>
-            </div>
-        </div>
-
-        {{-- Donut margem + breakdown por canal --}}
-        <div class="rounded-2xl bg-white dark:bg-gray-800 shadow-md p-5">
-            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4">Vendas por Canal</h3>
-            <div style="position:relative;height:180px;" class="mb-4">
-                <canvas id="chartCanais"></canvas>
-            </div>
-            <div class="space-y-2">
-                @php
-                    $canalCores = ['#3b82f6','#f59e0b','#10b981','#8b5cf6','#ef4444','#06b6d4','#ec4899','#6366f1'];
-                @endphp
-                @foreach($porCanal as $i => $c)
-                    <div class="flex items-center justify-between text-xs">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2.5 h-2.5 rounded-full" style="background:{{ $canalCores[$i % count($canalCores)] }}"></span>
-                            <span class="text-gray-600 dark:text-gray-300">{{ $c['canal'] }}</span>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <span class="font-semibold text-gray-800 dark:text-white">{{ $c['qtd'] }}</span>
-                            <span class="text-gray-400 w-24 text-right">R$ {{ number_format($c['total'], 0, ',', '.') }}</span>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-    </div>
-    <div id="chartDataHolder" class="hidden" data-grafico='@json($grafico)' data-canais='@json($porCanal)'></div>
 
     {{-- Cards de Vendas --}}
     <div class="mt-6 space-y-3">
@@ -731,71 +685,4 @@
         </button>
     </div>
     @endif
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-    <script>
-        let chartBar = null, chartDonut = null, chartInitTimeout = null;
-
-        function initDashboardCharts() {
-            if (chartInitTimeout) clearTimeout(chartInitTimeout);
-            chartInitTimeout = setTimeout(doInitCharts, 200);
-        }
-
-        function doInitCharts() {
-            const barEl = document.getElementById('chartVendasDiarias');
-            const donutEl = document.getElementById('chartCanais');
-            const holder = document.getElementById('chartDataHolder');
-            if (!barEl || !donutEl || !holder) return;
-
-            try {
-                const grafico = JSON.parse(holder.dataset.grafico);
-                const porCanal = JSON.parse(holder.dataset.canais);
-                const cores = ['#3b82f6','#f59e0b','#10b981','#8b5cf6','#ef4444','#06b6d4','#ec4899','#6366f1'];
-                const isDark = document.documentElement.classList.contains('dark');
-                const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-                const textColor = isDark ? '#9ca3af' : '#6b7280';
-
-                if (chartBar) { chartBar.destroy(); chartBar = null; }
-                if (chartDonut) { chartDonut.destroy(); chartDonut = null; }
-
-                chartBar = new Chart(barEl, {
-                    type: 'bar',
-                    data: {
-                        labels: grafico.labels,
-                        datasets: [
-                            { label: 'Faturamento', data: grafico.faturamento, backgroundColor: '#3b82f6', borderRadius: 6, barPercentage: 0.6 },
-                            { label: 'Lucro', data: grafico.lucro, backgroundColor: '#10b981', borderRadius: 6, barPercentage: 0.6 }
-                        ]
-                    },
-                    options: {
-                        responsive: true, maintainAspectRatio: false,
-                        plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 16, color: textColor, font: { size: 11 } } } },
-                        scales: {
-                            x: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 } } },
-                            y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 }, callback: v => 'R$ ' + (v/1000).toFixed(1) + 'k' } }
-                        }
-                    }
-                });
-
-                chartDonut = new Chart(donutEl, {
-                    type: 'doughnut',
-                    data: {
-                        labels: porCanal.map(c => c.canal),
-                        datasets: [{ data: porCanal.map(c => c.total), backgroundColor: cores.slice(0, porCanal.length), borderWidth: 0 }]
-                    },
-                    options: {
-                        responsive: true, maintainAspectRatio: false, cutout: '65%',
-                        plugins: { legend: { display: false } }
-                    }
-                });
-            } catch(e) { console.warn('Chart init error:', e); }
-        }
-
-        document.addEventListener('DOMContentLoaded', initDashboardCharts);
-        document.addEventListener('livewire:navigated', initDashboardCharts);
-        document.addEventListener('livewire:init', () => {
-            initDashboardCharts();
-            Livewire.hook('morph.updated', () => initDashboardCharts());
-        });
-    </script>
 </x-filament-panels::page>
