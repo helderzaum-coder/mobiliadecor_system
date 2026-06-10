@@ -96,7 +96,7 @@
                                     @foreach($this->resultados as $r)
                                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                             <td class="px-4 py-2 font-mono text-xs text-gray-700 dark:text-gray-200">{{ $r['sku'] }}</td>
-                                            <td class="px-4 py-2 text-gray-700 dark:text-gray-200" title="{{ $r['nome'] }}">{{ \Illuminate\Support\Str::limit($r['nome'], 80) }}</td>
+                                            <td class="px-4 py-2 text-gray-700 dark:text-gray-200" title="{{ $r['nome'] }}">{{ \Illuminate\Support\Str::limit($r['nome'], 120) }}</td>
                                             <td class="px-4 py-2 text-center text-gray-700 dark:text-gray-200">{{ $r['qtd_direta'] }}</td>
                                             <td class="px-4 py-2 text-center {{ $r['qtd_kit'] > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400' }}">{{ $r['qtd_kit'] }}</td>
                                             <td class="px-4 py-2 text-center font-bold text-gray-900 dark:text-white">{{ $r['total'] }}</td>
