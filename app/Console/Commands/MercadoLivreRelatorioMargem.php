@@ -154,8 +154,8 @@ class MercadoLivreRelatorioMargem extends Command
         $comissaoPct = $comissaoData['percent'] ?? $this->comissaoFallback($listingType);
         $comissaoValor = $comissaoData['valor'] ?? round($preco * $comissaoPct / 100, 2);
 
-        // Frete (estimado pela tabela do sistema)
-        $frete = $this->estimarFrete($preco, $item);
+        // Frete real cobrado pelo ML via shipping_options
+        $frete = $this->buscarFreteReal($itemId, $item);
 
         // Imposto (nota tipo produto = sobre preço - frete)
         $baseImposto = max(0, $preco - $frete);
@@ -166,7 +166,8 @@ class MercadoLivreRelatorioMargem extends Command
         $margemValor = round($recebe - $custo - $impostoValor, 2);
         $margemPct = $preco > 0 ? round(($margemValor / $preco) * 100, 2) : 0;
 
-        // Promoções do item
+        // Promoções do item — buscar TODAS
+        sleep(1);
         $promoResult = $this->promotionService->buscarPromocoesParaItem($itemId);
         $promocoes = [];
         $precoPromocional = null;
@@ -175,39 +176,48 @@ class MercadoLivreRelatorioMargem extends Command
 
         if ($promoResult['success'] && !empty($promoResult['promotions'])) {
             foreach ($promoResult['promotions'] as $promo) {
+                $pp = isset($promo['price']) ? (float) $promo['price'] : null;
+                $promoMargem = null;
+                $promoMargemPct = null;
+
+                // Calcular margem individual para cada promoção
+                if ($pp && $pp > 0) {
+                    $comPromo = $this->promotionService->buscarComissaoParaPreco(
+                        $pp, $listingType, $categoryId,
+                        $item['shipping']['logistic_type'] ?? 'xd_drop_off',
+                        $item['shipping']['mode'] ?? 'me2'
+                    );
+                    $comPromoValor = $comPromo['valor'] ?? round($pp * $comissaoPct / 100, 2);
+                    $baseImpPromo = max(0, $pp - $frete);
+                    $impPromo = round($baseImpPromo * $this->impostoPct / 100, 2);
+                    $recebePromo = $pp - $comPromoValor - $frete;
+                    $promoMargem = round($recebePromo - $custo - $impPromo, 2);
+                    $promoMargemPct = $pp > 0 ? round(($promoMargem / $pp) * 100, 2) : 0;
+
+                    sleep(1); // Rate limit
+                }
+
                 $promocoes[] = [
                     'nome' => $promo['name'] ?? 'Sem nome',
                     'tipo' => $promo['type'] ?? '',
-                    'preco' => $promo['price'] ?? null,
+                    'status' => $promo['status'] ?? '',
+                    'preco' => $pp,
                     'meli_pct' => $promo['meli_percentage'] ?? 0,
                     'seller_pct' => $promo['seller_percentage'] ?? 0,
+                    'margem_valor' => $promoMargem,
+                    'margem_pct' => $promoMargemPct,
+                    'inicio' => $promo['start_date'] ?? null,
+                    'fim' => $promo['finish_date'] ?? null,
                 ];
 
-                // Usar o preço da promoção para calcular margem promocional
-                $pp = $promo['price'] ?? null;
+                // Guardar o menor preço promocional como principal
                 if ($pp && ($precoPromocional === null || $pp < $precoPromocional)) {
-                    $precoPromocional = (float) $pp;
+                    $precoPromocional = $pp;
+                    $margemPromocional = $promoMargem;
+                    $margemPromocionalPct = $promoMargemPct;
                 }
             }
-
-            if ($precoPromocional && $precoPromocional < $preco) {
-                // Recalcular comissão para preço promocional
-                $comPromo = $this->promotionService->buscarComissaoParaPreco(
-                    $precoPromocional, $listingType, $categoryId,
-                    $item['shipping']['logistic_type'] ?? 'xd_drop_off',
-                    $item['shipping']['mode'] ?? 'me2'
-                );
-                $comPromoValor = $comPromo['valor'] ?? round($precoPromocional * $comissaoPct / 100, 2);
-                $baseImpPromo = max(0, $precoPromocional - $frete);
-                $impPromo = round($baseImpPromo * $this->impostoPct / 100, 2);
-                $recebePromo = $precoPromocional - $comPromoValor - $frete;
-                $margemPromocional = round($recebePromo - $custo - $impPromo, 2);
-                $margemPromocionalPct = $precoPromocional > 0
-                    ? round(($margemPromocional / $precoPromocional) * 100, 2) : 0;
-            }
         }
-
-        sleep(1); // Rate limit entre chamadas de promoção
 
         RelatorioMargemML::create([
             'account_key' => $accountKey,
@@ -218,6 +228,7 @@ class MercadoLivreRelatorioMargem extends Command
             'preco_venda' => $preco,
             'custo_produto' => $custo,
             'estoque' => $estoque,
+
             'comissao_pct' => $comissaoPct,
             'comissao_valor' => $comissaoValor,
             'frete' => $frete,
@@ -276,71 +287,38 @@ class MercadoLivreRelatorioMargem extends Command
         }
     }
 
-    private function estimarFrete(float $preco, array $item): float
+    private function buscarFreteReal(string $itemId, array $item): float
     {
-        // Se o item não tem frete grátis, frete = 0 para o vendedor
+        // Se não tem frete grátis, vendedor não paga frete
         $freeShipping = $item['shipping']['free_shipping'] ?? false;
         if (!$freeShipping) return 0;
 
-        // Estimar peso via shipping tags ou usar peso padrão
-        // Usar tabela simplificada baseada no preço (faixa mais comum)
-        $peso = 5.0; // peso médio padrão para estimativa
-        $tags = $item['shipping']['tags'] ?? [];
-        foreach ($tags as $tag) {
-            if (str_contains($tag, 'mandatory_free_shipping')) {
-                // ML paga parte, mas vendedor paga diferença
-                break;
-            }
+        // Buscar via shipping_options do ML
+        sleep(1);
+        $result = $this->mlClient->get("/items/{$itemId}/shipping_options", ['zip_code' => '01310100']);
+
+        if (!$result['success']) {
+            Log::warning("ML Relatório: falha shipping_options {$itemId}");
+            return 0;
         }
 
-        // Buscar dimensões do item se disponível
-        if (!empty($item['shipping']['dimensions'])) {
-            $dims = $item['shipping']['dimensions'];
-            // formato: "33.0x50.0x12.0,1100" (AxLxC, peso em gramas)
-            if (is_string($dims)) {
-                $parts = explode(',', $dims);
-                if (isset($parts[1])) {
-                    $peso = ((float) $parts[1]) / 1000;
-                }
+        $options = $result['body']['options'] ?? [];
+        $maiorFrete = 0;
+
+        foreach ($options as $opt) {
+            $listCost = (float) ($opt['list_cost'] ?? 0);
+            $buyerCost = (float) ($opt['cost'] ?? 0);
+            // Custo do vendedor = list_cost - o que o comprador paga
+            $cost = max(0, $listCost - $buyerCost);
+            if ($cost <= 0 && !empty($opt['free_shipping'])) {
+                $cost = $listCost;
             }
+            $maiorFrete = max($maiorFrete, $cost);
         }
 
-        // Usar tabela de frete simplificada do sistema
-        return $this->calcularFreteTabela($preco, $peso);
+        return round($maiorFrete, 2);
     }
 
-    private function calcularFreteTabela(float $preco, float $peso): float
-    {
-        // Tabela simplificada ME2 (mesma do CalculadoraML)
-        $tabela = [
-            5 => [6.55, 8.35, 9.75, 18.45, 21.55, 24.65, 27.75, 30.75],
-            10 => [7.05, 9.55, 10.95, 41.25, 48.05, 54.95, 61.75, 68.65],
-            20 => [7.45, 10.55, 11.95, 54.75, 63.85, 72.95, 82.05, 91.15],
-            30 => [7.75, 11.15, 12.35, 65.95, 75.45, 85.55, 96.25, 106.95],
-        ];
-
-        $faixasPreco = [
-            [0, 18.99], [19, 48.99], [49, 78.99], [79, 99.99],
-            [100, 119.99], [120, 149.99], [150, 199.99], [200, 999999],
-        ];
-
-        // Determinar faixa de peso
-        $pesoKey = 5;
-        foreach ([5, 10, 20, 30] as $k) {
-            if ($peso <= $k) { $pesoKey = $k; break; }
-            $pesoKey = $k;
-        }
-
-        $valores = $tabela[$pesoKey];
-
-        foreach ($faixasPreco as $i => [$min, $max]) {
-            if ($preco >= $min && $preco <= $max) {
-                return $valores[$i] ?? end($valores);
-            }
-        }
-
-        return end($valores);
-    }
 
     private function comissaoFallback(string $listingType): float
     {
