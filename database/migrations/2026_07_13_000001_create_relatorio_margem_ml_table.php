@@ -15,6 +15,8 @@ return new class extends Migration
             $table->string('sku', 100)->nullable();
             $table->string('titulo')->nullable();
             $table->string('listing_type', 30)->nullable()->comment('gold_pro, gold_special');
+            $table->string('catalog_product_id', 50)->nullable()->comment('MLBU do catálogo');
+            $table->boolean('is_catalog_listing')->default(false);
             $table->decimal('preco_venda', 10, 2)->default(0);
             $table->decimal('custo_produto', 10, 2)->default(0);
             $table->integer('estoque')->default(0);

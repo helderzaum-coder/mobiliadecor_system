@@ -138,6 +138,10 @@ class MercadoLivreRelatorioMargem extends Command
 
         if ($estoque <= 0 || $preco <= 0) return;
 
+        // Catálogo
+        $catalogProductId = $item['catalog_product_id'] ?? null;
+        $isCatalogListing = !empty($item['catalog_listing']) || !empty($catalogProductId);
+
         // Extrair SKU
         $sku = $this->extrairSku($item);
 
@@ -227,6 +231,8 @@ class MercadoLivreRelatorioMargem extends Command
             'sku' => $sku,
             'titulo' => mb_substr($titulo, 0, 255),
             'listing_type' => $listingType,
+            'catalog_product_id' => $catalogProductId,
+            'is_catalog_listing' => $isCatalogListing,
             'preco_venda' => $preco,
             'custo_produto' => $custo,
             'estoque' => $estoque,
