@@ -80,7 +80,11 @@ class CalculadoraML extends Page
         $via = $getRegra($viaDB);
         $tiktok = $getRegra($tiktokDB);
         $leroy = $getRegra($leroyDB);
-        $siteCartao = $getRegra($siteDB, null, null);
+        $siteCartao = ['pct' => 0, 'fixo' => 0];
+        if ($siteDB) {
+            $regraCartao = $siteDB->regrasComissao->first(fn($r) => !str_contains(strtolower($r->nome_regra ?? ''), 'pix'));
+            $siteCartao = ['pct' => (float) ($regraCartao->percentual ?? 0), 'fixo' => (float) ($regraCartao->valor_fixo ?? 0)];
+        }
         $sitePix = $siteDB ? $siteDB->regrasComissao->first(fn($r) => str_contains(strtolower($r->nome_regra ?? ''), 'pix')) : null;
         $sitePixFixo = (float) ($sitePix->valor_fixo ?? 0.99);
 
