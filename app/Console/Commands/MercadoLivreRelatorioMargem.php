@@ -23,6 +23,7 @@ class MercadoLivreRelatorioMargem extends Command
     private MercadoLivrePromotionService $promotionService;
     private BlingClient $blingClient;
     private float $impostoPct;
+    private string $accountKey;
 
     public function handle(): int
     {
@@ -32,6 +33,7 @@ class MercadoLivreRelatorioMargem extends Command
         $this->info("=== Relatório Margem ML [{$accountKey}] ===");
         $this->info("Limite: " . ($limit ?: 'TODOS'));
 
+        $this->accountKey = $accountKey;
         $this->mlClient = new MercadoLivreClient($accountKey);
         $this->promotionService = new MercadoLivrePromotionService($accountKey);
         $this->blingClient = new BlingClient($accountKey);
@@ -297,26 +299,51 @@ class MercadoLivreRelatorioMargem extends Command
         sleep(1);
         $result = $this->mlClient->get("/items/{$itemId}/shipping_options", ['zip_code' => '01310100']);
 
-        if (!$result['success']) {
-            Log::warning("ML Relatório: falha shipping_options {$itemId}");
-            return 0;
-        }
-
-        $options = $result['body']['options'] ?? [];
-        $maiorFrete = 0;
-
-        foreach ($options as $opt) {
-            $listCost = (float) ($opt['list_cost'] ?? 0);
-            $buyerCost = (float) ($opt['cost'] ?? 0);
-            // Custo do vendedor = list_cost - o que o comprador paga
-            $cost = max(0, $listCost - $buyerCost);
-            if ($cost <= 0 && !empty($opt['free_shipping'])) {
-                $cost = $listCost;
+        if ($result['success'] && !empty($result['body']['options'])) {
+            $maiorFrete = 0;
+            foreach ($result['body']['options'] as $opt) {
+                $listCost = (float) ($opt['list_cost'] ?? 0);
+                $maiorFrete = max($maiorFrete, $listCost);
             }
-            $maiorFrete = max($maiorFrete, $cost);
+            if ($maiorFrete > 0) return round($maiorFrete, 2);
         }
 
-        return round($maiorFrete, 2);
+        // Fallback: tentar endpoint /shipping_options/free
+        $userId = MercadoLivreToken::where('account_key', $this->accountKey)
+            ->value('user_id');
+
+        if ($userId) {
+            sleep(1);
+            $freeResult = $this->mlClient->get("/users/{$userId}/shipping_options/free", [
+                'item_id' => $itemId,
+            ]);
+            if ($freeResult['success']) {
+                $cost = $this->extrairMaiorValor($freeResult['body']);
+                if ($cost > 0) return round($cost, 2);
+            }
+        }
+
+        Log::warning("ML Relatório: frete zerado para {$itemId} (free_shipping=true)");
+        return 0;
+    }
+
+    private function extrairMaiorValor(mixed $data, float $max = 0): float
+    {
+        if (!is_array($data)) return $max;
+
+        foreach (['list_cost', 'cost', 'amount', 'base_cost'] as $key) {
+            if (isset($data[$key]) && is_numeric($data[$key])) {
+                $max = max($max, (float) $data[$key]);
+            }
+        }
+
+        foreach ($data as $value) {
+            if (is_array($value)) {
+                $max = $this->extrairMaiorValor($value, $max);
+            }
+        }
+
+        return $max;
     }
 
 
