@@ -123,6 +123,14 @@
                             <div class="text-sm font-semibold">{{ number_format($item->imposto_pct, 1) }}%</div>
                             <div class="text-[10px] text-gray-400">R$ {{ number_format($item->imposto_valor, 2, ',', '.') }}</div>
                         </div>
+                        @php $antecPct = $this->antecipacao_pct; @endphp
+                        @if($antecPct > 0)
+                        <div class="flex-1 px-3 py-2 text-center min-w-0">
+                            <div class="text-[10px] text-gray-500 uppercase">Antecipação</div>
+                            <div class="text-sm font-semibold">{{ number_format($antecPct, 1) }}%</div>
+                            <div class="text-[10px] text-gray-400">R$ {{ number_format($item->preco_venda * $antecPct / 100, 2, ',', '.') }}</div>
+                        </div>
+                        @endif
                         <div class="flex-1 px-3 py-2 text-center min-w-0">
                             <div class="text-[10px] text-gray-500 uppercase">Estoque</div>
                             <div class="text-sm font-semibold">{{ $item->estoque }}</div>

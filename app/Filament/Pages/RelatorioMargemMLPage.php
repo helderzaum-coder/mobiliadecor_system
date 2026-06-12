@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\CanalVenda;
 use App\Models\RelatorioMargemML;
 use Filament\Pages\Page;
 
@@ -19,6 +20,11 @@ class RelatorioMargemMLPage extends Page
     public string $filtroListingType = '';
     public string $ordenar = 'margem_pct_asc';
     public string $busca = '';
+
+    public function getAntecipacaoPctProperty(): float
+    {
+        return (float) (CanalVenda::where('nome_canal', 'Mercadolivre')->value('percentual_antecipacao') ?? 0);
+    }
 
     public function getItensProperty()
     {
