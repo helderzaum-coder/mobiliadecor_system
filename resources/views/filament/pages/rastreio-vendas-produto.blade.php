@@ -16,7 +16,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Período</label>
-                    <select wire:model="periodo" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-sm">
+                    <select wire:model.live="periodo" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-sm">
                         <option value="hoje">Hoje</option>
                         <option value="esta_semana">Esta Semana</option>
                         <option value="este_mes">Este Mês</option>
@@ -25,16 +25,14 @@
                     </select>
                 </div>
 
-                @if($this->periodo === 'customizado')
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">De</label>
-                        <input type="date" wire:model="data_inicio" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-sm" />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Até</label>
-                        <input type="date" wire:model="data_fim" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-sm" />
-                    </div>
-                @endif
+                <div x-show="$wire.periodo === 'customizado'">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">De</label>
+                    <input type="date" wire:model="data_inicio" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-sm" />
+                </div>
+                <div x-show="$wire.periodo === 'customizado'">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Até</label>
+                    <input type="date" wire:model="data_fim" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-sm" />
+                </div>
 
                 <div>
                     <x-filament::button wire:click="consultar" wire:loading.attr="disabled" class="w-full">
