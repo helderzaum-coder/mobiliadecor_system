@@ -78,7 +78,7 @@
                         <div class="flex items-start justify-between gap-4">
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2 flex-wrap">
-                                    <a href="https://www.mercadolivre.com.br/p/{{ $item->mlb_id }}" target="_blank"
+                                    <a href="https://www.mercadolivre.com.br/anuncios/lista/promos?page=1&search={{ $item->mlb_id }}" target="_blank"
                                        class="text-sm font-mono text-blue-600 dark:text-blue-400 hover:underline">{{ $item->mlb_id }}</a>
                                     <span class="px-2 py-0.5 text-xs rounded-full {{ $item->listing_type === 'gold_pro' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' }}">
                                         {{ $tipoLabel }}
