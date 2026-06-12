@@ -136,7 +136,7 @@
                     {{-- Promoções --}}
                     @if(!empty($item->promocoes))
                         <div class="border-t border-gray-100 dark:border-gray-700">
-                            <div class="px-4 py-2 bg-gray-50 dark:bg-gray-750">
+                            <div class="px-4 py-2 bg-gray-100 dark:bg-gray-900">
                                 <span class="text-xs font-semibold text-gray-600 dark:text-gray-400">
                                     🏷️ PROMOÇÕES ({{ count($item->promocoes) }})
                                 </span>
