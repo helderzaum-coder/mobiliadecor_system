@@ -126,12 +126,28 @@ class MercadoLivreOrderService
     {
         $response = $this->client->get("/orders/{$orderId}");
 
-        if (!$response['success']) {
-            Log::warning("ML: Erro ao buscar pedido {$orderId}", $response);
-            return null;
+        if ($response['success']) {
+            return $response['body'];
         }
 
-        return $response['body'];
+        // Se 404, pode ser um pack_id ao invés de order_id
+        if (($response['http_code'] ?? 0) === 404) {
+            $packResponse = $this->client->get("/packs/{$orderId}");
+            if ($packResponse['success']) {
+                $orderIds = collect($packResponse['body']['orders'] ?? [])->pluck('id')->filter()->toArray();
+                if (!empty($orderIds)) {
+                    $firstOrder = $this->client->get("/orders/{$orderIds[0]}");
+                    if ($firstOrder['success']) {
+                        // Marcar como pack para que buscarDadosPedido trate corretamente
+                        $firstOrder['body']['pack_id'] = (int) $orderId;
+                        return $firstOrder['body'];
+                    }
+                }
+            }
+        }
+
+        Log::warning("ML: Erro ao buscar pedido {$orderId}", $response);
+        return null;
     }
 
     /**
