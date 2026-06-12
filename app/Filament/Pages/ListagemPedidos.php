@@ -62,14 +62,16 @@ class ListagemPedidos extends Page
 
         $pedidos = $query->orderBy('data_pedido', 'desc')->limit(150)->get();
 
-        // Buscar mapa de situações do Bling (1 chamada por conta, cache 1h)
+        // Buscar mapa de nomes de situações (para traduzir IDs)
         $situacoesMapPrimary = $this->getSituacoesMap('primary');
         $situacoesMapSecondary = $this->getSituacoesMap('secondary');
 
-        $this->resultados = $pedidos->flatMap(function ($pedido) use ($situacoesMapPrimary, $situacoesMapSecondary) {
+        // Buscar situação ATUAL de cada pedido na API (cache 10min por pedido)
+        $situacoesAtuais = $this->buscarSituacoesAtuais($pedidos, $situacoesMapPrimary, $situacoesMapSecondary);
+
+        $this->resultados = $pedidos->flatMap(function ($pedido) use ($situacoesAtuais) {
             $itens = $pedido->itens ?? [];
-            $sitMap = $pedido->bling_account === 'primary' ? $situacoesMapPrimary : $situacoesMapSecondary;
-            $situacao = $sitMap[$pedido->situacao_id] ?? ('ID ' . ($pedido->situacao_id ?? '—'));
+            $situacao = $situacoesAtuais[$pedido->bling_id] ?? '—';
             $cnpj = $pedido->bling_account === 'primary' ? 'Mobilia Decor' : 'HES Móveis';
 
             // Data liberação etiqueta ML (salva em dados_originais._data_despacho)
@@ -127,14 +129,13 @@ class ListagemPedidos extends Page
 
     /**
      * Busca mapa de situações do Bling (1 chamada por conta, cache 1h).
-     * Retorna [situacao_id => nome] para traduzir o ID salvo no staging.
+     * Retorna [situacao_id => nome].
      */
     private function getSituacoesMap(string $account): array
     {
         return Cache::remember("bling_situacoes_map_{$account}", 3600, function () use ($account) {
             $client = new BlingClient($account);
 
-            // Descobrir ID do módulo "Vendas"
             $modulos = $client->get('/situacoes/modulos');
             $moduloVendasId = null;
 
@@ -163,6 +164,52 @@ class ListagemPedidos extends Page
             }
             return $map;
         });
+    }
+
+    /**
+     * Busca situação ATUAL de cada pedido via API do Bling.
+     * Cache de 10 minutos por bling_id. Limite de 50 pedidos sem cache.
+     */
+    private function buscarSituacoesAtuais($pedidos, array $mapPrimary, array $mapSecondary): array
+    {
+        $resultado = [];
+        $pedidosUnicos = $pedidos->unique('bling_id');
+        $semCache = 0;
+
+        foreach ($pedidosUnicos as $pedido) {
+            $cacheKey = "bling_sit_atual_{$pedido->bling_id}";
+            $cached = Cache::get($cacheKey);
+
+            if ($cached !== null) {
+                $resultado[$pedido->bling_id] = $cached;
+                continue;
+            }
+
+            // Limitar chamadas sem cache para evitar timeout
+            if ($semCache >= 50) {
+                $sitMap = $pedido->bling_account === 'primary' ? $mapPrimary : $mapSecondary;
+                $resultado[$pedido->bling_id] = $sitMap[$pedido->situacao_id] ?? ('ID ' . ($pedido->situacao_id ?? '—'));
+                continue;
+            }
+
+            $client = new BlingClient($pedido->bling_account);
+            $response = $client->getPedido((int) $pedido->bling_id);
+
+            if ($response['success']) {
+                $sitId = $response['body']['data']['situacao']['id'] ?? null;
+                $sitMap = $pedido->bling_account === 'primary' ? $mapPrimary : $mapSecondary;
+                $nome = $sitMap[$sitId] ?? ('ID ' . $sitId);
+                Cache::put($cacheKey, $nome, 600);
+                $resultado[$pedido->bling_id] = $nome;
+            } else {
+                $sitMap = $pedido->bling_account === 'primary' ? $mapPrimary : $mapSecondary;
+                $resultado[$pedido->bling_id] = $sitMap[$pedido->situacao_id] ?? ('ID ' . ($pedido->situacao_id ?? '—'));
+            }
+
+            $semCache++;
+        }
+
+        return $resultado;
     }
 
     public static function canAccess(): bool
