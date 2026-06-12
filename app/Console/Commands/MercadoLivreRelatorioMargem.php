@@ -140,7 +140,7 @@ class MercadoLivreRelatorioMargem extends Command
 
         // Catálogo
         $catalogProductId = $item['catalog_product_id'] ?? null;
-        $isCatalogListing = !empty($item['catalog_listing']) || !empty($catalogProductId);
+        $isCatalogListing = !empty($item['catalog_listing']);
 
         // Extrair SKU
         $sku = $this->extrairSku($item);
