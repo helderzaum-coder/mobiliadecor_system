@@ -93,23 +93,24 @@ class CalculadoraML extends Page
 
         $nota = fn(?CanalVenda $c, string $default) => $c->tipo_nota ?? $default;
         $impFrete = fn(?CanalVenda $c) => (bool) ($c->imposto_sobre_frete ?? false);
+        $antecipacao = fn(?CanalVenda $c) => (float) ($c->percentual_antecipacao ?? 0);
 
         return [
-            'ml_premium_1'  => ['label' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣', 'comissao_pct' => $mlPremium['pct'], 'fixo' => $mlPremium['fixo'], 'tipo_nota' => $nota($mlDB, 'produto'), 'imposto_sobre_frete' => $impFrete($mlDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
-            'ml_classico_1' => ['label' => 'ML Clássico', 'cor' => '#6366f1', 'icone' => '🔵', 'comissao_pct' => $mlClassico['pct'], 'fixo' => $mlClassico['fixo'], 'tipo_nota' => $nota($mlDB, 'produto'), 'imposto_sobre_frete' => $impFrete($mlDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
-            'ml_premium_2'  => ['label' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣', 'comissao_pct' => $mlPremium['pct'], 'fixo' => $mlPremium['fixo'], 'tipo_nota' => $nota($mlDB, 'produto'), 'imposto_sobre_frete' => $impFrete($mlDB), 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'ml'],
-            'ml_classico_2' => ['label' => 'ML Clássico', 'cor' => '#6366f1', 'icone' => '🔵', 'comissao_pct' => $mlClassico['pct'], 'fixo' => $mlClassico['fixo'], 'tipo_nota' => $nota($mlDB, 'produto'), 'imposto_sobre_frete' => $impFrete($mlDB), 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'ml'],
-            'shopee_1'      => ['label' => 'Shopee', 'cor' => '#ea580c', 'icone' => '🟠', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => $nota($shopeeDB, 'meia_nota'), 'imposto_sobre_frete' => $impFrete($shopeeDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'shopee'],
-            'shopee_2'      => ['label' => 'Shopee', 'cor' => '#ea580c', 'icone' => '🟠', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => $nota($shopeeDB, 'meia_nota'), 'imposto_sobre_frete' => $impFrete($shopeeDB), 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'shopee'],
-            'magalu_1'      => ['label' => 'Magalu', 'cor' => '#2563eb', 'icone' => '🔷', 'comissao_pct' => $magalu['pct'], 'fixo' => $magalu['fixo'], 'tipo_nota' => $nota($magaluDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($magaluDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
-            'webcon_1'      => ['label' => 'Webcontinental', 'cor' => '#0891b2', 'icone' => '🌐', 'comissao_pct' => $webcon['pct'], 'fixo' => $webcon['fixo'], 'tipo_nota' => $nota($webconDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($webconDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
-            'madeiramadeira_1' => ['label' => 'Madeira Madeira', 'cor' => '#16a34a', 'icone' => '🌳', 'comissao_pct' => $mm['pct'], 'fixo' => $mm['fixo'], 'tipo_nota' => $nota($mmDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($mmDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
-            'amazon_1'         => ['label' => 'Amazon', 'cor' => '#f59e0b', 'icone' => '📦', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => $nota($amazonDB, 'produto'), 'imposto_sobre_frete' => $impFrete($amazonDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'amazon'],
-            'via_1'            => ['label' => 'Via (Cnova)', 'cor' => '#dc2626', 'icone' => '🔴', 'comissao_pct' => $via['pct'], 'fixo' => $via['fixo'], 'tipo_nota' => $nota($viaDB, 'produto'), 'imposto_sobre_frete' => $impFrete($viaDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
-            'tiktok_1'         => ['label' => 'Tiktokshop', 'cor' => '#000000', 'icone' => '🎵', 'comissao_pct' => $tiktok['pct'], 'fixo' => $tiktok['fixo'], 'tipo_nota' => $nota($tiktokDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($tiktokDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
-            'leroy_1'          => ['label' => 'LeroyMerlin', 'cor' => '#65a30d', 'icone' => '🏠', 'comissao_pct' => $leroy['pct'], 'fixo' => $leroy['fixo'], 'tipo_nota' => $nota($leroyDB, 'produto'), 'imposto_sobre_frete' => $impFrete($leroyDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
-            'site_cartao_1'    => ['label' => 'Site (Cartão 6x)', 'cor' => '#7c3aed', 'icone' => '💳', 'comissao_pct' => $siteCartao['pct'], 'fixo' => $siteCartao['fixo'], 'tipo_nota' => $nota($siteDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($siteDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
-            'site_pix_1'       => ['label' => 'Site (Pix -15%)', 'cor' => '#059669', 'icone' => '💲', 'comissao_pct' => 0, 'fixo' => $sitePixFixo, 'tipo_nota' => $nota($siteDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($siteDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'site_pix'],
+            'ml_premium_1'  => ['label' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣', 'comissao_pct' => $mlPremium['pct'], 'fixo' => $mlPremium['fixo'], 'tipo_nota' => $nota($mlDB, 'produto'), 'imposto_sobre_frete' => $impFrete($mlDB), 'antecipacao_pct' => $antecipacao($mlDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
+            'ml_classico_1' => ['label' => 'ML Clássico', 'cor' => '#6366f1', 'icone' => '🔵', 'comissao_pct' => $mlClassico['pct'], 'fixo' => $mlClassico['fixo'], 'tipo_nota' => $nota($mlDB, 'produto'), 'imposto_sobre_frete' => $impFrete($mlDB), 'antecipacao_pct' => $antecipacao($mlDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'ml'],
+            'ml_premium_2'  => ['label' => 'ML Premium', 'cor' => '#8b5cf6', 'icone' => '🟣', 'comissao_pct' => $mlPremium['pct'], 'fixo' => $mlPremium['fixo'], 'tipo_nota' => $nota($mlDB, 'produto'), 'imposto_sobre_frete' => $impFrete($mlDB), 'antecipacao_pct' => $antecipacao($mlDB), 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'ml'],
+            'ml_classico_2' => ['label' => 'ML Clássico', 'cor' => '#6366f1', 'icone' => '🔵', 'comissao_pct' => $mlClassico['pct'], 'fixo' => $mlClassico['fixo'], 'tipo_nota' => $nota($mlDB, 'produto'), 'imposto_sobre_frete' => $impFrete($mlDB), 'antecipacao_pct' => $antecipacao($mlDB), 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'ml'],
+            'shopee_1'      => ['label' => 'Shopee', 'cor' => '#ea580c', 'icone' => '🟠', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => $nota($shopeeDB, 'meia_nota'), 'imposto_sobre_frete' => $impFrete($shopeeDB), 'antecipacao_pct' => $antecipacao($shopeeDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'shopee'],
+            'shopee_2'      => ['label' => 'Shopee', 'cor' => '#ea580c', 'icone' => '🟠', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => $nota($shopeeDB, 'meia_nota'), 'imposto_sobre_frete' => $impFrete($shopeeDB), 'antecipacao_pct' => $antecipacao($shopeeDB), 'id_cnpj' => 2, 'cnpj_label' => 'HES Móveis', 'tipo' => 'shopee'],
+            'magalu_1'      => ['label' => 'Magalu', 'cor' => '#2563eb', 'icone' => '🔷', 'comissao_pct' => $magalu['pct'], 'fixo' => $magalu['fixo'], 'tipo_nota' => $nota($magaluDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($magaluDB), 'antecipacao_pct' => $antecipacao($magaluDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+            'webcon_1'      => ['label' => 'Webcontinental', 'cor' => '#0891b2', 'icone' => '🌐', 'comissao_pct' => $webcon['pct'], 'fixo' => $webcon['fixo'], 'tipo_nota' => $nota($webconDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($webconDB), 'antecipacao_pct' => $antecipacao($webconDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+            'madeiramadeira_1' => ['label' => 'Madeira Madeira', 'cor' => '#16a34a', 'icone' => '🌳', 'comissao_pct' => $mm['pct'], 'fixo' => $mm['fixo'], 'tipo_nota' => $nota($mmDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($mmDB), 'antecipacao_pct' => $antecipacao($mmDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+            'amazon_1'         => ['label' => 'Amazon', 'cor' => '#f59e0b', 'icone' => '📦', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => $nota($amazonDB, 'produto'), 'imposto_sobre_frete' => $impFrete($amazonDB), 'antecipacao_pct' => $antecipacao($amazonDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'amazon'],
+            'via_1'            => ['label' => 'Via (Cnova)', 'cor' => '#dc2626', 'icone' => '🔴', 'comissao_pct' => $via['pct'], 'fixo' => $via['fixo'], 'tipo_nota' => $nota($viaDB, 'produto'), 'imposto_sobre_frete' => $impFrete($viaDB), 'antecipacao_pct' => $antecipacao($viaDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+            'tiktok_1'         => ['label' => 'Tiktokshop', 'cor' => '#000000', 'icone' => '🎵', 'comissao_pct' => $tiktok['pct'], 'fixo' => $tiktok['fixo'], 'tipo_nota' => $nota($tiktokDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($tiktokDB), 'antecipacao_pct' => $antecipacao($tiktokDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+            'leroy_1'          => ['label' => 'LeroyMerlin', 'cor' => '#65a30d', 'icone' => '🏠', 'comissao_pct' => $leroy['pct'], 'fixo' => $leroy['fixo'], 'tipo_nota' => $nota($leroyDB, 'produto'), 'imposto_sobre_frete' => $impFrete($leroyDB), 'antecipacao_pct' => $antecipacao($leroyDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+            'site_cartao_1'    => ['label' => 'Site (Cartão 6x)', 'cor' => '#7c3aed', 'icone' => '💳', 'comissao_pct' => $siteCartao['pct'], 'fixo' => $siteCartao['fixo'], 'tipo_nota' => $nota($siteDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($siteDB), 'antecipacao_pct' => $antecipacao($siteDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+            'site_pix_1'       => ['label' => 'Site (Pix -15%)', 'cor' => '#059669', 'icone' => '💲', 'comissao_pct' => 0, 'fixo' => $sitePixFixo, 'tipo_nota' => $nota($siteDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($siteDB), 'antecipacao_pct' => $antecipacao($siteDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'site_pix'],
         ];
     }
 
@@ -333,7 +334,8 @@ class CalculadoraML extends Page
                 $comissaoFixa = $cfg['fixo'];
                 $frete = 0;
                 $imposto = $this->calcularImposto($precoPix, 0, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete']);
-                $recebe = round($precoPix - $comissao, 2);
+                $antecipacao = round($precoPix * ($cfg['antecipacao_pct'] ?? 0) / 100, 2);
+                $recebe = round($precoPix - $comissao - $antecipacao, 2);
                 $margem = round($recebe - $custoTotal - $imposto, 2);
 
                 $canais[] = [
@@ -342,6 +344,7 @@ class CalculadoraML extends Page
                     'cnpj_label' => $cfg['cnpj_label'], 'id_cnpj' => $cfg['id_cnpj'],
                     'comissao_pct' => 0, 'comissao' => $comissao,
                     'comissao_fixa' => $cfg['fixo'],
+                    'antecipacao_pct' => $cfg['antecipacao_pct'] ?? 0, 'antecipacao' => $antecipacao,
                     'frete' => 0, 'recebe' => $recebe,
                     'imposto_pct' => $impostoPct, 'imposto' => $imposto,
                     'tipo_nota' => $cfg['tipo_nota'],
@@ -358,7 +361,8 @@ class CalculadoraML extends Page
             }
 
             $imposto = $this->calcularImposto($preco, $frete, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete']);
-            $recebe = round($preco - $comissao - $frete, 2);
+            $antecipacao = round($preco * ($cfg['antecipacao_pct'] ?? 0) / 100, 2);
+            $recebe = round($preco - $comissao - $frete - $antecipacao, 2);
             $margem = round($recebe - $custoTotal - $imposto, 2);
 
             $canais[] = [
@@ -367,6 +371,7 @@ class CalculadoraML extends Page
                 'cnpj_label' => $cfg['cnpj_label'], 'id_cnpj' => $cfg['id_cnpj'],
                 'comissao_pct' => $comissaoPct, 'comissao' => $comissao,
                 'comissao_fixa' => $comissaoFixa,
+                'antecipacao_pct' => $cfg['antecipacao_pct'] ?? 0, 'antecipacao' => $antecipacao,
                 'frete' => $frete, 'recebe' => $recebe,
                 'imposto_pct' => $impostoPct, 'imposto' => $imposto,
                 'tipo_nota' => $cfg['tipo_nota'],
@@ -460,13 +465,15 @@ class CalculadoraML extends Page
                 }
 
                 $imposto = $this->calcularImposto($preco, $frete, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete']);
-                $recebe = round($preco - $comissao - $frete, 2);
+                $antecipacao = round($preco * ($cfg['antecipacao_pct'] ?? 0) / 100, 2);
+                $recebe = round($preco - $comissao - $frete - $antecipacao, 2);
                 $margem = round($recebe - $custoTotal - $imposto, 2);
 
                 $canais[$key][$tipo] = [
                     'preco_venda' => $preco,
                     'comissao_pct' => $comissaoPct, 'comissao' => $comissao,
                     'comissao_fixa' => $comissaoFixa,
+                    'antecipacao_pct' => $cfg['antecipacao_pct'] ?? 0, 'antecipacao' => $antecipacao,
                     'frete' => $frete, 'recebe' => $recebe,
                     'imposto_pct' => $impostoPct, 'imposto' => $imposto,
                     'tipo_nota' => $cfg['tipo_nota'],
@@ -492,6 +499,7 @@ class CalculadoraML extends Page
 
     private function calcularPrecoIterativo(float $custoTotal, float $pesoTotal, array $cfg, float $impostoPct, float $margemPct): ?float
     {
+        $antecipacaoPct = $cfg['antecipacao_pct'] ?? 0;
         // Ajustar imposto efetivo conforme tipo_nota
         $impostoEfetivo = match ($cfg['tipo_nota']) {
             'meia_nota' => $impostoPct / 2,
@@ -501,17 +509,14 @@ class CalculadoraML extends Page
 
         if ($cfg['tipo'] === 'ml') {
             // ML: imposto sobre (preço - frete), precisa iteração
-            $divisorBase = 1 - ($cfg['comissao_pct'] / 100) - ($impostoPct / 100) - ($margemPct / 100);
+            $divisorBase = 1 - ($cfg['comissao_pct'] / 100) - ($antecipacaoPct / 100) - ($impostoPct / 100) - ($margemPct / 100);
             if ($divisorBase <= 0) return null;
 
             if ($this->tipo_frete === 'ME1' || $pesoTotal <= 0) {
                 $frete = (float) ($this->custo_frete_manual ?? 0);
-                // produto: imposto sobre (preco - frete) => preco*(1 - com% - imp% - marg%) = custo + frete - frete*imp%
-                // Simplificando iterativamente
                 $preco = ($custoTotal + $frete) / $divisorBase;
-                // Ajustar: imposto é sobre (preco-frete), não sobre preco
                 $impCredito = round($frete * $impostoPct / 100, 2);
-                return round(($custoTotal + $frete - $impCredito) / (1 - ($cfg['comissao_pct'] / 100) - ($impostoPct / 100) - ($margemPct / 100)) + $impCredito / (1 - ($cfg['comissao_pct'] / 100) - ($margemPct / 100)), 2);
+                return round(($custoTotal + $frete - $impCredito) / (1 - ($cfg['comissao_pct'] / 100) - ($antecipacaoPct / 100) - ($impostoPct / 100) - ($margemPct / 100)) + $impCredito / (1 - ($cfg['comissao_pct'] / 100) - ($antecipacaoPct / 100) - ($margemPct / 100)), 2);
             }
 
             // Iteração com frete variável
@@ -520,31 +525,30 @@ class CalculadoraML extends Page
                 $frete = $this->calcularFreteML($preco, $pesoTotal);
                 $imposto = $this->calcularImposto($preco, $frete, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete'] ?? false);
                 $comissao = $preco * $cfg['comissao_pct'] / 100;
-                $novoPreco = round(($custoTotal + $frete + $imposto + $comissao) / (1 - ($margemPct / 100)), 2);
+                $antecipacao = $preco * $antecipacaoPct / 100;
+                $novoPreco = round(($custoTotal + $frete + $imposto + $comissao + $antecipacao) / (1 - ($margemPct / 100)), 2);
                 if (abs($novoPreco - $preco) < 0.01) break;
                 $preco = $novoPreco;
             }
             return $preco;
 
         } elseif ($cfg['tipo'] === 'shopee') {
-            // Shopee: imposto sobre metade do preço
             $preco = $custoTotal * 2;
             for ($i = 0; $i < 30; $i++) {
                 $s = $this->calcularComissaoShopee($preco);
                 $imposto = $this->calcularImposto($preco, 0, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete'] ?? false);
-                $novoPreco = round(($custoTotal + $s['fixo'] + $imposto) / (1 - ($s['pct'] / 100) - ($margemPct / 100)), 2);
+                $novoPreco = round(($custoTotal + $s['fixo'] + $imposto) / (1 - ($s['pct'] / 100) - ($antecipacaoPct / 100) - ($margemPct / 100)), 2);
                 if (abs($novoPreco - $preco) < 0.01) break;
                 $preco = $novoPreco;
             }
             return $preco;
 
         } elseif ($cfg['tipo'] === 'amazon') {
-            // Amazon: faixas de comissão iterativas
             $preco = $custoTotal * 2;
             for ($i = 0; $i < 30; $i++) {
                 $a = $this->calcularComissaoAmazon($preco);
                 $imposto = $this->calcularImposto($preco, 0, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete'] ?? false);
-                $novoPreco = round(($custoTotal + $a['fixo'] + $imposto) / (1 - ($a['pct'] / 100) - ($margemPct / 100)), 2);
+                $novoPreco = round(($custoTotal + $a['fixo'] + $imposto) / (1 - ($a['pct'] / 100) - ($antecipacaoPct / 100) - ($margemPct / 100)), 2);
                 if (abs($novoPreco - $preco) < 0.01) break;
                 $preco = $novoPreco;
             }
@@ -554,8 +558,8 @@ class CalculadoraML extends Page
             return null; // calculado a partir do site_cartao
 
         } else {
-            // Fixo (magalu etc): imposto sobre preço total (cheia)
-            $divisor = 1 - ($cfg['comissao_pct'] / 100) - ($impostoPct / 100) - ($margemPct / 100);
+            // Fixo (magalu etc)
+            $divisor = 1 - ($cfg['comissao_pct'] / 100) - ($antecipacaoPct / 100) - ($impostoPct / 100) - ($margemPct / 100);
             if ($divisor <= 0) return null;
             return round(($custoTotal + $cfg['fixo']) / $divisor, 2);
         }

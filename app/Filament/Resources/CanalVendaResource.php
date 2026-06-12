@@ -46,6 +46,12 @@ class CanalVendaResource extends Resource
                     ->label('Imposto sobre Frete')
                     ->helperText('Desconta imposto proporcional do frete na margem')
                     ->default(false),
+                Forms\Components\TextInput::make('percentual_antecipacao')
+                    ->label('Antecipação de Parcelas (%)')
+                    ->numeric()
+                    ->suffix('%')
+                    ->default(0)
+                    ->helperText('Taxa cobrada pela antecipação de recebíveis'),
             ])->columns(2),
 
             Forms\Components\Section::make('Regras de Comissão')->schema([

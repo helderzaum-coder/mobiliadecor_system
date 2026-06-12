@@ -15,6 +15,7 @@ class CanalVenda extends Model
         'tipo_nota',
         'comissao_sobre_frete',
         'imposto_sobre_frete',
+        'percentual_antecipacao',
         'ativo',
     ];
 
@@ -22,6 +23,7 @@ class CanalVenda extends Model
         'ativo' => 'boolean',
         'comissao_sobre_frete' => 'boolean',
         'imposto_sobre_frete' => 'boolean',
+        'percentual_antecipacao' => 'decimal:2',
     ];
 
     public function vendas(): HasMany
