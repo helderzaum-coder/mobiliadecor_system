@@ -152,11 +152,13 @@
                                         };
                                     @endphp
                                     <div class="px-4 py-2.5 flex items-center justify-between gap-4 text-sm">
-                                        <div class="flex-1 min-w-0">
+                                        <div class="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
                                             <span class="font-medium text-gray-900 dark:text-gray-100">{{ $promo['nome'] }}</span>
-                                            <span class="ml-2 text-xs px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">{{ $promo['tipo'] }}</span>
+                                            @if(!empty($promo['tipo']))
+                                                <span class="text-xs px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300">{{ $promo['tipo'] }}</span>
+                                            @endif
                                             @if(!empty($promo['status']))
-                                                <span class="ml-1 text-xs px-1.5 py-0.5 rounded {{ $promo['status'] === 'started' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400' }}">
+                                                <span class="text-xs px-1.5 py-0.5 rounded {{ $promo['status'] === 'started' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300' }}">
                                                     {{ $promo['status'] }}
                                                 </span>
                                             @endif
