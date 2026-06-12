@@ -149,7 +149,7 @@
                                     🏷️ PROMOÇÕES ({{ count($item->promocoes) }})
                                 </span>
                             </div>
-                            <div class="px-4 py-3 grid grid-cols-4 gap-3">
+                            <div class="px-4 py-3" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
                                 @foreach($item->promocoes as $promo)
                                     @php
                                         $pp = (float) ($promo['preco'] ?? 0);
