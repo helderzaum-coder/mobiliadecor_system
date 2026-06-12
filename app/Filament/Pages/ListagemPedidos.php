@@ -69,7 +69,13 @@ class ListagemPedidos extends Page
 
         $this->resultados = $pedidos->flatMap(function ($pedido) {
             $itens = $pedido->itens ?? [];
-            $situacao = self::SITUACOES_BLING[$pedido->situacao_id] ?? ('ID ' . ($pedido->situacao_id ?? '—'));
+            $situacao = match ($pedido->status) {
+                'pendente' => 'Pendente',
+                'aprovado' => 'Aprovado',
+                'cancelado' => 'Cancelado',
+                'assistencia' => 'Assistência',
+                default => $pedido->status ?? '—',
+            };
             $cnpj = $pedido->bling_account === 'primary' ? 'Mobilia Decor' : 'HES Móveis';
 
             // Data liberação etiqueta ML (salva em dados_originais._data_despacho)
