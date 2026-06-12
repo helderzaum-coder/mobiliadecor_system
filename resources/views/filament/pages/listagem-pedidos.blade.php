@@ -96,33 +96,33 @@
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
                         <div style="max-height: 650px; overflow-y: auto;">
                             <table class="w-full text-sm">
-                                <thead class="bg-gray-50 dark:bg-gray-900 sticky top-0">
+                                <thead class="bg-gray-50 dark:bg-gray-900/80 sticky top-0">
                                     <tr>
-                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-gray-100 font-semibold">Data</th>
-                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-gray-100 font-semibold">Status Bling</th>
-                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-gray-100 font-semibold">CNPJ</th>
-                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-gray-100 font-semibold">Canal</th>
-                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-gray-100 font-semibold">Produto</th>
-                                        <th class="text-center px-3 py-2 text-gray-700 dark:text-gray-100 font-semibold">Qtd</th>
-                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-gray-100 font-semibold">Pedido Bling</th>
-                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-gray-100 font-semibold">Pedido Canal</th>
-                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-gray-100 font-semibold">Cliente</th>
-                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-gray-100 font-semibold">Liberação Etiqueta</th>
+                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-white font-semibold">Data</th>
+                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-white font-semibold">Status Bling</th>
+                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-white font-semibold">CNPJ</th>
+                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-white font-semibold">Canal</th>
+                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-white font-semibold">Produto</th>
+                                        <th class="text-center px-3 py-2 text-gray-700 dark:text-white font-semibold">Qtd</th>
+                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-white font-semibold">Pedido Bling</th>
+                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-white font-semibold">Pedido Canal</th>
+                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-white font-semibold">Cliente</th>
+                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-white font-semibold">Liberação Etiqueta</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                     @foreach($this->resultados as $r)
                                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                            <td class="px-3 py-2 text-gray-800 dark:text-gray-100 whitespace-nowrap">{{ $r['data'] }}</td>
-                                            <td class="px-3 py-2 text-gray-800 dark:text-gray-100 whitespace-nowrap">{{ $r['situacao_bling'] }}</td>
-                                            <td class="px-3 py-2 text-gray-800 dark:text-gray-100 whitespace-nowrap">{{ $r['cnpj'] }}</td>
-                                            <td class="px-3 py-2 text-gray-800 dark:text-gray-100 whitespace-nowrap">{{ $r['canal'] }}</td>
-                                            <td class="px-3 py-2 text-gray-800 dark:text-gray-100" title="{{ $r['produto'] }}">{{ \Illuminate\Support\Str::limit($r['produto'], 60) }}</td>
-                                            <td class="px-3 py-2 text-center text-gray-800 dark:text-gray-100">{{ $r['quantidade'] }}</td>
-                                            <td class="px-3 py-2 text-gray-800 dark:text-gray-100 whitespace-nowrap">{{ $r['pedido_bling'] }}</td>
-                                            <td class="px-3 py-2 text-gray-800 dark:text-gray-100 whitespace-nowrap">{{ $r['pedido_canal'] }}</td>
-                                            <td class="px-3 py-2 text-gray-800 dark:text-gray-100" title="{{ $r['cliente'] }}">{{ \Illuminate\Support\Str::limit($r['cliente'], 30) }}</td>
-                                            <td class="px-3 py-2 text-gray-800 dark:text-gray-100 whitespace-nowrap">{{ $r['is_ml'] ? $r['liberacao_etiqueta'] : '—' }}</td>
+                                            <td class="px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{{ $r['data'] }}</td>
+                                            <td class="px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{{ $r['situacao_bling'] }}</td>
+                                            <td class="px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{{ $r['cnpj'] }}</td>
+                                            <td class="px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{{ $r['canal'] }}</td>
+                                            <td class="px-3 py-2 text-gray-900 dark:text-white" title="{{ $r['produto'] }}">{{ \Illuminate\Support\Str::limit($r['produto'], 60) }}</td>
+                                            <td class="px-3 py-2 text-center text-gray-900 dark:text-white">{{ $r['quantidade'] }}</td>
+                                            <td class="px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{{ $r['pedido_bling'] }}</td>
+                                            <td class="px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{{ $r['pedido_canal'] }}</td>
+                                            <td class="px-3 py-2 text-gray-900 dark:text-white" title="{{ $r['cliente'] }}">{{ \Illuminate\Support\Str::limit($r['cliente'], 30) }}</td>
+                                            <td class="px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{{ $r['is_ml'] ? $r['liberacao_etiqueta'] : '—' }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
