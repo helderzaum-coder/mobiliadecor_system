@@ -15,7 +15,7 @@
         </div>
 
         {{-- Filtros --}}
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-3 p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+        <div class="flex flex-wrap gap-3 p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 items-end">
             <div>
                 <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Busca</label>
                 <input type="text" wire:model.live.debounce.300ms="busca" placeholder="MLB, SKU ou título..."
