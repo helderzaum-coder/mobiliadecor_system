@@ -670,6 +670,9 @@ class MercadoLivrePromotionService
                 'start_date' => $promo['start_date'] ?? null,
                 'finish_date' => $promo['finish_date'] ?? null,
                 'offer_id' => $promo['offer_id'] ?? $promo['ref_id'] ?? $promo['deal_id'] ?? $promo['candidate_id'] ?? null,
+                'max_discounted_price' => $promo['max_discounted_price'] ?? null,
+                'suggested_discounted_price' => $promo['suggested_discounted_price'] ?? null,
+                'min_discounted_price' => $promo['min_discounted_price'] ?? null,
                 'raw_keys' => array_keys($promo),
             ];
         }

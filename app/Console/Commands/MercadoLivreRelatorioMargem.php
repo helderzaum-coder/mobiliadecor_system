@@ -182,7 +182,12 @@ class MercadoLivreRelatorioMargem extends Command
 
         if ($promoResult['success'] && !empty($promoResult['promotions'])) {
             foreach ($promoResult['promotions'] as $promo) {
-                $pp = isset($promo['price']) ? (float) $promo['price'] : null;
+                // Determinar preço: price > 0, senão max_discounted_price, senão suggested
+                $pp = (float) ($promo['price'] ?? 0);
+                if ($pp <= 0) $pp = (float) ($promo['max_discounted_price'] ?? 0);
+                if ($pp <= 0) $pp = (float) ($promo['suggested_discounted_price'] ?? 0);
+                $pp = $pp > 0 ? $pp : null;
+
                 $promoMargem = null;
                 $promoMargemPct = null;
 
