@@ -151,34 +151,34 @@
                                             default => 'text-green-600 dark:text-green-400',
                                         };
                                     @endphp
-                                    <div class="px-4 py-2 flex items-center justify-between gap-4 text-sm">
+                                    <div class="px-4 py-2.5 flex items-center justify-between gap-4 text-sm">
                                         <div class="flex-1 min-w-0">
-                                            <span class="font-medium text-gray-700 dark:text-gray-300">{{ $promo['nome'] }}</span>
-                                            <span class="ml-2 text-xs text-gray-400">{{ $promo['tipo'] }}</span>
+                                            <span class="font-medium text-gray-900 dark:text-gray-100">{{ $promo['nome'] }}</span>
+                                            <span class="ml-2 text-xs px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">{{ $promo['tipo'] }}</span>
                                             @if(!empty($promo['status']))
-                                                <span class="ml-1 text-xs {{ $promo['status'] === 'started' ? 'text-green-500' : 'text-gray-400' }}">
-                                                    ({{ $promo['status'] }})
+                                                <span class="ml-1 text-xs px-1.5 py-0.5 rounded {{ $promo['status'] === 'started' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400' }}">
+                                                    {{ $promo['status'] }}
                                                 </span>
                                             @endif
                                         </div>
-                                        <div class="flex items-center gap-4 shrink-0 text-xs">
+                                        <div class="flex items-center gap-4 shrink-0">
                                             @if($promo['preco'])
-                                                <span class="text-gray-600 dark:text-gray-400">
+                                                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
                                                     R$ {{ number_format($promo['preco'], 2, ',', '.') }}
                                                 </span>
                                             @endif
                                             @if($promo['meli_pct'] > 0)
-                                                <span class="text-blue-600 dark:text-blue-400" title="Rebate ML">
+                                                <span class="text-sm font-medium text-blue-500 dark:text-blue-400" title="Rebate ML">
                                                     ML: {{ $promo['meli_pct'] }}%
                                                 </span>
                                             @endif
                                             @if($promo['seller_pct'] > 0)
-                                                <span class="text-orange-600 dark:text-orange-400" title="Desconto Seller">
+                                                <span class="text-sm font-medium text-orange-500 dark:text-orange-400" title="Desconto Seller">
                                                     Seller: {{ $promo['seller_pct'] }}%
                                                 </span>
                                             @endif
                                             @if(isset($promo['margem_pct']))
-                                                <span class="font-semibold {{ $promoMargemCor }}">
+                                                <span class="text-sm font-bold {{ $promoMargemCor }}">
                                                     {{ number_format($promo['margem_pct'], 1) }}%
                                                 </span>
                                             @endif
