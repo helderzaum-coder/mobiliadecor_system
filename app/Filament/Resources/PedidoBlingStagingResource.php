@@ -244,15 +244,66 @@ class PedidoBlingStagingResource extends Resource
                     ->action(
                         Tables\Actions\Action::make('cotar_frete_col')
                             ->modalHeading('Cotação de Frete')
-                            ->modalSubmitAction(false)
+                            ->modalSubmitActionLabel('Aplicar Frete e Aprovar')
                             ->modalCancelActionLabel('Fechar')
+                            ->modalWidth('7xl')
                             ->modalContent(function (PedidoBlingStaging $record) {
                                 if (!$record->dest_uf || !$record->dest_cep || !$record->peso_bruto) {
                                     return new HtmlString('<p class="text-sm text-danger-500">Dados de envio incompletos (UF, CEP ou peso). Reimporte o pedido.</p>');
                                 }
-                                // Reutiliza o mesmo método de cotação
                                 return self::renderCotacaoModal($record);
                             })
+                            ->form(function (PedidoBlingStaging $record) {
+                                if (!$record->dest_uf || !$record->dest_cep || !$record->peso_bruto || $record->status !== 'pendente') {
+                                    return [];
+                                }
+                                return [
+                                    Forms\Components\Select::make('id_transportadora')
+                                        ->label('Transportadora')
+                                        ->options(function () use ($record) {
+                                            $valorNf = (float) ($record->nfe_valor ?: $record->total_pedido);
+                                            $cotacoes = CotacaoFreteService::cotar($record->dest_uf, $record->dest_cep, (float) $record->peso_bruto, $valorNf, $record->dest_cidade);
+                                            $options = [];
+                                            foreach ($cotacoes as $c) {
+                                                $valor = !empty($c['somente_consulta'])
+                                                    ? '(consultar)'
+                                                    : 'R$ ' . number_format($c['total'], 2, ',', '.');
+                                                $options[$c['id_transportadora']] = $c['nome'] . ' - ' . $valor . ' (' . $c['uf_faixa'] . ')';
+                                            }
+                                            return $options;
+                                        })
+                                        ->required()
+                                        ->reactive()
+                                        ->afterStateUpdated(function ($state, Forms\Set $set) use ($record) {
+                                            if (!$state) return;
+                                            $valorNf = (float) ($record->nfe_valor ?: $record->total_pedido);
+                                            $cotacoes = CotacaoFreteService::cotar($record->dest_uf, $record->dest_cep, (float) $record->peso_bruto, $valorNf, $record->dest_cidade);
+                                            $selecionada = collect($cotacoes)->firstWhere('id_transportadora', (int) $state);
+                                            if ($selecionada && empty($selecionada['somente_consulta'])) {
+                                                $set('valor_frete', number_format($selecionada['total'], 2, '.', ''));
+                                            } else {
+                                                $set('valor_frete', '');
+                                            }
+                                        }),
+                                    Forms\Components\TextInput::make('valor_frete')
+                                        ->label('Valor do Frete')
+                                        ->numeric()
+                                        ->prefix('R$')
+                                        ->required()
+                                        ->helperText('Editável: altere se necessário.'),
+                                ];
+                            })
+                            ->action(function (PedidoBlingStaging $record, array $data) {
+                                $valorFrete = (float) $data['valor_frete'];
+                                $record->update(['custo_frete' => round($valorFrete, 2)]);
+                                try {
+                                    AprovacaoVendaService::aprovar($record);
+                                    Notification::make()->title("Cotação R$ " . number_format($valorFrete, 2, ',', '.') . " — Aprovado!")->success()->send();
+                                } catch (\Throwable $e) {
+                                    Notification::make()->title("Erro ao aprovar: " . $e->getMessage())->danger()->send();
+                                }
+                            })
+                            ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente')
                     ),
                 Tables\Columns\TextColumn::make('aplicar_frete_link')
                     ->label('')
@@ -507,13 +558,64 @@ class PedidoBlingStagingResource extends Resource
                     ->icon('heroicon-o-calculator')
                     ->color('warning')
                     ->modalHeading('Cotação de Frete')
-                    ->modalSubmitAction(false)
+                    ->modalSubmitActionLabel('Aplicar Frete e Aprovar')
                     ->modalCancelActionLabel('Fechar')
+                    ->modalWidth('7xl')
                     ->modalContent(function (PedidoBlingStaging $record) {
                         if (!$record->dest_uf || !$record->dest_cep || !$record->peso_bruto) {
                             return new HtmlString('<p class="text-sm text-danger-500">Dados de envio incompletos (UF, CEP ou peso). Reimporte o pedido.</p>');
                         }
                         return self::renderCotacaoModal($record);
+                    })
+                    ->form(function (PedidoBlingStaging $record) {
+                        if (!$record->dest_uf || !$record->dest_cep || !$record->peso_bruto) {
+                            return [];
+                        }
+                        return [
+                            Forms\Components\Select::make('id_transportadora')
+                                ->label('Transportadora')
+                                ->options(function () use ($record) {
+                                    $valorNf = (float) ($record->nfe_valor ?: $record->total_pedido);
+                                    $cotacoes = CotacaoFreteService::cotar($record->dest_uf, $record->dest_cep, (float) $record->peso_bruto, $valorNf, $record->dest_cidade);
+                                    $options = [];
+                                    foreach ($cotacoes as $c) {
+                                        $valor = !empty($c['somente_consulta'])
+                                            ? '(consultar)'
+                                            : 'R$ ' . number_format($c['total'], 2, ',', '.');
+                                        $options[$c['id_transportadora']] = $c['nome'] . ' - ' . $valor . ' (' . $c['uf_faixa'] . ')';
+                                    }
+                                    return $options;
+                                })
+                                ->required()
+                                ->reactive()
+                                ->afterStateUpdated(function ($state, Forms\Set $set) use ($record) {
+                                    if (!$state) return;
+                                    $valorNf = (float) ($record->nfe_valor ?: $record->total_pedido);
+                                    $cotacoes = CotacaoFreteService::cotar($record->dest_uf, $record->dest_cep, (float) $record->peso_bruto, $valorNf, $record->dest_cidade);
+                                    $selecionada = collect($cotacoes)->firstWhere('id_transportadora', (int) $state);
+                                    if ($selecionada && empty($selecionada['somente_consulta'])) {
+                                        $set('valor_frete', number_format($selecionada['total'], 2, '.', ''));
+                                    } else {
+                                        $set('valor_frete', '');
+                                    }
+                                }),
+                            Forms\Components\TextInput::make('valor_frete')
+                                ->label('Valor do Frete')
+                                ->numeric()
+                                ->prefix('R$')
+                                ->required()
+                                ->helperText('Editável: altere se necessário.'),
+                        ];
+                    })
+                    ->action(function (PedidoBlingStaging $record, array $data) {
+                        $valorFrete = (float) $data['valor_frete'];
+                        $record->update(['custo_frete' => round($valorFrete, 2)]);
+                        try {
+                            AprovacaoVendaService::aprovar($record);
+                            Notification::make()->title("Cotação R$ " . number_format($valorFrete, 2, ',', '.') . " — Aprovado!")->success()->send();
+                        } catch (\Throwable $e) {
+                            Notification::make()->title("Erro ao aprovar: " . $e->getMessage())->danger()->send();
+                        }
                     })
                     ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente' && $record->dest_uf && $record->dest_cep && $record->peso_bruto),
                 Tables\Actions\EditAction::make()->label('Revisar'),
