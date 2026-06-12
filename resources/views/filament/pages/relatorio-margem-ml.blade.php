@@ -169,25 +169,25 @@
                                             default => 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
                                         };
                                     @endphp
-                                    <div class="flex-1 min-w-[220px] max-w-[300px] rounded-lg border border-gray-200 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900/50">
+                                    <div class="flex-1 min-w-[220px] max-w-[300px] rounded-lg border border-gray-600 p-3 bg-gray-800">
                                         <div class="flex items-center justify-between mb-2">
-                                            <span class="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">{{ $promo['nome'] }}</span>
+                                            <span class="text-xs font-semibold text-gray-100 truncate">{{ $promo['nome'] }}</span>
                                             <span class="text-[10px] px-1.5 py-0.5 rounded {{ $statusCor }}">{{ $promo['status'] ?? '' }}</span>
                                         </div>
                                         <div class="flex items-center gap-2 mb-2">
-                                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300">{{ $promo['tipo'] ?? '' }}</span>
+                                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-900 text-indigo-300">{{ $promo['tipo'] ?? '' }}</span>
                                             @if(($promo['meli_pct'] ?? 0) > 0)
-                                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">Rebate {{ $promo['meli_pct'] }}%</span>
+                                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-900 text-blue-300">Rebate {{ $promo['meli_pct'] }}%</span>
                                             @endif
                                         </div>
 
                                         @if($pp > 0)
-                                        <div class="text-center mb-2 py-1.5 rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                                        <div class="text-center mb-2 py-1.5 rounded bg-gray-900 border border-gray-700">
                                             <div class="text-[10px] text-gray-500">Preço Sugerido</div>
-                                            <div class="text-sm font-bold text-gray-900 dark:text-white">R$ {{ number_format($pp, 2, ',', '.') }}</div>
+                                            <div class="text-sm font-bold text-white">R$ {{ number_format($pp, 2, ',', '.') }}</div>
                                         </div>
 
-                                        <div class="space-y-0.5 text-[10px] text-gray-500 mb-2">
+                                        <div class="space-y-0.5 text-[10px] text-gray-400 mb-2">
                                             <div class="flex justify-between">
                                                 <span>Comissão ({{ number_format($item->comissao_pct, 1) }}%)</span>
                                                 <span class="text-red-400">-R$ {{ number_format($promoComissao, 2, ',', '.') }}</span>
@@ -212,7 +212,7 @@
                                             </div>
                                         </div>
 
-                                        <div class="text-center py-1.5 rounded {{ ($promo['margem_pct'] ?? 0) >= 15 ? 'bg-green-50 dark:bg-green-900/20' : (($promo['margem_pct'] ?? 0) >= 0 ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-red-50 dark:bg-red-900/20') }}">
+                                        <div class="text-center py-1.5 rounded {{ ($promo['margem_pct'] ?? 0) >= 15 ? 'bg-green-900/30' : (($promo['margem_pct'] ?? 0) >= 0 ? 'bg-yellow-900/30' : 'bg-red-900/30') }}">
                                             <div class="text-[10px] text-gray-500">Margem</div>
                                             <div class="text-sm font-bold {{ $promoMargemCor }}">
                                                 R$ {{ number_format($promo['margem_valor'] ?? 0, 2, ',', '.') }}
@@ -220,7 +220,7 @@
                                             </div>
                                         </div>
                                         @else
-                                        <div class="text-center py-2 text-xs text-gray-400">Preço não informado</div>
+                                        <div class="text-center py-2 text-xs text-gray-500">Preço não informado</div>
                                         @endif
                                     </div>
                                 @endforeach
