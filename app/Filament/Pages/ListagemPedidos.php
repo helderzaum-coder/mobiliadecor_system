@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Models\PedidoBlingStaging;
 use App\Services\Bling\BlingClient;
 use Filament\Pages\Page;
+use Illuminate\Support\Facades\Cache;
 
 class ListagemPedidos extends Page
 {
@@ -185,12 +186,20 @@ class ListagemPedidos extends Page
     {
         $resultado = [];
         $pedidosUnicos = $pedidos->unique('bling_id');
-        $semCache = 0;
         $clients = [];
+        $chamadas = 0;
 
         foreach ($pedidosUnicos as $pedido) {
-            // Limitar chamadas para evitar timeout
-            if ($semCache >= 50) {
+            $cacheKey = "bling_sit_v2_{$pedido->bling_id}";
+            $cached = Cache::store('file')->get($cacheKey);
+
+            if ($cached) {
+                $resultado[$pedido->bling_id] = $cached;
+                continue;
+            }
+
+            // Limitar chamadas à API para evitar timeout
+            if ($chamadas >= 80) {
                 $sitMap = $pedido->bling_account === 'primary' ? $mapPrimary : $mapSecondary;
                 $resultado[$pedido->bling_id] = $sitMap[$pedido->situacao_id] ?? ('ID ' . ($pedido->situacao_id ?? '—'));
                 continue;
@@ -205,13 +214,15 @@ class ListagemPedidos extends Page
             if ($response['success']) {
                 $sitId = $response['body']['data']['situacao']['id'] ?? null;
                 $sitMap = $pedido->bling_account === 'primary' ? $mapPrimary : $mapSecondary;
-                $resultado[$pedido->bling_id] = $sitMap[$sitId] ?? ('ID ' . $sitId);
+                $nome = $sitMap[$sitId] ?? ('ID ' . $sitId);
+                Cache::store('file')->put($cacheKey, $nome, 600);
+                $resultado[$pedido->bling_id] = $nome;
             } else {
                 $sitMap = $pedido->bling_account === 'primary' ? $mapPrimary : $mapSecondary;
                 $resultado[$pedido->bling_id] = $sitMap[$pedido->situacao_id] ?? ('ID ' . ($pedido->situacao_id ?? '—'));
             }
 
-            $semCache++;
+            $chamadas++;
         }
 
         return $resultado;
