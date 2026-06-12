@@ -29,8 +29,10 @@ class MercadoLivreRelatorioMargem extends Command
     {
         $accountKey = $this->option('account');
         $limit = (int) $this->option('limit');
+        $startTime = now();
 
         $this->info("=== Relatório Margem ML [{$accountKey}] ===");
+        $this->info("Início: " . $startTime->format('d/m/Y H:i:s'));
         $this->info("Limite: " . ($limit ?: 'TODOS'));
 
         $this->accountKey = $accountKey;
@@ -73,7 +75,9 @@ class MercadoLivreRelatorioMargem extends Command
         $this->newLine(2);
 
         $total = RelatorioMargemML::where('account_key', $accountKey)->count();
+        $duration = $startTime->diffInMinutes(now());
         $this->info("Relatório gerado com {$total} itens.");
+        $this->info("Fim: " . now()->format('d/m/Y H:i:s') . " | Duração: {$duration} minutos");
 
         return 0;
     }

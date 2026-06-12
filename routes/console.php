@@ -8,5 +8,5 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('contas:processar-recorrentes')->daily();
-Schedule::command('bling:importar-automatico')->everyThreeHours();
+Schedule::command('contas:processar-recorrentes')->daily()->withoutOverlapping();
+Schedule::command('bling:importar-automatico')->everyThreeHours()->withoutOverlapping();
