@@ -149,7 +149,7 @@
                                     🏷️ PROMOÇÕES ({{ count($item->promocoes) }})
                                 </span>
                             </div>
-                            <div class="px-4 py-3 flex flex-wrap gap-3">
+                            <div class="px-4 py-3 grid grid-cols-4 gap-3">
                                 @foreach($item->promocoes as $promo)
                                     @php
                                         $pp = (float) ($promo['preco'] ?? 0);
@@ -169,7 +169,7 @@
                                             default => 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
                                         };
                                     @endphp
-                                    <div class="flex-1 min-w-[220px] max-w-[300px] rounded-lg border border-gray-600 p-3 bg-gray-800">
+                                    <div class="rounded-lg border border-gray-600 p-3 bg-gray-800">
                                         <div class="flex items-center justify-between mb-2">
                                             <span class="text-xs font-semibold text-gray-100 truncate">{{ $promo['nome'] }}</span>
                                             <span class="text-[10px] px-1.5 py-0.5 rounded {{ $statusCor }}">{{ $promo['status'] ?? '' }}</span>
