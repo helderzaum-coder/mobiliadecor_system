@@ -5,7 +5,7 @@
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700">
             <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Período</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">Período</label>
                     <select wire:model.live="periodo" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-sm">
                         <option value="hoje">Hoje</option>
                         <option value="esta_semana">Esta Semana</option>
@@ -16,16 +16,16 @@
                 </div>
 
                 <div x-show="$wire.periodo === 'customizado'">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">De</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">De</label>
                     <input type="date" wire:model="data_inicio" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-sm" />
                 </div>
                 <div x-show="$wire.periodo === 'customizado'">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Até</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">Até</label>
                     <input type="date" wire:model="data_fim" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-sm" />
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Canal</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">Canal</label>
                     <select wire:model="filtro_canal" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-sm">
                         <option value="">Todos</option>
                         @foreach(\App\Models\PedidoBlingStaging::distinct()->orderBy('canal')->pluck('canal')->filter() as $canal)
@@ -35,7 +35,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Conta</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">Conta</label>
                     <select wire:model="filtro_conta" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-sm">
                         <option value="">Todas</option>
                         <option value="primary">Mobilia Decor</option>
@@ -44,10 +44,10 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Situação Bling</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">Situação Bling</label>
                     <div class="flex flex-wrap gap-2 mt-1">
                         @foreach(['Em aberto', 'Verificado', 'Em andamento', 'Enviado', 'Atendido', 'Entregue', 'Cancelado', 'Faturado – Pendente de Cotação', 'Em Cotação', 'ML Etiqueta', 'Shopee Xpress', 'Lançado Envio'] as $sit)
-                            <label class="inline-flex items-center gap-1 text-xs text-gray-700 dark:text-gray-300 cursor-pointer">
+                            <label class="inline-flex items-center gap-1 text-xs text-gray-700 dark:text-gray-100 cursor-pointer">
                                 <input type="checkbox" value="{{ $sit }}" wire:model="filtro_situacao" class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-primary-600 focus:ring-primary-500 w-3.5 h-3.5" />
                                 {{ $sit }}
                             </label>
@@ -81,7 +81,7 @@
 
                 {{-- Resumo --}}
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 border border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                    <div class="text-sm text-gray-600 dark:text-gray-300">
+                    <div class="text-sm text-gray-600 dark:text-gray-100">
                         Linhas: <strong class="text-gray-900 dark:text-white">{{ number_format(count($this->resultados), 0, ',', '.') }}</strong>
                     </div>
                     @if(!empty($this->resultados))
@@ -98,31 +98,31 @@
                             <table class="w-full text-sm">
                                 <thead class="bg-gray-50 dark:bg-gray-900 sticky top-0">
                                     <tr>
-                                        <th class="text-left px-3 py-2 text-gray-600 dark:text-gray-300">Data</th>
-                                        <th class="text-left px-3 py-2 text-gray-600 dark:text-gray-300">Status Bling</th>
-                                        <th class="text-left px-3 py-2 text-gray-600 dark:text-gray-300">CNPJ</th>
-                                        <th class="text-left px-3 py-2 text-gray-600 dark:text-gray-300">Canal</th>
-                                        <th class="text-left px-3 py-2 text-gray-600 dark:text-gray-300">Produto</th>
-                                        <th class="text-center px-3 py-2 text-gray-600 dark:text-gray-300">Qtd</th>
-                                        <th class="text-left px-3 py-2 text-gray-600 dark:text-gray-300">Pedido Bling</th>
-                                        <th class="text-left px-3 py-2 text-gray-600 dark:text-gray-300">Pedido Canal</th>
-                                        <th class="text-left px-3 py-2 text-gray-600 dark:text-gray-300">Cliente</th>
-                                        <th class="text-left px-3 py-2 text-gray-600 dark:text-gray-300">Liberação Etiqueta</th>
+                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-gray-100 font-semibold">Data</th>
+                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-gray-100 font-semibold">Status Bling</th>
+                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-gray-100 font-semibold">CNPJ</th>
+                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-gray-100 font-semibold">Canal</th>
+                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-gray-100 font-semibold">Produto</th>
+                                        <th class="text-center px-3 py-2 text-gray-700 dark:text-gray-100 font-semibold">Qtd</th>
+                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-gray-100 font-semibold">Pedido Bling</th>
+                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-gray-100 font-semibold">Pedido Canal</th>
+                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-gray-100 font-semibold">Cliente</th>
+                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-gray-100 font-semibold">Liberação Etiqueta</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                     @foreach($this->resultados as $r)
                                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                            <td class="px-3 py-2 text-gray-700 dark:text-gray-200 whitespace-nowrap">{{ $r['data'] }}</td>
-                                            <td class="px-3 py-2 text-gray-700 dark:text-gray-200 whitespace-nowrap">{{ $r['situacao_bling'] }}</td>
-                                            <td class="px-3 py-2 text-gray-700 dark:text-gray-200 whitespace-nowrap">{{ $r['cnpj'] }}</td>
-                                            <td class="px-3 py-2 text-gray-700 dark:text-gray-200 whitespace-nowrap">{{ $r['canal'] }}</td>
-                                            <td class="px-3 py-2 text-gray-700 dark:text-gray-200" title="{{ $r['produto'] }}">{{ \Illuminate\Support\Str::limit($r['produto'], 60) }}</td>
-                                            <td class="px-3 py-2 text-center text-gray-700 dark:text-gray-200">{{ $r['quantidade'] }}</td>
-                                            <td class="px-3 py-2 text-gray-700 dark:text-gray-200 whitespace-nowrap">{{ $r['pedido_bling'] }}</td>
-                                            <td class="px-3 py-2 text-gray-700 dark:text-gray-200 whitespace-nowrap">{{ $r['pedido_canal'] }}</td>
-                                            <td class="px-3 py-2 text-gray-700 dark:text-gray-200" title="{{ $r['cliente'] }}">{{ \Illuminate\Support\Str::limit($r['cliente'], 30) }}</td>
-                                            <td class="px-3 py-2 text-gray-700 dark:text-gray-200 whitespace-nowrap">{{ $r['is_ml'] ? $r['liberacao_etiqueta'] : '—' }}</td>
+                                            <td class="px-3 py-2 text-gray-800 dark:text-gray-100 whitespace-nowrap">{{ $r['data'] }}</td>
+                                            <td class="px-3 py-2 text-gray-800 dark:text-gray-100 whitespace-nowrap">{{ $r['situacao_bling'] }}</td>
+                                            <td class="px-3 py-2 text-gray-800 dark:text-gray-100 whitespace-nowrap">{{ $r['cnpj'] }}</td>
+                                            <td class="px-3 py-2 text-gray-800 dark:text-gray-100 whitespace-nowrap">{{ $r['canal'] }}</td>
+                                            <td class="px-3 py-2 text-gray-800 dark:text-gray-100" title="{{ $r['produto'] }}">{{ \Illuminate\Support\Str::limit($r['produto'], 60) }}</td>
+                                            <td class="px-3 py-2 text-center text-gray-800 dark:text-gray-100">{{ $r['quantidade'] }}</td>
+                                            <td class="px-3 py-2 text-gray-800 dark:text-gray-100 whitespace-nowrap">{{ $r['pedido_bling'] }}</td>
+                                            <td class="px-3 py-2 text-gray-800 dark:text-gray-100 whitespace-nowrap">{{ $r['pedido_canal'] }}</td>
+                                            <td class="px-3 py-2 text-gray-800 dark:text-gray-100" title="{{ $r['cliente'] }}">{{ \Illuminate\Support\Str::limit($r['cliente'], 30) }}</td>
+                                            <td class="px-3 py-2 text-gray-800 dark:text-gray-100 whitespace-nowrap">{{ $r['is_ml'] ? $r['liberacao_etiqueta'] : '—' }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
