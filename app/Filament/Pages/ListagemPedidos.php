@@ -3,7 +3,9 @@
 namespace App\Filament\Pages;
 
 use App\Models\PedidoBlingStaging;
+use App\Services\Bling\BlingClient;
 use Filament\Pages\Page;
+use Illuminate\Support\Facades\Cache;
 
 class ListagemPedidos extends Page
 {
@@ -22,21 +24,7 @@ class ListagemPedidos extends Page
     public array $resultados = [];
     public bool $consultaRealizada = false;
 
-    // Mapa de situações Bling v3
-    private const SITUACOES_BLING = [
-        6   => 'Em aberto',
-        9   => 'Atendido',
-        12  => 'Cancelado',
-        15  => 'Em andamento',
-        18  => 'Venda agenciada',
-        21  => 'Em digitação',
-        24  => 'Verificado',
-        27  => 'Aguardando',
-        28  => 'Pronto p/ envio',
-        94  => 'Em produção',
-        95  => 'Disponível',
-        173 => 'Enviado',
-    ];
+
 
     public function consultar(): void
     {
@@ -67,15 +55,12 @@ class ListagemPedidos extends Page
 
         $pedidos = $query->orderBy('data_pedido', 'desc')->get();
 
-        $this->resultados = $pedidos->flatMap(function ($pedido) {
+        // Buscar situações atuais no Bling (com cache de 5min por pedido)
+        $situacoesMap = $this->buscarSituacoesBling($pedidos);
+
+        $this->resultados = $pedidos->flatMap(function ($pedido) use ($situacoesMap) {
             $itens = $pedido->itens ?? [];
-            $situacao = match ($pedido->status) {
-                'pendente' => 'Pendente',
-                'aprovado' => 'Aprovado',
-                'cancelado' => 'Cancelado',
-                'assistencia' => 'Assistência',
-                default => $pedido->status ?? '—',
-            };
+            $situacao = $situacoesMap[$pedido->bling_id] ?? ('ID ' . ($pedido->situacao_id ?? '—'));
             $cnpj = $pedido->bling_account === 'primary' ? 'Mobilia Decor' : 'HES Móveis';
 
             // Data liberação etiqueta ML (salva em dados_originais._data_despacho)
@@ -129,6 +114,36 @@ class ListagemPedidos extends Page
             }
             fclose($handle);
         }, 'listagem_pedidos_' . now()->format('Y-m-d') . '.csv');
+    }
+
+    /**
+     * Busca situação atual de cada pedido no Bling via API.
+     * Cache de 5 minutos por bling_id para não sobrecarregar.
+     */
+    private function buscarSituacoesBling($pedidos): array
+    {
+        $map = [];
+        $porConta = $pedidos->groupBy('bling_account');
+
+        foreach ($porConta as $account => $pedidosConta) {
+            $client = new BlingClient($account);
+
+            foreach ($pedidosConta as $pedido) {
+                $cacheKey = "bling_situacao_{$pedido->bling_id}";
+
+                $situacao = Cache::remember($cacheKey, 300, function () use ($client, $pedido) {
+                    $response = $client->getPedido((int) $pedido->bling_id);
+                    if ($response['success']) {
+                        return $response['body']['data']['situacao']['valor'] ?? null;
+                    }
+                    return null;
+                });
+
+                $map[$pedido->bling_id] = $situacao ?? ('ID ' . ($pedido->situacao_id ?? '—'));
+            }
+        }
+
+        return $map;
     }
 
     public static function canAccess(): bool
