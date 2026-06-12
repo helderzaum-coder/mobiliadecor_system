@@ -28,6 +28,13 @@ class ListagemPedidos extends Page
 
     public function consultar(): void
     {
+        // Validação: customizado sem datas não pode rodar
+        if ($this->periodo === 'customizado' && empty($this->data_inicio) && empty($this->data_fim)) {
+            $this->resultados = [];
+            $this->consultaRealizada = true;
+            return;
+        }
+
         $query = PedidoBlingStaging::query()
             ->where('status', '!=', 'rejeitado');
 
@@ -53,7 +60,7 @@ class ListagemPedidos extends Page
             $query->where('status', $this->filtro_status);
         }
 
-        $pedidos = $query->orderBy('data_pedido', 'desc')->get();
+        $pedidos = $query->orderBy('data_pedido', 'desc')->limit(150)->get();
 
         // Buscar situações atuais no Bling (com cache de 5min por pedido)
         $situacoesMap = $this->buscarSituacoesBling($pedidos);
