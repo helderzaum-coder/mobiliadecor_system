@@ -457,7 +457,7 @@ class MercadoLivrePromocoes extends Page
         $result = $service->buscarPromocoesParaItem($itemId);
 
         if ($result['success']) {
-            $this->promocoesDoItem = array_values(array_filter($result['promotions'], fn($p) => !empty($p['offer_id'])));
+            $this->promocoesDoItem = array_values(array_filter($result['promotions'], fn($p) => !empty($p['name']) && $p['name'] !== 'Sem nome'));
             if (empty($this->promocoesDoItem)) {
                 Notification::make()->title('Nenhuma promoção aderível para ' . $itemId)->warning()->send();
             }
