@@ -149,50 +149,79 @@
                                     🏷️ PROMOÇÕES ({{ count($item->promocoes) }})
                                 </span>
                             </div>
-                            <div class="divide-y divide-gray-50 dark:divide-gray-700">
+                            <div class="px-4 py-3 flex flex-wrap gap-3">
                                 @foreach($item->promocoes as $promo)
                                     @php
+                                        $pp = (float) ($promo['preco'] ?? 0);
+                                        $promoComissao = $pp > 0 ? round($pp * $item->comissao_pct / 100, 2) : 0;
+                                        $promoFrete = (float) $item->frete;
+                                        $promoImposto = $pp > 0 ? round(max(0, $pp - $promoFrete) * $item->imposto_pct / 100, 2) : 0;
+                                        $promoAntec = $pp > 0 ? round($pp * $antecPct / 100, 2) : 0;
                                         $promoMargemCor = match(true) {
-                                            !isset($promo['margem_pct']) => 'text-gray-500',
-                                            $promo['margem_pct'] < 15 => 'text-red-600 dark:text-red-400',
-                                            $promo['margem_pct'] < 25 => 'text-yellow-600 dark:text-yellow-400',
-                                            default => 'text-green-600 dark:text-green-400',
+                                            !isset($promo['margem_pct']) => 'text-gray-400',
+                                            $promo['margem_pct'] < 15 => 'text-red-500',
+                                            $promo['margem_pct'] < 25 => 'text-yellow-500',
+                                            default => 'text-green-500',
+                                        };
+                                        $statusCor = match($promo['status'] ?? '') {
+                                            'started' => 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
+                                            'candidate' => 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300',
+                                            default => 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
                                         };
                                     @endphp
-                                    <div class="px-4 py-2.5 flex items-center justify-between gap-4 text-sm">
-                                        <div class="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-                                            <span class="font-medium text-gray-900 dark:text-gray-100">{{ $promo['nome'] }}</span>
-                                            @if(!empty($promo['tipo']))
-                                                <span class="text-xs px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300">{{ $promo['tipo'] }}</span>
-                                            @endif
-                                            @if(!empty($promo['status']))
-                                                <span class="text-xs font-semibold" style="color: {{ $promo['status'] === 'started' ? '#4ade80' : '#facc15' }}">
-                                                    {{ $promo['status'] }}
-                                                </span>
+                                    <div class="flex-1 min-w-[220px] max-w-[300px] rounded-lg border border-gray-200 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-900/50">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">{{ $promo['nome'] }}</span>
+                                            <span class="text-[10px] px-1.5 py-0.5 rounded {{ $statusCor }}">{{ $promo['status'] ?? '' }}</span>
+                                        </div>
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300">{{ $promo['tipo'] ?? '' }}</span>
+                                            @if(($promo['meli_pct'] ?? 0) > 0)
+                                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">Rebate {{ $promo['meli_pct'] }}%</span>
                                             @endif
                                         </div>
-                                        <div class="flex items-center gap-4 shrink-0">
-                                            @if($promo['preco'])
-                                                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                                    <span class="text-[10px] text-gray-500 uppercase">Preço</span> R$ {{ number_format($promo['preco'], 2, ',', '.') }}
-                                                </span>
-                                            @endif
-                                            @if($promo['meli_pct'] > 0)
-                                                <span class="text-sm font-medium text-blue-500 dark:text-blue-400">
-                                                    <span class="text-[10px] text-gray-500 uppercase">Rebate ML</span> {{ $promo['meli_pct'] }}%
-                                                </span>
-                                            @endif
-                                            @if($promo['seller_pct'] > 0)
-                                                <span class="text-sm font-medium text-orange-500 dark:text-orange-400">
-                                                    <span class="text-[10px] text-gray-500 uppercase">Desc. Seller</span> {{ $promo['seller_pct'] }}%
-                                                </span>
-                                            @endif
-                                            @if(isset($promo['margem_pct']))
-                                                <span class="text-sm font-bold {{ $promoMargemCor }}">
-                                                    <span class="text-[10px] text-gray-500 uppercase">Margem</span> {{ number_format($promo['margem_pct'], 1) }}%
-                                                </span>
-                                            @endif
+
+                                        @if($pp > 0)
+                                        <div class="text-center mb-2 py-1.5 rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                                            <div class="text-[10px] text-gray-500">Preço Sugerido</div>
+                                            <div class="text-sm font-bold text-gray-900 dark:text-white">R$ {{ number_format($pp, 2, ',', '.') }}</div>
                                         </div>
+
+                                        <div class="space-y-0.5 text-[10px] text-gray-500 mb-2">
+                                            <div class="flex justify-between">
+                                                <span>Comissão ({{ number_format($item->comissao_pct, 1) }}%)</span>
+                                                <span class="text-red-400">-R$ {{ number_format($promoComissao, 2, ',', '.') }}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span>Frete</span>
+                                                <span class="text-red-400">-R$ {{ number_format($promoFrete, 2, ',', '.') }}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span>Imposto ({{ number_format($item->imposto_pct, 1) }}%)</span>
+                                                <span class="text-red-400">-R$ {{ number_format($promoImposto, 2, ',', '.') }}</span>
+                                            </div>
+                                            @if($promoAntec > 0)
+                                            <div class="flex justify-between">
+                                                <span>Antecipação ({{ number_format($antecPct, 1) }}%)</span>
+                                                <span class="text-red-400">-R$ {{ number_format($promoAntec, 2, ',', '.') }}</span>
+                                            </div>
+                                            @endif
+                                            <div class="flex justify-between">
+                                                <span>Custo</span>
+                                                <span class="text-red-400">-R$ {{ number_format($item->custo_produto, 2, ',', '.') }}</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="text-center py-1.5 rounded {{ ($promo['margem_pct'] ?? 0) >= 15 ? 'bg-green-50 dark:bg-green-900/20' : (($promo['margem_pct'] ?? 0) >= 0 ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-red-50 dark:bg-red-900/20') }}">
+                                            <div class="text-[10px] text-gray-500">Margem</div>
+                                            <div class="text-sm font-bold {{ $promoMargemCor }}">
+                                                R$ {{ number_format($promo['margem_valor'] ?? 0, 2, ',', '.') }}
+                                                <span class="text-xs">({{ number_format($promo['margem_pct'] ?? 0, 1) }}%)</span>
+                                            </div>
+                                        </div>
+                                        @else
+                                        <div class="text-center py-2 text-xs text-gray-400">Preço não informado</div>
+                                        @endif
                                     </div>
                                 @endforeach
                             </div>
