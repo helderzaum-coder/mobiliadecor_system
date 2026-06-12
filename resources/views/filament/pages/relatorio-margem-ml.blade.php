@@ -166,22 +166,22 @@
                                         <div class="flex items-center gap-4 shrink-0">
                                             @if($promo['preco'])
                                                 <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                                    R$ {{ number_format($promo['preco'], 2, ',', '.') }}
+                                                    <span class="text-[10px] text-gray-500 uppercase">Preço</span> R$ {{ number_format($promo['preco'], 2, ',', '.') }}
                                                 </span>
                                             @endif
                                             @if($promo['meli_pct'] > 0)
-                                                <span class="text-sm font-medium text-blue-500 dark:text-blue-400" title="Rebate ML">
-                                                    ML: {{ $promo['meli_pct'] }}%
+                                                <span class="text-sm font-medium text-blue-500 dark:text-blue-400">
+                                                    <span class="text-[10px] text-gray-500 uppercase">Rebate ML</span> {{ $promo['meli_pct'] }}%
                                                 </span>
                                             @endif
                                             @if($promo['seller_pct'] > 0)
-                                                <span class="text-sm font-medium text-orange-500 dark:text-orange-400" title="Desconto Seller">
-                                                    Seller: {{ $promo['seller_pct'] }}%
+                                                <span class="text-sm font-medium text-orange-500 dark:text-orange-400">
+                                                    <span class="text-[10px] text-gray-500 uppercase">Desc. Seller</span> {{ $promo['seller_pct'] }}%
                                                 </span>
                                             @endif
                                             @if(isset($promo['margem_pct']))
                                                 <span class="text-sm font-bold {{ $promoMargemCor }}">
-                                                    {{ number_format($promo['margem_pct'], 1) }}%
+                                                    <span class="text-[10px] text-gray-500 uppercase">Margem</span> {{ number_format($promo['margem_pct'], 1) }}%
                                                 </span>
                                             @endif
                                         </div>
