@@ -25,6 +25,7 @@
     </div>
 
     @if($resultados)
+    {{-- Cards visuais --}}
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:20px;">
         @foreach($resultados as $r)
         <div style="flex:1;min-width:200px;padding:20px;border-radius:12px;border:1px solid #374151;background:#1f2937;">
@@ -46,6 +47,18 @@
             @endif
         </div>
         @endforeach
+    </div>
+
+    {{-- Copiar para Excel --}}
+    <div style="margin-top:20px;padding:16px;border-radius:12px;border:1px solid #374151;background:#1f2937;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-size:12px;font-weight:600;color:#9ca3af;">📋 Copiar para Excel (10% | 13% | 15% | 17%)</span>
+            <button onclick="navigator.clipboard.writeText(document.getElementById('excel-copy').innerText);this.textContent='✅ Copiado!';setTimeout(()=>this.textContent='📋 Copiar',1500)"
+                style="padding:6px 14px;font-size:12px;border-radius:6px;border:1px solid #0891b2;cursor:pointer;background:rgba(8,145,178,.15);color:#0891b2;">
+                📋 Copiar
+            </button>
+        </div>
+        <div id="excel-copy" style="padding:10px;border-radius:6px;background:#111827;color:#e5e7eb;font-family:monospace;font-size:14px;white-space:pre;user-select:all;">{{ collect($resultados)->map(fn($r) => $r['preco'] ? number_format($r['preco'], 2, ',', '') : '-')->implode("	") }}</div>
     </div>
     @endif
 </x-filament-panels::page>
