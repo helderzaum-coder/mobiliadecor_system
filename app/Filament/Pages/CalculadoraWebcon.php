@@ -18,7 +18,7 @@ class CalculadoraWebcon extends Page
     public ?array $resultados = null;
 
     private const IMPOSTO = 13;
-    private const COMISSOES = [17, 15, 13, 10];
+    private const COMISSOES = [10, 13, 15, 17];
 
     public function calcular(): void
     {
