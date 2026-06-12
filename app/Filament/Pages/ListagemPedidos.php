@@ -1,0 +1,125 @@
+<?php
+
+namespace App\Filament\Pages;
+
+use App\Models\PedidoBlingStaging;
+use Filament\Pages\Page;
+
+class ListagemPedidos extends Page
+{
+    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
+    protected static ?string $navigationGroup = 'Relatórios';
+    protected static ?string $navigationLabel = 'Listagem de Pedidos';
+    protected static ?string $title = 'Listagem de Pedidos';
+    protected static string $view = 'filament.pages.listagem-pedidos';
+
+    public string $periodo = 'este_mes';
+    public string $data_inicio = '';
+    public string $data_fim = '';
+    public string $filtro_canal = '';
+    public string $filtro_conta = '';
+    public string $filtro_status = '';
+    public array $resultados = [];
+    public bool $consultaRealizada = false;
+
+    // Mapa de situações Bling v3
+    private const SITUACOES_BLING = [
+        6   => 'Em aberto',
+        9   => 'Atendido',
+        12  => 'Cancelado',
+        15  => 'Em andamento',
+        18  => 'Venda agenciada',
+        21  => 'Em digitação',
+        24  => 'Verificado',
+        27  => 'Aguardando',
+        28  => 'Pronto p/ envio',
+        94  => 'Em produção',
+        95  => 'Disponível',
+        173 => 'Enviado',
+    ];
+
+    public function consultar(): void
+    {
+        $query = PedidoBlingStaging::query()
+            ->where('status', '!=', 'rejeitado');
+
+        // Filtro de período
+        $query = match ($this->periodo) {
+            'hoje' => $query->whereDate('data_pedido', today()),
+            'esta_semana' => $query->whereBetween('data_pedido', [now()->startOfWeek(), now()->endOfWeek()]),
+            'este_mes' => $query->whereBetween('data_pedido', [now()->startOfMonth(), now()->endOfMonth()]),
+            'mes_passado' => $query->whereBetween('data_pedido', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()]),
+            'customizado' => $query
+                ->when($this->data_inicio, fn ($q) => $q->whereDate('data_pedido', '>=', $this->data_inicio))
+                ->when($this->data_fim, fn ($q) => $q->whereDate('data_pedido', '<=', $this->data_fim)),
+            default => $query,
+        };
+
+        if ($this->filtro_canal) {
+            $query->where('canal', $this->filtro_canal);
+        }
+        if ($this->filtro_conta) {
+            $query->where('bling_account', $this->filtro_conta);
+        }
+        if ($this->filtro_status) {
+            $query->where('status', $this->filtro_status);
+        }
+
+        $pedidos = $query->orderBy('data_pedido', 'desc')->get();
+
+        $this->resultados = $pedidos->flatMap(function ($pedido) {
+            $itens = $pedido->itens ?? [];
+            $situacao = self::SITUACOES_BLING[$pedido->situacao_id] ?? ('ID ' . ($pedido->situacao_id ?? '—'));
+            $cnpj = $pedido->bling_account === 'primary' ? 'Mobilia Decor' : 'HES Móveis';
+
+            if (empty($itens)) {
+                return [[
+                    'data' => $pedido->data_pedido?->format('d/m/Y') ?? '—',
+                    'situacao_bling' => $situacao,
+                    'cnpj' => $cnpj,
+                    'canal' => $pedido->canal ?? '—',
+                    'produto' => '—',
+                    'quantidade' => '—',
+                    'pedido_bling' => $pedido->numero_pedido,
+                    'pedido_canal' => $pedido->numero_loja ?? '—',
+                    'cliente' => $pedido->cliente_nome ?? '—',
+                ]];
+            }
+
+            return collect($itens)->map(fn ($item) => [
+                'data' => $pedido->data_pedido?->format('d/m/Y') ?? '—',
+                'situacao_bling' => $situacao,
+                'cnpj' => $cnpj,
+                'canal' => $pedido->canal ?? '—',
+                'produto' => ($item['codigo'] ?? '') . ' - ' . ($item['descricao'] ?? ''),
+                'quantidade' => $item['quantidade'] ?? 1,
+                'pedido_bling' => $pedido->numero_pedido,
+                'pedido_canal' => $pedido->numero_loja ?? '—',
+                'cliente' => $pedido->cliente_nome ?? '—',
+            ])->toArray();
+        })->toArray();
+
+        $this->consultaRealizada = true;
+    }
+
+    public function exportarCsv(): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        return response()->streamDownload(function () {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Data', 'Status Bling', 'CNPJ', 'Canal', 'Produto', 'Qtd', 'Pedido Bling', 'Pedido Canal', 'Cliente'], ';');
+            foreach ($this->resultados as $r) {
+                fputcsv($handle, [
+                    $r['data'], $r['situacao_bling'], $r['cnpj'], $r['canal'],
+                    $r['produto'], $r['quantidade'], $r['pedido_bling'],
+                    $r['pedido_canal'], $r['cliente'],
+                ], ';');
+            }
+            fclose($handle);
+        }, 'listagem_pedidos_' . now()->format('Y-m-d') . '.csv');
+    }
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'operador']) ?? false;
+    }
+}
