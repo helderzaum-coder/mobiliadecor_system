@@ -72,31 +72,38 @@ class ListagemPedidos extends Page
             $situacao = self::SITUACOES_BLING[$pedido->situacao_id] ?? ('ID ' . ($pedido->situacao_id ?? '—'));
             $cnpj = $pedido->bling_account === 'primary' ? 'Mobilia Decor' : 'HES Móveis';
 
-            if (empty($itens)) {
-                return [[
-                    'data' => $pedido->data_pedido?->format('d/m/Y') ?? '—',
-                    'situacao_bling' => $situacao,
-                    'cnpj' => $cnpj,
-                    'canal' => $pedido->canal ?? '—',
-                    'produto' => '—',
-                    'quantidade' => '—',
-                    'pedido_bling' => $pedido->numero_pedido,
-                    'pedido_canal' => $pedido->numero_loja ?? '—',
-                    'cliente' => $pedido->cliente_nome ?? '—',
-                ]];
+            // Data liberação etiqueta ML (salva em dados_originais._data_despacho)
+            $liberacaoEtiqueta = '—';
+            $isML = str_contains(strtolower($pedido->canal ?? ''), 'mercado');
+            if ($isML) {
+                $dataDespacho = $pedido->dados_originais['_data_despacho'] ?? null;
+                if ($dataDespacho) {
+                    try {
+                        $liberacaoEtiqueta = \Carbon\Carbon::parse($dataDespacho)->format('d/m/Y H:i');
+                    } catch (\Exception $e) {}
+                }
             }
 
-            return collect($itens)->map(fn ($item) => [
+            $base = [
                 'data' => $pedido->data_pedido?->format('d/m/Y') ?? '—',
                 'situacao_bling' => $situacao,
                 'cnpj' => $cnpj,
                 'canal' => $pedido->canal ?? '—',
-                'produto' => ($item['codigo'] ?? '') . ' - ' . ($item['descricao'] ?? ''),
-                'quantidade' => $item['quantidade'] ?? 1,
                 'pedido_bling' => $pedido->numero_pedido,
                 'pedido_canal' => $pedido->numero_loja ?? '—',
                 'cliente' => $pedido->cliente_nome ?? '—',
-            ])->toArray();
+                'liberacao_etiqueta' => $liberacaoEtiqueta,
+                'is_ml' => $isML,
+            ];
+
+            if (empty($itens)) {
+                return [array_merge($base, ['produto' => '—', 'quantidade' => '—'])];
+            }
+
+            return collect($itens)->map(fn ($item) => array_merge($base, [
+                'produto' => ($item['codigo'] ?? '') . ' - ' . ($item['descricao'] ?? ''),
+                'quantidade' => $item['quantidade'] ?? 1,
+            ]))->toArray();
         })->toArray();
 
         $this->consultaRealizada = true;
@@ -106,12 +113,12 @@ class ListagemPedidos extends Page
     {
         return response()->streamDownload(function () {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Data', 'Status Bling', 'CNPJ', 'Canal', 'Produto', 'Qtd', 'Pedido Bling', 'Pedido Canal', 'Cliente'], ';');
+            fputcsv($handle, ['Data', 'Status Bling', 'CNPJ', 'Canal', 'Produto', 'Qtd', 'Pedido Bling', 'Pedido Canal', 'Cliente', 'Liberação Etiqueta'], ';');
             foreach ($this->resultados as $r) {
                 fputcsv($handle, [
                     $r['data'], $r['situacao_bling'], $r['cnpj'], $r['canal'],
                     $r['produto'], $r['quantidade'], $r['pedido_bling'],
-                    $r['pedido_canal'], $r['cliente'],
+                    $r['pedido_canal'], $r['cliente'], $r['liberacao_etiqueta'],
                 ], ';');
             }
             fclose($handle);
