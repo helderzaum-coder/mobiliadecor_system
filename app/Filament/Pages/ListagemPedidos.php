@@ -5,7 +5,6 @@ namespace App\Filament\Pages;
 use App\Models\PedidoBlingStaging;
 use App\Services\Bling\BlingClient;
 use Filament\Pages\Page;
-use Illuminate\Support\Facades\Cache;
 
 class ListagemPedidos extends Page
 {
@@ -133,37 +132,35 @@ class ListagemPedidos extends Page
      */
     private function getSituacoesMap(string $account): array
     {
-        return Cache::remember("bling_situacoes_map_{$account}", 3600, function () use ($account) {
-            $client = new BlingClient($account);
+        $client = new BlingClient($account);
 
-            $modulos = $client->get('/situacoes/modulos');
-            $moduloVendasId = null;
+        $modulos = $client->get('/situacoes/modulos');
+        $moduloVendasId = null;
 
-            if ($modulos['success']) {
-                foreach ($modulos['body']['data'] ?? [] as $mod) {
-                    if ($mod['nome'] === 'Vendas') {
-                        $moduloVendasId = $mod['id'];
-                        break;
-                    }
+        if ($modulos['success']) {
+            foreach ($modulos['body']['data'] ?? [] as $mod) {
+                if ($mod['nome'] === 'Vendas') {
+                    $moduloVendasId = $mod['id'];
+                    break;
                 }
             }
+        }
 
-            if (!$moduloVendasId) {
-                return [];
-            }
+        if (!$moduloVendasId) {
+            return [];
+        }
 
-            $response = $client->getSituacoes($moduloVendasId);
+        $response = $client->getSituacoes($moduloVendasId);
 
-            if (!$response['success'] || empty($response['body']['data'])) {
-                return [];
-            }
+        if (!$response['success'] || empty($response['body']['data'])) {
+            return [];
+        }
 
-            $map = [];
-            foreach ($response['body']['data'] as $sit) {
-                $map[$sit['id']] = $sit['nome'] ?? ('ID ' . $sit['id']);
-            }
-            return $map;
-        });
+        $map = [];
+        foreach ($response['body']['data'] as $sit) {
+            $map[$sit['id']] = $sit['nome'] ?? ('ID ' . $sit['id']);
+        }
+        return $map;
     }
 
     /**
@@ -175,32 +172,26 @@ class ListagemPedidos extends Page
         $resultado = [];
         $pedidosUnicos = $pedidos->unique('bling_id');
         $semCache = 0;
+        $clients = [];
 
         foreach ($pedidosUnicos as $pedido) {
-            $cacheKey = "bling_sit_atual_{$pedido->bling_id}";
-            $cached = Cache::get($cacheKey);
-
-            if ($cached !== null) {
-                $resultado[$pedido->bling_id] = $cached;
-                continue;
-            }
-
-            // Limitar chamadas sem cache para evitar timeout
+            // Limitar chamadas para evitar timeout
             if ($semCache >= 50) {
                 $sitMap = $pedido->bling_account === 'primary' ? $mapPrimary : $mapSecondary;
                 $resultado[$pedido->bling_id] = $sitMap[$pedido->situacao_id] ?? ('ID ' . ($pedido->situacao_id ?? '—'));
                 continue;
             }
 
-            $client = new BlingClient($pedido->bling_account);
-            $response = $client->getPedido((int) $pedido->bling_id);
+            if (!isset($clients[$pedido->bling_account])) {
+                $clients[$pedido->bling_account] = new BlingClient($pedido->bling_account);
+            }
+
+            $response = $clients[$pedido->bling_account]->getPedido((int) $pedido->bling_id);
 
             if ($response['success']) {
                 $sitId = $response['body']['data']['situacao']['id'] ?? null;
                 $sitMap = $pedido->bling_account === 'primary' ? $mapPrimary : $mapSecondary;
-                $nome = $sitMap[$sitId] ?? ('ID ' . $sitId);
-                Cache::put($cacheKey, $nome, 600);
-                $resultado[$pedido->bling_id] = $nome;
+                $resultado[$pedido->bling_id] = $sitMap[$sitId] ?? ('ID ' . $sitId);
             } else {
                 $sitMap = $pedido->bling_account === 'primary' ? $mapPrimary : $mapSecondary;
                 $resultado[$pedido->bling_id] = $sitMap[$pedido->situacao_id] ?? ('ID ' . ($pedido->situacao_id ?? '—'));
