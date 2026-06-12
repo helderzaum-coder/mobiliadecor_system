@@ -133,7 +133,25 @@ class ListagemPedidos extends Page
     {
         return Cache::remember("bling_situacoes_map_{$account}", 3600, function () use ($account) {
             $client = new BlingClient($account);
-            $response = $client->getSituacoes(9);
+
+            // Descobrir ID do módulo "Vendas"
+            $modulos = $client->get('/situacoes/modulos');
+            $moduloVendasId = null;
+
+            if ($modulos['success']) {
+                foreach ($modulos['body']['data'] ?? [] as $mod) {
+                    if ($mod['nome'] === 'Vendas') {
+                        $moduloVendasId = $mod['id'];
+                        break;
+                    }
+                }
+            }
+
+            if (!$moduloVendasId) {
+                return [];
+            }
+
+            $response = $client->getSituacoes($moduloVendasId);
 
             if (!$response['success'] || empty($response['body']['data'])) {
                 return [];
@@ -141,7 +159,7 @@ class ListagemPedidos extends Page
 
             $map = [];
             foreach ($response['body']['data'] as $sit) {
-                $map[$sit['id']] = $sit['nome'] ?? $sit['valor'] ?? ('ID ' . $sit['id']);
+                $map[$sit['id']] = $sit['nome'] ?? ('ID ' . $sit['id']);
             }
             return $map;
         });
