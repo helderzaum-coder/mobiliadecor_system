@@ -158,7 +158,7 @@
                                                 <span class="text-xs px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300">{{ $promo['tipo'] }}</span>
                                             @endif
                                             @if(!empty($promo['status']))
-                                                <span class="text-xs px-1.5 py-0.5 rounded {{ $promo['status'] === 'started' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300' }}">
+                                                <span class="text-xs px-1.5 py-0.5 rounded {{ $promo['status'] === 'started' ? 'bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200' : 'bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200' }}">
                                                     {{ $promo['status'] }}
                                                 </span>
                                             @endif
