@@ -533,11 +533,6 @@
                                     <td class="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">{{ $promo['name'] }}</td>
                                     <td class="px-3 py-2">
                                         <span class="text-[10px] text-gray-500">{{ $promo['type'] }}</span>
-                                        @if(!empty($promo['offer_id']))
-                                            <span class="text-[10px] text-green-500 block">offer: {{ $promo['offer_id'] }}</span>
-                                        @else
-                                            <span class="text-[10px] text-red-400 block">keys: {{ implode(',', $promo['raw_keys'] ?? []) }}</span>
-                                        @endif
                                     </td>
                                     <td class="px-3 py-2">
                                         @php $sc = match($promo['status']) {
