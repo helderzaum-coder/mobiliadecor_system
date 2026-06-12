@@ -45,13 +45,14 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
-                    <select wire:model="filtro_status" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-sm">
-                        <option value="">Todos</option>
-                        <option value="pendente">Pendente</option>
-                        <option value="aprovado">Aprovado</option>
-                        <option value="cancelado">Cancelado</option>
-                        <option value="assistencia">Assistência</option>
-                    </select>
+                    <div class="flex flex-wrap gap-3 mt-1">
+                        @foreach(['pendente' => 'Pendente', 'aprovado' => 'Aprovado', 'cancelado' => 'Cancelado', 'assistencia' => 'Assistência'] as $val => $label)
+                            <label class="inline-flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                                <input type="checkbox" value="{{ $val }}" wire:model="filtro_status" class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-primary-600 focus:ring-primary-500" />
+                                {{ $label }}
+                            </label>
+                        @endforeach
+                    </div>
                 </div>
 
                 <div>

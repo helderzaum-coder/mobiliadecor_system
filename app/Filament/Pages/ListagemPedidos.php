@@ -19,7 +19,7 @@ class ListagemPedidos extends Page
     public string $data_fim = '';
     public string $filtro_canal = '';
     public string $filtro_conta = '';
-    public string $filtro_status = '';
+    public array $filtro_status = [];
     public array $resultados = [];
     public bool $consultaRealizada = false;
 
@@ -55,8 +55,8 @@ class ListagemPedidos extends Page
         if ($this->filtro_conta) {
             $query->where('bling_account', $this->filtro_conta);
         }
-        if ($this->filtro_status) {
-            $query->where('status', $this->filtro_status);
+        if (!empty($this->filtro_status)) {
+            $query->whereIn('status', $this->filtro_status);
         }
 
         $pedidos = $query->orderBy('data_pedido', 'desc')->limit(150)->get();
