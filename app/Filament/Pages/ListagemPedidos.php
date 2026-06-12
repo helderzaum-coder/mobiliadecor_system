@@ -62,12 +62,14 @@ class ListagemPedidos extends Page
 
         $pedidos = $query->orderBy('data_pedido', 'desc')->limit(150)->get();
 
-        // Buscar situações atuais no Bling (com cache de 5min por pedido)
-        $situacoesMap = $this->buscarSituacoesBling($pedidos);
+        // Buscar mapa de situações do Bling (1 chamada por conta, cache 1h)
+        $situacoesMapPrimary = $this->getSituacoesMap('primary');
+        $situacoesMapSecondary = $this->getSituacoesMap('secondary');
 
-        $this->resultados = $pedidos->flatMap(function ($pedido) use ($situacoesMap) {
+        $this->resultados = $pedidos->flatMap(function ($pedido) use ($situacoesMapPrimary, $situacoesMapSecondary) {
             $itens = $pedido->itens ?? [];
-            $situacao = $situacoesMap[$pedido->bling_id] ?? ('ID ' . ($pedido->situacao_id ?? '—'));
+            $sitMap = $pedido->bling_account === 'primary' ? $situacoesMapPrimary : $situacoesMapSecondary;
+            $situacao = $sitMap[$pedido->situacao_id] ?? ('ID ' . ($pedido->situacao_id ?? '—'));
             $cnpj = $pedido->bling_account === 'primary' ? 'Mobilia Decor' : 'HES Móveis';
 
             // Data liberação etiqueta ML (salva em dados_originais._data_despacho)
@@ -124,33 +126,25 @@ class ListagemPedidos extends Page
     }
 
     /**
-     * Busca situação atual de cada pedido no Bling via API.
-     * Cache de 5 minutos por bling_id para não sobrecarregar.
+     * Busca mapa de situações do Bling (1 chamada por conta, cache 1h).
+     * Retorna [situacao_id => nome] para traduzir o ID salvo no staging.
      */
-    private function buscarSituacoesBling($pedidos): array
+    private function getSituacoesMap(string $account): array
     {
-        $map = [];
-        $porConta = $pedidos->groupBy('bling_account');
-
-        foreach ($porConta as $account => $pedidosConta) {
+        return Cache::remember("bling_situacoes_map_{$account}", 3600, function () use ($account) {
             $client = new BlingClient($account);
+            $response = $client->getSituacoes(9);
 
-            foreach ($pedidosConta as $pedido) {
-                $cacheKey = "bling_situacao_{$pedido->bling_id}";
-
-                $situacao = Cache::remember($cacheKey, 300, function () use ($client, $pedido) {
-                    $response = $client->getPedido((int) $pedido->bling_id);
-                    if ($response['success']) {
-                        return $response['body']['data']['situacao']['valor'] ?? null;
-                    }
-                    return null;
-                });
-
-                $map[$pedido->bling_id] = $situacao ?? ('ID ' . ($pedido->situacao_id ?? '—'));
+            if (!$response['success'] || empty($response['body']['data'])) {
+                return [];
             }
-        }
 
-        return $map;
+            $map = [];
+            foreach ($response['body']['data'] as $sit) {
+                $map[$sit['id']] = $sit['nome'] ?? $sit['valor'] ?? ('ID ' . $sit['id']);
+            }
+            return $map;
+        });
     }
 
     public static function canAccess(): bool
