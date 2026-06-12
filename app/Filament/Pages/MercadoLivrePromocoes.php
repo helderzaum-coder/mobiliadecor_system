@@ -66,12 +66,15 @@ class MercadoLivrePromocoes extends Page
     public string $abaAtiva = 'promocoes';
     public float $impostoPercent = 17.8;
     public float $margemDesejada = 15.0;
+    public float $antecipacaoPercent = 0;
     public ?array $aderindoPromoData = null; // dados extras da promo para adesão
     public ?float $custoManual = null;
 
     public function mount(): void
     {
         $this->loadPromotions();
+        $canal = \App\Models\CanalVenda::where('nome_canal', 'Mercadolivre')->where('ativo', true)->first();
+        $this->antecipacaoPercent = (float) ($canal->percentual_antecipacao ?? 0);
     }
 
     public function loadPromotions(): void
@@ -237,7 +240,7 @@ class MercadoLivrePromocoes extends Page
             $frete = $info['frete'] ?? 0;
             $custo = $info['custo_produto'] ?? 0;
             $comPercent = $info['comissao_percent'] ?? 11.5;
-            $divisor = 1 - ($comPercent / 100) - ($this->impostoPercent / 100) - ($this->margemDesejada / 100);
+            $divisor = 1 - ($comPercent / 100) - ($this->impostoPercent / 100) - ($this->margemDesejada / 100) - ($this->antecipacaoPercent / 100);
             if ($divisor > 0 && $custo > 0) {
                 $this->aderindoPreco = round(($frete + $custo) / $divisor, 2);
             }

@@ -167,8 +167,12 @@ class MercadoLivreRelatorioMargem extends Command
         $baseImposto = max(0, $preco - $frete);
         $impostoValor = round($baseImposto * $this->impostoPct / 100, 2);
 
+        // Antecipação de parcelas
+        $antecipacaoPct = $this->getAntecipacaoPct();
+        $antecipacaoValor = round($preco * $antecipacaoPct / 100, 2);
+
         // Margem
-        $recebe = $preco - $comissaoValor - $frete;
+        $recebe = $preco - $comissaoValor - $frete - $antecipacaoValor;
         $margemValor = round($recebe - $custo - $impostoValor, 2);
         $margemPct = $preco > 0 ? round(($margemValor / $preco) * 100, 2) : 0;
 
@@ -201,7 +205,8 @@ class MercadoLivreRelatorioMargem extends Command
                     $comPromoValor = $comPromo['valor'] ?? round($pp * $comissaoPct / 100, 2);
                     $baseImpPromo = max(0, $pp - $frete);
                     $impPromo = round($baseImpPromo * $this->impostoPct / 100, 2);
-                    $recebePromo = $pp - $comPromoValor - $frete;
+                    $antPromo = round($pp * $antecipacaoPct / 100, 2);
+                    $recebePromo = $pp - $comPromoValor - $frete - $antPromo;
                     $promoMargem = round($recebePromo - $custo - $impPromo, 2);
                     $promoMargemPct = $pp > 0 ? round(($promoMargem / $pp) * 100, 2) : 0;
 
@@ -382,5 +387,11 @@ class MercadoLivreRelatorioMargem extends Command
         }
 
         return (float) ($imposto->percentual_imposto ?? 0);
+    }
+
+    private function getAntecipacaoPct(): float
+    {
+        $canal = \App\Models\CanalVenda::where('nome_canal', 'Mercadolivre')->where('ativo', true)->first();
+        return (float) ($canal->percentual_antecipacao ?? 0);
     }
 }

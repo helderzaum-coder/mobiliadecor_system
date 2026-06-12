@@ -426,7 +426,9 @@ class VendaRecalculoService
         $margemFrete = $frete - $custoFrete - $comissaoFrete - $impostoFrete;
         $comissaoProduto = $comissao - $comissaoFrete;
         $comissaoAfiliado = (float) ($venda->comissao_afiliado ?? 0);
-        $margemProduto = $totalProdutos - $custoProdutos - $comissaoProduto - $comissaoAfiliado - $impostoProduto + $valorRebate;
+        $antecipacaoPct = (float) ($canal->percentual_antecipacao ?? 0);
+        $antecipacao = $antecipacaoPct > 0 ? round($totalPedido * $antecipacaoPct / 100, 2) : 0;
+        $margemProduto = $totalProdutos - $custoProdutos - $comissaoProduto - $comissaoAfiliado - $impostoProduto - $antecipacao + $valorRebate;
 
         // Subsídio pix / descontos:
         // - Shopee: já descontado do subtotal, não somar

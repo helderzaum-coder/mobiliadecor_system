@@ -125,11 +125,13 @@
                             $comissao = $deducoesMl !== null ? max(0, $deducoesMl - $frete) : $comissaoCheia;
                             $imposto = $precoBaseComissao * ($impPercent / 100);
                             $custoTotal = $frete + $comissao + $imposto + $custoProduto;
+                            $antecipacaoVal = $precoBaseComissao * ($antecipacaoPercent / 100);
+                            $custoTotal += $antecipacaoVal;
                             $margem = $precoBaseComissao - $custoTotal;
                             $margemPercent = $precoBaseComissao > 0 ? ($margem / $precoBaseComissao) * 100 : 0;
                             $desconto = $precoOriginal > 0 ? (($precoOriginal - $precoBaseComissao) / $precoOriginal) * 100 : 0;
                             $comissaoPercentEfetivo = $precoBaseComissao > 0 ? ($comissao / $precoBaseComissao) * 100 : 0;
-                            $divisor = 1 - ($comissaoPercentEfetivo / 100) - ($impPercent / 100) - ($margemDesejada / 100);
+                            $divisor = 1 - ($comissaoPercentEfetivo / 100) - ($impPercent / 100) - ($margemDesejada / 100) - ($antecipacaoPercent / 100);
                             $precoSugerido = $divisor > 0 ? ($frete + $custoProduto) / $divisor : 0;
                         @endphp
                         <div class="p-4 rounded-xl bg-white dark:bg-gray-800 ring-1 ring-gray-950/5 dark:ring-white/10 shadow-xl">
@@ -187,6 +189,7 @@
                                 $comissaoAtual = $precoOriginal * ($comissaoPercentEfetivo / 100);
                                 $impostoAtual = $precoOriginal * ($impPercent / 100);
                                 $custoTotalAtual = $frete + $comissaoAtual + $impostoAtual + $custoProduto;
+                                $custoTotalAtual += $precoOriginal * ($antecipacaoPercent / 100);
                                 $margemAtual = $precoOriginal - $custoTotalAtual;
                                 $margemAtualPercent = $precoOriginal > 0 ? ($margemAtual / $precoOriginal) * 100 : 0;
                             @endphp
@@ -410,10 +413,12 @@
                         $comissao = $deducoesMl !== null ? max(0, $deducoesMl - $frete) : $comissaoCheia;
                         $imposto = $precoPromo * ($impPercent / 100);
                         $custoTotal = $frete + $comissao + $imposto + $custoProduto;
+                        $antecipacaoVal = $precoPromo * ($antecipacaoPercent / 100);
+                        $custoTotal += $antecipacaoVal;
                         $margem = $precoPromo - $custoTotal;
                         $margemPercent = $precoPromo > 0 ? ($margem / $precoPromo) * 100 : 0;
                         $desconto = $precoOriginal > 0 ? (($precoOriginal - $precoPromo) / $precoOriginal) * 100 : 0;
-                        $divisor = 1 - ($comissaoPercent / 100) - ($impPercent / 100) - ($margemDesejada / 100);
+                        $divisor = 1 - ($comissaoPercent / 100) - ($impPercent / 100) - ($margemDesejada / 100) - ($antecipacaoPercent / 100);
                         $precoSugerido = $divisor > 0 ? ($frete + $custoProduto) / $divisor : 0;
                     @endphp
                     <div class="mb-4 p-4 rounded-lg bg-white dark:bg-gray-800 ring-1 ring-primary-500/30 shadow-sm">
@@ -468,6 +473,7 @@
                             $comissaoAtual2 = $precoOriginal * ($comissaoPercent / 100);
                             $impostoAtual2 = $precoOriginal * ($impPercent / 100);
                             $custoTotalAtual2 = $frete + $comissaoAtual2 + $impostoAtual2 + $custoProduto;
+                            $custoTotalAtual2 += $precoOriginal * ($antecipacaoPercent / 100);
                             $margemAtual2 = $precoOriginal - $custoTotalAtual2;
                             $margemAtualPercent2 = $precoOriginal > 0 ? ($margemAtual2 / $precoOriginal) * 100 : 0;
                         @endphp
