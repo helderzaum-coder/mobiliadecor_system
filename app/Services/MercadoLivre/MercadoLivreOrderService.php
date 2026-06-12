@@ -207,7 +207,9 @@ class MercadoLivreOrderService
         $cost = (float) ($shippingOption['cost'] ?? 0);
 
         // Data limite para despacho (quando libera etiqueta)
-        $dataDespacho = $shippingOption['estimated_handling_limit']['date'] ?? ($shipping['estimated_handling_limit']['date'] ?? null);
+        $dataDespacho = $shippingOption['buffering']['date']
+            ?? $shippingOption['estimated_handling_limit']['date']
+            ?? ($shipping['estimated_handling_limit']['date'] ?? null);
 
         return [
             'tipo_frete' => $tipoFrete,

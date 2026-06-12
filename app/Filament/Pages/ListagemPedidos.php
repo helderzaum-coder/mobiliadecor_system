@@ -73,14 +73,21 @@ class ListagemPedidos extends Page
             $situacao = $situacoesAtuais[$pedido->bling_id] ?? '—';
             $cnpj = $pedido->bling_account === 'primary' ? 'Mobilia Decor' : 'HES Móveis';
 
-            // Data liberação etiqueta ML (salva em dados_originais._data_despacho)
+            // Data liberação etiqueta ML (buffering.date do shipping)
             $liberacaoEtiqueta = '—';
             $isML = str_contains(strtolower($pedido->canal ?? ''), 'mercado');
             if ($isML) {
-                $dataDespacho = $pedido->dados_originais['_data_despacho'] ?? null;
+                $dadosOriginais = $pedido->dados_originais ?? [];
+                $dataDespacho = $dadosOriginais['_data_despacho'] ?? null;
+
+                // Tentar buscar buffering.date dos dados originais do shipping (mais preciso)
+                if (!$dataDespacho) {
+                    $dataDespacho = $dadosOriginais['transporte']['etiqueta']['buffering']['date'] ?? null;
+                }
+
                 if ($dataDespacho) {
                     try {
-                        $liberacaoEtiqueta = \Carbon\Carbon::parse($dataDespacho)->format('d/m/Y H:i');
+                        $liberacaoEtiqueta = \Carbon\Carbon::parse($dataDespacho)->format('d/m/Y');
                     } catch (\Exception $e) {}
                 }
             }
