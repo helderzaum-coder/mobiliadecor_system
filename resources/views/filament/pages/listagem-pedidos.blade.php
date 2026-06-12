@@ -44,12 +44,12 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
-                    <div class="flex flex-wrap gap-3 mt-1">
-                        @foreach(['pendente' => 'Pendente', 'aprovado' => 'Aprovado', 'cancelado' => 'Cancelado', 'assistencia' => 'Assistência'] as $val => $label)
-                            <label class="inline-flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                                <input type="checkbox" value="{{ $val }}" wire:model="filtro_status" class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-primary-600 focus:ring-primary-500" />
-                                {{ $label }}
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Situação Bling</label>
+                    <div class="flex flex-wrap gap-2 mt-1">
+                        @foreach(['Em aberto', 'Verificado', 'Em andamento', 'Enviado', 'Atendido', 'Entregue', 'Cancelado', 'Faturado – Pendente de Cotação', 'Em Cotação', 'ML Etiqueta', 'Shopee Xpress', 'Lançado Envio'] as $sit)
+                            <label class="inline-flex items-center gap-1 text-xs text-gray-700 dark:text-gray-300 cursor-pointer">
+                                <input type="checkbox" value="{{ $sit }}" wire:model="filtro_situacao" class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-primary-600 focus:ring-primary-500 w-3.5 h-3.5" />
+                                {{ $sit }}
                             </label>
                         @endforeach
                     </div>

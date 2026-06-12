@@ -19,9 +19,10 @@ class ListagemPedidos extends Page
     public string $data_fim = '';
     public string $filtro_canal = '';
     public string $filtro_conta = '';
-    public array $filtro_status = [];
+    public array $filtro_situacao = [];
     public array $resultados = [];
     public bool $consultaRealizada = false;
+    public array $situacoesDisponiveis = [];
 
 
 
@@ -55,9 +56,6 @@ class ListagemPedidos extends Page
         if ($this->filtro_conta) {
             $query->where('bling_account', $this->filtro_conta);
         }
-        if (!empty($this->filtro_status)) {
-            $query->whereIn('status', $this->filtro_status);
-        }
 
         $pedidos = $query->orderBy('data_pedido', 'desc')->limit(150)->get();
 
@@ -65,8 +63,17 @@ class ListagemPedidos extends Page
         $situacoesMapPrimary = $this->getSituacoesMap('primary');
         $situacoesMapSecondary = $this->getSituacoesMap('secondary');
 
-        // Buscar situação ATUAL de cada pedido na API (cache 10min por pedido)
+        // Buscar situação ATUAL de cada pedido na API
         $situacoesAtuais = $this->buscarSituacoesAtuais($pedidos, $situacoesMapPrimary, $situacoesMapSecondary);
+
+        // Coletar situações disponíveis para o filtro
+        $this->situacoesDisponiveis = array_unique(array_values($situacoesAtuais));
+        sort($this->situacoesDisponiveis);
+
+        // Filtrar por situação Bling (pós-API)
+        if (!empty($this->filtro_situacao)) {
+            $pedidos = $pedidos->filter(fn ($p) => in_array($situacoesAtuais[$p->bling_id] ?? '', $this->filtro_situacao));
+        }
 
         $this->resultados = $pedidos->flatMap(function ($pedido) use ($situacoesAtuais) {
             $itens = $pedido->itens ?? [];
