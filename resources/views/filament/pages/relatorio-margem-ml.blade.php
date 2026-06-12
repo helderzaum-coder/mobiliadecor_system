@@ -100,35 +100,35 @@
                     </div>
 
                     {{-- Dados financeiros --}}
-                    <div class="grid grid-cols-2 md:grid-cols-7 gap-px bg-gray-100 dark:bg-gray-700">
-                        <div class="bg-white dark:bg-gray-800 p-3 text-center">
-                            <div class="text-xs text-gray-500">Preço</div>
+                    <div class="flex items-center divide-x divide-gray-200 dark:divide-gray-700 border-t border-b border-gray-100 dark:border-gray-700 overflow-x-auto">
+                        <div class="flex-1 px-3 py-2 text-center min-w-0">
+                            <div class="text-[10px] text-gray-500 uppercase">Preço</div>
                             <div class="text-sm font-semibold">R$ {{ number_format($item->preco_venda, 2, ',', '.') }}</div>
                         </div>
-                        <div class="bg-white dark:bg-gray-800 p-3 text-center">
-                            <div class="text-xs text-gray-500">Custo</div>
+                        <div class="flex-1 px-3 py-2 text-center min-w-0">
+                            <div class="text-[10px] text-gray-500 uppercase">Custo</div>
                             <div class="text-sm font-semibold">R$ {{ number_format($item->custo_produto, 2, ',', '.') }}</div>
                         </div>
-                        <div class="bg-white dark:bg-gray-800 p-3 text-center">
-                            <div class="text-xs text-gray-500">Comissão</div>
+                        <div class="flex-1 px-3 py-2 text-center min-w-0">
+                            <div class="text-[10px] text-gray-500 uppercase">Comissão</div>
                             <div class="text-sm font-semibold">{{ number_format($item->comissao_pct, 1) }}%</div>
-                            <div class="text-xs text-gray-400">R$ {{ number_format($item->comissao_valor, 2, ',', '.') }}</div>
+                            <div class="text-[10px] text-gray-400">R$ {{ number_format($item->comissao_valor, 2, ',', '.') }}</div>
                         </div>
-                        <div class="bg-white dark:bg-gray-800 p-3 text-center">
-                            <div class="text-xs text-gray-500">Frete</div>
+                        <div class="flex-1 px-3 py-2 text-center min-w-0">
+                            <div class="text-[10px] text-gray-500 uppercase">Frete</div>
                             <div class="text-sm font-semibold">R$ {{ number_format($item->frete, 2, ',', '.') }}</div>
                         </div>
-                        <div class="bg-white dark:bg-gray-800 p-3 text-center">
-                            <div class="text-xs text-gray-500">Imposto</div>
+                        <div class="flex-1 px-3 py-2 text-center min-w-0">
+                            <div class="text-[10px] text-gray-500 uppercase">Imposto</div>
                             <div class="text-sm font-semibold">{{ number_format($item->imposto_pct, 1) }}%</div>
-                            <div class="text-xs text-gray-400">R$ {{ number_format($item->imposto_valor, 2, ',', '.') }}</div>
+                            <div class="text-[10px] text-gray-400">R$ {{ number_format($item->imposto_valor, 2, ',', '.') }}</div>
                         </div>
-                        <div class="bg-white dark:bg-gray-800 p-3 text-center">
-                            <div class="text-xs text-gray-500">Estoque</div>
+                        <div class="flex-1 px-3 py-2 text-center min-w-0">
+                            <div class="text-[10px] text-gray-500 uppercase">Estoque</div>
                             <div class="text-sm font-semibold">{{ $item->estoque }}</div>
                         </div>
-                        <div class="bg-white dark:bg-gray-800 p-3 text-center">
-                            <div class="text-xs text-gray-500">Conta</div>
+                        <div class="flex-1 px-3 py-2 text-center min-w-0">
+                            <div class="text-[10px] text-gray-500 uppercase">Conta</div>
                             <div class="text-sm font-semibold">{{ $item->account_key === 'primary' ? 'Mobília' : 'HES' }}</div>
                         </div>
                     </div>
