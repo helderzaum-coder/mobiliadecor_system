@@ -80,7 +80,7 @@ class MercadoLivrePromocoes extends Page
         $result = $service->listarPromocoes();
 
         if ($result['success']) {
-            $this->promotions = $result['promotions'];
+            $this->promotions = array_values(array_filter($result['promotions'], fn($p) => !empty($p['name'])));
         } else {
             Notification::make()->title('Erro ao carregar promoções')->body($result['error'] ?? '')->danger()->send();
         }
@@ -457,9 +457,9 @@ class MercadoLivrePromocoes extends Page
         $result = $service->buscarPromocoesParaItem($itemId);
 
         if ($result['success']) {
-            $this->promocoesDoItem = $result['promotions'];
+            $this->promocoesDoItem = array_values(array_filter($result['promotions'], fn($p) => !empty($p['offer_id'])));
             if (empty($this->promocoesDoItem)) {
-                Notification::make()->title('Nenhuma promoção encontrada para ' . $itemId)->warning()->send();
+                Notification::make()->title('Nenhuma promoção aderível para ' . $itemId)->warning()->send();
             }
         } else {
             Notification::make()->title('Erro ao buscar promoções')->body($result['error'] ?? '')->danger()->send();

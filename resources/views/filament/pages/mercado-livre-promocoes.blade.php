@@ -73,11 +73,7 @@
                                 <span class="truncate font-medium text-gray-900 dark:text-gray-100">
                                     {{ $promo['name'] ?? 'Sem nome' }}
                                 </span>
-                                @if(empty($promo['name']))
-                                    <span class="ml-auto shrink-0 text-[9px] text-red-400">sem adesão</span>
-                                @else
-                                    <span class="ml-auto shrink-0 text-[10px] text-gray-400">{{ $promo['type'] ?? '' }}</span>
-                                @endif
+                                <span class="ml-auto shrink-0 text-[10px] text-gray-400">{{ $promo['type'] ?? '' }}</span>
                             </button>
                         @empty
                             <p class="text-xs text-gray-400 text-center py-6">Nenhuma promoção</p>
@@ -345,14 +341,10 @@
                                             <td class="px-3 py-2 text-end">
                                                 <div class="inline-flex items-center gap-2">
                                                     @if($item['status'] === 'candidate')
-                                                        @if(!empty($selectedPromotion['name']))
-                                                            <button wire:click="iniciarAdesao('{{ $item['id'] }}')"
-                                                                class="text-xs text-primary-600 hover:text-primary-500 font-medium">
-                                                                Aderir
-                                                            </button>
-                                                        @else
-                                                            <span class="text-[10px] text-red-400">sem adesão</span>
-                                                        @endif
+                                                        <button wire:click="iniciarAdesao('{{ $item['id'] }}')"
+                                                            class="text-xs text-primary-600 hover:text-primary-500 font-medium">
+                                                            Aderir
+                                                        </button>
                                                     @endif
                                                     <button wire:click="removeItem('{{ $item['id'] }}')"
                                                         wire:confirm="Remover {{ $item['id'] }}?"
