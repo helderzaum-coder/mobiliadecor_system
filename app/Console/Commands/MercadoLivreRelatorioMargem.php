@@ -142,6 +142,13 @@ class MercadoLivreRelatorioMargem extends Command
         $catalogProductId = $item['catalog_product_id'] ?? null;
         $isCatalogListing = !empty($item['catalog_listing']);
 
+        // item_relations: buscar MLB pai (se é catálogo) ou MLB catálogo (se vinculado)
+        $itemRelationId = null;
+        $relations = $item['item_relations'] ?? [];
+        if (!empty($relations) && isset($relations[0]['id'])) {
+            $itemRelationId = $relations[0]['id'];
+        }
+
         // Extrair SKU
         $sku = $this->extrairSku($item);
 
@@ -243,6 +250,7 @@ class MercadoLivreRelatorioMargem extends Command
             'listing_type' => $listingType,
             'catalog_product_id' => $catalogProductId,
             'is_catalog_listing' => $isCatalogListing,
+            'item_relation_id' => $itemRelationId,
             'preco_venda' => $preco,
             'custo_produto' => $custo,
             'estoque' => $estoque,

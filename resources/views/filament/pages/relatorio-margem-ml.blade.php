@@ -84,12 +84,18 @@
                                         {{ $tipoLabel }}
                                     </span>
                                     @if($item->is_catalog_listing)
-                                        <span class="px-2 py-0.5 text-xs rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300" title="{{ $item->catalog_product_id }}">
+                                        <span class="px-2 py-0.5 text-xs rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300">
                                             📦 Item de Catálogo
+                                            @if($item->item_relation_id)
+                                                → Pai: {{ $item->item_relation_id }}
+                                            @endif
                                         </span>
                                     @elseif($item->catalog_product_id)
-                                        <span class="px-2 py-0.5 text-xs rounded-full bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300" title="{{ $item->catalog_product_id }}">
-                                            🔗 Vinculado ao catálogo
+                                        <span class="px-2 py-0.5 text-xs rounded-full bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300">
+                                            🔗 Vinculado: {{ $item->catalog_product_id }}
+                                            @if($item->item_relation_id)
+                                                ({{ $item->item_relation_id }})
+                                            @endif
                                         </span>
                                     @endif
                                     <span class="text-xs text-gray-400">SKU: {{ $item->sku ?? '—' }}</span>
