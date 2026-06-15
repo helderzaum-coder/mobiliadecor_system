@@ -693,6 +693,8 @@ class DashboardVendas extends Page implements HasForms
                     ->label('Status')
                     ->options([
                         'falta_nfe' => '⚠ Falta NF-e',
+                        'falta_nfe_etiqueta' => '🏷️ Falta NF-e (Etiqueta ML)',
+                        'falta_nfe_normal' => '⚠ Falta NF-e (sem etiqueta)',
                         'falta_frete' => '🚚 Falta Frete',
                         'falta_planilha' => '📊 Falta Planilha',
                         'falta_afiliado' => '👥 Falta Afiliado (Shopee)',
@@ -758,6 +760,12 @@ class DashboardVendas extends Page implements HasForms
         // Filtro de status
         if ($this->status_filtro === 'falta_nfe') {
             $query->where(fn ($q) => $q->whereNull('nfe_chave_acesso')->orWhere('nfe_chave_acesso', ''));
+        } elseif ($this->status_filtro === 'falta_nfe_etiqueta') {
+            $query->where(fn ($q) => $q->whereNull('nfe_chave_acesso')->orWhere('nfe_chave_acesso', ''))
+                ->whereNotNull('data_prevista_envio');
+        } elseif ($this->status_filtro === 'falta_nfe_normal') {
+            $query->where(fn ($q) => $q->whereNull('nfe_chave_acesso')->orWhere('nfe_chave_acesso', ''))
+                ->whereNull('data_prevista_envio');
         } elseif ($this->status_filtro === 'falta_frete') {
             // Falta frete: frete_pago=false, EXCETO ML ME2/FULL e Shopee Xpress (frete=0)
             $query->where('frete_pago', false)
