@@ -250,14 +250,19 @@ class ListagemAnunciosML extends Page
                     $comissaoValor = $comData['valor'] ?? round($mlbPrice * $comissaoPct / 100, 2);
                     if ($comissaoValor <= 0) $comissaoValor = round($mlbPrice * $comissaoPct / 100, 2);
 
-                    // Frete via shipping_options
+                    // Frete via shipping_options (ou fallback do relatório offline)
                     if ($mlbFreeShipping || $mlbLogisticType === 'xd_drop_off') {
-                        sleep(1);
+                        sleep(2); // Rate limit mais conservador
                         $freteResult = $client->get("/items/{$mlbId}/shipping_options", ['zip_code' => '01310100']);
                         if ($freteResult['success'] && !empty($freteResult['body']['options'])) {
                             foreach ($freteResult['body']['options'] as $opt) {
                                 $frete = max($frete, (float) ($opt['list_cost'] ?? 0));
                             }
+                        }
+                        // Fallback: buscar do relatório noturno
+                        if ($frete <= 0) {
+                            $freteOffline = RelatorioMargemML::where('mlb_id', $mlbId)->value('frete');
+                            $frete = (float) ($freteOffline ?? 0);
                         }
                         $frete = round($frete, 2);
                     }
