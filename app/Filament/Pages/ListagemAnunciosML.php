@@ -325,13 +325,26 @@ class ListagemAnunciosML extends Page
                     $menorPromo = !empty($promocoes) ? collect($promocoes)->min('preco') : null;
                     $precoCalc = ($menorPromo && $menorPromo > 0) ? $menorPromo : $mlbPrice;
 
-                    // Recalcular comissão sobre preço efetivo
+                    // Rebate: soma dos meli_pct das promoções started (desconto na tarifa)
+                    $rebateValor = 0;
+                    if (!empty($promocoes)) {
+                        foreach ($promocoes as $p) {
+                            if (($p['meli_pct'] ?? 0) > 0) {
+                                $rebateValor += round($mlbPrice * (float) $p['meli_pct'] / 100, 2);
+                            }
+                        }
+                    }
+
+                    // Comissão sobre preço efetivo - rebate
                     $comValorEfetivo = round($precoCalc * $comissaoPct / 100, 2);
+                    $comValorComRebate = round(max(0, $comValorEfetivo - $rebateValor), 2);
                     $impostoValor = round($precoCalc * $impostoPct / 100, 2);
-                    $margemValor = round($precoCalc - $comValorEfetivo - $frete - $custo - $impostoValor, 2);
+                    $margemValor = round($precoCalc - $comValorComRebate - $frete - $custo - $impostoValor, 2);
                     $margemPct = $precoCalc > 0 ? round(($margemValor / $precoCalc) * 100, 1) : 0;
 
                     $items[array_key_last($items)]['comissao_valor'] = $comValorEfetivo;
+                    $items[array_key_last($items)]['rebate_valor'] = $rebateValor;
+                    $items[array_key_last($items)]['comissao_liquida'] = $comValorComRebate;
                     $items[array_key_last($items)]['imposto_valor'] = $impostoValor;
                     $items[array_key_last($items)]['margem_valor'] = $margemValor;
                     $items[array_key_last($items)]['margem_pct'] = $margemPct;

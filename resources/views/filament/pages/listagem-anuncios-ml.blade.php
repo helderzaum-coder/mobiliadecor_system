@@ -98,6 +98,9 @@
                                         @if($mlb['comissao_pct'] > 0)
                                             {{ number_format($mlb['comissao_pct'], 1) }}%
                                             <div class="text-[10px] text-gray-500">R$ {{ number_format($mlb['comissao_valor'], 2, ',', '.') }}</div>
+                                            @if(($mlb['rebate_valor'] ?? 0) > 0)
+                                                <div class="text-[10px]" style="color:#22c55e;">-R$ {{ number_format($mlb['rebate_valor'], 2, ',', '.') }}</div>
+                                            @endif
                                         @else
                                             <span class="text-gray-500">—</span>
                                         @endif
