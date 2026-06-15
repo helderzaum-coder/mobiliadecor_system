@@ -60,7 +60,7 @@
                                     $tipoLabel = match($mlb['listing_type']) { 'gold_pro' => 'Premium', 'gold_special' => 'Clássico', default => $mlb['listing_type'] };
                                     $tipoBg = $mlb['listing_type'] === 'gold_pro' ? 'background:#7c3aed;color:#fff;' : 'background:#3b82f6;color:#fff;';
                                     $isFirst = $loop->first;
-                                    $borderTop = $isFirst && $upIdx > 0 ? 'border-top:2px solid #4b5563;' : '';
+                                    $borderTop = $isFirst && $upIdx > 0 ? 'border-top:3px solid #3b82f6;' : '';
                                 @endphp
                                 <tr class="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30" style="{{ $borderTop }}">
                                     <td class="px-3 py-2">{{ $statusIcon }}</td>
@@ -190,7 +190,7 @@
                                         $tipoLabel = match($item->listing_type) { 'gold_pro' => 'Premium', 'gold_special' => 'Clássico', default => $item->listing_type };
                                         $tipoBg = $item->listing_type === 'gold_pro' ? 'background:#7c3aed;color:#fff;' : 'background:#3b82f6;color:#fff;';
                                         $isFirst = $loop->first;
-                                        $borderTop = $isFirst && $upIdx > 0 ? 'border-top:2px solid #4b5563;' : '';
+                                        $borderTop = $isFirst && $upIdx > 0 ? 'border-top:3px solid #3b82f6;' : '';
                                     @endphp
                                     <tr class="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-800/30" style="{{ $borderTop }}">
                                         <td class="px-3 py-2">{{ $statusIcon }}</td>
