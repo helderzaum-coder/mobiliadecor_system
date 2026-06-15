@@ -325,13 +325,12 @@ class ListagemAnunciosML extends Page
                     $menorPromo = !empty($promocoes) ? collect($promocoes)->min('preco') : null;
                     $precoCalc = ($menorPromo && $menorPromo > 0) ? $menorPromo : $mlbPrice;
 
-                    // Rebate: soma dos meli_pct das promoções started (desconto na tarifa)
+                    // Rebate: meli_pct da promoção com menor preço (desconto na tarifa)
                     $rebateValor = 0;
-                    if (!empty($promocoes)) {
-                        foreach ($promocoes as $p) {
-                            if (($p['meli_pct'] ?? 0) > 0) {
-                                $rebateValor += round($mlbPrice * (float) $p['meli_pct'] / 100, 2);
-                            }
+                    if (!empty($promocoes) && $menorPromo) {
+                        $promoAtiva = collect($promocoes)->where('preco', $menorPromo)->first();
+                        if ($promoAtiva && ($promoAtiva['meli_pct'] ?? 0) > 0) {
+                            $rebateValor = round($mlbPrice * (float) $promoAtiva['meli_pct'] / 100, 2);
                         }
                     }
 

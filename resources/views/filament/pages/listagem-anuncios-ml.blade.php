@@ -96,11 +96,13 @@
                                     <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">{{ $mlb['custo'] > 0 ? 'R$ ' . number_format($mlb['custo'], 2, ',', '.') : '—' }}</td>
                                     <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">
                                         @if($mlb['comissao_pct'] > 0)
-                                            {{ number_format($mlb['comissao_pct'], 1) }}%
-                                            <div class="text-[10px] text-gray-500">R$ {{ number_format($mlb['comissao_valor'], 2, ',', '.') }}</div>
                                             @if(($mlb['rebate_valor'] ?? 0) > 0)
-                                                <div class="text-[10px]" style="color:#22c55e;">-R$ {{ number_format($mlb['rebate_valor'], 2, ',', '.') }}</div>
+                                                <div class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($mlb['comissao_liquida'] ?? $mlb['comissao_valor'], 2, ',', '.') }}</div>
+                                                <div class="text-[10px] text-gray-500">{{ number_format($mlb['comissao_valor'], 2, ',', '.') }} - <span style="color:#22c55e;">{{ number_format($mlb['rebate_valor'], 2, ',', '.') }}</span></div>
+                                            @else
+                                                <div class="font-semibold text-gray-900 dark:text-white">R$ {{ number_format($mlb['comissao_valor'], 2, ',', '.') }}</div>
                                             @endif
+                                            <div class="text-[10px] text-gray-500">{{ number_format($mlb['comissao_pct'], 1) }}%</div>
                                         @else
                                             <span class="text-gray-500">—</span>
                                         @endif
