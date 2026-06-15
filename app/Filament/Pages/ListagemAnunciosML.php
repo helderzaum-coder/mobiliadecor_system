@@ -251,7 +251,7 @@ class ListagemAnunciosML extends Page
                     if ($comissaoValor <= 0) $comissaoValor = round($mlbPrice * $comissaoPct / 100, 2);
 
                     // Frete via shipping_options
-                    if ($mlbFreeShipping) {
+                    if ($mlbFreeShipping || $mlbLogisticType === 'xd_drop_off') {
                         sleep(1);
                         $freteResult = $client->get("/items/{$mlbId}/shipping_options", ['zip_code' => '01310100']);
                         if ($freteResult['success'] && !empty($freteResult['body']['options'])) {
