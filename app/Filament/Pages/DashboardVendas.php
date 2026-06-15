@@ -233,14 +233,30 @@ class DashboardVendas extends Page implements HasForms
 
     private function buscarNomeSituacaoBling(\App\Services\Bling\BlingClient $bling, int $situacaoId): string
     {
-        $result = $bling->getSituacoes(9);
-        if ($result['success'] && !empty($result['body']['data'])) {
-            foreach ($result['body']['data'] as $sit) {
-                if (($sit['id'] ?? null) == $situacaoId) {
-                    return $sit['nome'] ?? 'Desconhecido';
+        // Buscar módulo de Vendas
+        $modulos = $bling->get('/situacoes/modulos');
+        $moduloVendasId = null;
+
+        if ($modulos['success']) {
+            foreach ($modulos['body']['data'] ?? [] as $mod) {
+                if ($mod['nome'] === 'Vendas') {
+                    $moduloVendasId = $mod['id'];
+                    break;
                 }
             }
         }
+
+        if (!$moduloVendasId) return "ID {$situacaoId}";
+
+        $result = $bling->getSituacoes($moduloVendasId);
+        if ($result['success'] && !empty($result['body']['data'])) {
+            foreach ($result['body']['data'] as $sit) {
+                if (($sit['id'] ?? null) == $situacaoId) {
+                    return $sit['nome'] ?? "ID {$situacaoId}";
+                }
+            }
+        }
+
         return "ID {$situacaoId}";
     }
 
