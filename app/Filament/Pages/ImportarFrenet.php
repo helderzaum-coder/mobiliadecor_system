@@ -263,6 +263,33 @@ class ImportarFrenet extends Page
         $this->modalTipoPendente = null;
     }
 
+    public function desvincular(int $frenetId): void
+    {
+        $frete = FrenetFrete::find($frenetId);
+        if (!$frete || !$frete->venda_id) return;
+
+        $venda = Venda::find($frete->venda_id);
+
+        $frete->update([
+            'utilizado' => false,
+            'venda_id' => null,
+        ]);
+
+        // Recalcular frete da venda que estava vinculada
+        if ($venda) {
+            $totalFrete = FrenetFrete::where('venda_id', $venda->id_venda)
+                ->where('tipo', 'entrega')
+                ->sum('valor_frete');
+            $venda->update([
+                'valor_frete_transportadora' => round($totalFrete, 2),
+                'frete_pago' => $totalFrete > 0,
+            ]);
+            \App\Services\VendaRecalculoService::recalcularMargens($venda);
+        }
+
+        Notification::make()->title('Frete desvinculado. Agora pode vincular ao pedido correto.')->success()->send();
+    }
+
     // ── Dados ────────────────────────────────────────────────────────────────
 
     public function getFretesProperty()

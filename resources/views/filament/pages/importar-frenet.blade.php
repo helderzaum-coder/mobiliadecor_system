@@ -184,6 +184,11 @@
                                 @endphp
                                 @if($vendaVinculada)
                                     <span style="font-size:10px;color:#9ca3af;">Pedido #{{ $vendaVinculada->numero_pedido_canal }}</span>
+                                    <button wire:click="desvincular({{ $frete->id }})" wire:confirm="Desvincular este frete do pedido #{{ $vendaVinculada->numero_pedido_canal }}?"
+                                        style="background:#dc2626;color:#fff;padding:2px 6px;font-size:9px;border-radius:3px;border:none;cursor:pointer;margin-left:4px;"
+                                        title="Desvincular para vincular ao pedido correto">
+                                        ✖
+                                    </button>
                                 @endif
                             @endif
                         </td>
