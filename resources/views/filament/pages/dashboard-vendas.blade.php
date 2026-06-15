@@ -645,6 +645,10 @@
                             💰 Buscar Custos
                         </button>
                     @endif
+                    <button wire:click="atualizarStatusBling({{ $venda->id_venda }})" wire:loading.attr="disabled"
+                        style="background:#4f46e5;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                        🔄 Status Bling
+                    </button>
                     <a href="/vendas/{{ $venda->id_venda }}/edit"
                         style="background:#374151;color:#e5e7eb;padding:3px 10px;font-size:11px;border-radius:5px;text-decoration:none;display:inline-block;">
                         ✏️ Editar

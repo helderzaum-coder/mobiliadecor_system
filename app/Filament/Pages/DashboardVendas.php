@@ -192,6 +192,42 @@ class DashboardVendas extends Page implements HasForms
         }
     }
 
+    public function atualizarStatusBling(int $vendaId): void
+    {
+        $venda = Venda::find($vendaId);
+        if (!$venda || !$venda->bling_id) {
+            \Filament\Notifications\Notification::make()->title('Pedido sem vínculo Bling.')->warning()->send();
+            return;
+        }
+
+        $accountKey = $venda->bling_account ?? 'primary';
+        $bling = new \App\Services\Bling\BlingClient($accountKey);
+        $result = $bling->getPedido((int) $venda->bling_id);
+
+        if (!$result['success']) {
+            \Filament\Notifications\Notification::make()->title('Erro ao buscar pedido no Bling: HTTP ' . ($result['http_code'] ?? '?'))->danger()->send();
+            return;
+        }
+
+        $pedido = $result['body']['data'] ?? [];
+        $situacao = $pedido['situacao'] ?? [];
+        $situacaoId = $situacao['id'] ?? null;
+        $situacaoNome = $situacao['valor'] ?? 'Desconhecido';
+
+        $updates = [];
+        if ($situacaoId) {
+            $updates['bling_situacao_id'] = $situacaoId;
+        }
+
+        if (!empty($updates)) {
+            $venda->update($updates);
+        }
+
+        \Filament\Notifications\Notification::make()
+            ->title("Status Bling: {$situacaoNome} (ID: {$situacaoId})")
+            ->success()->send();
+    }
+
     public function marcarAguardandoEnvio(int $vendaId, string $dataPrevista): void
     {
         $venda = Venda::find($vendaId);
