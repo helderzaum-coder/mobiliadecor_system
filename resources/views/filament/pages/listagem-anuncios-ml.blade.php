@@ -133,61 +133,80 @@
                     <div class="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                         <div class="flex items-center justify-between">
                             <div>
-                                <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ $familia['family_name'] }}</span>
+                                <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">📦 {{ $familia['family_name'] }}</span>
                                 @if($familia['family_id'])
-                                    <span class="ml-2 text-[10px] text-gray-500 font-mono">{{ $familia['family_id'] }}</span>
+                                    <span class="ml-2 text-[10px] text-gray-500 font-mono">Family: {{ $familia['family_id'] }}</span>
                                 @endif
                             </div>
                             <span class="text-xs text-gray-500">{{ count($familia['ups']) }} variação(ões)</span>
                         </div>
                     </div>
 
-                    {{-- UPs --}}
-                    @foreach($familia['ups'] as $upKey => $up)
-                        <div class="border-b border-gray-100 dark:border-gray-700 last:border-0">
-                            {{-- Header do UP --}}
-                            <div class="px-4 py-2 flex items-center gap-3 text-xs bg-gray-25 dark:bg-gray-800/50">
-                                @if($up['user_product_id'])
-                                    <span class="font-mono text-blue-600 dark:text-blue-400">{{ $up['user_product_id'] }}</span>
-                                @endif
-                                <span class="font-medium">SKU: {{ $up['sku'] ?? '—' }}</span>
-                                @if($up['cor'])
-                                    <span class="px-1.5 py-0.5 rounded text-[10px] bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">{{ $up['cor'] }}</span>
-                                @endif
-                            </div>
-
-                            {{-- MLBs (items) --}}
-                            @foreach($up['items'] as $item)
-                                @php
-                                    $margemCor = match(true) {
-                                        $item->margem_pct < 0 => 'color:#ef4444',
-                                        $item->margem_pct < 15 => 'color:#f97316',
-                                        $item->margem_pct < 25 => 'color:#eab308',
-                                        default => 'color:#22c55e',
-                                    };
-                                    $statusIcon = match($item->status_ml) { 'active' => '🟢', 'paused' => '🟡', 'closed' => '🔴', default => '⚪' };
-                                    $tipoLabel = match($item->listing_type) { 'gold_pro' => 'Premium', 'gold_special' => 'Clássico', default => $item->listing_type };
-                                    $tipoCor = $item->listing_type === 'gold_pro' ? 'background:#7c3aed;color:#fff;' : 'background:#3b82f6;color:#fff;';
-                                @endphp
-                                <div class="px-4 py-2 flex items-center gap-4 text-xs border-t border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-800/30">
-                                    <span>{{ $statusIcon }}</span>
-                                    <a href="https://www.mercadolivre.com.br/anuncios/lista/promos?page=1&search={{ $item->mlb_id }}" target="_blank"
-                                       class="font-mono text-blue-600 dark:text-blue-400 hover:underline w-32">{{ $item->mlb_id }}</a>
-                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-medium" style="{{ $tipoCor }}">{{ $tipoLabel }}</span>
-                                    @if($item->is_catalog_listing)
-                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-medium" style="background:#ea580c;color:#fff;">Catálogo</span>
-                                    @endif
-                                    <span class="w-24">R$ {{ number_format($item->preco_venda, 2, ',', '.') }}</span>
-                                    <span class="text-gray-500 w-20">Custo: {{ number_format($item->custo_produto, 2, ',', '.') }}</span>
-                                    <span class="text-gray-500 w-16">Est: {{ $item->estoque }}</span>
-                                    <span class="text-gray-500 w-20">Frete: {{ number_format($item->frete, 2, ',', '.') }}</span>
-                                    <span class="text-gray-500 w-20">Com: {{ $item->comissao_pct }}%</span>
-                                    <span class="font-bold w-16 text-right" style="{{ $margemCor }}">{{ number_format($item->margem_pct, 1) }}%</span>
-                                    <span class="text-gray-500" style="{{ $margemCor }}">R$ {{ number_format($item->margem_valor, 2, ',', '.') }}</span>
-                                </div>
+                    {{-- Tabela --}}
+                    <table class="w-full text-xs">
+                        <thead>
+                            <tr class="border-b border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400">
+                                <th class="px-3 py-2 text-left">Status</th>
+                                <th class="px-3 py-2 text-left">MLB</th>
+                                <th class="px-3 py-2 text-left">Tipo</th>
+                                <th class="px-3 py-2 text-left">SKU / Cor</th>
+                                <th class="px-3 py-2 text-right">Preço</th>
+                                <th class="px-3 py-2 text-right">Custo</th>
+                                <th class="px-3 py-2 text-right">Frete</th>
+                                <th class="px-3 py-2 text-center">Com%</th>
+                                <th class="px-3 py-2 text-center">Est</th>
+                                <th class="px-3 py-2 text-right font-semibold">Margem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($familia['ups'] as $upKey => $up)
+                                @foreach($up['items'] as $item)
+                                    @php
+                                        $margemCor = match(true) {
+                                            $item->margem_pct < 0 => '#ef4444',
+                                            $item->margem_pct < 15 => '#f97316',
+                                            $item->margem_pct < 25 => '#eab308',
+                                            default => '#22c55e',
+                                        };
+                                        $statusIcon = match($item->status_ml) { 'active' => '🟢', 'paused' => '🟡', 'closed' => '🔴', default => '⚪' };
+                                        $tipoLabel = match($item->listing_type) { 'gold_pro' => 'Premium', 'gold_special' => 'Clássico', default => $item->listing_type };
+                                        $tipoBg = $item->listing_type === 'gold_pro' ? 'background:#7c3aed;color:#fff;' : 'background:#3b82f6;color:#fff;';
+                                        $isFirst = $loop->first;
+                                    @endphp
+                                    <tr class="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-800/30">
+                                        <td class="px-3 py-2">{{ $statusIcon }}</td>
+                                        <td class="px-3 py-2">
+                                            <a href="https://www.mercadolivre.com.br/anuncios/lista/promos?page=1&search={{ $item->mlb_id }}" target="_blank"
+                                               class="font-mono text-blue-600 dark:text-blue-400 hover:underline">{{ $item->mlb_id }}</a>
+                                            @if($item->is_catalog_listing)
+                                                <span class="ml-1 px-1 py-0.5 rounded text-[9px] font-bold" style="background:#ea580c;color:#fff;">CAT</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-medium" style="{{ $tipoBg }}">{{ $tipoLabel }}</span>
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            @if($isFirst)
+                                                <span class="font-medium text-gray-900 dark:text-gray-100">{{ $up['sku'] ?? '—' }}</span>
+                                                @if($up['cor'])
+                                                    <span class="text-gray-500 ml-1">{{ $up['cor'] }}</span>
+                                                @endif
+                                            @endif
+                                        </td>
+                                        <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-gray-100">R$ {{ number_format($item->preco_venda, 2, ',', '.') }}</td>
+                                        <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400">R$ {{ number_format($item->custo_produto, 2, ',', '.') }}</td>
+                                        <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400">R$ {{ number_format($item->frete, 2, ',', '.') }}</td>
+                                        <td class="px-3 py-2 text-center text-gray-600 dark:text-gray-400">{{ number_format($item->comissao_pct, 1) }}%</td>
+                                        <td class="px-3 py-2 text-center text-gray-600 dark:text-gray-400">{{ $item->estoque }}</td>
+                                        <td class="px-3 py-2 text-right">
+                                            <span class="font-bold" style="color:{{ $margemCor }}">{{ number_format($item->margem_pct, 1) }}%</span>
+                                            <div class="text-[10px]" style="color:{{ $margemCor }}">R$ {{ number_format($item->margem_valor, 2, ',', '.') }}</div>
+                                        </td>
+                                    </tr>
+                                @endforeach
                             @endforeach
-                        </div>
-                    @endforeach
+                        </tbody>
+                    </table>
                 </div>
             @empty
                 <div class="p-8 text-center text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-xl">
