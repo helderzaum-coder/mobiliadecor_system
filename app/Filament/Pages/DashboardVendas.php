@@ -221,14 +221,55 @@ class DashboardVendas extends Page implements HasForms
         // Buscar nome da situação via endpoint de situações
         $situacaoNome = $this->buscarNomeSituacaoBling($bling, $situacaoId);
 
-        $venda->update([
+        $updates = [
             'bling_situacao_id' => $situacaoId,
             'bling_situacao_nome' => $situacaoNome,
-        ]);
+        ];
+
+        // Se status for "ML Etiqueta", buscar data de liberação da etiqueta
+        $msg = "Status Bling: {$situacaoNome}";
+        if (str_contains(strtolower($situacaoNome), 'etiqueta')) {
+            $staging = \App\Models\PedidoBlingStaging::where('bling_id', $venda->bling_id)->first();
+            $dataEtiqueta = $this->buscarDataEtiquetaML($staging);
+            if ($dataEtiqueta) {
+                $updates['data_prevista_envio'] = $dataEtiqueta;
+                $msg .= " | Envio: " . \Carbon\Carbon::parse($dataEtiqueta)->format('d/m/Y');
+            }
+        }
+
+        $venda->update($updates);
+
+        // Gerar conta a receber se tiver data prevista e custo
+        if (!empty($updates['data_prevista_envio'])) {
+            \App\Services\ContaReceberService::gerarSeCompleta($venda->fresh());
+        }
 
         \Filament\Notifications\Notification::make()
-            ->title("Status Bling: {$situacaoNome} (ID: {$situacaoId})")
+            ->title($msg)
             ->success()->send();
+    }
+
+    private function buscarDataEtiquetaML(?\App\Models\PedidoBlingStaging $staging): ?string
+    {
+        if (!$staging) return null;
+
+        $dadosOriginais = $staging->dados_originais ?? [];
+
+        // Campo direto
+        $data = $dadosOriginais['_data_despacho'] ?? null;
+
+        // Fallback: buffering.date
+        if (!$data) {
+            $data = $dadosOriginais['transporte']['etiqueta']['buffering']['date'] ?? null;
+        }
+
+        if (!$data) return null;
+
+        try {
+            return \Carbon\Carbon::parse($data)->toDateString();
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     private function buscarNomeSituacaoBling(\App\Services\Bling\BlingClient $bling, int $situacaoId): string
