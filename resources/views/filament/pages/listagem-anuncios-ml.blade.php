@@ -35,24 +35,24 @@
         {{-- Resultado em tempo real --}}
         @if($resultadoRealtime)
             <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-                <div class="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                <div class="px-4 py-3 bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                     <span class="text-sm font-semibold text-gray-900 dark:text-white">📦 {{ $resultadoRealtime['family_name'] }}</span>
-                    <span class="ml-2 text-xs text-gray-500">Family: {{ $resultadoRealtime['family_id'] }}</span>
+                    <span class="ml-2 text-xs text-gray-600 dark:text-gray-400">Family: {{ $resultadoRealtime['family_id'] }}</span>
                 </div>
                 <table class="w-full text-sm">
                     <thead>
-                        <tr class="border-b border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 text-xs">
-                            <th class="px-3 py-2 text-left">Status</th>
-                            <th class="px-3 py-2 text-left">MLB</th>
-                            <th class="px-3 py-2 text-left">Tipo</th>
-                            <th class="px-3 py-2 text-left">SKU / Cor</th>
-                            <th class="px-3 py-2 text-right">Preço</th>
-                            <th class="px-3 py-2 text-right">Menor Promo</th>
-                            <th class="px-3 py-2 text-right">Custo</th>
-                            <th class="px-3 py-2 text-right">Comissão</th>
-                            <th class="px-3 py-2 text-right">Frete</th>
-                            <th class="px-3 py-2 text-center">Est</th>
-                            <th class="px-3 py-2 text-left">Logística</th>
+                        <tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                            <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-200">Status</th>
+                            <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-200">MLB</th>
+                            <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-200">Tipo</th>
+                            <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-200">SKU / Cor</th>
+                            <th class="px-3 py-2 text-right text-xs font-semibold text-gray-700 dark:text-gray-200">Preço</th>
+                            <th class="px-3 py-2 text-right text-xs font-semibold text-gray-700 dark:text-gray-200">Menor Promo</th>
+                            <th class="px-3 py-2 text-right text-xs font-semibold text-gray-700 dark:text-gray-200">Custo</th>
+                            <th class="px-3 py-2 text-right text-xs font-semibold text-gray-700 dark:text-gray-200">Comissão</th>
+                            <th class="px-3 py-2 text-right text-xs font-semibold text-gray-700 dark:text-gray-200">Frete</th>
+                            <th class="px-3 py-2 text-center text-xs font-semibold text-gray-700 dark:text-gray-200">Est</th>
+                            <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-200">Logística</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -105,11 +105,11 @@
                                     <td class="px-3 py-2 text-gray-600 dark:text-gray-300">{{ $mlb['logistic_type'] }}</td>
                                 </tr>
                                 @if(!empty($mlb['promocoes']))
-                                    <tr class="bg-gray-50 dark:bg-gray-900/50">
+                                    <tr class="bg-gray-100 dark:bg-gray-900/70">
                                         <td colspan="11" class="px-6 py-1.5">
                                             <div class="flex flex-wrap gap-3 text-[11px]">
                                                 @foreach($mlb['promocoes'] as $promo)
-                                                    <span class="text-gray-700 dark:text-gray-300">
+                                                    <span class="text-gray-800 dark:text-gray-200">
                                                         🏷️ {{ $promo['nome'] }}
                                                         <span class="font-semibold" style="color:#f59e0b;">R$ {{ number_format($promo['preco'], 2, ',', '.') }}</span>
                                                         @if($promo['meli_pct'] > 0)

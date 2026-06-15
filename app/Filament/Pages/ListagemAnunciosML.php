@@ -196,6 +196,20 @@ class ListagemAnunciosML extends Page
                 if ($attr['id'] === 'COLOR') $cor = $attr['values'][0]['name'] ?? '—';
             }
 
+            // Buscar custo via Bling uma vez por UP (mesmo SKU)
+            $custoUp = 0;
+            if ($sku && $sku !== '—') {
+                try {
+                    $bling = new BlingClient($accountKey);
+                    $produto = $bling->getProductBySku($sku);
+                    $custoUp = (float) ($produto['precoCusto'] ?? 0);
+                    if ($custoUp <= 0 && !empty($produto['id'])) {
+                        $detalhe = $bling->getProductById((int) $produto['id']);
+                        $custoUp = (float) ($detalhe['precoCusto'] ?? 0);
+                    }
+                } catch (\Throwable $e) {}
+            }
+
             // Buscar MLBs
             sleep(1);
             $searchResult = $client->get("/users/{$userId}/items/search", [
@@ -248,19 +262,8 @@ class ListagemAnunciosML extends Page
                         $frete = round($frete, 2);
                     }
 
-                    // Custo via Bling (SKU)
-                    $mlbSku = $up['sku'] ?? null;
-                    if ($mlbSku && $mlbSku !== '—') {
-                        try {
-                            $bling = new BlingClient($accountKey);
-                            $produto = $bling->getProductBySku($mlbSku);
-                            $custo = (float) ($produto['precoCusto'] ?? 0);
-                            if ($custo <= 0 && !empty($produto['id'])) {
-                                $detalhe = $bling->getProductById((int) $produto['id']);
-                                $custo = (float) ($detalhe['precoCusto'] ?? 0);
-                            }
-                        } catch (\Throwable $e) {}
-                    }
+                    // Custo já buscado no nível do UP
+                    $custo = $custoUp;
 
                     // Promoções
                     sleep(1);
