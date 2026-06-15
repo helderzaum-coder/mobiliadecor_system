@@ -47,8 +47,11 @@
                             <th class="px-3 py-2 text-left">Tipo</th>
                             <th class="px-3 py-2 text-left">SKU / Cor</th>
                             <th class="px-3 py-2 text-right">Preço</th>
-                            <th class="px-3 py-2 text-center">Estoque</th>
-                            <th class="px-3 py-2 text-center">Frete Grátis</th>
+                            <th class="px-3 py-2 text-right">Menor Promo</th>
+                            <th class="px-3 py-2 text-right">Custo</th>
+                            <th class="px-3 py-2 text-right">Comissão</th>
+                            <th class="px-3 py-2 text-right">Frete</th>
+                            <th class="px-3 py-2 text-center">Est</th>
                             <th class="px-3 py-2 text-left">Logística</th>
                         </tr>
                     </thead>
@@ -80,13 +83,30 @@
                                         @endif
                                     </td>
                                     <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-white">R$ {{ number_format($mlb['price'], 2, ',', '.') }}</td>
+                                    <td class="px-3 py-2 text-right">
+                                        @php $menorPromo = !empty($mlb['promocoes']) ? collect($mlb['promocoes'])->min('preco') : null; @endphp
+                                        @if($menorPromo)
+                                            <span class="font-semibold" style="color:#f59e0b;">R$ {{ number_format($menorPromo, 2, ',', '.') }}</span>
+                                        @else
+                                            <span class="text-gray-500">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">{{ $mlb['custo'] > 0 ? 'R$ ' . number_format($mlb['custo'], 2, ',', '.') : '—' }}</td>
+                                    <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">
+                                        @if($mlb['comissao_pct'] > 0)
+                                            {{ number_format($mlb['comissao_pct'], 1) }}%
+                                            <div class="text-[10px] text-gray-500">R$ {{ number_format($mlb['comissao_valor'], 2, ',', '.') }}</div>
+                                        @else
+                                            <span class="text-gray-500">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">{{ $mlb['frete'] > 0 ? 'R$ ' . number_format($mlb['frete'], 2, ',', '.') : '—' }}</td>
                                     <td class="px-3 py-2 text-center text-gray-900 dark:text-white">{{ $mlb['estoque'] }}</td>
-                                    <td class="px-3 py-2 text-center">{{ $mlb['free_shipping'] ? '✅' : '❌' }}</td>
                                     <td class="px-3 py-2 text-gray-600 dark:text-gray-300">{{ $mlb['logistic_type'] }}</td>
                                 </tr>
                                 @if(!empty($mlb['promocoes']))
                                     <tr class="bg-gray-50 dark:bg-gray-900/50">
-                                        <td colspan="8" class="px-6 py-1.5">
+                                        <td colspan="11" class="px-6 py-1.5">
                                             <div class="flex flex-wrap gap-3 text-[11px]">
                                                 @foreach($mlb['promocoes'] as $promo)
                                                     <span class="text-gray-700 dark:text-gray-300">

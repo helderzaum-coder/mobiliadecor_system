@@ -211,12 +211,59 @@ class ListagemAnunciosML extends Page
                 if (!$mlbResult['success']) continue;
 
                 $mlb = $mlbResult['body'];
+                $mlbPrice = (float) ($mlb['price'] ?? 0);
+                $mlbStatus = $mlb['status'] ?? '?';
+                $mlbListingType = $mlb['listing_type_id'] ?? '?';
+                $mlbCategoryId = $mlb['category_id'] ?? '';
+                $mlbLogisticType = $mlb['shipping']['logistic_type'] ?? 'xd_drop_off';
+                $mlbShippingMode = $mlb['shipping']['mode'] ?? 'me2';
+                $mlbFreeShipping = $mlb['shipping']['free_shipping'] ?? false;
 
-                // Buscar promoções apenas para ativos
+                $comissaoPct = 0;
+                $comissaoValor = 0;
+                $frete = 0;
+                $custo = 0;
                 $promocoes = [];
-                if (($mlb['status'] ?? '') === 'active') {
+
+                if ($mlbStatus === 'active' && $mlbPrice > 0) {
+                    // Comissão via API
                     sleep(1);
                     $promoService = new MercadoLivrePromotionService($accountKey);
+                    $comData = $promoService->buscarComissaoParaPreco(
+                        $mlbPrice, $mlbListingType, $mlbCategoryId, $mlbLogisticType, $mlbShippingMode
+                    );
+                    $comissaoPct = $comData['percent'] ?? 0;
+                    $comissaoValor = $comData['valor'] ?? round($mlbPrice * $comissaoPct / 100, 2);
+                    if ($comissaoValor <= 0) $comissaoValor = round($mlbPrice * $comissaoPct / 100, 2);
+
+                    // Frete via shipping_options
+                    if ($mlbFreeShipping) {
+                        sleep(1);
+                        $freteResult = $client->get("/items/{$mlbId}/shipping_options", ['zip_code' => '01310100']);
+                        if ($freteResult['success'] && !empty($freteResult['body']['options'])) {
+                            foreach ($freteResult['body']['options'] as $opt) {
+                                $frete = max($frete, (float) ($opt['list_cost'] ?? 0));
+                            }
+                        }
+                        $frete = round($frete, 2);
+                    }
+
+                    // Custo via Bling (SKU)
+                    $mlbSku = $up['sku'] ?? null;
+                    if ($mlbSku && $mlbSku !== '—') {
+                        try {
+                            $bling = new BlingClient($accountKey);
+                            $produto = $bling->getProductBySku($mlbSku);
+                            $custo = (float) ($produto['precoCusto'] ?? 0);
+                            if ($custo <= 0 && !empty($produto['id'])) {
+                                $detalhe = $bling->getProductById((int) $produto['id']);
+                                $custo = (float) ($detalhe['precoCusto'] ?? 0);
+                            }
+                        } catch (\Throwable $e) {}
+                    }
+
+                    // Promoções
+                    sleep(1);
                     $promoResult = $promoService->buscarPromocoesParaItem($mlbId);
                     if ($promoResult['success'] && !empty($promoResult['promotions'])) {
                         foreach ($promoResult['promotions'] as $promo) {
@@ -237,13 +284,17 @@ class ListagemAnunciosML extends Page
 
                 $items[] = [
                     'mlb_id' => $mlbId,
-                    'status' => $mlb['status'] ?? '?',
-                    'price' => (float) ($mlb['price'] ?? 0),
-                    'listing_type' => $mlb['listing_type_id'] ?? '?',
+                    'status' => $mlbStatus,
+                    'price' => $mlbPrice,
+                    'listing_type' => $mlbListingType,
                     'estoque' => (int) ($mlb['available_quantity'] ?? 0),
-                    'free_shipping' => $mlb['shipping']['free_shipping'] ?? false,
+                    'free_shipping' => $mlbFreeShipping,
                     'catalog_listing' => !empty($mlb['catalog_listing']),
-                    'logistic_type' => $mlb['shipping']['logistic_type'] ?? '?',
+                    'logistic_type' => $mlbLogisticType,
+                    'comissao_pct' => $comissaoPct,
+                    'comissao_valor' => $comissaoValor,
+                    'frete' => $frete,
+                    'custo' => $custo,
                     'promocoes' => $promocoes,
                 ];
             }
