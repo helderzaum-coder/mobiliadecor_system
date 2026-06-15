@@ -44,6 +44,7 @@ class Venda extends Model
         'data_prevista_envio',
         'observacoes',
         'bling_situacao_id',
+        'bling_situacao_nome',
         'margem_frete',
         'margem_produto',
         'margem_venda_total',

@@ -217,6 +217,7 @@ class DashboardVendas extends Page implements HasForms
         $updates = [];
         if ($situacaoId) {
             $updates['bling_situacao_id'] = $situacaoId;
+            $updates['bling_situacao_nome'] = $situacaoNome;
         }
 
         if (!empty($updates)) {
