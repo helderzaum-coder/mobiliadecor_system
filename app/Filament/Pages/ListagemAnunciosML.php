@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\ImpostoMensal;
 use App\Models\MercadoLivreToken;
 use App\Models\RelatorioMargemML;
 use App\Services\Bling\BlingClient;
@@ -174,6 +175,10 @@ class ListagemAnunciosML extends Page
             }
         }
 
+        // Imposto baseado na conta
+        $idCnpj = $accountKey === 'secondary' ? 2 : 1;
+        $impostoPct = $this->getImpostoPctRealtime($idCnpj);
+
         // Montar resultado
         $resultado = [
             'family_id' => $familyId,
@@ -259,7 +264,11 @@ class ListagemAnunciosML extends Page
                                 $frete = max($frete, (float) ($opt['list_cost'] ?? 0));
                             }
                         }
-                        // Fallback: buscar do relatório noturno
+                        // Fallback: buscar do relatório noturno (qualquer MLB do mesmo SKU)
+                        if ($frete <= 0 && $sku && $sku !== '—') {
+                            $freteOffline = RelatorioMargemML::where('sku', $sku)->where('frete', '>', 0)->value('frete');
+                            $frete = (float) ($freteOffline ?? 0);
+                        }
                         if ($frete <= 0) {
                             $freteOffline = RelatorioMargemML::where('mlb_id', $mlbId)->value('frete');
                             $frete = (float) ($freteOffline ?? 0);
@@ -303,6 +312,10 @@ class ListagemAnunciosML extends Page
                     'comissao_valor' => $comissaoValor,
                     'frete' => $frete,
                     'custo' => $custo,
+                    'imposto_pct' => $impostoPct,
+                    'imposto_valor' => ($mlbStatus === 'active' && $mlbPrice > 0) ? round(max(0, $mlbPrice - $frete) * $impostoPct / 100, 2) : 0,
+                    'margem_valor' => ($mlbStatus === 'active' && $mlbPrice > 0) ? round($mlbPrice - $comissaoValor - $frete - $custo - (max(0, $mlbPrice - $frete) * $impostoPct / 100), 2) : 0,
+                    'margem_pct' => ($mlbStatus === 'active' && $mlbPrice > 0) ? round(($mlbPrice - $comissaoValor - $frete - $custo - (max(0, $mlbPrice - $frete) * $impostoPct / 100)) / $mlbPrice * 100, 1) : 0,
                     'promocoes' => $promocoes,
                 ];
             }
@@ -331,6 +344,23 @@ class ListagemAnunciosML extends Page
     public function getGeradoEmProperty(): ?string
     {
         return RelatorioMargemML::orderByDesc('gerado_em')->value('gerado_em')?->format('d/m/Y H:i');
+    }
+
+    private function getImpostoPctRealtime(int $idCnpj): float
+    {
+        $imposto = ImpostoMensal::where('id_cnpj', $idCnpj)
+            ->where('mes_referencia', now()->month)
+            ->where('ano_referencia', now()->year)
+            ->first();
+
+        if (!$imposto) {
+            $imposto = ImpostoMensal::where('id_cnpj', $idCnpj)
+                ->orderByDesc('ano_referencia')
+                ->orderByDesc('mes_referencia')
+                ->first();
+        }
+
+        return (float) ($imposto->percentual_imposto ?? 0);
     }
 
     public static function canAccess(): bool

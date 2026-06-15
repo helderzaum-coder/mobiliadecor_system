@@ -52,6 +52,7 @@
                             <th class="px-3 py-2 text-right text-xs font-semibold text-gray-700 dark:text-gray-200">Comissão</th>
                             <th class="px-3 py-2 text-right text-xs font-semibold text-gray-700 dark:text-gray-200">Frete</th>
                             <th class="px-3 py-2 text-center text-xs font-semibold text-gray-700 dark:text-gray-200">Est</th>
+                            <th class="px-3 py-2 text-right text-xs font-semibold text-gray-700 dark:text-gray-200">Margem</th>
                             <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-200">Logística</th>
                         </tr>
                     </thead>
@@ -102,11 +103,27 @@
                                     </td>
                                     <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">{{ $mlb['frete'] > 0 ? 'R$ ' . number_format($mlb['frete'], 2, ',', '.') : '—' }}</td>
                                     <td class="px-3 py-2 text-center text-gray-900 dark:text-white">{{ $mlb['estoque'] }}</td>
+                                    <td class="px-3 py-2 text-right">
+                                        @if($mlb['margem_pct'] != 0)
+                                            @php
+                                                $mCor = match(true) {
+                                                    $mlb['margem_pct'] < 0 => '#ef4444',
+                                                    $mlb['margem_pct'] < 15 => '#f97316',
+                                                    $mlb['margem_pct'] < 25 => '#eab308',
+                                                    default => '#22c55e',
+                                                };
+                                            @endphp
+                                            <span class="font-bold" style="color:{{ $mCor }};">{{ number_format($mlb['margem_pct'], 1) }}%</span>
+                                            <div class="text-[10px]" style="color:{{ $mCor }};">R$ {{ number_format($mlb['margem_valor'], 2, ',', '.') }}</div>
+                                        @else
+                                            <span class="text-gray-500">—</span>
+                                        @endif
+                                    </td>
                                     <td class="px-3 py-2 text-gray-600 dark:text-gray-300">{{ $mlb['logistic_type'] }}</td>
                                 </tr>
                                 @if(!empty($mlb['promocoes']))
                                     <tr style="background:rgba(30,30,40,0.6);">
-                                        <td colspan="11" class="px-6 py-1.5">
+                                        <td colspan="12" class="px-6 py-1.5">
                                             <div class="flex flex-wrap gap-3 text-[11px]">
                                                 @foreach($mlb['promocoes'] as $promo)
                                                     <span class="text-gray-300">
