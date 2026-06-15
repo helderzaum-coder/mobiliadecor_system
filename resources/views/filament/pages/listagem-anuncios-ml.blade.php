@@ -34,42 +34,59 @@
 
         {{-- Resultado em tempo real --}}
         @if($resultadoRealtime)
-            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-                <div class="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-3">
-                    📦 {{ $resultadoRealtime['family_name'] }}
-                    <span class="text-xs font-normal text-blue-600 dark:text-blue-400 ml-2">Family: {{ $resultadoRealtime['family_id'] }}</span>
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                <div class="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                    <span class="text-sm font-semibold text-gray-900 dark:text-white">📦 {{ $resultadoRealtime['family_name'] }}</span>
+                    <span class="ml-2 text-xs text-gray-500">Family: {{ $resultadoRealtime['family_id'] }}</span>
                 </div>
-                @foreach($resultadoRealtime['ups'] as $up)
-                    <div class="mb-3 ml-2">
-                        <div class="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                            <span class="font-mono text-xs text-blue-600 dark:text-blue-400">{{ $up['user_product_id'] }}</span>
-                            <span>SKU: {{ $up['sku'] }}</span>
-                            <span class="text-gray-500">|</span>
-                            <span>{{ $up['cor'] }}</span>
-                            @if($up['catalog_product_id'])
-                                <span class="px-1.5 py-0.5 text-[10px] rounded bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300">Catálogo</span>
-                            @endif
-                        </div>
-                        <div class="ml-4 mt-1 space-y-1">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 text-xs">
+                            <th class="px-3 py-2 text-left">Status</th>
+                            <th class="px-3 py-2 text-left">MLB</th>
+                            <th class="px-3 py-2 text-left">Tipo</th>
+                            <th class="px-3 py-2 text-left">SKU / Cor</th>
+                            <th class="px-3 py-2 text-right">Preço</th>
+                            <th class="px-3 py-2 text-center">Estoque</th>
+                            <th class="px-3 py-2 text-center">Frete Grátis</th>
+                            <th class="px-3 py-2 text-left">Logística</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($resultadoRealtime['ups'] as $up)
                             @foreach($up['items'] as $mlb)
                                 @php
                                     $statusIcon = match($mlb['status']) { 'active' => '🟢', 'paused' => '🟡', 'closed' => '🔴', default => '⚪' };
-                                    $tipoLabel = match($mlb['listing_type']) { 'gold_pro' => '🟣 Premium', 'gold_special' => '🔵 Clássico', default => $mlb['listing_type'] };
-                                    $catTag = $mlb['catalog_listing'] ? ' [CATÁLOGO]' : '';
+                                    $tipoLabel = match($mlb['listing_type']) { 'gold_pro' => 'Premium', 'gold_special' => 'Clássico', default => $mlb['listing_type'] };
+                                    $tipoBg = $mlb['listing_type'] === 'gold_pro' ? 'background:#7c3aed;color:#fff;' : 'background:#3b82f6;color:#fff;';
+                                    $isFirst = $loop->first;
                                 @endphp
-                                <div class="text-xs text-gray-700 dark:text-gray-300 flex items-center gap-3">
-                                    <span>{{ $statusIcon }}</span>
-                                    <span class="font-mono">{{ $mlb['mlb_id'] }}</span>
-                                    <span>{!! $tipoLabel !!}{{ $catTag }}</span>
-                                    <span>R$ {{ number_format($mlb['price'], 2, ',', '.') }}</span>
-                                    <span>Est: {{ $mlb['estoque'] }}</span>
-                                    <span>{{ $mlb['free_shipping'] ? '✅FG' : '❌FG' }}</span>
-                                    <span class="text-gray-500">{{ $mlb['logistic_type'] }}</span>
-                                </div>
+                                <tr class="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                                    <td class="px-3 py-2">{{ $statusIcon }}</td>
+                                    <td class="px-3 py-2 font-mono text-gray-900 dark:text-white">
+                                        {{ $mlb['mlb_id'] }}
+                                        @if($mlb['catalog_listing'])
+                                            <span class="ml-1 px-1 py-0.5 rounded text-[9px] font-bold" style="background:#ea580c;color:#fff;">CAT</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-3 py-2">
+                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-medium" style="{{ $tipoBg }}">{{ $tipoLabel }}</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-gray-900 dark:text-white">
+                                        @if($isFirst)
+                                            <span class="font-medium">{{ $up['sku'] }}</span>
+                                            <span class="text-gray-500 dark:text-gray-400 ml-1">{{ $up['cor'] }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-white">R$ {{ number_format($mlb['price'], 2, ',', '.') }}</td>
+                                    <td class="px-3 py-2 text-center text-gray-900 dark:text-white">{{ $mlb['estoque'] }}</td>
+                                    <td class="px-3 py-2 text-center">{{ $mlb['free_shipping'] ? '✅' : '❌' }}</td>
+                                    <td class="px-3 py-2 text-gray-600 dark:text-gray-300">{{ $mlb['logistic_type'] }}</td>
+                                </tr>
                             @endforeach
-                        </div>
-                    </div>
-                @endforeach
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
         @endif
 
