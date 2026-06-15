@@ -67,7 +67,7 @@
                                     $isFirst = $loop->first;
                                     $borderTop = $isFirst && $upIdx > 0 ? 'border-top:3px solid #3b82f6;' : '';
                                 @endphp
-                                <tr class="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30" style="{{ $borderTop }}">
+                                <tr class="border-b border-gray-100 dark:border-gray-700/50" style="background:rgba(55,65,81,0.4);{{ $borderTop }}">
                                     <td class="px-3 py-2">{{ $statusIcon }}</td>
                                     <td class="px-3 py-2 font-mono text-gray-900 dark:text-white">
                                         {{ $mlb['mlb_id'] }}
