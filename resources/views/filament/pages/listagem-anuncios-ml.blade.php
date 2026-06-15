@@ -1,0 +1,199 @@
+<x-filament-panels::page>
+    <div class="space-y-4">
+        {{-- Header --}}
+        <div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+            <div>
+                @if($this->geradoEm)
+                    Última atualização: <span class="font-semibold">{{ $this->geradoEm }}</span>
+                @endif
+            </div>
+            <div>{{ count($this->familias) }} família(s)</div>
+        </div>
+
+        {{-- Busca em tempo real --}}
+        <div class="p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+            <div class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">🔍 Buscar família em tempo real (API)</div>
+            <div class="flex gap-2 items-end">
+                <input type="text" wire:model="buscaFamiliaRealtime" placeholder="MLB ou MLBU..."
+                    class="flex-1 text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2">
+                <select wire:model="filtroAccount" class="text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2">
+                    <option value="">Primary</option>
+                    <option value="primary">Primary</option>
+                    <option value="secondary">Secondary</option>
+                </select>
+                <button wire:click="buscarFamiliaAgora" wire:loading.attr="disabled"
+                    class="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700">
+                    <span wire:loading.remove wire:target="buscarFamiliaAgora">Buscar</span>
+                    <span wire:loading wire:target="buscarFamiliaAgora">Buscando...</span>
+                </button>
+                @if($resultadoRealtime)
+                    <button wire:click="limparRealtime" class="px-3 py-2 text-sm rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">✖</button>
+                @endif
+            </div>
+        </div>
+
+        {{-- Resultado em tempo real --}}
+        @if($resultadoRealtime)
+            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                <div class="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-3">
+                    📦 {{ $resultadoRealtime['family_name'] }}
+                    <span class="text-xs font-normal text-blue-600 dark:text-blue-400 ml-2">Family: {{ $resultadoRealtime['family_id'] }}</span>
+                </div>
+                @foreach($resultadoRealtime['ups'] as $up)
+                    <div class="mb-3 ml-2">
+                        <div class="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                            <span class="font-mono text-xs text-blue-600 dark:text-blue-400">{{ $up['user_product_id'] }}</span>
+                            <span>SKU: {{ $up['sku'] }}</span>
+                            <span class="text-gray-500">|</span>
+                            <span>{{ $up['cor'] }}</span>
+                            @if($up['catalog_product_id'])
+                                <span class="px-1.5 py-0.5 text-[10px] rounded bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300">Catálogo</span>
+                            @endif
+                        </div>
+                        <div class="ml-4 mt-1 space-y-1">
+                            @foreach($up['items'] as $mlb)
+                                @php
+                                    $statusIcon = match($mlb['status']) { 'active' => '🟢', 'paused' => '🟡', 'closed' => '🔴', default => '⚪' };
+                                    $tipoLabel = match($mlb['listing_type']) { 'gold_pro' => '🟣 Premium', 'gold_special' => '🔵 Clássico', default => $mlb['listing_type'] };
+                                    $catTag = $mlb['catalog_listing'] ? ' [CATÁLOGO]' : '';
+                                @endphp
+                                <div class="text-xs text-gray-700 dark:text-gray-300 flex items-center gap-3">
+                                    <span>{{ $statusIcon }}</span>
+                                    <span class="font-mono">{{ $mlb['mlb_id'] }}</span>
+                                    <span>{!! $tipoLabel !!}{{ $catTag }}</span>
+                                    <span>R$ {{ number_format($mlb['price'], 2, ',', '.') }}</span>
+                                    <span>Est: {{ $mlb['estoque'] }}</span>
+                                    <span>{{ $mlb['free_shipping'] ? '✅FG' : '❌FG' }}</span>
+                                    <span class="text-gray-500">{{ $mlb['logistic_type'] }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
+        {{-- Filtros do relatório --}}
+        <div class="flex flex-wrap gap-3 p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 items-end">
+            <div>
+                <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Busca</label>
+                <input type="text" wire:model.live.debounce.300ms="busca" placeholder="MLB, SKU, título, família..."
+                    class="w-full mt-1 text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-1.5">
+            </div>
+            <div>
+                <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Conta</label>
+                <select wire:model.live="filtroAccount" class="mt-1 text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-1.5">
+                    <option value="">Todas</option>
+                    <option value="primary">Primary (Mobília)</option>
+                    <option value="secondary">Secondary (HES)</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Status</label>
+                <select wire:model.live="filtroStatus" class="mt-1 text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-1.5">
+                    <option value="">Todos</option>
+                    <option value="active">🟢 Ativo</option>
+                    <option value="paused">🟡 Pausado</option>
+                    <option value="closed">🔴 Fechado</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Catálogo</label>
+                <select wire:model.live="filtroCatalogo" class="mt-1 text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-1.5">
+                    <option value="">Todos</option>
+                    <option value="sim">Com catálogo</option>
+                    <option value="nao">Sem catálogo</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Margem</label>
+                <select wire:model.live="filtroMargem" class="mt-1 text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-1.5">
+                    <option value="">Todas</option>
+                    <option value="negativa">🔴 Negativa (< 0%)</option>
+                    <option value="baixa">🟡 Baixa (0-15%)</option>
+                    <option value="media">🟠 Média (15-30%)</option>
+                    <option value="boa">🟢 Boa (≥30%)</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Ordenar</label>
+                <select wire:model.live="ordenar" class="mt-1 text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-1.5">
+                    <option value="family_name">Nome Família</option>
+                    <option value="margem_asc">Pior margem primeiro</option>
+                    <option value="margem_desc">Melhor margem primeiro</option>
+                </select>
+            </div>
+        </div>
+
+        {{-- Famílias --}}
+        <div class="space-y-4">
+            @forelse($this->familias as $familyKey => $familia)
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    {{-- Header da família --}}
+                    <div class="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ $familia['family_name'] }}</span>
+                                @if($familia['family_id'])
+                                    <span class="ml-2 text-[10px] text-gray-500 font-mono">{{ $familia['family_id'] }}</span>
+                                @endif
+                            </div>
+                            <span class="text-xs text-gray-500">{{ count($familia['ups']) }} variação(ões)</span>
+                        </div>
+                    </div>
+
+                    {{-- UPs --}}
+                    @foreach($familia['ups'] as $upKey => $up)
+                        <div class="border-b border-gray-100 dark:border-gray-700 last:border-0">
+                            {{-- Header do UP --}}
+                            <div class="px-4 py-2 flex items-center gap-3 text-xs bg-gray-25 dark:bg-gray-800/50">
+                                @if($up['user_product_id'])
+                                    <span class="font-mono text-blue-600 dark:text-blue-400">{{ $up['user_product_id'] }}</span>
+                                @endif
+                                <span class="font-medium">SKU: {{ $up['sku'] ?? '—' }}</span>
+                                @if($up['cor'])
+                                    <span class="px-1.5 py-0.5 rounded text-[10px] bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">{{ $up['cor'] }}</span>
+                                @endif
+                            </div>
+
+                            {{-- MLBs (items) --}}
+                            @foreach($up['items'] as $item)
+                                @php
+                                    $margemCor = match(true) {
+                                        $item->margem_pct < 0 => 'color:#ef4444',
+                                        $item->margem_pct < 15 => 'color:#f97316',
+                                        $item->margem_pct < 25 => 'color:#eab308',
+                                        default => 'color:#22c55e',
+                                    };
+                                    $statusIcon = match($item->status_ml) { 'active' => '🟢', 'paused' => '🟡', 'closed' => '🔴', default => '⚪' };
+                                    $tipoLabel = match($item->listing_type) { 'gold_pro' => 'Premium', 'gold_special' => 'Clássico', default => $item->listing_type };
+                                    $tipoCor = $item->listing_type === 'gold_pro' ? 'background:#7c3aed;color:#fff;' : 'background:#3b82f6;color:#fff;';
+                                @endphp
+                                <div class="px-4 py-2 flex items-center gap-4 text-xs border-t border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-800/30">
+                                    <span>{{ $statusIcon }}</span>
+                                    <a href="https://www.mercadolivre.com.br/anuncios/lista/promos?page=1&search={{ $item->mlb_id }}" target="_blank"
+                                       class="font-mono text-blue-600 dark:text-blue-400 hover:underline w-32">{{ $item->mlb_id }}</a>
+                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-medium" style="{{ $tipoCor }}">{{ $tipoLabel }}</span>
+                                    @if($item->is_catalog_listing)
+                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-medium" style="background:#ea580c;color:#fff;">Catálogo</span>
+                                    @endif
+                                    <span class="w-24">R$ {{ number_format($item->preco_venda, 2, ',', '.') }}</span>
+                                    <span class="text-gray-500 w-20">Custo: {{ number_format($item->custo_produto, 2, ',', '.') }}</span>
+                                    <span class="text-gray-500 w-16">Est: {{ $item->estoque }}</span>
+                                    <span class="text-gray-500 w-20">Frete: {{ number_format($item->frete, 2, ',', '.') }}</span>
+                                    <span class="text-gray-500 w-20">Com: {{ $item->comissao_pct }}%</span>
+                                    <span class="font-bold w-16 text-right" style="{{ $margemCor }}">{{ number_format($item->margem_pct, 1) }}%</span>
+                                    <span class="text-gray-500" style="{{ $margemCor }}">R$ {{ number_format($item->margem_valor, 2, ',', '.') }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endforeach
+                </div>
+            @empty
+                <div class="p-8 text-center text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-xl">
+                    Nenhuma família encontrada.
+                </div>
+            @endforelse
+        </div>
+    </div>
+</x-filament-panels::page>
