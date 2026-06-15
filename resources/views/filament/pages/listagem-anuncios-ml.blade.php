@@ -69,31 +69,19 @@
                                 @endphp
                                 <tr style="background:#374151 !important;{{ $borderTop }}" class="border-b border-gray-600">
                                     <td class="px-3 py-2">{{ $statusIcon }}</td>
-                                    <td class="px-3 py-2 font-mono text-gray-900 dark:text-white">
-                                        {{ $mlb['mlb_id'] }}
-                                        @if($mlb['catalog_listing'])
-                                            <span class="ml-1 px-1 py-0.5 rounded text-[9px] font-bold" style="background:#ea580c;color:#fff;">CAT</span>
-                                        @endif
-                                    </td>
-                                    <td class="px-3 py-2">
-                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-medium" style="{{ $tipoBg }}">{{ $tipoLabel }}</span>
-                                    </td>
-                                    <td class="px-3 py-2 text-gray-900 dark:text-white">
-                                        @if($isFirst)
-                                            <span class="font-medium">{{ $up['sku'] }}</span>
-                                            <span class="text-gray-500 dark:text-gray-400 ml-1">{{ $up['cor'] }}</span>
-                                        @endif
-                                    </td>
-                                    <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-white">R$ {{ number_format($mlb['price'], 2, ',', '.') }}</td>
+                                    <td class="px-3 py-2 font-mono" style="color:#60a5fa;">{{ $mlb['mlb_id'] }}@if($mlb['catalog_listing'])<span class="ml-1 px-1 py-0.5 rounded text-[9px] font-bold" style="background:#ea580c;color:#fff;">CAT</span>@endif</td>
+                                    <td class="px-3 py-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-medium" style="{{ $tipoBg }}">{{ $tipoLabel }}</span></td>
+                                    <td class="px-3 py-2" style="color:#e5e7eb;">@if($isFirst)<span class="font-medium">{{ $up['sku'] }}</span> <span style="color:#9ca3af;">{{ $up['cor'] }}</span>@endif</td>
+                                    <td class="px-3 py-2 text-right font-medium" style="color:#fff;">R$ {{ number_format($mlb['price'], 2, ',', '.') }}</td>
                                     <td class="px-3 py-2 text-right">
                                         @php $menorPromo = !empty($mlb['promocoes']) ? collect($mlb['promocoes'])->min('preco') : null; @endphp
                                         @if($menorPromo)
                                             <span class="font-semibold" style="color:#f59e0b;">R$ {{ number_format($menorPromo, 2, ',', '.') }}</span>
                                         @else
-                                            <span class="text-gray-500">—</span>
+                                            <span style="color:#6b7280;">&mdash;</span>
                                         @endif
                                     </td>
-                                    <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">{{ $mlb['custo'] > 0 ? 'R$ ' . number_format($mlb['custo'], 2, ',', '.') : '—' }}</td>
+                                    <td class="px-3 py-2 text-right" style="color:#e5e7eb;">{{ $mlb['custo'] > 0 ? 'R$ ' . number_format($mlb['custo'], 2, ',', '.') : '—' }}</td>
                                     <td class="px-3 py-2 text-right">
                                         @if($mlb['comissao_pct'] > 0)
                                             @if(($mlb['rebate_valor'] ?? 0) > 0)
@@ -107,16 +95,16 @@
                                             <span style="color:#6b7280;">&mdash;</span>
                                         @endif
                                     </td>
-                                    <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">{{ $mlb['frete'] > 0 ? 'R$ ' . number_format($mlb['frete'], 2, ',', '.') : '—' }}</td>
-                                    <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">
+                                    <td class="px-3 py-2 text-right" style="color:#e5e7eb;">{{ $mlb['frete'] > 0 ? 'R$ ' . number_format($mlb['frete'], 2, ',', '.') : '—' }}</td>
+                                    <td class="px-3 py-2 text-right">
                                         @if($mlb['imposto_valor'] > 0)
-                                            {{ number_format($mlb['imposto_pct'], 1) }}%
-                                            <div class="text-[10px] text-gray-500">R$ {{ number_format($mlb['imposto_valor'], 2, ',', '.') }}</div>
+                                            <div style="color:#e5e7eb;">{{ number_format($mlb['imposto_pct'], 1) }}%</div>
+                                            <div class="text-[10px]" style="color:#9ca3af;">R$ {{ number_format($mlb['imposto_valor'], 2, ',', '.') }}</div>
                                         @else
-                                            <span class="text-gray-500">—</span>
+                                            <span style="color:#6b7280;">&mdash;</span>
                                         @endif
                                     </td>
-                                    <td class="px-3 py-2 text-center text-gray-900 dark:text-white">{{ $mlb['estoque'] }}</td>
+                                    <td class="px-3 py-2 text-center" style="color:#fff;">{{ $mlb['estoque'] }}</td>
                                     <td class="px-3 py-2 text-right">
                                         @if($mlb['margem_pct'] != 0)
                                             @php
@@ -130,10 +118,10 @@
                                             <span class="font-bold" style="color:{{ $mCor }};">{{ number_format($mlb['margem_pct'], 1) }}%</span>
                                             <div class="text-[10px]" style="color:{{ $mCor }};">R$ {{ number_format($mlb['margem_valor'], 2, ',', '.') }}</div>
                                         @else
-                                            <span class="text-gray-500">—</span>
+                                            <span style="color:#6b7280;">&mdash;</span>
                                         @endif
                                     </td>
-                                    <td class="px-3 py-2 text-gray-600 dark:text-gray-300">{{ $mlb['logistic_type'] }}</td>
+                                    <td class="px-3 py-2" style="color:#9ca3af;">{{ $mlb['logistic_type'] }}</td>
                                 </tr>
                                 @if(!empty($mlb['promocoes']))
                                     <tr style="background:rgba(30,30,40,0.6);">
