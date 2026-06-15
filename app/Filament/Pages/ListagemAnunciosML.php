@@ -211,6 +211,30 @@ class ListagemAnunciosML extends Page
                 if (!$mlbResult['success']) continue;
 
                 $mlb = $mlbResult['body'];
+
+                // Buscar promoções apenas para ativos
+                $promocoes = [];
+                if (($mlb['status'] ?? '') === 'active') {
+                    sleep(1);
+                    $promoService = new MercadoLivrePromotionService($accountKey);
+                    $promoResult = $promoService->buscarPromocoesParaItem($mlbId);
+                    if ($promoResult['success'] && !empty($promoResult['promotions'])) {
+                        foreach ($promoResult['promotions'] as $promo) {
+                            $pp = (float) ($promo['price'] ?? 0);
+                            if ($pp <= 0) $pp = (float) ($promo['max_discounted_price'] ?? 0);
+                            if ($pp <= 0) $pp = (float) ($promo['suggested_discounted_price'] ?? 0);
+                            if ($pp <= 0) continue;
+                            $promocoes[] = [
+                                'nome' => $promo['name'] ?? 'Sem nome',
+                                'tipo' => $promo['type'] ?? '',
+                                'preco' => $pp,
+                                'meli_pct' => $promo['meli_percentage'] ?? 0,
+                                'seller_pct' => $promo['seller_percentage'] ?? 0,
+                            ];
+                        }
+                    }
+                }
+
                 $items[] = [
                     'mlb_id' => $mlbId,
                     'status' => $mlb['status'] ?? '?',
@@ -220,6 +244,7 @@ class ListagemAnunciosML extends Page
                     'free_shipping' => $mlb['shipping']['free_shipping'] ?? false,
                     'catalog_listing' => !empty($mlb['catalog_listing']),
                     'logistic_type' => $mlb['shipping']['logistic_type'] ?? '?',
+                    'promocoes' => $promocoes,
                 ];
             }
 

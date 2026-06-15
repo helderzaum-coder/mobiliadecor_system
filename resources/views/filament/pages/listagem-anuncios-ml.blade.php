@@ -84,6 +84,26 @@
                                     <td class="px-3 py-2 text-center">{{ $mlb['free_shipping'] ? '✅' : '❌' }}</td>
                                     <td class="px-3 py-2 text-gray-600 dark:text-gray-300">{{ $mlb['logistic_type'] }}</td>
                                 </tr>
+                                @if(!empty($mlb['promocoes']))
+                                    <tr class="bg-gray-50 dark:bg-gray-900/50">
+                                        <td colspan="8" class="px-6 py-1.5">
+                                            <div class="flex flex-wrap gap-3 text-[11px]">
+                                                @foreach($mlb['promocoes'] as $promo)
+                                                    <span class="text-gray-700 dark:text-gray-300">
+                                                        🏷️ {{ $promo['nome'] }}
+                                                        <span class="font-semibold" style="color:#f59e0b;">R$ {{ number_format($promo['preco'], 2, ',', '.') }}</span>
+                                                        @if($promo['meli_pct'] > 0)
+                                                            <span style="color:#60a5fa;">ML:{{ $promo['meli_pct'] }}%</span>
+                                                        @endif
+                                                        @if($promo['seller_pct'] > 0)
+                                                            <span style="color:#fb923c;">Seller:{{ $promo['seller_pct'] }}%</span>
+                                                        @endif
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endif
                             @endforeach
                         @endforeach
                     </tbody>
