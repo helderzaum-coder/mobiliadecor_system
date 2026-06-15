@@ -146,6 +146,29 @@ class MercadoLivreRelatorioMargem extends Command
         // Catálogo
         $catalogProductId = $item['catalog_product_id'] ?? null;
         $isCatalogListing = !empty($item['catalog_listing']);
+        $statusMl = $item['status'] ?? null;
+
+        // User Product e Family
+        $userProductId = $item['user_product_id'] ?? null;
+        $familyName = $item['family_name'] ?? null;
+        $familyId = null;
+        $cor = null;
+
+        if ($userProductId) {
+            sleep(1);
+            $upResult = $this->mlClient->get("/user-products/{$userProductId}");
+            if ($upResult['success']) {
+                $upBody = $upResult['body'];
+                $familyId = isset($upBody['family_id']) ? (string) $upBody['family_id'] : null;
+                $familyName = $familyName ?? ($upBody['family_name'] ?? null);
+                foreach ($upBody['attributes'] ?? [] as $attr) {
+                    if ($attr['id'] === 'COLOR') {
+                        $cor = $attr['values'][0]['name'] ?? null;
+                        break;
+                    }
+                }
+            }
+        }
 
         // item_relations: buscar MLB pai (se é catálogo) ou MLB catálogo (se vinculado)
         $itemRelationId = null;
@@ -256,6 +279,11 @@ class MercadoLivreRelatorioMargem extends Command
             'catalog_product_id' => $catalogProductId,
             'is_catalog_listing' => $isCatalogListing,
             'item_relation_id' => $itemRelationId,
+            'user_product_id' => $userProductId,
+            'family_id' => $familyId,
+            'family_name' => $familyName ? mb_substr($familyName, 0, 255) : null,
+            'cor' => $cor,
+            'status_ml' => $statusMl,
             'preco_venda' => $preco,
             'custo_produto' => $custo,
             'estoque' => $estoque,

@@ -11,6 +11,7 @@ class RelatorioMargemML extends Model
     protected $fillable = [
         'account_key', 'mlb_id', 'sku', 'titulo', 'listing_type',
         'catalog_product_id', 'is_catalog_listing', 'item_relation_id',
+        'user_product_id', 'family_id', 'family_name', 'cor', 'status_ml',
         'preco_venda', 'custo_produto', 'estoque',
         'comissao_pct', 'comissao_valor', 'frete',
         'imposto_pct', 'imposto_valor', 'margem_valor', 'margem_pct',
