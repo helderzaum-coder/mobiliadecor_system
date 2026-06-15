@@ -53,15 +53,16 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($resultadoRealtime['ups'] as $up)
+                        @foreach($resultadoRealtime['ups'] as $upIdx => $up)
                             @foreach($up['items'] as $mlb)
                                 @php
                                     $statusIcon = match($mlb['status']) { 'active' => '🟢', 'paused' => '🟡', 'closed' => '🔴', default => '⚪' };
                                     $tipoLabel = match($mlb['listing_type']) { 'gold_pro' => 'Premium', 'gold_special' => 'Clássico', default => $mlb['listing_type'] };
                                     $tipoBg = $mlb['listing_type'] === 'gold_pro' ? 'background:#7c3aed;color:#fff;' : 'background:#3b82f6;color:#fff;';
                                     $isFirst = $loop->first;
+                                    $borderTop = $isFirst && $upIdx > 0 ? 'border-top:2px solid #4b5563;' : '';
                                 @endphp
-                                <tr class="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                                <tr class="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30" style="{{ $borderTop }}">
                                     <td class="px-3 py-2">{{ $statusIcon }}</td>
                                     <td class="px-3 py-2 font-mono text-gray-900 dark:text-white">
                                         {{ $mlb['mlb_id'] }}
@@ -176,7 +177,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($familia['ups'] as $upKey => $up)
+                            @foreach($familia['ups'] as $upIdx => $up)
                                 @foreach($up['items'] as $item)
                                     @php
                                         $margemCor = match(true) {
@@ -189,8 +190,9 @@
                                         $tipoLabel = match($item->listing_type) { 'gold_pro' => 'Premium', 'gold_special' => 'Clássico', default => $item->listing_type };
                                         $tipoBg = $item->listing_type === 'gold_pro' ? 'background:#7c3aed;color:#fff;' : 'background:#3b82f6;color:#fff;';
                                         $isFirst = $loop->first;
+                                        $borderTop = $isFirst && $upIdx > 0 ? 'border-top:2px solid #4b5563;' : '';
                                     @endphp
-                                    <tr class="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-800/30">
+                                    <tr class="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-800/30" style="{{ $borderTop }}">
                                         <td class="px-3 py-2">{{ $statusIcon }}</td>
                                         <td class="px-3 py-2">
                                             <a href="https://www.mercadolivre.com.br/anuncios/lista/promos?page=1&search={{ $item->mlb_id }}" target="_blank"
