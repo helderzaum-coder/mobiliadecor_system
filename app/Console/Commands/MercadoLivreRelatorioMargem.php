@@ -45,9 +45,10 @@ class MercadoLivreRelatorioMargem extends Command
             return 1;
         }
 
-        // Imposto do mês atual (CNPJ 1 = HES Decor por padrão)
-        $this->impostoPct = $this->getImpostoPct(1);
-        $this->info("Imposto mês atual: {$this->impostoPct}%");
+        // Imposto do mês atual (baseado na conta)
+        $idCnpj = $accountKey === 'secondary' ? 2 : 1;
+        $this->impostoPct = $this->getImpostoPct($idCnpj);
+        $this->info("Imposto mês atual (CNPJ {$idCnpj}): {$this->impostoPct}%");
 
         // 1. Buscar MLBs ativos com estoque
         $items = $this->buscarItensAtivos($accountKey, $limit);
