@@ -29,6 +29,7 @@ class ListagemAnunciosML extends Page
 
     // Busca em tempo real
     public string $buscaFamiliaRealtime = '';
+    public string $contaRealtime = 'primary';
     public ?array $resultadoRealtime = null;
     public bool $buscandoRealtime = false;
 
@@ -123,7 +124,7 @@ class ListagemAnunciosML extends Page
         }
 
         $this->buscandoRealtime = true;
-        $accountKey = $this->filtroAccount ?: 'primary';
+        $accountKey = $this->contaRealtime ?: 'primary';
         $client = new MercadoLivreClient($accountKey);
 
         if (!$client->isAuthorized()) {

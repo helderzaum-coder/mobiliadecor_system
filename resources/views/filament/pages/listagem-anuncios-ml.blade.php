@@ -16,7 +16,7 @@
             <div class="flex gap-2 items-end">
                 <input type="text" wire:model="buscaFamiliaRealtime" placeholder="MLB ou MLBU..."
                     class="flex-1 text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2">
-                <select wire:model="filtroAccount" class="text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2">
+                <select wire:model="contaRealtime" class="text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2">
                     <option value="">Primary</option>
                     <option value="primary">Primary</option>
                     <option value="secondary">Secondary</option>
