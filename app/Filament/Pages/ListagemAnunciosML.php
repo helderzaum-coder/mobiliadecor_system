@@ -313,11 +313,28 @@ class ListagemAnunciosML extends Page
                     'frete' => $frete,
                     'custo' => $custo,
                     'imposto_pct' => $impostoPct,
-                    'imposto_valor' => ($mlbStatus === 'active' && $mlbPrice > 0) ? round(max(0, $mlbPrice - $frete) * $impostoPct / 100, 2) : 0,
-                    'margem_valor' => ($mlbStatus === 'active' && $mlbPrice > 0) ? round($mlbPrice - $comissaoValor - $frete - $custo - (max(0, $mlbPrice - $frete) * $impostoPct / 100), 2) : 0,
-                    'margem_pct' => ($mlbStatus === 'active' && $mlbPrice > 0) ? round(($mlbPrice - $comissaoValor - $frete - $custo - (max(0, $mlbPrice - $frete) * $impostoPct / 100)) / $mlbPrice * 100, 1) : 0,
+                    'imposto_valor' => 0,
+                    'margem_valor' => 0,
+                    'margem_pct' => 0,
                     'promocoes' => $promocoes,
                 ];
+
+                // Calcular margem com base no menor preço promocional (se houver)
+                if ($mlbStatus === 'active' && $mlbPrice > 0) {
+                    $menorPromo = !empty($promocoes) ? collect($promocoes)->min('preco') : null;
+                    $precoCalc = ($menorPromo && $menorPromo > 0) ? $menorPromo : $mlbPrice;
+
+                    // Recalcular comissão sobre preço efetivo
+                    $comValorEfetivo = round($precoCalc * $comissaoPct / 100, 2);
+                    $impostoValor = round($precoCalc * $impostoPct / 100, 2);
+                    $margemValor = round($precoCalc - $comValorEfetivo - $frete - $custo - $impostoValor, 2);
+                    $margemPct = $precoCalc > 0 ? round(($margemValor / $precoCalc) * 100, 1) : 0;
+
+                    $items[array_key_last($items)]['comissao_valor'] = $comValorEfetivo;
+                    $items[array_key_last($items)]['imposto_valor'] = $impostoValor;
+                    $items[array_key_last($items)]['margem_valor'] = $margemValor;
+                    $items[array_key_last($items)]['margem_pct'] = $margemPct;
+                }
             }
 
             $resultado['ups'][] = [
