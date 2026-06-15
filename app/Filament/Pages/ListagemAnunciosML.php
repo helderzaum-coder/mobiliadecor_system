@@ -279,11 +279,12 @@ class ListagemAnunciosML extends Page
                     // Custo já buscado no nível do UP
                     $custo = $custoUp;
 
-                    // Promoções
+                    // Promoções (somente as que está participando = started)
                     sleep(1);
                     $promoResult = $promoService->buscarPromocoesParaItem($mlbId);
                     if ($promoResult['success'] && !empty($promoResult['promotions'])) {
                         foreach ($promoResult['promotions'] as $promo) {
+                            if (($promo['status'] ?? '') !== 'started') continue;
                             $pp = (float) ($promo['price'] ?? 0);
                             if ($pp <= 0) $pp = (float) ($promo['max_discounted_price'] ?? 0);
                             if ($pp <= 0) $pp = (float) ($promo['suggested_discounted_price'] ?? 0);
