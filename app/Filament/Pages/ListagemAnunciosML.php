@@ -179,6 +179,7 @@ class ListagemAnunciosML extends Page
         // Imposto baseado na conta
         $idCnpj = $accountKey === 'secondary' ? 2 : 1;
         $impostoPct = $this->getImpostoPctRealtime($idCnpj);
+        $antecipacaoPct = $this->getAntecipacaoPctRealtime();
 
         // Montar resultado
         $resultado = [
@@ -339,13 +340,16 @@ class ListagemAnunciosML extends Page
                     $comValorEfetivo = round($precoCalc * $comissaoPct / 100, 2);
                     $comValorComRebate = round(max(0, $comValorEfetivo - $rebateValor), 2);
                     $impostoValor = round($precoCalc * $impostoPct / 100, 2);
-                    $margemValor = round($precoCalc - $comValorComRebate - $frete - $custo - $impostoValor, 2);
+                    $antecipacaoValor = round($precoCalc * $antecipacaoPct / 100, 2);
+                    $margemValor = round($precoCalc - $comValorComRebate - $frete - $custo - $impostoValor - $antecipacaoValor, 2);
                     $margemPct = $precoCalc > 0 ? round(($margemValor / $precoCalc) * 100, 1) : 0;
 
                     $items[array_key_last($items)]['comissao_valor'] = $comValorEfetivo;
                     $items[array_key_last($items)]['rebate_valor'] = $rebateValor;
                     $items[array_key_last($items)]['comissao_liquida'] = $comValorComRebate;
                     $items[array_key_last($items)]['imposto_valor'] = $impostoValor;
+                    $items[array_key_last($items)]['antecipacao_pct'] = $antecipacaoPct;
+                    $items[array_key_last($items)]['antecipacao_valor'] = $antecipacaoValor;
                     $items[array_key_last($items)]['margem_valor'] = $margemValor;
                     $items[array_key_last($items)]['margem_pct'] = $margemPct;
                 }
@@ -392,6 +396,12 @@ class ListagemAnunciosML extends Page
         }
 
         return (float) ($imposto->percentual_imposto ?? 0);
+    }
+
+    private function getAntecipacaoPctRealtime(): float
+    {
+        $canal = \App\Models\CanalVenda::where('nome_canal', 'Mercadolivre')->where('ativo', true)->first();
+        return (float) ($canal->percentual_antecipacao ?? 0);
     }
 
     public static function canAccess(): bool

@@ -52,6 +52,7 @@
                             <th class="px-3 py-2 text-right text-xs font-semibold text-gray-700 dark:text-gray-200">Comissão</th>
                             <th class="px-3 py-2 text-right text-xs font-semibold text-gray-700 dark:text-gray-200">Frete</th>
                             <th class="px-3 py-2 text-right text-xs font-semibold text-gray-700 dark:text-gray-200">Imposto</th>
+                            <th class="px-3 py-2 text-right text-xs font-semibold text-gray-700 dark:text-gray-200">Antecip.</th>
                             <th class="px-3 py-2 text-center text-xs font-semibold text-gray-700 dark:text-gray-200">Est</th>
                             <th class="px-3 py-2 text-right text-xs font-semibold text-gray-700 dark:text-gray-200">Margem</th>
                             <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-200">Logística</th>
@@ -104,6 +105,14 @@
                                             <span style="color:#6b7280;">&mdash;</span>
                                         @endif
                                     </td>
+                                    <td class="px-3 py-2 text-right">
+                                        @if(($mlb['antecipacao_valor'] ?? 0) > 0)
+                                            <div style="color:#e5e7eb;">{{ number_format($mlb['antecipacao_pct'] ?? 0, 1) }}%</div>
+                                            <div class="text-[10px]" style="color:#9ca3af;">R$ {{ number_format($mlb['antecipacao_valor'], 2, ',', '.') }}</div>
+                                        @else
+                                            <span style="color:#6b7280;">&mdash;</span>
+                                        @endif
+                                    </td>
                                     <td class="px-3 py-2 text-center" style="color:#fff;">{{ $mlb['estoque'] }}</td>
                                     <td class="px-3 py-2 text-right">
                                         @if($mlb['margem_pct'] != 0)
@@ -125,7 +134,7 @@
                                 </tr>
                                 @if(!empty($mlb['promocoes']))
                                     <tr style="background:rgba(30,30,40,0.6);">
-                                        <td colspan="13" class="px-6 py-1.5">
+                                        <td colspan="14" class="px-6 py-1.5">
                                             <div class="flex flex-wrap gap-3 text-[11px]">
                                                 @foreach($mlb['promocoes'] as $promo)
                                                     <span class="text-gray-300">
