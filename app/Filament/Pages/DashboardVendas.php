@@ -212,21 +212,36 @@ class DashboardVendas extends Page implements HasForms
         $pedido = $result['body']['data'] ?? [];
         $situacao = $pedido['situacao'] ?? [];
         $situacaoId = $situacao['id'] ?? null;
-        $situacaoNome = $situacao['valor'] ?? 'Desconhecido';
 
-        $updates = [];
-        if ($situacaoId) {
-            $updates['bling_situacao_id'] = $situacaoId;
-            $updates['bling_situacao_nome'] = $situacaoNome;
+        if (!$situacaoId) {
+            \Filament\Notifications\Notification::make()->title('Situação não encontrada no pedido.')->warning()->send();
+            return;
         }
 
-        if (!empty($updates)) {
-            $venda->update($updates);
-        }
+        // Buscar nome da situação via endpoint de situações
+        $situacaoNome = $this->buscarNomeSituacaoBling($bling, $situacaoId);
+
+        $venda->update([
+            'bling_situacao_id' => $situacaoId,
+            'bling_situacao_nome' => $situacaoNome,
+        ]);
 
         \Filament\Notifications\Notification::make()
             ->title("Status Bling: {$situacaoNome} (ID: {$situacaoId})")
             ->success()->send();
+    }
+
+    private function buscarNomeSituacaoBling(\App\Services\Bling\BlingClient $bling, int $situacaoId): string
+    {
+        $result = $bling->getSituacoes(9);
+        if ($result['success'] && !empty($result['body']['data'])) {
+            foreach ($result['body']['data'] as $sit) {
+                if (($sit['id'] ?? null) == $situacaoId) {
+                    return $sit['nome'] ?? 'Desconhecido';
+                }
+            }
+        }
+        return "ID {$situacaoId}";
     }
 
     public function marcarAguardandoEnvio(int $vendaId, string $dataPrevista): void
