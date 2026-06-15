@@ -81,8 +81,11 @@ class MercadoLivreMapearFamilia extends Command
 
         $userProductIds = [];
         if ($familyResult['success']) {
-            $userProductIds = $familyResult['body']['user_products'] ?? [];
-            // Pode vir como array de IDs ou array de objetos
+            $body = $familyResult['body'];
+            $userProductIds = $body['user_products_ids']
+                ?? $body['user_products']
+                ?? [];
+            // Se veio array de objetos, extrair IDs
             if (!empty($userProductIds) && is_array($userProductIds[0] ?? null)) {
                 $userProductIds = array_map(fn($up) => $up['id'] ?? $up['user_product_id'] ?? '', $userProductIds);
             }
