@@ -71,7 +71,7 @@ class ListPedidosBlingStaging extends ListRecords
                         ->required(),
                 ])
                 ->modalHeading('Reprocessar Impostos do Mês')
-                ->modalDescription('Recalcula o imposto de todos os pedidos pendentes do mês/conta usando o percentual cadastrado em Impostos Mensais.')
+                ->modalDescription('Recalcula o imposto de todos os pedidos do mês/conta (pendentes, aprovados e assistência) usando o percentual cadastrado em Impostos Mensais.')
                 ->action(function (array $data) {
                     $result = BlingImportService::reprocessarImpostos(
                         $data['bling_account'],

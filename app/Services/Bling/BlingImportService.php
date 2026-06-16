@@ -692,7 +692,7 @@ class BlingImportService
         $pedidos = PedidoBlingStaging::where('bling_account', $blingAccount)
             ->whereMonth('data_pedido', $mes)
             ->whereYear('data_pedido', $ano)
-            ->where('status', 'pendente')
+            ->whereIn('status', ['pendente', 'aprovado', 'assistencia'])
             ->get();
 
         $atualizados = 0;
@@ -705,6 +705,23 @@ class BlingImportService
                 'percentual_imposto' => $percentual,
                 'valor_imposto' => $valorImposto,
             ]);
+
+            // Atualizar venda correspondente se já aprovada
+            if ($pedido->status === 'aprovado') {
+                $venda = Venda::where('bling_id', $pedido->bling_id)->first();
+                if ($venda) {
+                    $diffImposto = $valorImposto - (float) $venda->valor_imposto;
+                    $venda->update([
+                        'base_imposto' => $base,
+                        'percentual_imposto' => $percentual,
+                        'valor_imposto' => $valorImposto,
+                        'margem_produto' => round((float) $venda->margem_produto - $diffImposto, 2),
+                        'margem_venda_total' => round((float) $venda->margem_venda_total - $diffImposto, 2),
+                        'margem_contribuicao' => round((float) $venda->margem_contribuicao - $diffImposto, 2),
+                    ]);
+                }
+            }
+
             $atualizados++;
         }
 
