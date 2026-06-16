@@ -114,6 +114,7 @@
                                         <th class="text-left px-3 py-2 text-gray-700 dark:text-white font-semibold">Pedido Bling</th>
                                         <th class="text-left px-3 py-2 text-gray-700 dark:text-white font-semibold">Pedido Canal</th>
                                         <th class="text-left px-3 py-2 text-gray-700 dark:text-white font-semibold">Cliente</th>
+                                        <th class="text-left px-3 py-2 text-gray-700 dark:text-white font-semibold">Cidade/UF</th>
                                         <th class="text-left px-3 py-2 text-gray-700 dark:text-white font-semibold">Liberação Etiqueta</th>
                                     </tr>
                                 </thead>
@@ -129,6 +130,7 @@
                                             <td class="px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{{ $r['pedido_bling'] }}</td>
                                             <td class="px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{{ $r['pedido_canal'] }}</td>
                                             <td class="px-3 py-2 text-gray-900 dark:text-white" title="{{ $r['cliente'] }}">{{ \Illuminate\Support\Str::limit($r['cliente'], 30) }}</td>
+                                            <td class="px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{{ $r['cidade_uf'] ?: '—' }}</td>
                                             <td class="px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{{ $r['is_ml'] ? $r['liberacao_etiqueta'] : '—' }}</td>
                                         </tr>
                                     @endforeach

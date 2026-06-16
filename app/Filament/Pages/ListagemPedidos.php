@@ -142,6 +142,7 @@ class ListagemPedidos extends Page
                 'pedido_bling' => $pedido->numero_pedido,
                 'pedido_canal' => $pedido->numero_loja ?? '—',
                 'cliente' => $pedido->cliente_nome ?? '—',
+                'cidade_uf' => trim(($pedido->dest_cidade ?? '') . '/' . ($pedido->dest_uf ?? ''), '/'),
                 'liberacao_etiqueta' => $liberacaoEtiqueta,
                 'is_ml' => $isML,
             ];
@@ -163,12 +164,12 @@ class ListagemPedidos extends Page
     {
         return response()->streamDownload(function () {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Data', 'Status Bling', 'CNPJ', 'Canal', 'Produto', 'Qtd', 'Pedido Bling', 'Pedido Canal', 'Cliente', 'Liberação Etiqueta'], ';');
+            fputcsv($handle, ['Data', 'Status Bling', 'CNPJ', 'Canal', 'Produto', 'Qtd', 'Pedido Bling', 'Pedido Canal', 'Cliente', 'Cidade/UF', 'Liberação Etiqueta'], ';');
             foreach ($this->resultados as $r) {
                 fputcsv($handle, [
                     $r['data'], $r['situacao_bling'], $r['cnpj'], $r['canal'],
                     $r['produto'], $r['quantidade'], $r['pedido_bling'],
-                    $r['pedido_canal'], $r['cliente'], $r['liberacao_etiqueta'],
+                    $r['pedido_canal'], $r['cliente'], $r['cidade_uf'], $r['liberacao_etiqueta'],
                 ], ';');
             }
             fclose($handle);
