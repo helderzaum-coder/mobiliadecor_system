@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console =Commands;
+namespace App\Console\Commands; // <--- Certifique-se de que está exatamente assim
 
 use Illuminate\Console\Command;
 use App\Models\PedidoBlingStaging;
