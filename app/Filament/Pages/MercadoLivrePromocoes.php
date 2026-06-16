@@ -337,12 +337,21 @@ class MercadoLivrePromocoes extends Page
         }
 
         $service = new MercadoLivrePromotionService($this->accountKey);
+        $precoDigitado = (float) $this->aderindoPreco;
+
+        // Se preço customizado (diferente do sugerido pela promo), não usar offer_id
+        $precoOriginalPromo = (float) ($this->aderindoPromoData['price'] ?? $this->aderindoInfo['buyer_price'] ?? 0);
+        $offerId = $this->aderindoOfferId;
+        if ($precoOriginalPromo > 0 && abs($precoDigitado - $precoOriginalPromo) > 0.01) {
+            $offerId = null;
+        }
+
         $result = $service->aderirPromocao(
             $this->aderindoItemId,
             $this->selectedPromotion['id'],
             $this->selectedPromotion['type'],
-            (float) $this->aderindoPreco,
-            $this->aderindoOfferId,
+            $precoDigitado,
+            $offerId,
             $this->aderindoPromoData['start_date'] ?? null,
             $this->aderindoPromoData['finish_date'] ?? null
         );
@@ -351,14 +360,12 @@ class MercadoLivrePromocoes extends Page
             foreach ($this->items as &$item) {
                 if ($item['id'] === $this->aderindoItemId) {
                     $item['status'] = 'active';
-                    $item['deal_price'] = $this->aderindoPreco;
+                    $item['deal_price'] = $precoDigitado;
                     break;
                 }
             }
-            Notification::make()->title('Adesão realizada!')->body("R$ " . number_format($this->aderindoPreco, 2, ',', '.'))->success()->send();
+            Notification::make()->title('Adesão realizada!')->body("R$ " . number_format($precoDigitado, 2, ',', '.'))->success()->send();
             $this->cancelarAdesao();
-
-            // Pular para o próximo candidate
             $this->aderirProximoCandidate();
         } else {
             Notification::make()->title('Erro ao aderir')->body($result['error'] ?? '')->danger()->send();
