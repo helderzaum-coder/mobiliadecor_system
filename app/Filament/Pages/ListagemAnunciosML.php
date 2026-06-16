@@ -275,16 +275,27 @@ class ListagemAnunciosML extends Page
                     $comissaoValor = $comData['valor'] ?? round($mlbPrice * $comissaoPct / 100, 2);
                     if ($comissaoValor <= 0) $comissaoValor = round($mlbPrice * $comissaoPct / 100, 2);
 
-                    // Frete via shipping_options (ou fallback do relatório offline)
+                    // Frete via shipping_options (ou fallback)
                     if ($mlbFreeShipping || $mlbLogisticType === 'xd_drop_off') {
-                        sleep(2); // Rate limit mais conservador
-                        $freteResult = $client->get("/items/{$mlbId}/shipping_options", ['zip_code' => '01310100']);
-                        if ($freteResult['success'] && !empty($freteResult['body']['options'])) {
-                            foreach ($freteResult['body']['options'] as $opt) {
-                                $frete = max($frete, (float) ($opt['list_cost'] ?? 0));
+                        // Tentar /users/{userId}/shipping_options/free primeiro (mais confiável)
+                        sleep(2);
+                        $freeResult = $client->get("/users/{$userId}/shipping_options/free", ['item_id' => $mlbId]);
+                        if ($freeResult['success']) {
+                            $frete = $this->extrairMaiorFreteRealtime($freeResult['body']);
+                        }
+
+                        // Fallback: /items/{id}/shipping_options
+                        if ($frete <= 0) {
+                            sleep(1);
+                            $freteResult = $client->get("/items/{$mlbId}/shipping_options", ['zip_code' => '01310100']);
+                            if ($freteResult['success'] && !empty($freteResult['body']['options'])) {
+                                foreach ($freteResult['body']['options'] as $opt) {
+                                    $frete = max($frete, (float) ($opt['list_cost'] ?? 0));
+                                }
                             }
                         }
-                        // Fallback: buscar do relatório noturno (qualquer MLB do mesmo SKU)
+
+                        // Fallback: relatório offline
                         if ($frete <= 0 && $sku && $sku !== '—') {
                             $freteOffline = RelatorioMargemML::where('sku', $sku)->where('frete', '>', 0)->value('frete');
                             $frete = (float) ($freteOffline ?? 0);
@@ -420,6 +431,21 @@ class ListagemAnunciosML extends Page
     {
         $canal = \App\Models\CanalVenda::where('nome_canal', 'Mercadolivre')->where('ativo', true)->first();
         return (float) ($canal->percentual_antecipacao ?? 0);
+    }
+
+    private function extrairMaiorFreteRealtime(array $data, float $max = 0): float
+    {
+        foreach (['list_cost', 'cost', 'amount', 'base_cost'] as $key) {
+            if (isset($data[$key]) && is_numeric($data[$key])) {
+                $max = max($max, (float) $data[$key]);
+            }
+        }
+        foreach ($data as $value) {
+            if (is_array($value)) {
+                $max = $this->extrairMaiorFreteRealtime($value, $max);
+            }
+        }
+        return $max;
     }
 
     public static function canAccess(): bool
