@@ -348,9 +348,10 @@ class MercadoLivreRelatorioMargem extends Command
 
     private function buscarFreteReal(string $itemId, array $item): float
     {
-        // Se não tem frete grátis, vendedor não paga frete
+        // Se não tem frete grátis nem xd_drop_off, vendedor não paga frete
         $freeShipping = $item['shipping']['free_shipping'] ?? false;
-        if (!$freeShipping) return 0;
+        $logisticType = $item['shipping']['logistic_type'] ?? '';
+        if (!$freeShipping && $logisticType !== 'xd_drop_off') return 0;
 
         // Buscar via shipping_options do ML
         sleep(1);
