@@ -486,7 +486,7 @@
                             <div class="flex items-center gap-2">
                                 <span class="text-xs text-gray-600 dark:text-gray-400">Preço promo:</span>
                                 <span class="text-xs text-gray-500">R$</span>
-                                <input type="number" step="0.01" wire:model.blur="aderindoPreco"
+                                <input type="number" step="0.01" wire:model.live.debounce.500ms="aderindoPreco"
                                     class="w-24 px-2 py-1 text-sm rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:ring-primary-500">
                                 <x-filament::button size="xs" color="gray" wire:click="$refresh">Calcular</x-filament::button>
                             </div>
@@ -505,7 +505,7 @@
                                 <span class="font-bold" style="color: {{ $margemPercent >= $margemDesejada ? '#15803d' : ($margemPercent >= 0 ? '#a16207' : '#dc2626') }}">R$ {{ number_format($margem, 2, ',', '.') }} ({{ number_format($margemPercent, 1) }}%)</span>
                             </div>
                             <div class="ml-auto">
-                                <x-filament::button size="sm" wire:click="confirmarAdesao">Confirmar Adesão</x-filament::button>
+                                <x-filament::button size="sm" wire:click="confirmarAdesao" wire:confirm="Aderir com preço R$ {{ number_format((float)$aderindoPreco, 2, ',', '.') }}?">Confirmar Adesão</x-filament::button>
                             </div>
                         </div>
                     </div>
