@@ -14,7 +14,7 @@
         <div class="p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
             <div class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">🔍 Buscar família em tempo real (API)</div>
             <div class="flex gap-2 items-end">
-                <input type="text" wire:model="buscaFamiliaRealtime" placeholder="MLB ou MLBU..."
+                <input type="text" wire:model="buscaFamiliaRealtime" placeholder="MLB, MLBU ou Family ID..."
                     class="flex-1 text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2">
                 <select wire:model="contaRealtime" class="text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2">
                     <option value="">Primary</option>

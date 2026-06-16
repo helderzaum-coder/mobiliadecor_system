@@ -119,7 +119,7 @@ class ListagemAnunciosML extends Page
     {
         $input = trim($this->buscaFamiliaRealtime);
         if (!$input) {
-            Notification::make()->title('Informe um MLB ou MLBU.')->warning()->send();
+            Notification::make()->title('Informe um MLB, MLBU ou Family ID.')->warning()->send();
             return;
         }
 
@@ -136,43 +136,61 @@ class ListagemAnunciosML extends Page
         $tokenModel = MercadoLivreToken::where('account_key', $accountKey)->first();
         $userId = $tokenModel?->user_id ?? config("mercadolivre.accounts.{$accountKey}.user_id");
 
-        // Determinar user_product_id
-        if (str_starts_with(strtoupper($input), 'MLBU')) {
-            $userProductId = strtoupper($input);
-        } else {
-            $itemResult = $client->get("/items/{$input}");
-            if (!$itemResult['success']) {
-                Notification::make()->title("Item não encontrado.")->danger()->send();
-                $this->buscandoRealtime = false;
-                return;
-            }
-            $userProductId = $itemResult['body']['user_product_id'] ?? null;
-            if (!$userProductId) {
-                Notification::make()->title("Item sem User Product (modelo antigo).")->warning()->send();
-                $this->buscandoRealtime = false;
-                return;
-            }
-        }
-
-        // Buscar UP
-        $upResult = $client->get("/user-products/{$userProductId}");
-        if (!$upResult['success']) {
-            Notification::make()->title("Erro ao buscar UP.")->danger()->send();
-            $this->buscandoRealtime = false;
-            return;
-        }
-
-        $up = $upResult['body'];
-        $familyId = $up['family_id'] ?? null;
-        $familyName = $up['family_name'] ?? $up['name'] ?? '—';
-
-        // Buscar todos UPs da família
-        $allUpIds = [$userProductId];
-        if ($familyId) {
-            sleep(1);
+        // Busca direta por Family ID (numérico puro)
+        if (ctype_digit($input)) {
+            $familyId = $input;
             $familyResult = $client->get("/sites/MLB/user-products-families/{$familyId}");
-            if ($familyResult['success']) {
-                $allUpIds = $familyResult['body']['user_products_ids'] ?? [$userProductId];
+            if (!$familyResult['success']) {
+                Notification::make()->title("Família não encontrada.")->danger()->send();
+                $this->buscandoRealtime = false;
+                return;
+            }
+            $familyName = $familyResult['body']['name'] ?? '—';
+            $allUpIds = $familyResult['body']['user_products_ids'] ?? [];
+            if (empty($allUpIds)) {
+                Notification::make()->title("Família sem User Products.")->warning()->send();
+                $this->buscandoRealtime = false;
+                return;
+            }
+        } else {
+            // Determinar user_product_id
+            if (str_starts_with(strtoupper($input), 'MLBU')) {
+                $userProductId = strtoupper($input);
+            } else {
+                $itemResult = $client->get("/items/{$input}");
+                if (!$itemResult['success']) {
+                    Notification::make()->title("Item não encontrado.")->danger()->send();
+                    $this->buscandoRealtime = false;
+                    return;
+                }
+                $userProductId = $itemResult['body']['user_product_id'] ?? null;
+                if (!$userProductId) {
+                    Notification::make()->title("Item sem User Product (modelo antigo).")->warning()->send();
+                    $this->buscandoRealtime = false;
+                    return;
+                }
+            }
+
+            // Buscar UP
+            $upResult = $client->get("/user-products/{$userProductId}");
+            if (!$upResult['success']) {
+                Notification::make()->title("Erro ao buscar UP.")->danger()->send();
+                $this->buscandoRealtime = false;
+                return;
+            }
+
+            $up = $upResult['body'];
+            $familyId = $up['family_id'] ?? null;
+            $familyName = $up['family_name'] ?? $up['name'] ?? '—';
+
+            // Buscar todos UPs da família
+            $allUpIds = [$userProductId];
+            if ($familyId) {
+                sleep(1);
+                $familyResult = $client->get("/sites/MLB/user-products-families/{$familyId}");
+                if ($familyResult['success']) {
+                    $allUpIds = $familyResult['body']['user_products_ids'] ?? [$userProductId];
+                }
             }
         }
 
@@ -190,7 +208,7 @@ class ListagemAnunciosML extends Page
 
         foreach ($allUpIds as $upId) {
             sleep(1);
-            $upData = ($upId === $userProductId) ? $up : null;
+            $upData = (isset($userProductId) && $upId === $userProductId && isset($up)) ? $up : null;
             if (!$upData) {
                 $r = $client->get("/user-products/{$upId}");
                 $upData = $r['success'] ? $r['body'] : null;
