@@ -4,3 +4,4 @@ A versão local do programa é apenas backup. o sistema está sendo testado e ut
 Eu tenho acesso SSH ao servidor caso precise rodar algo direto no servidor via terminal
 Versão do PHP do servidor:8.3.28
 Não esquecer do "cache do worker" quando as atualizações estiverem demorando para surtir efeito
+#teste
