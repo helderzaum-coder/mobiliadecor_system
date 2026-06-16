@@ -24,8 +24,41 @@ class ListagemPedidos extends Page
     public array $resultados = [];
     public bool $consultaRealizada = false;
     public array $situacoesDisponiveis = [];
+    public bool $atualizando = false;
 
+    public function atualizarSituacoes(): void
+    {
+        // Limpa cache de situações de todos os pedidos do resultado atual
+        $query = PedidoBlingStaging::query()->where('status', '!=', 'rejeitado');
 
+        $query = match ($this->periodo) {
+            'hoje' => $query->whereDate('data_pedido', today()),
+            'esta_semana' => $query->whereBetween('data_pedido', [now()->startOfWeek(), now()->endOfWeek()]),
+            'este_mes' => $query->whereBetween('data_pedido', [now()->startOfMonth(), now()->endOfMonth()]),
+            'mes_passado' => $query->whereBetween('data_pedido', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()]),
+            'customizado' => $query
+                ->when($this->data_inicio, fn ($q) => $q->whereDate('data_pedido', '>=', $this->data_inicio))
+                ->when($this->data_fim, fn ($q) => $q->whereDate('data_pedido', '<=', $this->data_fim)),
+            default => $query,
+        };
+
+        if ($this->filtro_canal) {
+            $query->where('canal', $this->filtro_canal);
+        }
+        if ($this->filtro_conta) {
+            $query->where('bling_account', $this->filtro_conta);
+        }
+
+        $pedidos = $query->limit(150)->pluck('bling_id');
+
+        // Limpar cache de todos
+        foreach ($pedidos as $blingId) {
+            Cache::store('file')->forget("bling_sit_v2_{$blingId}");
+        }
+
+        // Reconsultar com cache limpo (vai buscar tudo fresh da API)
+        $this->consultar();
+    }
 
     public function consultar(): void
     {
@@ -199,7 +232,7 @@ class ListagemPedidos extends Page
             }
 
             // Limitar chamadas à API para evitar timeout
-            if ($chamadas >= 80) {
+            if ($chamadas >= 150) {
                 $sitMap = $pedido->bling_account === 'primary' ? $mapPrimary : $mapSecondary;
                 $resultado[$pedido->bling_id] = $sitMap[$pedido->situacao_id] ?? ('ID ' . ($pedido->situacao_id ?? '—'));
                 continue;

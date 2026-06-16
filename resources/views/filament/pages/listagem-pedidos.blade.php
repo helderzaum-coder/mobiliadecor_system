@@ -55,17 +55,21 @@
                     </div>
                 </div>
 
-                <div>
-                    <x-filament::button wire:click="consultar" wire:loading.attr="disabled" class="w-full">
+                <div class="flex gap-2">
+                    <x-filament::button wire:click="consultar" wire:loading.attr="disabled">
                         <span wire:loading.remove wire:target="consultar">Consultar</span>
                         <span wire:loading wire:target="consultar">...</span>
+                    </x-filament::button>
+                    <x-filament::button wire:click="atualizarSituacoes" wire:loading.attr="disabled" color="warning">
+                        <span wire:loading.remove wire:target="atualizarSituacoes">🔄 Atualizar</span>
+                        <span wire:loading wire:target="atualizarSituacoes">Atualizando...</span>
                     </x-filament::button>
                 </div>
             </div>
         </div>
 
         {{-- Loading --}}
-        <div wire:loading wire:target="consultar" class="text-center py-4">
+        <div wire:loading wire:target="consultar, atualizarSituacoes" class="text-center py-4">
             <div class="inline-flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
                 <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -77,7 +81,7 @@
 
         {{-- Resultados --}}
         @if($this->consultaRealizada)
-            <div wire:loading.remove wire:target="consultar" class="space-y-4">
+            <div wire:loading.remove wire:target="consultar, atualizarSituacoes" class="space-y-4">
 
                 {{-- Resumo --}}
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-4 border border-gray-200 dark:border-gray-700 flex items-center justify-between">
