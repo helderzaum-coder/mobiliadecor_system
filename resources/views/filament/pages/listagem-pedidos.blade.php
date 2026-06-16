@@ -46,12 +46,15 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-white mb-1">Situação Bling</label>
                     <div class="flex flex-wrap gap-2 mt-1">
-                        @foreach(['Em aberto', 'Verificado', 'Em andamento', 'Enviado', 'Atendido', 'Entregue', 'Cancelado', 'Faturado – Pendente de Cotação', 'Em Cotação', 'ML Etiqueta', 'Shopee Xpress', 'Lançado Envio'] as $sit)
+                        @foreach($this->situacoesDisponiveis as $sit)
                             <label class="inline-flex items-center gap-1 text-xs text-gray-700 dark:text-white cursor-pointer">
                                 <input type="checkbox" value="{{ $sit }}" wire:model="filtro_situacao" class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-primary-600 focus:ring-primary-500 w-3.5 h-3.5" />
                                 {{ $sit }}
                             </label>
                         @endforeach
+                        @if(empty($this->situacoesDisponiveis))
+                            <span class="text-xs text-gray-400">Consulte primeiro para ver as situações</span>
+                        @endif
                     </div>
                 </div>
 
