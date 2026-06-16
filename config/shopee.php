@@ -5,12 +5,12 @@ return [
     'partner_key'  => env('SHOPEE_PARTNER_KEY'),
     'shop_id'      => env('SHOPEE_SHOP_ID'),
     'redirect_url' => env('SHOPEE_REDIRECT_URL', null),
+    'redirect_uri' => env('SHOPEE_REDIRECT_URL', null),
     'home_url'     => env('SHOPEE_HOME_URL', null),
-    'sandbox' => [
-        'mode'     => env('SHOPEE_SANDBOX_MODE', false),
-        'base_url' => 'https://partner.test-stable.shopeemobile.com',
-    ],
-    'base_url' => 'https://partner.shopeemobile.com',
+    'sandbox'       => env('SHOPEE_SANDBOX_MODE', false),
+    'host_sandbox'  => 'https://partner.test-stable.shopeemobile.com',
+    'host_live'     => 'https://partner.shopeemobile.com',
+    'base_url'      => 'https://partner.shopeemobile.com',
     'routes' => [
         'prefix' => 'shopee',
         'auth' => [
