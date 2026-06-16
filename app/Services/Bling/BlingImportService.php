@@ -710,41 +710,12 @@ class BlingImportService
             if ($pedido->status === 'aprovado') {
                 $venda = Venda::where('bling_id', $pedido->bling_id)->first();
                 if ($venda) {
-                    $canal = \App\Models\CanalVenda::find($venda->id_canal);
-                    $frete = (float) $venda->valor_frete_cliente;
-                    $impostoSobreFrete = (bool) ($canal->imposto_sobre_frete ?? false);
-
-                    $impostoFrete = 0;
-                    if ($impostoSobreFrete && $frete > 0 && $percentual > 0) {
-                        $impostoFrete = round($frete * $percentual / 100, 2);
-                    }
-                    $impostoProduto = $valorImposto - $impostoFrete;
-
-                    $oldImpostoFrete = 0;
-                    $oldPercentual = (float) $venda->percentual_imposto;
-                    if ($impostoSobreFrete && $frete > 0 && $oldPercentual > 0) {
-                        $oldImpostoFrete = round($frete * $oldPercentual / 100, 2);
-                    }
-                    $oldImpostoProduto = (float) $venda->valor_imposto - $oldImpostoFrete;
-
-                    $diffFrete = $impostoFrete - $oldImpostoFrete;
-                    $diffProduto = $impostoProduto - $oldImpostoProduto;
-
-                    $newMargemFrete = round((float) $venda->margem_frete - $diffFrete, 2);
-                    $newMargemProduto = round((float) $venda->margem_produto - $diffProduto, 2);
-                    $newMargemTotal = round($newMargemProduto + $newMargemFrete + (float) $venda->subsidio_pix, 2);
-                    $totalPedido = (float) $venda->valor_total_venda;
-                    $newMargemContribuicao = $totalPedido > 0 ? round(($newMargemTotal / $totalPedido) * 100, 2) : 0;
-
                     $venda->update([
                         'base_imposto' => $base,
                         'percentual_imposto' => $percentual,
                         'valor_imposto' => $valorImposto,
-                        'margem_frete' => $newMargemFrete,
-                        'margem_produto' => $newMargemProduto,
-                        'margem_venda_total' => $newMargemTotal,
-                        'margem_contribuicao' => $newMargemContribuicao,
                     ]);
+                    \App\Services\VendaRecalculoService::recalcularMargens($venda);
                 }
             }
 
