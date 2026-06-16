@@ -102,6 +102,7 @@ class MercadoLivrePromotionService
                 'net_proceeds' => $item['net_proceeds'] ?? null,
                 'net_proceeds_amount' => $netProceeds,
                 'offer_id' => $item['offer_id'] ?? $item['ref_id'] ?? $item['deal_id'] ?? $item['candidate_id'] ?? null,
+                'max_discounted_price' => $item['max_discounted_price'] ?? null,
             ];
         }
 

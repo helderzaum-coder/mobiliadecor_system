@@ -233,6 +233,7 @@ class MercadoLivrePromocoes extends Page
             'seller_percentage'  => $sellerPercentage,
             'net_proceeds_amount' => $targetItem['net_proceeds_amount'] ?? null,
             'promo_type'         => $promoType,
+            'max_discounted_price' => $targetItem['max_discounted_price'] ?? null,
         ];
 
         // Para DEAL ou sem rebate: pré-preencher com preço sugerido baseado na margem desejada
@@ -333,6 +334,17 @@ class MercadoLivrePromocoes extends Page
 
         if (($this->aderindoInfo['custo_produto'] ?? 0) <= 0 && ($this->custoManual ?? 0) <= 0) {
             Notification::make()->title('Custo do produto não encontrado')->body('Não é possível aderir sem custo cadastrado no Bling ou informado manualmente.')->danger()->send();
+            return;
+        }
+
+        // Validar preço mínimo aceito pelo ML (max_discounted_price)
+        $maxDiscounted = (float) ($this->aderindoPromoData['max_discounted_price'] ?? $this->aderindoInfo['max_discounted_price'] ?? 0);
+        if ($maxDiscounted > 0 && $this->aderindoPreco < $maxDiscounted) {
+            Notification::make()
+                ->title('Preço abaixo do mínimo aceito pelo ML')
+                ->body("Preço mínimo: R$ " . number_format($maxDiscounted, 2, ',', '.') . ". Você informou R$ " . number_format($this->aderindoPreco, 2, ',', '.') . ".")
+                ->danger()
+                ->send();
             return;
         }
 
@@ -530,6 +542,7 @@ class MercadoLivrePromocoes extends Page
             'seller_percentage'  => $sellerPercentage,
             'net_proceeds_amount' => $promo['net_proceeds_amount'] ?? null,
             'promo_type'         => $promo['type'],
+            'max_discounted_price' => $promo['max_discounted_price'] ?? null,
         ];
     }
 

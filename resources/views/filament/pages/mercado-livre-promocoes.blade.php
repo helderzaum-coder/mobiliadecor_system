@@ -208,6 +208,10 @@
                                 @if($precoSugerido > 0)
                                 <span class="text-xs text-primary-600 font-semibold">Sug: R$ {{ number_format($precoSugerido, 2, ',', '.') }}</span>
                                 @endif
+                                @php $maxDiscountList = (float) ($aderindoInfo['max_discounted_price'] ?? 0); @endphp
+                                @if($maxDiscountList > 0)
+                                <span class="text-xs font-semibold text-red-500">Mín: R$ {{ number_format($maxDiscountList, 2, ',', '.') }}</span>
+                                @endif
                                 <span class="text-xs">Desc: {{ number_format($desconto, 1) }}%</span>
                                 <span class="text-xs font-bold" style="color: {{ $margemPercent >= $margemDesejada ? '#15803d' : ($margemPercent >= 0 ? '#a16207' : '#dc2626') }}">Margem: R$ {{ number_format($margem, 2, ',', '.') }} ({{ number_format($margemPercent, 1) }}%)</span>
                                 <div class="ml-auto flex gap-2">
@@ -494,6 +498,13 @@
                             <div class="text-xs">
                                 <span class="text-gray-500">Sugerido ({{ number_format($margemDesejada, 0) }}%):</span>
                                 <span class="font-semibold text-primary-600 dark:text-primary-400">R$ {{ number_format($precoSugerido, 2, ',', '.') }}</span>
+                            </div>
+                            @endif
+                            @php $maxDiscount = (float) ($aderindoPromoData['max_discounted_price'] ?? $aderindoInfo['max_discounted_price'] ?? 0); @endphp
+                            @if($maxDiscount > 0)
+                            <div class="text-xs">
+                                <span class="text-gray-500">Mín. aceito:</span>
+                                <span class="font-semibold text-red-500">R$ {{ number_format($maxDiscount, 2, ',', '.') }}</span>
                             </div>
                             @endif
                             <div class="text-xs">
