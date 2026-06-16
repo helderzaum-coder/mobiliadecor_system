@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Models\PedidoBlingStaging;
+use App\Models\ProdutoEstoque;
 use App\Services\Bling\BlingClient;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Cache;
@@ -150,7 +151,7 @@ class ListagemPedidos extends Page
             }
 
             return collect($itens)->map(fn ($item) => array_merge($base, [
-                'produto' => ($item['codigo'] ?? '') . ' - ' . ($item['descricao'] ?? ''),
+                'produto' => ($item['codigo'] ?? '') . ' - ' . ($this->getNomeProduto($item)),
                 'quantidade' => $item['quantidade'] ?? 1,
             ]))->toArray();
         })->toArray();
@@ -264,5 +265,17 @@ class ListagemPedidos extends Page
     public static function canAccess(): bool
     {
         return auth()->user()?->hasAnyRole(['admin', 'operador']) ?? false;
+    }
+
+    private function getNomeProduto(array $item): string
+    {
+        $sku = $item['codigo'] ?? '';
+        if ($sku) {
+            $produto = ProdutoEstoque::where('sku', $sku)->first();
+            if ($produto && $produto->observacoes) {
+                return $produto->observacoes;
+            }
+        }
+        return $item['descricao'] ?? '';
     }
 }
