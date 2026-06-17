@@ -163,45 +163,46 @@ class AtualizarPedidosCommerceplus extends Page
     }
 
     /**
-     * Vinculação automática: NF-e ↔ Pedido CP via Vendas (numero_pedido_canal)
+     * Vinculação automática: para cada NF-e lançada, buscar o pedido CP correspondente
      */
     private function vincularAutomaticamente(): void
     {
         $this->vinculacoes = [];
 
-        foreach ($this->pedidosCp as $pedido) {
-            $idCp = $pedido['id_pedido_cp'];
+        // Indexar pedidos CP para busca rápida
+        $pedidosCpIds = collect($this->pedidosCp)->pluck('id_pedido_cp')->toArray();
 
-            // Buscar na tabela vendas pelo numero_pedido_canal
-            $venda = \App\Models\Venda::where('bling_account', $this->blingAccount)
-                ->where('numero_pedido_canal', $idCp)
-                ->first();
-
+        foreach ($this->nfesLancadas as $nfe) {
             $vinc = [
-                'id_pedido_cp' => $idCp,
-                'numero_nfe' => '',
-                'chave_nfe' => '',
-                'serie_nfe' => '1',
-                'transportadora' => '',
+                'numero_nfe' => $nfe['numero'],
+                'chave_nfe' => $nfe['chave'],
+                'serie_nfe' => $nfe['serie'],
+                'transportadora' => $nfe['transportadora'],
                 'codigo_rastreio' => '',
+                'id_pedido_cp' => '',
                 'vinculado' => false,
             ];
 
-            if ($venda && $venda->numero_nota_fiscal) {
-                // Achar nos nfesLancadas
-                $nfeMatch = collect($this->nfesLancadas)->first(function ($nfe) use ($venda) {
-                    return $nfe['numero'] === ltrim($venda->numero_nota_fiscal, '0');
-                });
+            // Buscar venda no sistema pela NF-e
+            $variantes = [
+                $nfe['numero'],
+                str_pad($nfe['numero'], 6, '0', STR_PAD_LEFT),
+            ];
 
-                if ($nfeMatch) {
-                    $vinc['numero_nfe'] = $nfeMatch['numero'];
-                    $vinc['chave_nfe'] = $nfeMatch['chave'];
-                    $vinc['serie_nfe'] = $nfeMatch['serie'];
-                    $vinc['transportadora'] = $nfeMatch['transportadora'];
+            $venda = \App\Models\Venda::where('bling_account', $this->blingAccount)
+                ->whereIn('numero_nota_fiscal', $variantes)
+                ->first();
+
+            if ($venda && $venda->numero_pedido_canal) {
+                $numeroPedidoCanal = $venda->numero_pedido_canal;
+
+                // Verificar se esse pedido está na planilha CP
+                if (in_array($numeroPedidoCanal, $pedidosCpIds)) {
+                    $vinc['id_pedido_cp'] = $numeroPedidoCanal;
                     $vinc['vinculado'] = true;
                 } else {
-                    $vinc['numero_nfe'] = ltrim($venda->numero_nota_fiscal, '0');
-                    $vinc['chave_nfe'] = $venda->nfe_chave_acesso ?? '';
+                    // Usar mesmo assim, pode ser que o formato difira
+                    $vinc['id_pedido_cp'] = $numeroPedidoCanal;
                 }
             }
 

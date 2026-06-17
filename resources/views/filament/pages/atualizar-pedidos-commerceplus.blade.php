@@ -102,9 +102,9 @@
         @if($etapaAtual === 3)
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Etapa 3 — Vinculação NF-e ↔ Pedido CP</h3>
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Etapa 3 — Vincular Pedido CP a cada NF-e</h3>
                     <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        Confira os vínculos automáticos. Corrija manualmente se necessário. A transportadora é buscada do Bling.
+                        Para cada NF-e lançada, o sistema buscou o pedido CP correspondente. Corrija manualmente se necessário.
                     </p>
                 </div>
 
@@ -112,8 +112,8 @@
                     <table class="w-full text-sm">
                         <thead class="bg-gray-50 dark:bg-gray-900">
                             <tr>
-                                <th class="text-left px-3 py-2 text-gray-600 dark:text-gray-300">Pedido CP</th>
                                 <th class="text-left px-3 py-2 text-gray-600 dark:text-gray-300">NF-e</th>
+                                <th class="text-left px-3 py-2 text-gray-600 dark:text-gray-300">Pedido CP</th>
                                 <th class="text-left px-3 py-2 text-gray-600 dark:text-gray-300">Transportadora</th>
                                 <th class="text-left px-3 py-2 text-gray-600 dark:text-gray-300">Cód. Rastreio</th>
                                 <th class="text-center px-3 py-2 text-gray-600 dark:text-gray-300">Status</th>
@@ -122,10 +122,11 @@
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                             @foreach($vinculacoes as $idx => $vinc)
                                 <tr class="{{ $vinc['vinculado'] ? '' : 'bg-yellow-50 dark:bg-yellow-900/10' }}">
-                                    <td class="px-3 py-2 font-mono text-gray-700 dark:text-gray-200">{{ $vinc['id_pedido_cp'] }}</td>
+                                    <td class="px-3 py-2 font-mono text-gray-700 dark:text-gray-200">{{ $vinc['numero_nfe'] }}</td>
                                     <td class="px-3 py-2">
-                                        <input type="text" wire:model.blur="vinculacoes.{{ $idx }}.numero_nfe"
-                                            class="w-24 text-xs rounded border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                                        <input type="text" wire:model.blur="vinculacoes.{{ $idx }}.id_pedido_cp"
+                                            class="w-32 text-xs rounded border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                                            placeholder="ID pedido CP">
                                     </td>
                                     <td class="px-3 py-2">
                                         <input type="text" wire:model.blur="vinculacoes.{{ $idx }}.transportadora"
