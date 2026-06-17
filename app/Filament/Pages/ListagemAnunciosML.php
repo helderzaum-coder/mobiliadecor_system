@@ -97,17 +97,17 @@ class ListagemAnunciosML extends Page
             $familias[$key]['ups'][$upKey]['items'][] = $item;
         }
 
-        // Ordenar famílias
+        // Ordenar famílias (usar margem promocional quando disponível)
         if ($this->ordenar === 'margem_asc') {
             uasort($familias, function ($a, $b) {
-                $minA = collect($a['ups'])->flatMap(fn($up) => collect($up['items']))->min('margem_pct') ?? 999;
-                $minB = collect($b['ups'])->flatMap(fn($up) => collect($up['items']))->min('margem_pct') ?? 999;
+                $minA = collect($a['ups'])->flatMap(fn($up) => collect($up['items']))->min(fn($i) => $i->preco_promocional > 0 ? $i->margem_promocional_pct : $i->margem_pct) ?? 999;
+                $minB = collect($b['ups'])->flatMap(fn($up) => collect($up['items']))->min(fn($i) => $i->preco_promocional > 0 ? $i->margem_promocional_pct : $i->margem_pct) ?? 999;
                 return $minA <=> $minB;
             });
         } elseif ($this->ordenar === 'margem_desc') {
             uasort($familias, function ($a, $b) {
-                $maxA = collect($a['ups'])->flatMap(fn($up) => collect($up['items']))->max('margem_pct') ?? 0;
-                $maxB = collect($b['ups'])->flatMap(fn($up) => collect($up['items']))->max('margem_pct') ?? 0;
+                $maxA = collect($a['ups'])->flatMap(fn($up) => collect($up['items']))->max(fn($i) => $i->preco_promocional > 0 ? $i->margem_promocional_pct : $i->margem_pct) ?? 0;
+                $maxB = collect($b['ups'])->flatMap(fn($up) => collect($up['items']))->max(fn($i) => $i->preco_promocional > 0 ? $i->margem_promocional_pct : $i->margem_pct) ?? 0;
                 return $maxB <=> $maxA;
             });
         }

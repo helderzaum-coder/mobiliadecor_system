@@ -237,6 +237,7 @@
                                 <th class="px-3 py-2 text-left">Tipo</th>
                                 <th class="px-3 py-2 text-left">SKU / Cor</th>
                                 <th class="px-3 py-2 text-right">Preço</th>
+                                <th class="px-3 py-2 text-right">Menor Promo</th>
                                 <th class="px-3 py-2 text-right">Custo</th>
                                 <th class="px-3 py-2 text-right">Frete</th>
                                 <th class="px-3 py-2 text-center">Com%</th>
@@ -248,10 +249,13 @@
                             @foreach($familia['ups'] as $upIdx => $up)
                                 @foreach($up['items'] as $item)
                                     @php
+                                        $temPromo = $item->preco_promocional && $item->preco_promocional > 0;
+                                        $margemEfetiva = $temPromo ? (float) $item->margem_promocional_pct : (float) $item->margem_pct;
+                                        $margemValorEfetivo = $temPromo ? (float) $item->margem_promocional : (float) $item->margem_valor;
                                         $margemCor = match(true) {
-                                            $item->margem_pct < 0 => '#ef4444',
-                                            $item->margem_pct < 15 => '#f97316',
-                                            $item->margem_pct < 25 => '#eab308',
+                                            $margemEfetiva < 0 => '#ef4444',
+                                            $margemEfetiva < 15 => '#f97316',
+                                            $margemEfetiva < 25 => '#eab308',
                                             default => '#22c55e',
                                         };
                                         $statusIcon = match($item->status_ml) { 'active' => '🟢', 'paused' => '🟡', 'closed' => '🔴', default => '⚪' };
@@ -281,13 +285,23 @@
                                             @endif
                                         </td>
                                         <td class="px-3 py-2 text-right font-medium text-gray-900 dark:text-gray-100">R$ {{ number_format($item->preco_venda, 2, ',', '.') }}</td>
+                                        <td class="px-3 py-2 text-right">
+                                            @if($temPromo)
+                                                <span class="font-semibold" style="color:#f59e0b;">R$ {{ number_format($item->preco_promocional, 2, ',', '.') }}</span>
+                                            @else
+                                                <span class="text-gray-400">&mdash;</span>
+                                            @endif
+                                        </td>
                                         <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400">R$ {{ number_format($item->custo_produto, 2, ',', '.') }}</td>
                                         <td class="px-3 py-2 text-right text-gray-600 dark:text-gray-400">R$ {{ number_format($item->frete, 2, ',', '.') }}</td>
                                         <td class="px-3 py-2 text-center text-gray-600 dark:text-gray-400">{{ number_format($item->comissao_pct, 1) }}%</td>
                                         <td class="px-3 py-2 text-center text-gray-600 dark:text-gray-400">{{ $item->estoque }}</td>
                                         <td class="px-3 py-2 text-right">
-                                            <span class="font-bold" style="color:{{ $margemCor }}">{{ number_format($item->margem_pct, 1) }}%</span>
-                                            <div class="text-[10px]" style="color:{{ $margemCor }}">R$ {{ number_format($item->margem_valor, 2, ',', '.') }}</div>
+                                            <span class="font-bold" style="color:{{ $margemCor }}">{{ number_format($margemEfetiva, 1) }}%</span>
+                                            <div class="text-[10px]" style="color:{{ $margemCor }}">R$ {{ number_format($margemValorEfetivo, 2, ',', '.') }}</div>
+                                            @if($temPromo)
+                                                <div class="text-[9px] text-gray-400">s/ promo: {{ number_format($item->margem_pct, 1) }}%</div>
+                                            @endif
                                         </td>
                                     </tr>
                                 @endforeach
