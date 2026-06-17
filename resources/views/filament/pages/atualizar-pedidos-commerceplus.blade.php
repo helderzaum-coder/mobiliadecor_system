@@ -100,6 +100,19 @@
 
         {{-- ETAPA 3: Vinculação --}}
         @if($etapaAtual === 3)
+            {{-- Debug da planilha --}}
+            @if(!empty($debugPlanilha))
+                <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-lg p-3 text-xs font-mono text-yellow-800 dark:text-yellow-200">
+                    <strong>DEBUG Planilha CP:</strong>
+                    Header col0: "{{ $debugPlanilha['header_colA'] ?? '' }}" |
+                    Header col{{ $debugPlanilha['colNfe_index'] ?? '?' }}: "{{ $debugPlanilha['header_colNfe'] ?? '' }}" |
+                    Total linhas: {{ $debugPlanilha['total_rows'] ?? 0 }}<br>
+                    @foreach($debugPlanilha['sample'] ?? [] as $s)
+                        {{ $s }}<br>
+                    @endforeach
+                </div>
+            @endif
+
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div class="p-4 border-b border-gray-200 dark:border-gray-700">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Etapa 3 — Vincular Pedido CP a cada NF-e</h3>

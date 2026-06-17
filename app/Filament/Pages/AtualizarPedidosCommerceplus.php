@@ -110,8 +110,12 @@ class AtualizarPedidosCommerceplus extends Page
         $this->etapaAtual = 2;
     }
 
+    // Debug: mostrar o que foi lido da planilha
+    public array $debugPlanilha = [];
+
     /**
      * Etapa 2: Importar planilha do CommercePlus
+     * Coluna A (0) = ID pedido CP | Coluna AJ (35) = Número NF-e
      */
     public function importarPlanilhaCp(): void
     {
@@ -125,43 +129,48 @@ class AtualizarPedidosCommerceplus extends Page
         $sheet = $spreadsheet->getActiveSheet();
         $rows = $sheet->toArray();
 
-        // Mapear colunas pelo cabeçalho (busca flexível)
-        $header = array_map(fn($v) => strtolower(trim($v ?? '')), $rows[0] ?? []);
-        $cols = ['id' => 0, 'nfe' => null, 'serie' => null, 'chave' => null];
+        $header = $rows[0] ?? [];
 
-        foreach ($header as $i => $col) {
-            if ($cols['id'] === 0 && (str_contains($col, 'id') || str_contains($col, 'num') && str_contains($col, 'pedido'))) {
-                $cols['id'] = $i;
-            }
-            if ($cols['nfe'] === null && (str_contains($col, 'nf') || str_contains($col, 'nota')) && !str_contains($col, 'chave') && !str_contains($col, 'serie') && !str_contains($col, 'xml') && !str_contains($col, 'url')) {
-                $cols['nfe'] = $i;
-            }
-            if ($cols['serie'] === null && str_contains($col, 'serie')) {
-                $cols['serie'] = $i;
-            }
-            if ($cols['chave'] === null && str_contains($col, 'chave')) {
-                $cols['chave'] = $i;
+        // Detectar coluna NF-e: procurar no cabeçalho ou usar AJ(35)
+        $colId = 0;   // Coluna A
+        $colNfe = 35; // Coluna AJ (fallback)
+
+        foreach ($header as $i => $colName) {
+            $lower = strtolower(trim($colName ?? ''));
+            if (str_contains($lower, 'nf') && !str_contains($lower, 'chave') && !str_contains($lower, 'xml') && !str_contains($lower, 'url') && !str_contains($lower, 'serie')) {
+                $colNfe = $i;
+                break;
             }
         }
 
-        // Fallback posicional: Coluna A=ID(0), AJ=NF-e(35)
-        if ($cols['nfe'] === null) {
-            $cols['nfe'] = 35; // Coluna AJ
-        }
-
-        Log::info('CommercePlus: colunas mapeadas', ['cols' => $cols, 'header_sample' => array_slice($header, 0, 5), 'col_nfe_header' => $header[$cols['nfe']] ?? '?']);
+        $this->debugPlanilha = [
+            'header_colA' => trim($header[$colId] ?? ''),
+            'header_colNfe' => trim($header[$colNfe] ?? ''),
+            'colNfe_index' => $colNfe,
+            'total_rows' => count($rows) - 1,
+            'sample' => [],
+        ];
 
         $this->pedidosCp = [];
         for ($i = 1; $i < count($rows); $i++) {
-            $idPedido = trim($rows[$i][$cols['id']] ?? '');
+            $idPedido = trim((string) ($rows[$i][$colId] ?? ''));
+            $nfeRaw = trim((string) ($rows[$i][$colNfe] ?? ''));
+
             if (empty($idPedido)) continue;
+
+            $nfeNumero = ltrim($nfeRaw, '0');
 
             $this->pedidosCp[] = [
                 'id_pedido_cp' => $idPedido,
-                'numero_nfe' => ltrim(trim($rows[$i][$cols['nfe']] ?? ''), '0'),
-                'serie_nfe' => trim($rows[$i][$cols['serie']] ?? '1'),
-                'chave_nfe' => trim($rows[$i][$cols['chave']] ?? ''),
+                'numero_nfe' => $nfeNumero,
+                'serie_nfe' => '1',
+                'chave_nfe' => '',
             ];
+
+            // Guardar amostra para debug
+            if (count($this->debugPlanilha['sample']) < 3) {
+                $this->debugPlanilha['sample'][] = "ID={$idPedido} | NF-e(col{$colNfe})={$nfeRaw}";
+            }
         }
 
         if (empty($this->pedidosCp)) {
