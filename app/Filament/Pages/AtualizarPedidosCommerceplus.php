@@ -38,15 +38,7 @@ class AtualizarPedidosCommerceplus extends Page
     // Etapa 4 - Planilha final
     public array $planilhaFinal = [];
 
-    // Transportadoras que usam SSW: nome (parcial) => CNPJ
-    private const TRANSPORTADORAS_SSW = [
-        'lyon' => '30223802000121',
-        'tnt' => '03789971000137',
-        'patrus' => '05765527000189',
-        'rodoviario' => '60627387000102',
-    ];
-
-    // Transportadoras que usam SSW: nome (parcial) => CNPJ
+    // Transportadoras SSW (fallback caso não estejam no cadastro)
     private const TRANSPORTADORAS_SSW = [
         'lyon' => '30223802000121',
         'tnt' => '03789971000137',
