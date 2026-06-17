@@ -46,6 +46,14 @@ class AtualizarPedidosCommerceplus extends Page
         'rodoviario' => '60627387000102',
     ];
 
+    // Transportadoras que usam SSW: nome (parcial) => CNPJ
+    private const TRANSPORTADORAS_SSW = [
+        'lyon' => '30223802000121',
+        'tnt' => '03789971000137',
+        'patrus' => '05765527000189',
+        'rodoviario' => '60627387000102',
+    ];
+
     public function mount(): void
     {
         //
@@ -224,12 +232,36 @@ class AtualizarPedidosCommerceplus extends Page
     }
 
     /**
-     * Gera URL de rastreio automaticamente para transportadoras SSW
+     * Gera URL de rastreio buscando no cadastro de transportadoras
      */
     private function gerarUrlRastreio(string $transportadora, string $nfeNumero): string
     {
+        if (empty($transportadora)) return '';
+
         $transportadoraLower = strtolower($transportadora);
 
+        // Buscar no cadastro: por nome ou aliases
+        $transp = \App\Models\Transportadora::where('ativo', true)
+            ->where('url_rastreio_template', '!=', '')
+            ->whereNotNull('url_rastreio_template')
+            ->get()
+            ->first(function ($t) use ($transportadoraLower) {
+                // Match por nome
+                if (str_contains($transportadoraLower, strtolower($t->nome_transportadora))) return true;
+                if (str_contains(strtolower($t->nome_transportadora), $transportadoraLower)) return true;
+                // Match por aliases
+                foreach ($t->aliases ?? [] as $alias) {
+                    if (str_contains($transportadoraLower, strtolower($alias))) return true;
+                    if (str_contains(strtolower($alias), $transportadoraLower)) return true;
+                }
+                return false;
+            });
+
+        if ($transp && $transp->url_rastreio_template) {
+            return str_replace('{NFE}', $nfeNumero, $transp->url_rastreio_template);
+        }
+
+        // Fallback: mapeamento hardcoded SSW
         foreach (self::TRANSPORTADORAS_SSW as $nome => $cnpj) {
             if (str_contains($transportadoraLower, $nome)) {
                 return "http://ssw.inf.br/cgi-local/tracking/{$cnpj}/{$nfeNumero}/1";

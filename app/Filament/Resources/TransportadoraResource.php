@@ -41,6 +41,11 @@ class TransportadoraResource extends Resource
                     ->label('Aliases (nomes alternativos)')
                     ->helperText('Nomes que aparecem no CT-e/Bling e devem ser agrupados sob esta transportadora')
                     ->columnSpanFull(),
+                Forms\Components\TextInput::make('url_rastreio_template')
+                    ->label('URL Rastreio (template)')
+                    ->helperText('Use {NFE} onde vai o número da nota. Ex: http://ssw.inf.br/cgi-local/tracking/30223802000121/{NFE}/1')
+                    ->placeholder('http://ssw.inf.br/cgi-local/tracking/CNPJ/{NFE}/1')
+                    ->columnSpanFull(),
                 Forms\Components\Toggle::make('ativo')
                     ->label('Ativo')
                     ->default(true),

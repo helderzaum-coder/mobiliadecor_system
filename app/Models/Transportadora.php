@@ -21,6 +21,7 @@ class Transportadora extends Model
         'nome_transportadora',
         'cnpj',
         'aliases',
+        'url_rastreio_template',
         'ativo',
         'aplica_icms',
         'cobertura_completa',
