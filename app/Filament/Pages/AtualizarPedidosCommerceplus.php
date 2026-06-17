@@ -125,16 +125,31 @@ class AtualizarPedidosCommerceplus extends Page
         $sheet = $spreadsheet->getActiveSheet();
         $rows = $sheet->toArray();
 
-        // Mapear colunas pelo cabeçalho
-        $header = array_map('strtolower', array_map('trim', $rows[0] ?? []));
+        // Mapear colunas pelo cabeçalho (busca flexível)
+        $header = array_map(fn($v) => strtolower(trim($v ?? '')), $rows[0] ?? []);
         $cols = ['id' => 0, 'nfe' => null, 'serie' => null, 'chave' => null];
 
         foreach ($header as $i => $col) {
-            if (str_contains($col, 'id')) $cols['id'] = $i;
-            if (str_contains($col, 'numero nfe') || str_contains($col, 'número nfe')) $cols['nfe'] = $i;
-            if (str_contains($col, 'serie nfe') || str_contains($col, 'série nfe')) $cols['serie'] = $i;
-            if (str_contains($col, 'chave nfe')) $cols['chave'] = $i;
+            if ($cols['id'] === 0 && (str_contains($col, 'id') || str_contains($col, 'num') && str_contains($col, 'pedido'))) {
+                $cols['id'] = $i;
+            }
+            if ($cols['nfe'] === null && (str_contains($col, 'nf') || str_contains($col, 'nota')) && !str_contains($col, 'chave') && !str_contains($col, 'serie') && !str_contains($col, 'xml') && !str_contains($col, 'url')) {
+                $cols['nfe'] = $i;
+            }
+            if ($cols['serie'] === null && str_contains($col, 'serie')) {
+                $cols['serie'] = $i;
+            }
+            if ($cols['chave'] === null && str_contains($col, 'chave')) {
+                $cols['chave'] = $i;
+            }
         }
+
+        // Fallback posicional: Coluna A=ID(0), AJ=NF-e(35)
+        if ($cols['nfe'] === null) {
+            $cols['nfe'] = 35; // Coluna AJ
+        }
+
+        Log::info('CommercePlus: colunas mapeadas', ['cols' => $cols, 'header_sample' => array_slice($header, 0, 5), 'col_nfe_header' => $header[$cols['nfe']] ?? '?']);
 
         $this->pedidosCp = [];
         for ($i = 1; $i < count($rows); $i++) {
@@ -143,7 +158,7 @@ class AtualizarPedidosCommerceplus extends Page
 
             $this->pedidosCp[] = [
                 'id_pedido_cp' => $idPedido,
-                'numero_nfe' => trim($rows[$i][$cols['nfe']] ?? ''),
+                'numero_nfe' => ltrim(trim($rows[$i][$cols['nfe']] ?? ''), '0'),
                 'serie_nfe' => trim($rows[$i][$cols['serie']] ?? '1'),
                 'chave_nfe' => trim($rows[$i][$cols['chave']] ?? ''),
             ];
