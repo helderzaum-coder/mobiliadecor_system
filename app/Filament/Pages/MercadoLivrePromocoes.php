@@ -469,6 +469,10 @@ class MercadoLivrePromocoes extends Page
             return;
         }
 
+        // Fechar painel de adesão do item anterior
+        $this->cancelarAdesao();
+        $this->aderindoPromoData = null;
+
         $itemId = trim($this->buscarItemId);
         // Adicionar prefixo MLB se não tiver
         if (!str_starts_with(strtoupper($itemId), 'MLB')) {
