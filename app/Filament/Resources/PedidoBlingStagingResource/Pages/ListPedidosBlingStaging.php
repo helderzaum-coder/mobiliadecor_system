@@ -45,6 +45,56 @@ class ListPedidosBlingStaging extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('exportar_csv')
+                ->label('Exportar CSV')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('success')
+                ->action(function () {
+                    $query = $this->getFilteredTableQuery();
+                    $records = $query->get();
+
+                    if ($records->isEmpty()) {
+                        Notification::make()->title('Nenhum registro para exportar.')->warning()->send();
+                        return;
+                    }
+
+                    $filename = 'revisao_pedidos_' . now()->format('Y-m-d_His') . '.csv';
+
+                    return response()->streamDownload(function () use ($records) {
+                        $handle = fopen('php://output', 'w');
+                        fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM UTF-8
+                        fputcsv($handle, [
+                            'Conta', 'Pedido Bling', 'Pedido Canal', 'Canal', 'Cliente',
+                            'Data', 'Total Pedido', 'Frete Cliente', 'Custo Frete',
+                            'Nota Fiscal', 'Comissão', 'Subsídio Pix', 'Imposto',
+                            'Status', 'Cidade', 'UF', 'CEP',
+                        ], ';');
+
+                        foreach ($records as $r) {
+                            fputcsv($handle, [
+                                $r->bling_account === 'primary' ? 'Mobilia Decor' : 'HES Móveis',
+                                $r->numero_pedido,
+                                $r->numero_loja,
+                                $r->canal,
+                                $r->cliente_nome,
+                                $r->data_pedido?->format('d/m/Y'),
+                                number_format((float) $r->total_pedido, 2, ',', '.'),
+                                number_format((float) $r->frete, 2, ',', '.'),
+                                number_format((float) $r->custo_frete, 2, ',', '.'),
+                                $r->nota_fiscal,
+                                number_format((float) $r->comissao_calculada, 2, ',', '.'),
+                                number_format((float) $r->subsidio_pix, 2, ',', '.'),
+                                number_format((float) $r->valor_imposto, 2, ',', '.'),
+                                $r->status,
+                                $r->dest_cidade,
+                                $r->dest_uf,
+                                $r->dest_cep,
+                            ], ';');
+                        }
+
+                        fclose($handle);
+                    }, $filename);
+                }),
             Actions\Action::make('reprocessar_impostos')
                 ->label('Reprocessar Impostos')
                 ->icon('heroicon-o-arrow-path')
