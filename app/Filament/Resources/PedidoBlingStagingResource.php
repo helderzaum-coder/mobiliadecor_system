@@ -1066,6 +1066,66 @@ class PedidoBlingStagingResource extends Resource
                             Notification::make()->title("{$excluidos} pedido(s) excluído(s).")->success()->send();
                         }
                     }),
+                Tables\Actions\BulkAction::make('desaprovar_reimportar_massa')
+                    ->label('Desaprovar e Reimportar')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Desaprovar e Reimportar em Massa')
+                    ->modalDescription('Isso vai excluir as vendas vinculadas, voltar os pedidos para pendente e rebuscar dados do ML (quando aplicável). Continuar?')
+                    ->action(function ($records) {
+                        $processados = 0;
+                        foreach ($records as $record) {
+                            if ($record->status !== 'aprovado') continue;
+
+                            \App\Models\Venda::where('bling_id', $record->bling_id)->delete();
+                            $record->update(['status' => 'pendente']);
+
+                            if (self::isML($record)) {
+                                try {
+                                    $orderId = $record->numero_loja ?? $record->numero_pedido;
+                                    $mlService = new \App\Services\MercadoLivre\MercadoLivreOrderService($record->bling_account);
+                                    $dados = $mlService->buscarDadosPedido((string) $orderId);
+
+                                    if ($dados) {
+                                        $updates = [
+                                            'ml_tipo_anuncio' => $dados['tipo_anuncio'],
+                                            'ml_tipo_frete' => $dados['tipo_frete'],
+                                            'ml_tem_rebate' => $dados['tem_rebate'],
+                                            'ml_valor_rebate' => $dados['valor_rebate'],
+                                            'ml_sale_fee' => $dados['sale_fee'],
+                                            'ml_frete_custo' => $dados['frete_ml_custo'],
+                                            'ml_frete_receita' => $dados['frete_ml_receita'],
+                                            'ml_order_id' => $dados['order_id'],
+                                            'ml_shipping_id' => $dados['shipping_id'],
+                                        ];
+
+                                        if ($dados['sale_fee'] > 0) {
+                                            $isME2Full = in_array($dados['tipo_frete'], ['ME2', 'FULL']);
+                                            if ($isME2Full) {
+                                                $freteLiquido = $dados['frete_ml_custo'] > 0 ? round($dados['frete_ml_custo'] - $dados['frete_ml_receita'], 2) : 0;
+                                                $updates['comissao_calculada'] = round($dados['sale_fee'] + $freteLiquido, 2);
+                                                $updates['custo_frete'] = 0;
+                                            } else {
+                                                $updates['comissao_calculada'] = $dados['sale_fee'];
+                                            }
+                                        }
+
+                                        $record->update($updates);
+                                    }
+                                } catch (\Exception $e) {
+                                    // continua
+                                }
+                            }
+
+                            $processados++;
+                        }
+
+                        Notification::make()
+                            ->title("{$processados} pedido(s) desaprovados e voltaram para pendente.")
+                            ->success()
+                            ->send();
+                    }),
             ]);
     }
 
