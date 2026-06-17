@@ -38,6 +38,14 @@ class AtualizarPedidosCommerceplus extends Page
     // Etapa 4 - Planilha final
     public array $planilhaFinal = [];
 
+    // Transportadoras que usam SSW: nome (parcial) => CNPJ
+    private const TRANSPORTADORAS_SSW = [
+        'lyon' => '30223802000121',
+        'tnt' => '03789971000137',
+        'patrus' => '05765527000189',
+        'rodoviario' => '60627387000102',
+    ];
+
     public function mount(): void
     {
         //
@@ -110,9 +118,6 @@ class AtualizarPedidosCommerceplus extends Page
         $this->etapaAtual = 2;
     }
 
-    // Debug: mostrar o que foi lido da planilha
-    public array $debugPlanilha = [];
-
     /**
      * Etapa 2: Importar planilha do CommercePlus
      * Coluna A (0) = ID pedido CP | Coluna AJ (35) = Número NF-e
@@ -131,9 +136,9 @@ class AtualizarPedidosCommerceplus extends Page
 
         $header = $rows[0] ?? [];
 
-        // Detectar coluna NF-e: procurar no cabeçalho ou usar AJ(35)
-        $colId = 0;   // Coluna A
-        $colNfe = 35; // Coluna AJ (fallback)
+        // Detectar coluna NF-e: procurar "nf" no cabeçalho ou fallback AJ(35)
+        $colId = 0;
+        $colNfe = 35;
 
         foreach ($header as $i => $colName) {
             $lower = strtolower(trim($colName ?? ''));
@@ -143,14 +148,6 @@ class AtualizarPedidosCommerceplus extends Page
             }
         }
 
-        $this->debugPlanilha = [
-            'header_colA' => trim($header[$colId] ?? ''),
-            'header_colNfe' => trim($header[$colNfe] ?? ''),
-            'colNfe_index' => $colNfe,
-            'total_rows' => count($rows) - 1,
-            'sample' => [],
-        ];
-
         $this->pedidosCp = [];
         for ($i = 1; $i < count($rows); $i++) {
             $idPedido = trim((string) ($rows[$i][$colId] ?? ''));
@@ -158,19 +155,12 @@ class AtualizarPedidosCommerceplus extends Page
 
             if (empty($idPedido)) continue;
 
-            $nfeNumero = ltrim($nfeRaw, '0');
-
             $this->pedidosCp[] = [
                 'id_pedido_cp' => $idPedido,
-                'numero_nfe' => $nfeNumero,
+                'numero_nfe' => ltrim($nfeRaw, '0'),
                 'serie_nfe' => '1',
                 'chave_nfe' => '',
             ];
-
-            // Guardar amostra para debug
-            if (count($this->debugPlanilha['sample']) < 3) {
-                $this->debugPlanilha['sample'][] = "ID={$idPedido} | NF-e(col{$colNfe})={$nfeRaw}";
-            }
         }
 
         if (empty($this->pedidosCp)) {
@@ -212,6 +202,7 @@ class AtualizarPedidosCommerceplus extends Page
                 'serie_nfe' => $nfe['serie'],
                 'transportadora' => $nfe['transportadora'],
                 'codigo_rastreio' => '',
+                'url_rastreio' => $this->gerarUrlRastreio($nfe['transportadora'], $nfe['numero']),
                 'id_pedido_cp' => '',
                 'vinculado' => false,
             ];
@@ -219,7 +210,6 @@ class AtualizarPedidosCommerceplus extends Page
             // Vincular pela NF-e presente na planilha CP
             if (isset($cpPorNfe[$nfeNum])) {
                 $vinc['id_pedido_cp'] = $cpPorNfe[$nfeNum]['id_pedido_cp'];
-                // Usar chave/serie da planilha CP se o Bling não retornou
                 if (empty($vinc['chave_nfe']) && !empty($cpPorNfe[$nfeNum]['chave_nfe'])) {
                     $vinc['chave_nfe'] = $cpPorNfe[$nfeNum]['chave_nfe'];
                 }
@@ -234,6 +224,22 @@ class AtualizarPedidosCommerceplus extends Page
     }
 
     /**
+     * Gera URL de rastreio automaticamente para transportadoras SSW
+     */
+    private function gerarUrlRastreio(string $transportadora, string $nfeNumero): string
+    {
+        $transportadoraLower = strtolower($transportadora);
+
+        foreach (self::TRANSPORTADORAS_SSW as $nome => $cnpj) {
+            if (str_contains($transportadoraLower, $nome)) {
+                return "http://ssw.inf.br/cgi-local/tracking/{$cnpj}/{$nfeNumero}/1";
+            }
+        }
+
+        return '';
+    }
+
+    /**
      * Etapa 3 → 4: Gerar planilha final
      */
     public function gerarPlanilha(): void
@@ -245,7 +251,7 @@ class AtualizarPedidosCommerceplus extends Page
                 'id_pedido_cp' => $vinc['id_pedido_cp'],
                 'situacao' => 'em transporte',
                 'codigo_rastreio' => $vinc['codigo_rastreio'],
-                'url_rastreio' => '',
+                'url_rastreio' => $vinc['url_rastreio'] ?? '',
                 'numero_nfe' => $vinc['numero_nfe'],
                 'serie_nfe' => $vinc['serie_nfe'],
                 'chave_nfe' => $vinc['chave_nfe'],

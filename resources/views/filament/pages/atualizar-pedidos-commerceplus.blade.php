@@ -100,19 +100,6 @@
 
         {{-- ETAPA 3: Vinculação --}}
         @if($etapaAtual === 3)
-            {{-- Debug da planilha --}}
-            @if(!empty($debugPlanilha))
-                <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-lg p-3 text-xs font-mono text-yellow-800 dark:text-yellow-200">
-                    <strong>DEBUG Planilha CP:</strong>
-                    Header col0: "{{ $debugPlanilha['header_colA'] ?? '' }}" |
-                    Header col{{ $debugPlanilha['colNfe_index'] ?? '?' }}: "{{ $debugPlanilha['header_colNfe'] ?? '' }}" |
-                    Total linhas: {{ $debugPlanilha['total_rows'] ?? 0 }}<br>
-                    @foreach($debugPlanilha['sample'] ?? [] as $s)
-                        {{ $s }}<br>
-                    @endforeach
-                </div>
-            @endif
-
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div class="p-4 border-b border-gray-200 dark:border-gray-700">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Etapa 3 — Vincular Pedido CP a cada NF-e</h3>
@@ -128,6 +115,7 @@
                                 <th class="text-left px-3 py-2 text-gray-600 dark:text-gray-300">NF-e</th>
                                 <th class="text-left px-3 py-2 text-gray-600 dark:text-gray-300">Pedido CP</th>
                                 <th class="text-left px-3 py-2 text-gray-600 dark:text-gray-300">Transportadora</th>
+                                <th class="text-left px-3 py-2 text-gray-600 dark:text-gray-300">URL Rastreio</th>
                                 <th class="text-left px-3 py-2 text-gray-600 dark:text-gray-300">Cód. Rastreio</th>
                                 <th class="text-center px-3 py-2 text-gray-600 dark:text-gray-300">Status</th>
                             </tr>
@@ -141,13 +129,15 @@
                                             class="w-32 text-xs rounded border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
                                             placeholder="ID pedido CP">
                                     </td>
+                                    <td class="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">{{ $vinc['transportadora'] }}</td>
                                     <td class="px-3 py-2">
-                                        <input type="text" wire:model.blur="vinculacoes.{{ $idx }}.transportadora"
-                                            class="w-32 text-xs rounded border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                                        <input type="text" wire:model.blur="vinculacoes.{{ $idx }}.url_rastreio"
+                                            class="w-44 text-xs rounded border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white {{ !empty($vinc['url_rastreio']) ? 'bg-green-50 dark:bg-green-900/20' : '' }}"
+                                            placeholder="{{ !empty($vinc['url_rastreio']) ? '' : 'Informar URL' }}">
                                     </td>
                                     <td class="px-3 py-2">
                                         <input type="text" wire:model.blur="vinculacoes.{{ $idx }}.codigo_rastreio"
-                                            class="w-32 text-xs rounded border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                                            class="w-28 text-xs rounded border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white">
                                     </td>
                                     <td class="px-3 py-2 text-center">
                                         @if($vinc['vinculado'])
