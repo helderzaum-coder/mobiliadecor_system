@@ -30,7 +30,7 @@ class AtualizarPedidosCommerceplus extends Page
 
     // Etapa 2 - Planilha CommercePlus
     public $planilhaCp = null;
-    public array $pedidosCp = []; // [{id_pedido_cp, ...}]
+    public array $pedidosCp = []; // [{id_pedido_cp, numero_nfe, serie_nfe, chave_nfe}]
 
     // Etapa 3 - Vinculação NF-e ↔ Pedido CP
     public array $vinculacoes = []; // [{id_pedido_cp, numero_nfe, chave_nfe, serie_nfe, transportadora, codigo_rastreio}]
@@ -125,27 +125,28 @@ class AtualizarPedidosCommerceplus extends Page
         $sheet = $spreadsheet->getActiveSheet();
         $rows = $sheet->toArray();
 
-        // Pegar cabeçalho e encontrar coluna do ID do pedido
+        // Mapear colunas pelo cabeçalho
         $header = array_map('strtolower', array_map('trim', $rows[0] ?? []));
-        $idCol = null;
-        foreach ($header as $i => $col) {
-            if (str_contains($col, 'id do pedido') || str_contains($col, 'id pedido') || $col === 'id') {
-                $idCol = $i;
-                break;
-            }
-        }
-        // Fallback: primeira coluna
-        if ($idCol === null) {
-            $idCol = 0;
-        }
+        $cols = ['id' => 0, 'nfe' => null, 'serie' => null, 'chave' => null];
 
+        foreach ($header as $i => $col) {
+            if (str_contains($col, 'id')) $cols['id'] = $i;
+            if (str_contains($col, 'numero nfe') || str_contains($col, 'número nfe')) $cols['nfe'] = $i;
+            if (str_contains($col, 'serie nfe') || str_contains($col, 'série nfe')) $cols['serie'] = $i;
+            if (str_contains($col, 'chave nfe')) $cols['chave'] = $i;
+        }
 
         $this->pedidosCp = [];
         for ($i = 1; $i < count($rows); $i++) {
-            $idPedido = trim($rows[$i][$idCol] ?? '');
-            if (!empty($idPedido)) {
-                $this->pedidosCp[] = ['id_pedido_cp' => $idPedido];
-            }
+            $idPedido = trim($rows[$i][$cols['id']] ?? '');
+            if (empty($idPedido)) continue;
+
+            $this->pedidosCp[] = [
+                'id_pedido_cp' => $idPedido,
+                'numero_nfe' => trim($rows[$i][$cols['nfe']] ?? ''),
+                'serie_nfe' => trim($rows[$i][$cols['serie']] ?? '1'),
+                'chave_nfe' => trim($rows[$i][$cols['chave']] ?? ''),
+            ];
         }
 
         if (empty($this->pedidosCp)) {
@@ -163,16 +164,24 @@ class AtualizarPedidosCommerceplus extends Page
     }
 
     /**
-     * Vinculação automática: para cada NF-e lançada, buscar o pedido CP correspondente
+     * Vinculação automática: para cada NF-e lançada, buscar o pedido CP que possui aquela NF-e
      */
     private function vincularAutomaticamente(): void
     {
         $this->vinculacoes = [];
 
-        // Indexar pedidos CP para busca rápida
-        $pedidosCpIds = collect($this->pedidosCp)->pluck('id_pedido_cp')->toArray();
+        // Indexar pedidos CP por numero_nfe para busca rápida
+        $cpPorNfe = [];
+        foreach ($this->pedidosCp as $pedido) {
+            $nfeNum = ltrim($pedido['numero_nfe'], '0');
+            if (!empty($nfeNum)) {
+                $cpPorNfe[$nfeNum] = $pedido;
+            }
+        }
 
         foreach ($this->nfesLancadas as $nfe) {
+            $nfeNum = ltrim($nfe['numero'], '0');
+
             $vinc = [
                 'numero_nfe' => $nfe['numero'],
                 'chave_nfe' => $nfe['chave'],
@@ -183,27 +192,17 @@ class AtualizarPedidosCommerceplus extends Page
                 'vinculado' => false,
             ];
 
-            // Buscar venda no sistema pela NF-e
-            $variantes = [
-                $nfe['numero'],
-                str_pad($nfe['numero'], 6, '0', STR_PAD_LEFT),
-            ];
-
-            $venda = \App\Models\Venda::where('bling_account', $this->blingAccount)
-                ->whereIn('numero_nota_fiscal', $variantes)
-                ->first();
-
-            if ($venda && $venda->numero_pedido_canal) {
-                $numeroPedidoCanal = $venda->numero_pedido_canal;
-
-                // Verificar se esse pedido está na planilha CP
-                if (in_array($numeroPedidoCanal, $pedidosCpIds)) {
-                    $vinc['id_pedido_cp'] = $numeroPedidoCanal;
-                    $vinc['vinculado'] = true;
-                } else {
-                    // Usar mesmo assim, pode ser que o formato difira
-                    $vinc['id_pedido_cp'] = $numeroPedidoCanal;
+            // Vincular pela NF-e presente na planilha CP
+            if (isset($cpPorNfe[$nfeNum])) {
+                $vinc['id_pedido_cp'] = $cpPorNfe[$nfeNum]['id_pedido_cp'];
+                // Usar chave/serie da planilha CP se o Bling não retornou
+                if (empty($vinc['chave_nfe']) && !empty($cpPorNfe[$nfeNum]['chave_nfe'])) {
+                    $vinc['chave_nfe'] = $cpPorNfe[$nfeNum]['chave_nfe'];
                 }
+                if (empty($vinc['serie_nfe']) && !empty($cpPorNfe[$nfeNum]['serie_nfe'])) {
+                    $vinc['serie_nfe'] = $cpPorNfe[$nfeNum]['serie_nfe'];
+                }
+                $vinc['vinculado'] = true;
             }
 
             $this->vinculacoes[] = $vinc;
