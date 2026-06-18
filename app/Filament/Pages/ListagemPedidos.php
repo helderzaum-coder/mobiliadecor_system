@@ -252,6 +252,10 @@ class ListagemPedidos extends Page
                 $nome = $sitMap[$sitId] ?? ('ID ' . $sitId);
                 Cache::store('file')->put($cacheKey, $nome, 600);
                 $resultado[$pedido->bling_id] = $nome;
+            } elseif (($response['http_code'] ?? 0) === 404) {
+                // Pedido não existe mais no Bling — marcar como rejeitado
+                $pedido->update(['status' => 'rejeitado']);
+                $resultado[$pedido->bling_id] = 'Removido do Bling';
             } else {
                 $sitMap = $pedido->bling_account === 'primary' ? $mapPrimary : $mapSecondary;
                 $resultado[$pedido->bling_id] = $sitMap[$pedido->situacao_id] ?? ('ID ' . ($pedido->situacao_id ?? '—'));
