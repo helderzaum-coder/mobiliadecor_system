@@ -337,12 +337,12 @@ class MercadoLivrePromocoes extends Page
             return;
         }
 
-        // Validar preço mínimo aceito pelo ML (max_discounted_price) - apenas aviso
+        // Avisar quando preço está acima do min aceito pelo ML (ML pode aplicar o min automaticamente)
         $maxDiscounted = (float) ($this->aderindoPromoData['max_discounted_price'] ?? $this->aderindoInfo['max_discounted_price'] ?? 0);
-        if ($maxDiscounted > 0 && $this->aderindoPreco < $maxDiscounted) {
+        if ($maxDiscounted > 0 && $this->aderindoPreco > $maxDiscounted) {
             Notification::make()
-                ->title('Atenção: preço abaixo do mín. sugerido pelo ML')
-                ->body("Mín. sugerido: R$ " . number_format($maxDiscounted, 2, ',', '.') . ". Tentando aderir com R$ " . number_format($this->aderindoPreco, 2, ',', '.') . ".")
+                ->title('Atenção: ML pode aplicar preço diferente')
+                ->body("Você informou R$ " . number_format($this->aderindoPreco, 2, ',', '.') . " mas o ML aceita até R$ " . number_format($maxDiscounted, 2, ',', '.') . ". O ML pode aderir com R$ " . number_format($maxDiscounted, 2, ',', '.') . " ao invés do valor informado.")
                 ->warning()
                 ->send();
         }
