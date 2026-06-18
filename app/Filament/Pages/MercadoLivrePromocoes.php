@@ -337,15 +337,14 @@ class MercadoLivrePromocoes extends Page
             return;
         }
 
-        // Validar preço mínimo aceito pelo ML (max_discounted_price)
+        // Validar preço mínimo aceito pelo ML (max_discounted_price) - apenas aviso
         $maxDiscounted = (float) ($this->aderindoPromoData['max_discounted_price'] ?? $this->aderindoInfo['max_discounted_price'] ?? 0);
         if ($maxDiscounted > 0 && $this->aderindoPreco < $maxDiscounted) {
             Notification::make()
-                ->title('Preço abaixo do mínimo aceito pelo ML')
-                ->body("Preço mínimo: R$ " . number_format($maxDiscounted, 2, ',', '.') . ". Você informou R$ " . number_format($this->aderindoPreco, 2, ',', '.') . ".")
-                ->danger()
+                ->title('Atenção: preço abaixo do mín. sugerido pelo ML')
+                ->body("Mín. sugerido: R$ " . number_format($maxDiscounted, 2, ',', '.') . ". Tentando aderir com R$ " . number_format($this->aderindoPreco, 2, ',', '.') . ".")
+                ->warning()
                 ->send();
-            return;
         }
 
         $service = new MercadoLivrePromotionService($this->accountKey);
