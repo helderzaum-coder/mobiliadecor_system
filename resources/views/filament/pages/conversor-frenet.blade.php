@@ -37,7 +37,6 @@
                         <tr class="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                             <th class="px-3 py-2 text-left font-semibold">ID</th>
                             <th class="px-3 py-2 text-left font-semibold">Data</th>
-                            <th class="px-3 py-2 text-left font-semibold">Etiqueta</th>
                             <th class="px-3 py-2 text-left font-semibold">Destinatário</th>
                             <th class="px-3 py-2 text-left font-semibold">Cidade/UF</th>
                             <th class="px-3 py-2 text-left font-semibold">Modalidade</th>
@@ -50,7 +49,6 @@
                             <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                                 <td class="px-3 py-2 font-mono" x-text="r.id"></td>
                                 <td class="px-3 py-2" x-text="r.data"></td>
-                                <td class="px-3 py-2 font-mono" x-text="r.etiqueta"></td>
                                 <td class="px-3 py-2" x-text="r.destinatario"></td>
                                 <td class="px-3 py-2" x-text="r.cidadeUf"></td>
                                 <td class="px-3 py-2" x-text="r.modalidade"></td>
@@ -84,21 +82,24 @@
                         bloco = bloco.trim();
                         if (!bloco) continue;
 
-                        const linhas = bloco.split('\n')
+                        let linhas = bloco.split('\n')
                             .map(l => l.trim())
-                            .filter(l => l.length > 0 && l.toLowerCase() !== 'proteção' && l.toLowerCase() !== 'protecao');
-                        if (linhas.length < 8) continue;
+                            .filter(l => l.length > 0);
+
+                        // Remover linha "Proteção" (seguro de envio)
+                        linhas = linhas.filter(l => !/^prote[cç][aã]o$/i.test(l));
+
+                        if (linhas.length < 7) continue;
                         if (!linhas[0].toUpperCase().startsWith('ID:')) continue;
 
                         this.registros.push({
                             id: linhas[0].replace(/^ID:\s*/i, '').trim(),
                             data: linhas[1],
-                            etiqueta: linhas[2],
-                            destinatario: linhas[3],
-                            cidadeUf: linhas[4],
-                            modalidade: linhas[5],
-                            preco: linhas[6],
-                            status: linhas[7]
+                            destinatario: linhas[2],
+                            cidadeUf: linhas[3],
+                            modalidade: linhas[4],
+                            preco: linhas[5],
+                            status: linhas[6]
                         });
                     }
                 },
@@ -111,10 +112,10 @@
 
                 exportarCSV() {
                     if (!this.registros.length) return;
-                    const colunas = ['ID', 'Data', 'Etiqueta', 'Destinatario', 'Cidade/UF', 'Modalidade', 'Preco', 'Status'];
+                    const colunas = ['ID', 'Data', 'Destinatario', 'Cidade/UF', 'Modalidade', 'Preco', 'Status'];
                     let csv = colunas.join(';') + '\n';
                     this.registros.forEach(r => {
-                        csv += [r.id, r.data, r.etiqueta, r.destinatario, r.cidadeUf, r.modalidade, r.preco, r.status]
+                        csv += [r.id, r.data, r.destinatario, r.cidadeUf, r.modalidade, r.preco, r.status]
                             .map(v => `"${v.replace(/"/g, '""')}"`)
                             .join(';') + '\n';
                     });
