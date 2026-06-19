@@ -298,15 +298,42 @@ class VendaRecalculoService
         }
 
         $comissao = (float) $dado->comissao;
+        $valorOriginal = (float) $dado->valor_original;
+        $valorComDesconto = (float) $dado->valor_com_desconto;
+        $valorPedido = (float) $dado->valor_pedido;
 
-        $venda->update([
+        // Se MM deu desconto por conta própria, seller recebe valor original
+        $subsidioMM = 0;
+        if ($valorOriginal > 0 && $valorComDesconto > 0 && $valorOriginal > $valorComDesconto) {
+            $subsidioMM = round($valorOriginal - $valorComDesconto, 2);
+        }
+
+        // Usar valor original como receita real do seller
+        $totalReal = $valorOriginal > 0 ? $valorOriginal : $valorPedido;
+
+        $updates = [
             'comissao' => $comissao,
             'planilha_processada' => true,
-        ]);
+        ];
 
+        if ($totalReal > 0) {
+            $updates['total_produtos'] = $totalReal;
+            $updates['valor_total_venda'] = $totalReal;
+        }
+
+        if ($subsidioMM > 0) {
+            $updates['subsidio_magalu'] = $subsidioMM;
+        }
+
+        $venda->update($updates);
         self::recalcularMargens($venda);
 
-        return ['success' => true, 'msg' => "Planilha MM aplicada. Comissão: R$ " . number_format($comissao, 2, ',', '.')];
+        $msg = "Planilha MM aplicada. Comissão: R$ " . number_format($comissao, 2, ',', '.');
+        if ($subsidioMM > 0) {
+            $msg .= " | Subsídio MM: R$ " . number_format($subsidioMM, 2, ',', '.') . " (desconto absorvido)";
+        }
+
+        return ['success' => true, 'msg' => $msg];
     }
 
     /**
@@ -437,7 +464,8 @@ class VendaRecalculoService
         // - Outros: somar no lucro
         $isShopee = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'shopee');
         $isMagalu = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
-        $subsidioNoLucro = ($isShopee || $isMagalu) ? 0 : $subsidioPix;
+        $isMadeiraMadeira = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'madeira');
+        $subsidioNoLucro = ($isShopee || $isMagalu || $isMadeiraMadeira) ? 0 : $subsidioPix;
         $subsidioMagalu = (float) ($venda->subsidio_magalu ?? 0);
 
         $margemVendaTotal = $margemProduto + $margemFrete + $subsidioNoLucro + $subsidioMagalu;
