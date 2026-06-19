@@ -279,23 +279,37 @@ class ImportarFrenet extends Page
             $nome = trim($frete->destinatario);
             if (!$nome) continue;
 
-            // Buscar vendas com esse nome de cliente que ainda não tem frete pago
-            $vendas = Venda::where('cliente_nome', $nome)
-                ->where(fn ($q) => $q->where('frete_pago', false)->orWhereNull('frete_pago'))
-                ->where(fn ($q) => $q->where('cancelada', false)->orWhereNull('cancelada'))
-                ->get();
+            // 1. Buscar em vendas aprovadas
+            $venda = $this->buscarVendaUnicaPorNome($nome);
 
-            // Só vincular se tem exatamente 1 venda pendente para esse cliente
-            if ($vendas->count() !== 1) continue;
+            // 2. Se não achou em vendas, buscar no staging (pendentes)
+            if (!$venda) {
+                $staging = \App\Models\PedidoBlingStaging::where('cliente_nome', $nome)
+                    ->where(fn ($q) => $q->where('status', 'pendente')->orWhere('status', 'aprovado'))
+                    ->get();
 
-            $venda = $vendas->first();
+                // Só vincular se tem exatamente 1 staging para esse cliente
+                if ($staging->count() !== 1) continue;
 
-            // Verificar se é 1ª venda (cliente só aparece 1x no sistema)
-            $totalVendasCliente = Venda::where('cliente_nome', $nome)
-                ->where(fn ($q) => $q->where('cancelada', false)->orWhereNull('cancelada'))
-                ->count();
+                // Verificar se é 1ª venda (só 1 registro total no staging + vendas)
+                $totalVendas = \App\Models\Venda::where('cliente_nome', $nome)
+                    ->where(fn ($q) => $q->where('cancelada', false)->orWhereNull('cancelada'))
+                    ->count();
+                $totalStaging = $staging->count();
 
-            if ($totalVendasCliente !== 1) continue;
+                if (($totalVendas + $totalStaging) !== 1) continue;
+
+                // Aprovar o staging para criar a venda
+                $stg = $staging->first();
+                try {
+                    \App\Services\AprovacaoVendaService::aprovar($stg);
+                    $venda = \App\Models\Venda::where('bling_id', $stg->bling_id)->first();
+                } catch (\Throwable $e) {
+                    continue;
+                }
+            }
+
+            if (!$venda) continue;
 
             // Vincular
             $frete->update([
@@ -318,6 +332,26 @@ class ImportarFrenet extends Page
         }
 
         return $vinculados;
+    }
+
+    private function buscarVendaUnicaPorNome(string $nome): ?Venda
+    {
+        // Buscar vendas com frete pendente
+        $vendas = Venda::where('cliente_nome', $nome)
+            ->where(fn ($q) => $q->where('frete_pago', false)->orWhereNull('frete_pago'))
+            ->where(fn ($q) => $q->where('cancelada', false)->orWhereNull('cancelada'))
+            ->get();
+
+        if ($vendas->count() !== 1) return null;
+
+        // Verificar se é 1ª venda
+        $totalVendasCliente = Venda::where('cliente_nome', $nome)
+            ->where(fn ($q) => $q->where('cancelada', false)->orWhereNull('cancelada'))
+            ->count();
+
+        if ($totalVendasCliente !== 1) return null;
+
+        return $vendas->first();
     }
 
     public function autoVincularPendentes(): void
