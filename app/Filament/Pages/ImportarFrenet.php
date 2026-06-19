@@ -92,7 +92,10 @@ class ImportarFrenet extends Page
         }
 
         if ($novos > 0) {
-            Notification::make()->title("{$novos} frete(s) importado(s). {$duplicados} duplicado(s) ignorado(s).")->success()->send();
+            // Auto-vincular fretes de clientes 1ª venda
+            $autoVinculados = $this->autoVincularPrimeiraVenda();
+            $msgAuto = $autoVinculados > 0 ? " | {$autoVinculados} auto-vinculado(s) (1ª venda)" : '';
+            Notification::make()->title("{$novos} frete(s) importado(s). {$duplicados} duplicado(s) ignorado(s).{$msgAuto}")->success()->send();
         } else {
             Notification::make()->title("Nenhum frete novo. {$duplicados} duplicado(s).")->warning()->send();
         }
@@ -265,6 +268,56 @@ class ImportarFrenet extends Page
         $this->modalFrenetId   = null;
         $this->modalVendaDados = null;
         $this->modalTipoPendente = null;
+    }
+
+    private function autoVincularPrimeiraVenda(): int
+    {
+        $fretesPendentes = FrenetFrete::where('utilizado', false)->get();
+        $vinculados = 0;
+
+        foreach ($fretesPendentes as $frete) {
+            $nome = trim($frete->destinatario);
+            if (!$nome) continue;
+
+            // Buscar vendas com esse nome de cliente que ainda não tem frete pago
+            $vendas = Venda::where('cliente_nome', $nome)
+                ->where(fn ($q) => $q->where('frete_pago', false)->orWhereNull('frete_pago'))
+                ->where(fn ($q) => $q->where('cancelada', false)->orWhereNull('cancelada'))
+                ->get();
+
+            // Só vincular se tem exatamente 1 venda pendente para esse cliente
+            if ($vendas->count() !== 1) continue;
+
+            $venda = $vendas->first();
+
+            // Verificar se é 1ª venda (cliente só aparece 1x no sistema)
+            $totalVendasCliente = Venda::where('cliente_nome', $nome)
+                ->where(fn ($q) => $q->where('cancelada', false)->orWhereNull('cancelada'))
+                ->count();
+
+            if ($totalVendasCliente !== 1) continue;
+
+            // Vincular
+            $frete->update([
+                'utilizado' => true,
+                'venda_id' => $venda->id_venda,
+            ]);
+
+            $totalFrete = FrenetFrete::where('venda_id', $venda->id_venda)
+                ->where('tipo', 'entrega')
+                ->sum('valor_frete');
+
+            $venda->update([
+                'valor_frete_transportadora' => round($totalFrete, 2),
+                'frete_pago' => true,
+                'transportadora_manual' => $frete->modalidade,
+            ]);
+
+            \App\Services\VendaRecalculoService::recalcularMargens($venda);
+            $vinculados++;
+        }
+
+        return $vinculados;
     }
 
     public function desvincular(int $frenetId): void
