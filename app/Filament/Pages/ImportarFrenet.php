@@ -186,11 +186,17 @@ class ImportarFrenet extends Page
 
     private function montarDadosModal(FrenetFrete $frete, Venda $venda): array
     {
+        $nfe = $venda->numero_nota_fiscal;
+        if (!$nfe && $venda->nfe_chave_acesso) {
+            // Extrair número da chave (posição 25-33 da chave de 44 dígitos)
+            $nfe = 'Chave: ...' . substr($venda->nfe_chave_acesso, -10);
+        }
+
         return [
             'id_venda'            => $venda->id_venda,
             'numero_pedido_canal' => $venda->numero_pedido_canal,
             'cliente_nome'        => $venda->cliente_nome,
-            'nota_fiscal'         => $venda->numero_nota_fiscal ?: 'N/A',
+            'nota_fiscal'         => $nfe ?: 'N/A',
             'canal'               => $venda->canal_nome,
             'valor_total'         => number_format((float) $venda->valor_total_venda, 2, ',', '.'),
             'data_venda'          => $venda->data_venda?->format('d/m/Y'),
