@@ -5,8 +5,9 @@
             <p class="font-semibold text-blue-800 dark:text-blue-300 mb-2">📋 Como usar:</p>
             <ol class="list-decimal list-inside space-y-1 text-blue-700 dark:text-blue-400">
                 <li>Acesse <a href="https://painel.frenet.com.br/Order/LabelCart" target="_blank" class="underline font-medium">painel.frenet.com.br/Order/LabelCart</a></li>
-                <li>Filtre por <strong>Período</strong> e <strong>Pedidos Frenet</strong></li>
-                <li>Selecione todo o texto da listagem (Ctrl+A) e copie (Ctrl+C)</li>
+                <li>Filtre por <strong>Período</strong> desejado</li>
+                <li>No filtro <strong>Status</strong>, selecione: <span class="font-medium">Aguardando postagem</span>, <span class="font-medium">Em trânsito</span>, <span class="font-medium">Entregue</span>, <span class="font-medium">Extraviado</span> e <span class="font-medium">Postado</span></li>
+                <li>Selecione todo o texto da listagem (<kbd>Ctrl+A</kbd>) e copie (<kbd>Ctrl+C</kbd>)</li>
                 <li>Cole no campo abaixo e clique em <strong>Converter</strong></li>
             </ol>
         </div>
@@ -83,7 +84,9 @@
                         bloco = bloco.trim();
                         if (!bloco) continue;
 
-                        const linhas = bloco.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                        const linhas = bloco.split('\n')
+                            .map(l => l.trim())
+                            .filter(l => l.length > 0 && l.toLowerCase() !== 'proteção' && l.toLowerCase() !== 'protecao');
                         if (linhas.length < 8) continue;
                         if (!linhas[0].toUpperCase().startsWith('ID:')) continue;
 
