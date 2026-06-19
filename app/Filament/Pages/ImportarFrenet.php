@@ -49,17 +49,16 @@ class ImportarFrenet extends Page
             if ($linha === '') continue;
 
             $cols = str_getcsv($linha, $sep);
-            // Colunas: ID | Data | Etiqueta | Destinatario | Cidade/UF | Modalidade | Preco | Status
+            // Colunas: ID | Data | Destinatario | Cidade/UF | Modalidade | Preco | Status
             if (count($cols) < 7) continue;
 
             $frenetId    = trim($cols[0]);
             $dataStr     = trim($cols[1]);
-            $etiqueta    = trim($cols[2]);
-            $destinatario = trim($cols[3]);
-            $cidadeUf    = trim($cols[4]);
-            $modalidade  = trim($cols[5]);
-            $precoRaw    = trim($cols[6]);
-            $status      = trim($cols[7] ?? '');
+            $destinatario = trim($cols[2]);
+            $cidadeUf    = trim($cols[3]);
+            $modalidade  = trim($cols[4]);
+            $precoRaw    = trim($cols[5]);
+            $status      = trim($cols[6] ?? '');
 
             if (empty($frenetId)) continue;
 
@@ -82,7 +81,6 @@ class ImportarFrenet extends Page
             FrenetFrete::create([
                 'frenet_id'    => $frenetId,
                 'data_envio'   => $data,
-                'etiqueta'     => $etiqueta,
                 'destinatario' => $destinatario,
                 'cidade_uf'    => $cidadeUf,
                 'modalidade'   => $modalidade,
