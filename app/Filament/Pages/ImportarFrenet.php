@@ -320,6 +320,16 @@ class ImportarFrenet extends Page
         return $vinculados;
     }
 
+    public function autoVincularPendentes(): void
+    {
+        $vinculados = $this->autoVincularPrimeiraVenda();
+        if ($vinculados > 0) {
+            Notification::make()->title("{$vinculados} frete(s) auto-vinculado(s) (1ª venda)")->success()->send();
+        } else {
+            Notification::make()->title('Nenhum frete pendente pôde ser auto-vinculado.')->warning()->send();
+        }
+    }
+
     public function desvincular(int $frenetId): void
     {
         $frete = FrenetFrete::find($frenetId);

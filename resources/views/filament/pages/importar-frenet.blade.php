@@ -72,6 +72,11 @@
                 style="{{ $filtro === 'todos' ? 'background:#2563eb;color:#fff;' : 'background:#374151;color:#d1d5db;' }}padding:6px 16px;font-size:13px;border-radius:6px;border:none;cursor:pointer;">
                 Todos
             </button>
+            <button wire:click="autoVincularPendentes" wire:loading.attr="disabled"
+                wire:confirm="Tentar vincular automaticamente todos os fretes pendentes de clientes com 1ª venda?"
+                style="background:#7c3aed;color:#fff;padding:6px 16px;font-size:13px;border-radius:6px;border:none;cursor:pointer;margin-left:8px;">
+                🔗 Auto-vincular 1ª Venda
+            </button>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
