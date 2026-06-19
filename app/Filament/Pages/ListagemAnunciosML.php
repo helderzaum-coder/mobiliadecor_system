@@ -35,17 +35,18 @@ class ListagemAnunciosML extends Page
 
     public function getFamiliasProperty()
     {
+        // Exigir busca ou filtro específico para não carregar 1500+ registros
+        if (!$this->busca && !$this->filtroMargem && !$this->filtroCatalogo) {
+            return [];
+        }
+
         $query = RelatorioMargemML::query();
 
         if ($this->filtroAccount) {
             $query->where('account_key', $this->filtroAccount);
         }
-        if ($this->filtroStatus === 'active') {
-            $query->where('status_ml', 'active');
-        } elseif ($this->filtroStatus === 'paused') {
-            $query->where('status_ml', 'paused');
-        } elseif ($this->filtroStatus === 'closed') {
-            $query->where('status_ml', 'closed');
+        if ($this->filtroStatus) {
+            $query->where('status_ml', $this->filtroStatus);
         }
         if ($this->filtroCatalogo === 'sim') {
             $query->where('is_catalog_listing', true);

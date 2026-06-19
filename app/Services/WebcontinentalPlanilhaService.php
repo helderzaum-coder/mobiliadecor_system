@@ -12,15 +12,21 @@ class WebcontinentalPlanilhaService
     /**
      * Processa planilha de pedidos da Webcontinental.
      *
-     * Colunas relevantes:
-     * D = Pedido Parceiro (chave para vincular)
-     * F = Pedido ERP (numero_loja no Bling)
-     * J = Total do Pedido
-     * K = Valor do Frete
-     * L = Valor dos Produtos
-     * M = Desconto Total do Pedido
-     * N = Valor Repasse
-     * O = Valor de Comissão Retido
+     * Colunas mapeadas (atualizado Jun/2026):
+     * A = Parceiro Portal
+     * B = Parceiro
+     * C = ERP Parceiro
+     * D = Pedido Parceiro
+     * E = Pedido Site
+     * F = Pedido ERP (chave principal para vincular)
+     * G = Cliente
+     * H = CPF
+     * I = Total do Pedido
+     * J = Valor do Frete
+     * K = Valor dos Produtos
+     * L = Desconto Total do Pedido
+     * M = Valor Repasse
+     * N = Valor Comissão Retido
      */
     public static function processar(string $filePath): array
     {
@@ -57,8 +63,9 @@ class WebcontinentalPlanilhaService
             $pedidoErp = trim($row['F'] ?? '');
             $pedidoSite = trim($row['E'] ?? '');
             $pedidoParceiro = trim($row['D'] ?? '');
+            $erpParceiro = trim($row['C'] ?? '');
 
-            if (empty($pedidoErp) && empty($pedidoSite) && empty($pedidoParceiro)) {
+            if (empty($pedidoErp) && empty($pedidoSite) && empty($pedidoParceiro) && empty($erpParceiro)) {
                 continue;
             }
 
@@ -127,12 +134,12 @@ class WebcontinentalPlanilhaService
             }
 
             try {
-                $totalPedido = self::parseDecimal($row['J'] ?? 0);
-                $frete = self::parseDecimal($row['K'] ?? 0);
-                $totalProdutos = self::parseDecimal($row['L'] ?? 0);
-                $desconto = abs(self::parseDecimal($row['M'] ?? 0));
-                $valorRepasse = self::parseDecimal($row['N'] ?? 0);
-                $comissaoRetida = self::parseDecimal($row['O'] ?? 0);
+                $totalPedido = self::parseDecimal($row['I'] ?? 0);
+                $frete = self::parseDecimal($row['J'] ?? 0);
+                $totalProdutos = self::parseDecimal($row['K'] ?? 0);
+                $desconto = abs(self::parseDecimal($row['L'] ?? 0));
+                $valorRepasse = self::parseDecimal($row['M'] ?? 0);
+                $comissaoRetida = self::parseDecimal($row['N'] ?? 0);
 
                 // Validar comissão: (Produtos + Frete + Desconto) * 22%
                 $baseComissao = $totalProdutos + $frete + $desconto;

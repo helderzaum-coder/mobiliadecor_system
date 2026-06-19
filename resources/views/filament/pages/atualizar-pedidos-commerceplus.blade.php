@@ -65,9 +65,9 @@
                 <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Etapa 2 — Importar Planilha do CommercePlus</h3>
                 <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4 text-sm text-blue-800 dark:text-blue-200">
                     <strong>📋 Tutorial:</strong> Baixe a planilha do CommercePlus em:<br>
-                    <a href="https://commerceplus.com.br/control#pedido-all=like-;order-dt%20desc;limit-0,25;filter-(canal:)|(marketplace_idmarketplace:)|(configmarketplace_idconfigmarketplace:)|(mlconta_idmlconta:)|(admin_idadmin:)|(idstatusfinanceiro:3)|(idsituacaoentrega:1)|(statusgeral:)|(etiquetamelhorenviogerada:)|(tiderp:)|(mlfull:)|(statusetiquetameli:)|(statuscheckout:)|(nfpendente:)|(tipo:)|(uf:)|(mldtenvio:)|(itemsemvinculo:)|(atacado:);page-1"
+                    <a href="https://commerceplus.com.br/control#pedido-list=like-;order-dt%20desc;limit-0,25;filter-(canal:)|(marketplace_idmarketplace:)|(configmarketplace_idconfigmarketplace:)|(mlconta_idmlconta:)|(admin_idadmin:)|(idstatusfinanceiro:3)|(idsituacaoentrega:3)|(statusgeral:)|(etiquetamelhorenviogerada:)|(tiderp:)|(mlfull:)|(statusetiquetameli:)|(statuscheckout:)|(nfpendente:)|(tipo:)|(uf:)|(mldtenvio:)|(itemsemvinculo:)|(atacado:);page-1"
                        target="_blank" class="text-blue-600 dark:text-blue-300 underline break-all">
-                        CommercePlus → Pedidos (financeiro: pago, entrega: pendente)
+                        CommercePlus → Pedidos (Status Financeiro: pago, Situação da Entrega: Preparando envio)
                     </a><br>
                     Faça o download como XLS e importe aqui.
                 </div>

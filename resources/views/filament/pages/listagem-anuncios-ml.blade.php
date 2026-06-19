@@ -311,7 +311,11 @@
                 </div>
             @empty
                 <div class="p-8 text-center text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-xl">
-                    Nenhuma família encontrada.
+                    @if(!$this->busca && !$this->filtroMargem && !$this->filtroCatalogo)
+                        Use a busca ou filtros (margem/catálogo) para carregar as famílias.
+                    @else
+                        Nenhuma família encontrada.
+                    @endif
                 </div>
             @endforelse
         </div>
