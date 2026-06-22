@@ -76,7 +76,7 @@
                 <button wire:click="buscarPorFamily" wire:loading.attr="disabled"
                     class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
                     <span wire:loading.remove wire:target="buscarPorFamily">Buscar</span>
-                    <span wire:loading wire:target="buscarPorFamily">Buscando...</span>
+                    <span wire:loading wire:target="buscarPorFamily">Enviando...</span>
                 </button>
                 @if(!empty($this->familyResultados))
                 <button wire:click="limparFamily" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300">
@@ -84,6 +84,13 @@
                 </button>
                 @endif
             </div>
+
+            @if($this->familyBuscando)
+            <div class="mt-3 flex items-center gap-2 text-sm text-blue-500" wire:poll.2s="verificarResultadoFamily">
+                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                Buscando dados na API do Mercado Livre... aguarde.
+            </div>
+            @endif
 
             {{-- Resultados da busca em tempo real --}}
             @if(!empty($this->familyResultados))
