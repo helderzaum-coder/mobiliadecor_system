@@ -220,6 +220,12 @@
                                                 <span>Custo</span>
                                                 <span class="text-red-400">-R$ {{ number_format($item->custo_produto, 2, ',', '.') }}</span>
                                             </div>
+                                            @if(($promo['meli_pct'] ?? 0) > 0)
+                                            <div class="flex justify-between">
+                                                <span>Rebate ({{ $promo['meli_pct'] }}%)</span>
+                                                <span class="text-green-400">+R$ {{ number_format($pp * (float)($promo['meli_pct'] ?? 0) / 100, 2, ',', '.') }}</span>
+                                            </div>
+                                            @endif
                                         </div>
 
                                         <div class="text-center py-1.5 rounded {{ ($promo['margem_pct'] ?? 0) >= 15 ? 'bg-green-900/30' : (($promo['margem_pct'] ?? 0) >= 0 ? 'bg-yellow-900/30' : 'bg-red-900/30') }}">

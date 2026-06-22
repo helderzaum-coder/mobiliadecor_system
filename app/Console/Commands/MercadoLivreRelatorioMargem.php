@@ -99,7 +99,8 @@ class MercadoLivreRelatorioMargem extends Command
                 if (!empty($r['promocoes'])) {
                     foreach ($r['promocoes'] as $p) {
                         $pColor = ($p['margem_pct'] ?? 0) >= 15 ? 'info' : (($p['margem_pct'] ?? 0) >= 0 ? 'comment' : 'error');
-                        $this->line("    🏷️  {$p['nome']} ({$p['tipo']}/{$p['status']}) → R$ {$p['preco']} → Margem: R$ {$p['margem_valor']} ({$p['margem_pct']}%)");
+                        $rebateStr = !empty($p['rebate']) ? " | Rebate: {$p['rebate']}" : '';
+                        $this->line("    🏷️  {$p['nome']} ({$p['tipo']}/{$p['status']}) → R$ {$p['preco']}{$rebateStr} → Margem: R$ {$p['margem_valor']} ({$p['margem_pct']}%)");
                     }
                 }
             }
@@ -270,7 +271,8 @@ class MercadoLivreRelatorioMargem extends Command
                     $comPromoValor = $comPromo['valor'] ?? round($pp * $comissaoPct / 100, 2);
                     $impPromo = round($pp * $this->impostoPct / 100, 2);
                     $antPromo = round($pp * $antecipacaoPct / 100, 2);
-                    $promoMargem = round($pp - $comPromoValor - $frete - $antPromo - $impPromo - $custo, 2);
+                    $rebatePromo = round($pp * (float) ($promo['meli_percentage'] ?? 0) / 100, 2);
+                    $promoMargem = round($pp - $comPromoValor - $frete - $antPromo - $impPromo - $custo + $rebatePromo, 2);
                     $promoMargemPct = $pp > 0 ? round(($promoMargem / $pp) * 100, 2) : 0;
 
                     sleep(1); // Rate limit
@@ -283,6 +285,7 @@ class MercadoLivreRelatorioMargem extends Command
                     'preco' => $pp,
                     'meli_pct' => $promo['meli_percentage'] ?? 0,
                     'seller_pct' => $promo['seller_percentage'] ?? 0,
+                    'rebate_valor' => $rebatePromo ?? 0,
                     'margem_valor' => $promoMargem,
                     'margem_pct' => $promoMargemPct,
                     'inicio' => $promo['start_date'] ?? null,
@@ -350,6 +353,7 @@ class MercadoLivreRelatorioMargem extends Command
                     'tipo' => $p['tipo'],
                     'status' => $p['status'],
                     'preco' => $p['preco'] ? number_format($p['preco'], 2, ',', '.') : '—',
+                    'rebate' => ($p['meli_pct'] ?? 0) > 0 ? "+{$p['meli_pct']}% (R$ " . number_format($p['rebate_valor'] ?? 0, 2, ',', '.') . ')' : '',
                     'margem_valor' => $p['margem_valor'] !== null ? number_format($p['margem_valor'], 2, ',', '.') : '—',
                     'margem_pct' => $p['margem_pct'] !== null ? number_format($p['margem_pct'], 1) : '—',
                 ])->toArray(),
