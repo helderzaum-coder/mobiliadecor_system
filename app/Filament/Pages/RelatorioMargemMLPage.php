@@ -101,25 +101,21 @@ class RelatorioMargemMLPage extends Page
                 return;
             }
 
-            // Buscar imposto e antecipação
             $idCnpj = $accountKey === 'secondary' ? 2 : 1;
             $impostoPct = $this->getImpostoPctCalc($idCnpj);
             $antecipacaoPct = $this->antecipacao_pct;
 
-            // Buscar itens da family via user_product
             $tokenModel = MercadoLivreToken::where('account_key', $accountKey)->first();
             $userId = $tokenModel?->user_id ?? config("mercadolivre.accounts.{$accountKey}.user_id");
 
-            // Buscar itens pelo family_id (via search com catalog_product_id ou family)
+            // 1) Buscar IDs dos itens da family (1 request)
             $result = $mlClient->get("/users/{$userId}/items/search", [
                 'status' => 'active',
                 'family_id' => $familyId,
                 'limit' => 50,
             ]);
-
             $itemIds = $result['body']['results'] ?? [];
 
-            // Se não encontrou, tentar por catalog_product_id
             if (empty($itemIds)) {
                 $result = $mlClient->get("/users/{$userId}/items/search", [
                     'status' => 'active',
@@ -130,20 +126,149 @@ class RelatorioMargemMLPage extends Page
             }
 
             if (empty($itemIds)) {
-                Notification::make()->title("Nenhum item encontrado para family '{$familyId}'.")->warning()->send();
+                Notification::make()->title("Nenhum item encontrado para '{$familyId}'.")->warning()->send();
                 return;
             }
 
-            $resultados = [];
-            foreach ($itemIds as $itemId) {
-                $itemData = $this->processarItemRealtime($mlClient, $promotionService, $blingClient, $itemId, $impostoPct, $antecipacaoPct);
-                if ($itemData) {
-                    $resultados[] = $itemData;
+            // 2) Multiget: buscar todos os itens de uma vez (1 request por 20 itens)
+            $allItems = [];
+            foreach (array_chunk($itemIds, 20) as $chunk) {
+                $ids = implode(',', $chunk);
+                $multiResult = $mlClient->get('/items', ['ids' => $ids]);
+                if ($multiResult['success'] && is_array($multiResult['body'])) {
+                    foreach ($multiResult['body'] as $entry) {
+                        if (($entry['code'] ?? 0) == 200 && !empty($entry['body'])) {
+                            $allItems[] = $entry['body'];
+                        }
+                    }
                 }
             }
 
+            if (empty($allItems)) {
+                Notification::make()->title('Não foi possível obter dados dos itens.')->danger()->send();
+                return;
+            }
+
+            // 3) Extrair SKUs e buscar custos no Bling em batch
+            $skuMap = [];
+            foreach ($allItems as $item) {
+                $sku = $this->extrairSkuDoItem($item);
+                if ($sku) $skuMap[$item['id']] = $sku;
+            }
+            $custos = [];
+            foreach (array_unique(array_values($skuMap)) as $sku) {
+                try {
+                    $produto = $blingClient->getProductBySku($sku);
+                    $custo = (float) ($produto['precoCusto'] ?? 0);
+                    if ($custo <= 0 && !empty($produto['id'])) {
+                        $detalhe = $blingClient->getProductById((int) $produto['id']);
+                        $custo = (float) ($detalhe['precoCusto'] ?? 0);
+                    }
+                    $custos[$sku] = $custo;
+                } catch (\Throwable) {
+                    $custos[$sku] = 0;
+                }
+            }
+
+            // 4) Buscar frete dos que têm free_shipping (1 request cada, inevitável)
+            $fretes = [];
+            foreach ($allItems as $item) {
+                $freeShipping = $item['shipping']['free_shipping'] ?? false;
+                if ($freeShipping) {
+                    $freteResult = $mlClient->get("/items/{$item['id']}/shipping_options", ['zip_code' => '01310100']);
+                    $fretes[$item['id']] = ($freteResult['success'] && !empty($freteResult['body']['options']))
+                        ? round((float) ($freteResult['body']['options'][0]['list_cost'] ?? 0), 2)
+                        : 0;
+                } else {
+                    $fretes[$item['id']] = 0;
+                }
+            }
+
+            // 5) Montar resultados com cálculos
+            $resultados = [];
+            foreach ($allItems as $item) {
+                $preco = (float) ($item['price'] ?? 0);
+                if ($preco <= 0) continue;
+
+                $itemId = $item['id'];
+                $sku = $skuMap[$itemId] ?? null;
+                $custo = $sku ? ($custos[$sku] ?? 0) : 0;
+                $frete = $fretes[$itemId] ?? 0;
+                $listingType = $item['listing_type_id'] ?? '';
+                $categoryId = $item['category_id'] ?? '';
+
+                // Comissão (1 request por preço único — cache implícito se preços iguais)
+                $comissaoData = $promotionService->buscarComissaoParaPreco(
+                    $preco, $listingType, $categoryId,
+                    $item['shipping']['logistic_type'] ?? 'xd_drop_off',
+                    $item['shipping']['mode'] ?? 'me2'
+                );
+                $comissaoPct = $comissaoData['percent'] ?? ($listingType === 'gold_pro' ? 16.5 : 11.5);
+                $comissaoValor = $comissaoData['valor'] ?? round($preco * $comissaoPct / 100, 2);
+
+                $impostoValor = round($preco * $impostoPct / 100, 2);
+                $antecipacaoValor = round($preco * $antecipacaoPct / 100, 2);
+                $margemValor = round($preco - $comissaoValor - $frete - $antecipacaoValor - $impostoValor - $custo, 2);
+                $margemPct = round(($margemValor / $preco) * 100, 2);
+
+                // Promoções
+                $promoResult = $promotionService->buscarPromocoesParaItem($itemId);
+                $promocoes = [];
+                if ($promoResult['success'] && !empty($promoResult['promotions'])) {
+                    foreach ($promoResult['promotions'] as $promo) {
+                        $pp = (float) ($promo['price'] ?? 0);
+                        if ($pp <= 0) $pp = (float) ($promo['max_discounted_price'] ?? 0);
+                        if ($pp <= 0) $pp = (float) ($promo['suggested_discounted_price'] ?? 0);
+                        if ($pp <= 0) continue;
+
+                        $comPromo = $promotionService->buscarComissaoParaPreco(
+                            $pp, $listingType, $categoryId,
+                            $item['shipping']['logistic_type'] ?? 'xd_drop_off',
+                            $item['shipping']['mode'] ?? 'me2'
+                        );
+                        $comPromoValor = $comPromo['valor'] ?? round($pp * $comissaoPct / 100, 2);
+                        $impPromo = round($pp * $impostoPct / 100, 2);
+                        $antPromo = round($pp * $antecipacaoPct / 100, 2);
+                        $rebatePromo = round($pp * (float) ($promo['meli_percentage'] ?? 0) / 100, 2);
+                        $promoMargem = round($pp - $comPromoValor - $frete - $antPromo - $impPromo - $custo + $rebatePromo, 2);
+                        $promoMargemPct = round(($promoMargem / $pp) * 100, 2);
+
+                        $promocoes[] = [
+                            'nome' => $promo['name'] ?? 'Sem nome',
+                            'tipo' => $promo['type'] ?? '',
+                            'status' => $promo['status'] ?? '',
+                            'preco' => $pp,
+                            'meli_pct' => $promo['meli_percentage'] ?? 0,
+                            'rebate_valor' => $rebatePromo,
+                            'margem_valor' => $promoMargem,
+                            'margem_pct' => $promoMargemPct,
+                        ];
+                    }
+                }
+
+                $resultados[] = [
+                    'mlb_id' => $itemId,
+                    'sku' => $sku,
+                    'titulo' => $item['title'] ?? '',
+                    'listing_type' => $listingType,
+                    'preco_venda' => $preco,
+                    'custo_produto' => $custo,
+                    'comissao_pct' => $comissaoPct,
+                    'comissao_valor' => $comissaoValor,
+                    'frete' => $frete,
+                    'free_shipping' => $item['shipping']['free_shipping'] ?? false,
+                    'imposto_pct' => $impostoPct,
+                    'imposto_valor' => $impostoValor,
+                    'antecipacao_valor' => $antecipacaoValor,
+                    'margem_valor' => $margemValor,
+                    'margem_pct' => $margemPct,
+                    'estoque' => (int) ($item['available_quantity'] ?? 0),
+                    'promocoes' => $promocoes,
+                ];
+            }
+
             $this->familyResultados = $resultados;
-            Notification::make()->title(count($resultados) . " itens encontrados para family '{$familyId}'.")->success()->send();
+            Notification::make()->title(count($resultados) . " itens encontrados para '{$familyId}'.")->success()->send();
 
         } catch (\Throwable $e) {
             Notification::make()->title('Erro: ' . $e->getMessage())->danger()->send();
@@ -152,27 +277,8 @@ class RelatorioMargemMLPage extends Page
         }
     }
 
-    private function processarItemRealtime(
-        MercadoLivreClient $mlClient,
-        MercadoLivrePromotionService $promotionService,
-        BlingClient $blingClient,
-        string $itemId,
-        float $impostoPct,
-        float $antecipacaoPct
-    ): ?array {
-        $itemResult = $mlClient->get("/items/{$itemId}");
-        if (!$itemResult['success']) return null;
-
-        $item = $itemResult['body'];
-        $preco = (float) ($item['price'] ?? 0);
-        $estoque = (int) ($item['available_quantity'] ?? 0);
-        $titulo = $item['title'] ?? '';
-        $listingType = $item['listing_type_id'] ?? '';
-        $categoryId = $item['category_id'] ?? '';
-
-        if ($preco <= 0) return null;
-
-        // SKU
+    private function extrairSkuDoItem(array $item): ?string
+    {
         $sku = $item['seller_custom_field'] ?? null;
         if (!$sku) {
             foreach ($item['attributes'] ?? [] as $attr) {
@@ -188,99 +294,7 @@ class RelatorioMargemMLPage extends Page
         if ($sku && str_contains($sku, '__')) {
             $sku = explode('__', $sku)[0];
         }
-
-        // Custo
-        $custo = 0;
-        if ($sku) {
-            try {
-                $produto = $blingClient->getProductBySku($sku);
-                $custo = (float) ($produto['precoCusto'] ?? 0);
-                if ($custo <= 0 && !empty($produto['id'])) {
-                    $detalhe = $blingClient->getProductById((int) $produto['id']);
-                    $custo = (float) ($detalhe['precoCusto'] ?? 0);
-                }
-            } catch (\Throwable) {}
-        }
-
-        // Comissão
-        $comissaoData = $promotionService->buscarComissaoParaPreco(
-            $preco, $listingType, $categoryId,
-            $item['shipping']['logistic_type'] ?? 'xd_drop_off',
-            $item['shipping']['mode'] ?? 'me2'
-        );
-        $comissaoPct = $comissaoData['percent'] ?? ($listingType === 'gold_pro' ? 16.5 : 11.5);
-        $comissaoValor = $comissaoData['valor'] ?? round($preco * $comissaoPct / 100, 2);
-
-        // Frete
-        $frete = 0;
-        $freeShipping = $item['shipping']['free_shipping'] ?? false;
-        if ($freeShipping) {
-            $freteResult = $mlClient->get("/items/{$itemId}/shipping_options", ['zip_code' => '01310100']);
-            if ($freteResult['success'] && !empty($freteResult['body']['options'])) {
-                $frete = round((float) ($freteResult['body']['options'][0]['list_cost'] ?? 0), 2);
-            }
-        }
-
-        // Cálculos
-        $impostoValor = round($preco * $impostoPct / 100, 2);
-        $antecipacaoValor = round($preco * $antecipacaoPct / 100, 2);
-        $margemValor = round($preco - $comissaoValor - $frete - $antecipacaoValor - $impostoValor - $custo, 2);
-        $margemPct = $preco > 0 ? round(($margemValor / $preco) * 100, 2) : 0;
-
-        // Promoções
-        $promoResult = $promotionService->buscarPromocoesParaItem($itemId);
-        $promocoes = [];
-        if ($promoResult['success'] && !empty($promoResult['promotions'])) {
-            foreach ($promoResult['promotions'] as $promo) {
-                $pp = (float) ($promo['price'] ?? 0);
-                if ($pp <= 0) $pp = (float) ($promo['max_discounted_price'] ?? 0);
-                if ($pp <= 0) $pp = (float) ($promo['suggested_discounted_price'] ?? 0);
-                if ($pp <= 0) continue;
-
-                $comPromo = $promotionService->buscarComissaoParaPreco(
-                    $pp, $listingType, $categoryId,
-                    $item['shipping']['logistic_type'] ?? 'xd_drop_off',
-                    $item['shipping']['mode'] ?? 'me2'
-                );
-                $comPromoValor = $comPromo['valor'] ?? round($pp * $comissaoPct / 100, 2);
-                $impPromo = round($pp * $impostoPct / 100, 2);
-                $antPromo = round($pp * $antecipacaoPct / 100, 2);
-                $rebatePromo = round($pp * (float) ($promo['meli_percentage'] ?? 0) / 100, 2);
-                $promoMargem = round($pp - $comPromoValor - $frete - $antPromo - $impPromo - $custo + $rebatePromo, 2);
-                $promoMargemPct = round(($promoMargem / $pp) * 100, 2);
-
-                $promocoes[] = [
-                    'nome' => $promo['name'] ?? 'Sem nome',
-                    'tipo' => $promo['type'] ?? '',
-                    'status' => $promo['status'] ?? '',
-                    'preco' => $pp,
-                    'meli_pct' => $promo['meli_percentage'] ?? 0,
-                    'rebate_valor' => $rebatePromo,
-                    'margem_valor' => $promoMargem,
-                    'margem_pct' => $promoMargemPct,
-                ];
-            }
-        }
-
-        return [
-            'mlb_id' => $itemId,
-            'sku' => $sku,
-            'titulo' => $titulo,
-            'listing_type' => $listingType,
-            'preco_venda' => $preco,
-            'custo_produto' => $custo,
-            'comissao_pct' => $comissaoPct,
-            'comissao_valor' => $comissaoValor,
-            'frete' => $frete,
-            'free_shipping' => $freeShipping,
-            'imposto_pct' => $impostoPct,
-            'imposto_valor' => $impostoValor,
-            'antecipacao_valor' => $antecipacaoValor,
-            'margem_valor' => $margemValor,
-            'margem_pct' => $margemPct,
-            'estoque' => $estoque,
-            'promocoes' => $promocoes,
-        ];
+        return $sku;
     }
 
     private function getImpostoPctCalc(int $idCnpj): float
