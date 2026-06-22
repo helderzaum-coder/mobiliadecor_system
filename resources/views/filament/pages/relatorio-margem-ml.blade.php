@@ -165,7 +165,7 @@
                                         $pp = (float) ($promo['preco'] ?? 0);
                                         $promoComissao = $pp > 0 ? round($pp * $item->comissao_pct / 100, 2) : 0;
                                         $promoFrete = (float) $item->frete;
-                                        $promoImposto = $pp > 0 ? round(max(0, $pp - $promoFrete) * $item->imposto_pct / 100, 2) : 0;
+                                        $promoImposto = $pp > 0 ? round($pp * $item->imposto_pct / 100, 2) : 0;
                                         $promoAntec = $pp > 0 ? round($pp * $antecPct / 100, 2) : 0;
                                         $promoMargemCor = match(true) {
                                             !isset($promo['margem_pct']) => 'text-gray-400',

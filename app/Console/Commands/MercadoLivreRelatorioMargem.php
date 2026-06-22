@@ -198,17 +198,15 @@ class MercadoLivreRelatorioMargem extends Command
         // Frete real cobrado pelo ML via shipping_options
         $frete = $this->buscarFreteReal($itemId, $item);
 
-        // Imposto (nota tipo produto = sobre preço - frete)
-        $baseImposto = max(0, $preco - $frete);
-        $impostoValor = round($baseImposto * $this->impostoPct / 100, 2);
+        // Imposto incide sobre o preço de venda (nota fiscal é emitida pelo valor do produto)
+        $impostoValor = round($preco * $this->impostoPct / 100, 2);
 
         // Antecipação de parcelas
         $antecipacaoPct = $this->getAntecipacaoPct();
         $antecipacaoValor = round($preco * $antecipacaoPct / 100, 2);
 
-        // Margem
-        $recebe = $preco - $comissaoValor - $frete - $antecipacaoValor;
-        $margemValor = round($recebe - $custo - $impostoValor, 2);
+        // Margem = Preço - Comissão - Frete - Antecipação - Imposto - Custo
+        $margemValor = round($preco - $comissaoValor - $frete - $antecipacaoValor - $impostoValor - $custo, 2);
         $margemPct = $preco > 0 ? round(($margemValor / $preco) * 100, 2) : 0;
 
         // Promoções do item — buscar TODAS
@@ -238,11 +236,9 @@ class MercadoLivreRelatorioMargem extends Command
                         $item['shipping']['mode'] ?? 'me2'
                     );
                     $comPromoValor = $comPromo['valor'] ?? round($pp * $comissaoPct / 100, 2);
-                    $baseImpPromo = max(0, $pp - $frete);
-                    $impPromo = round($baseImpPromo * $this->impostoPct / 100, 2);
+                    $impPromo = round($pp * $this->impostoPct / 100, 2);
                     $antPromo = round($pp * $antecipacaoPct / 100, 2);
-                    $recebePromo = $pp - $comPromoValor - $frete - $antPromo;
-                    $promoMargem = round($recebePromo - $custo - $impPromo, 2);
+                    $promoMargem = round($pp - $comPromoValor - $frete - $antPromo - $impPromo - $custo, 2);
                     $promoMargemPct = $pp > 0 ? round(($promoMargem / $pp) * 100, 2) : 0;
 
                     sleep(1); // Rate limit
@@ -348,22 +344,20 @@ class MercadoLivreRelatorioMargem extends Command
 
     private function buscarFreteReal(string $itemId, array $item): float
     {
-        // Se não tem frete grátis nem xd_drop_off, vendedor não paga frete
+        // Vendedor só paga frete se free_shipping=true (ele ativou frete grátis)
         $freeShipping = $item['shipping']['free_shipping'] ?? false;
-        $logisticType = $item['shipping']['logistic_type'] ?? '';
-        if (!$freeShipping && $logisticType !== 'xd_drop_off') return 0;
+        if (!$freeShipping) return 0;
 
-        // Buscar via shipping_options do ML
+        // Buscar custo real via shipping_options (custo que o ML cobra do vendedor)
         sleep(1);
         $result = $this->mlClient->get("/items/{$itemId}/shipping_options", ['zip_code' => '01310100']);
 
         if ($result['success'] && !empty($result['body']['options'])) {
-            $maiorFrete = 0;
-            foreach ($result['body']['options'] as $opt) {
-                $listCost = (float) ($opt['list_cost'] ?? 0);
-                $maiorFrete = max($maiorFrete, $listCost);
-            }
-            if ($maiorFrete > 0) return round($maiorFrete, 2);
+            // Usar a PRIMEIRA opção (mais barata/padrão) pois é a que o ML cobra na média
+            // list_cost = custo total do frete; cost = quanto o comprador paga (0 se grátis)
+            $opt = $result['body']['options'][0];
+            $listCost = (float) ($opt['list_cost'] ?? 0);
+            if ($listCost > 0) return round($listCost, 2);
         }
 
         // Fallback: tentar endpoint /shipping_options/free
@@ -381,7 +375,7 @@ class MercadoLivreRelatorioMargem extends Command
             }
         }
 
-        Log::warning("ML Relatório: frete zerado para {$itemId} (free_shipping=true)");
+        Log::warning("ML Relatório: frete zerado para {$itemId} (free_shipping=true mas sem dados)");
         return 0;
     }
 
