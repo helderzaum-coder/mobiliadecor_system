@@ -15,7 +15,8 @@ class MercadoLivreRelatorioMargem extends Command
 {
     protected $signature = 'ml:relatorio-margem
         {--account=primary : Conta ML (primary/secondary)}
-        {--limit=5 : Limite de itens para processar (0 = todos)}';
+        {--limit=5 : Limite de itens para processar (0 = todos)}
+        {--dry-run : Apenas exibe no terminal sem salvar no banco}';
 
     protected $description = 'Gera relatório de margem dos anúncios ativos no Mercado Livre (promoções, custo, comissão)';
 
@@ -31,9 +32,12 @@ class MercadoLivreRelatorioMargem extends Command
         $limit = (int) $this->option('limit');
         $startTime = now();
 
+        $dryRun = $this->option('dry-run');
+
         $this->info("=== Relatório Margem ML [{$accountKey}] ===");
         $this->info("Início: " . $startTime->format('d/m/Y H:i:s'));
         $this->info("Limite: " . ($limit ?: 'TODOS'));
+        if ($dryRun) $this->warn('⚠️  MODO DRY-RUN: nenhum dado será salvo no banco.');
 
         $this->accountKey = $accountKey;
         $this->mlClient = new MercadoLivreClient($accountKey);
@@ -60,24 +64,52 @@ class MercadoLivreRelatorioMargem extends Command
         $this->info("Itens encontrados: " . count($items));
         $geradoEm = now();
 
-        // Limpar relatório anterior desta conta
-        RelatorioMargemML::where('account_key', $accountKey)->delete();
+        if (!$dryRun) {
+            RelatorioMargemML::where('account_key', $accountKey)->delete();
+        }
 
         $bar = $this->output->createProgressBar(count($items));
         $bar->start();
 
+        $dryRunResults = [];
         foreach ($items as $itemId) {
-            $this->processarItem($accountKey, $itemId, $geradoEm);
+            $resultado = $this->processarItem($accountKey, $itemId, $geradoEm, $dryRun);
+            if ($dryRun && $resultado) {
+                $dryRunResults[] = $resultado;
+            }
             $bar->advance();
-            sleep(1); // Rate limit API
+            sleep(1);
         }
 
         $bar->finish();
         $this->newLine(2);
 
-        $total = RelatorioMargemML::where('account_key', $accountKey)->count();
+        if ($dryRun) {
+            $this->newLine();
+            $this->info('┌─────────────────────────────────────────────────────────────────────────────────────────────┐');
+            $this->info('│  RESULTADOS DRY-RUN                                                                        │');
+            $this->info('├─────────────────────────────────────────────────────────────────────────────────────────────┤');
+            foreach ($dryRunResults as $r) {
+                $margemColor = $r['margem_pct'] >= 15 ? 'info' : ($r['margem_pct'] >= 0 ? 'comment' : 'error');
+                $this->newLine();
+                $this->line("  <fg=cyan>{$r['mlb_id']}</> | SKU: {$r['sku']} | {$r['titulo']}");
+                $this->line("  Preço: R$ {$r['preco']}  |  Custo: R$ {$r['custo']}  |  Frete: R$ {$r['frete']}  |  Free Shipping: {$r['free_shipping']}");
+                $this->line("  Comissão: {$r['comissao_pct']}% (R$ {$r['comissao_valor']})  |  Imposto: {$r['imposto_pct']}% (R$ {$r['imposto_valor']})  |  Antecipação: R$ {$r['antecipacao']}");
+                $this->{$margemColor}("  ► MARGEM: R$ {$r['margem_valor']} ({$r['margem_pct']}%)");
+                if (!empty($r['promocoes'])) {
+                    foreach ($r['promocoes'] as $p) {
+                        $pColor = ($p['margem_pct'] ?? 0) >= 15 ? 'info' : (($p['margem_pct'] ?? 0) >= 0 ? 'comment' : 'error');
+                        $this->line("    🏷️  {$p['nome']} ({$p['tipo']}/{$p['status']}) → R$ {$p['preco']} → Margem: R$ {$p['margem_valor']} ({$p['margem_pct']}%)");
+                    }
+                }
+            }
+            $this->newLine();
+            $this->info('└─────────────────────────────────────────────────────────────────────────────────────────────┘');
+        }
+
+        $total = $dryRun ? count($dryRunResults) : RelatorioMargemML::where('account_key', $accountKey)->count();
         $duration = $startTime->diffInMinutes(now());
-        $this->info("Relatório gerado com {$total} itens.");
+        $this->info("Relatório " . ($dryRun ? 'simulado' : 'gerado') . " com {$total} itens.");
         $this->info("Fim: " . now()->format('d/m/Y H:i:s') . " | Duração: {$duration} minutos");
 
         return 0;
@@ -125,13 +157,13 @@ class MercadoLivreRelatorioMargem extends Command
         return $items;
     }
 
-    private function processarItem(string $accountKey, string $itemId, $geradoEm): void
+    private function processarItem(string $accountKey, string $itemId, $geradoEm, bool $dryRun = false): ?array
     {
         // Buscar dados do item
         $itemResult = $this->mlClient->get("/items/{$itemId}");
         if (!$itemResult['success']) {
             Log::warning("ML Relatório: falha ao buscar item {$itemId}");
-            return;
+            return null;
         }
 
         $item = $itemResult['body'];
@@ -141,7 +173,7 @@ class MercadoLivreRelatorioMargem extends Command
         $listingType = $item['listing_type_id'] ?? '';
         $categoryId = $item['category_id'] ?? '';
 
-        if ($estoque <= 0 || $preco <= 0) return;
+        if ($estoque <= 0 || $preco <= 0) return null;
 
         // Catálogo
         $catalogProductId = $item['catalog_product_id'] ?? null;
@@ -266,7 +298,7 @@ class MercadoLivreRelatorioMargem extends Command
             }
         }
 
-        RelatorioMargemML::create([
+        $dados = [
             'account_key' => $accountKey,
             'mlb_id' => $itemId,
             'sku' => $sku,
@@ -283,7 +315,6 @@ class MercadoLivreRelatorioMargem extends Command
             'preco_venda' => $preco,
             'custo_produto' => $custo,
             'estoque' => $estoque,
-
             'comissao_pct' => $comissaoPct,
             'comissao_valor' => $comissaoValor,
             'frete' => $frete,
@@ -296,7 +327,37 @@ class MercadoLivreRelatorioMargem extends Command
             'margem_promocional' => $margemPromocional,
             'margem_promocional_pct' => $margemPromocionalPct,
             'gerado_em' => $geradoEm,
-        ]);
+        ];
+
+        if ($dryRun) {
+            return [
+                'mlb_id' => $itemId,
+                'sku' => $sku ?? '—',
+                'titulo' => mb_substr($titulo, 0, 50),
+                'preco' => number_format($preco, 2, ',', '.'),
+                'custo' => number_format($custo, 2, ',', '.'),
+                'frete' => number_format($frete, 2, ',', '.'),
+                'free_shipping' => ($item['shipping']['free_shipping'] ?? false) ? 'SIM' : 'NÃO',
+                'comissao_pct' => number_format($comissaoPct, 1),
+                'comissao_valor' => number_format($comissaoValor, 2, ',', '.'),
+                'imposto_pct' => number_format($this->impostoPct, 1),
+                'imposto_valor' => number_format($impostoValor, 2, ',', '.'),
+                'antecipacao' => number_format($antecipacaoValor, 2, ',', '.'),
+                'margem_valor' => number_format($margemValor, 2, ',', '.'),
+                'margem_pct' => number_format($margemPct, 1),
+                'promocoes' => collect($promocoes)->map(fn ($p) => [
+                    'nome' => $p['nome'],
+                    'tipo' => $p['tipo'],
+                    'status' => $p['status'],
+                    'preco' => $p['preco'] ? number_format($p['preco'], 2, ',', '.') : '—',
+                    'margem_valor' => $p['margem_valor'] !== null ? number_format($p['margem_valor'], 2, ',', '.') : '—',
+                    'margem_pct' => $p['margem_pct'] !== null ? number_format($p['margem_pct'], 1) : '—',
+                ])->toArray(),
+            ];
+        }
+
+        RelatorioMargemML::create($dados);
+        return null;
     }
 
     private function extrairSku(array $item): ?string
