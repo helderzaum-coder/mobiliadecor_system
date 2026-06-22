@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use App\Models\CanalVenda;
 use App\Models\ImpostoMensal;
-use App\Models\MercadoLivreToken;
 use App\Services\Bling\BlingClient;
 use App\Services\MercadoLivre\MercadoLivreClient;
 use App\Services\MercadoLivre\MercadoLivrePromotionService;
@@ -54,75 +53,21 @@ class BuscarFamilyMargemJob implements ShouldQueue
         $impostoPct = $this->getImpostoPct($idCnpj);
         $antecipacaoPct = (float) (CanalVenda::where('nome_canal', 'Mercadolivre')->value('percentual_antecipacao') ?? 0);
 
-        $tokenModel = MercadoLivreToken::where('account_key', $this->accountKey)->first();
-        $userId = $tokenModel?->user_id ?? config("mercadolivre.accounts.{$this->accountKey}.user_id");
+        // Buscar MLBs desta family no relatório local (fonte confiável)
+        $registros = \App\Models\RelatorioMargemML::where('account_key', $this->accountKey)
+            ->where(function ($q) {
+                $q->where('family_id', $this->familyId)
+                  ->orWhere('catalog_product_id', $this->familyId)
+                  ->orWhere('user_product_id', $this->familyId);
+            })
+            ->pluck('mlb_id')
+            ->toArray();
 
-        // 1) Buscar itens via user_products/search por family_id
-        $itemIds = [];
-
-        // Tentar buscar user_products desta family
-        $upResult = $mlClient->get("/users/{$userId}/user_products/search", [
-            'family_id' => $this->familyId,
-            'status' => 'active',
-            'limit' => 50,
-        ]);
-
-        if ($upResult['success'] && !empty($upResult['body']['results'])) {
-            // Cada user_product pode ter items vinculados
-            foreach ($upResult['body']['results'] as $up) {
-                $upId = $up['id'] ?? $up;
-                $upDetailResult = $mlClient->get("/user-products/{$upId}");
-                if ($upDetailResult['success'] && !empty($upDetailResult['body']['items'])) {
-                    foreach ($upDetailResult['body']['items'] as $itemRef) {
-                        $itemIds[] = $itemRef['id'] ?? $itemRef;
-                    }
-                }
-            }
+        if (empty($registros)) {
+            return ['erro' => "Nenhum item encontrado para '{$this->familyId}'. Verifique se o relatório completo já foi gerado."];
         }
 
-        // Fallback: buscar por catalog_product_id (que pode ser o family_id informado)
-        if (empty($itemIds)) {
-            $searchResult = $mlClient->get("/users/{$userId}/items/search", [
-                'status' => 'active',
-                'catalog_product_id' => $this->familyId,
-                'limit' => 50,
-            ]);
-            $itemIds = $searchResult['body']['results'] ?? [];
-        }
-
-        // Fallback 2: buscar itens e filtrar pelo family_id/catalog_product_id no detalhe
-        if (empty($itemIds)) {
-            $searchResult = $mlClient->get("/users/{$userId}/items/search", [
-                'status' => 'active',
-                'limit' => 50,
-            ]);
-            $allIds = $searchResult['body']['results'] ?? [];
-
-            if (!empty($allIds)) {
-                // Multiget e filtrar
-                foreach (array_chunk($allIds, 20) as $chunk) {
-                    $ids = implode(',', $chunk);
-                    $multiResult = $mlClient->get('/items', ['ids' => $ids]);
-                    if ($multiResult['success'] && is_array($multiResult['body'])) {
-                        foreach ($multiResult['body'] as $entry) {
-                            if (($entry['code'] ?? 0) != 200 || empty($entry['body'])) continue;
-                            $body = $entry['body'];
-                            $catalogId = $body['catalog_product_id'] ?? '';
-                            $userProductId = $body['user_product_id'] ?? '';
-                            if ($catalogId === $this->familyId || $userProductId === $this->familyId) {
-                                $itemIds[] = $body['id'];
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if (empty($itemIds)) {
-            return ['erro' => "Nenhum item encontrado para '{$this->familyId}'."];
-        }
-
-        $itemIds = array_unique($itemIds);
+        $itemIds = array_unique($registros);
 
         // 2) Multiget dos itens
         $allItems = [];
