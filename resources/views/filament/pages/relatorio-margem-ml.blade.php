@@ -57,6 +57,118 @@
             </div>
         </div>
 
+        {{-- Busca em tempo real por Family ID --}}
+        <div class="p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+            <div class="flex items-end gap-3">
+                <div class="flex-1">
+                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400">🔍 Consulta em Tempo Real (Family ID / Catalog Product ID)</label>
+                    <input type="text" wire:model="familyIdBusca" placeholder="Ex: MLA12345678 ou family_id..."
+                        class="w-full mt-1 text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        wire:keydown.enter="buscarPorFamily">
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Conta</label>
+                    <select wire:model="familyAccountBusca" class="w-full mt-1 text-sm rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                        <option value="primary">Primary</option>
+                        <option value="secondary">Secondary</option>
+                    </select>
+                </div>
+                <button wire:click="buscarPorFamily" wire:loading.attr="disabled"
+                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                    <span wire:loading.remove wire:target="buscarPorFamily">Buscar</span>
+                    <span wire:loading wire:target="buscarPorFamily">Buscando...</span>
+                </button>
+                @if(!empty($this->familyResultados))
+                <button wire:click="limparFamily" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300">
+                    Limpar
+                </button>
+                @endif
+            </div>
+
+            {{-- Resultados da busca em tempo real --}}
+            @if(!empty($this->familyResultados))
+            <div class="mt-4 space-y-3">
+                <div class="text-xs font-semibold text-green-600 dark:text-green-400">
+                    ✅ {{ count($this->familyResultados) }} itens encontrados (tempo real)
+                </div>
+                @foreach($this->familyResultados as $fr)
+                    @php
+                        $frMargemCor = match(true) {
+                            $fr['margem_pct'] < 15 => 'text-red-600 dark:text-red-400',
+                            $fr['margem_pct'] < 25 => 'text-yellow-600 dark:text-yellow-400',
+                            default => 'text-green-600 dark:text-green-400',
+                        };
+                        $frTipoLabel = match($fr['listing_type']) {
+                            'gold_pro' => 'Premium',
+                            'gold_special' => 'Clássico',
+                            default => $fr['listing_type'],
+                        };
+                    @endphp
+                    <div class="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <div class="p-3 border-b border-gray-200 dark:border-gray-700">
+                            <div class="flex items-start justify-between gap-4">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <a href="https://www.mercadolivre.com.br/anuncios/lista/promos?page=1&search={{ $fr['mlb_id'] }}" target="_blank"
+                                           class="text-sm font-mono text-blue-600 dark:text-blue-400 hover:underline">{{ $fr['mlb_id'] }}</a>
+                                        <span class="px-2 py-0.5 text-xs rounded-full {{ $fr['listing_type'] === 'gold_pro' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' }}">
+                                            {{ $frTipoLabel }}
+                                        </span>
+                                        <span class="text-xs text-gray-400">SKU: {{ $fr['sku'] ?? '—' }}</span>
+                                        @if($fr['free_shipping'])
+                                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-green-900 text-green-300">Frete Grátis</span>
+                                        @endif
+                                    </div>
+                                    <p class="mt-1 text-sm text-gray-700 dark:text-gray-300 truncate">{{ $fr['titulo'] }}</p>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <div class="text-lg font-bold {{ $frMargemCor }}">{{ number_format($fr['margem_pct'], 1) }}%</div>
+                                    <div class="text-xs text-gray-500">R$ {{ number_format($fr['margem_valor'], 2, ',', '.') }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center divide-x divide-gray-200 dark:divide-gray-700 overflow-x-auto text-center">
+                            <div class="flex-1 px-3 py-2"><div class="text-[10px] text-gray-500">Preço</div><div class="text-sm font-semibold">R$ {{ number_format($fr['preco_venda'], 2, ',', '.') }}</div></div>
+                            <div class="flex-1 px-3 py-2"><div class="text-[10px] text-gray-500">Custo</div><div class="text-sm font-semibold">R$ {{ number_format($fr['custo_produto'], 2, ',', '.') }}</div></div>
+                            <div class="flex-1 px-3 py-2"><div class="text-[10px] text-gray-500">Comissão</div><div class="text-sm font-semibold">{{ number_format($fr['comissao_pct'], 1) }}%</div><div class="text-[10px] text-gray-400">R$ {{ number_format($fr['comissao_valor'], 2, ',', '.') }}</div></div>
+                            <div class="flex-1 px-3 py-2"><div class="text-[10px] text-gray-500">Frete</div><div class="text-sm font-semibold">R$ {{ number_format($fr['frete'], 2, ',', '.') }}</div></div>
+                            <div class="flex-1 px-3 py-2"><div class="text-[10px] text-gray-500">Imposto</div><div class="text-sm font-semibold">{{ number_format($fr['imposto_pct'], 1) }}%</div><div class="text-[10px] text-gray-400">R$ {{ number_format($fr['imposto_valor'], 2, ',', '.') }}</div></div>
+                            <div class="flex-1 px-3 py-2"><div class="text-[10px] text-gray-500">Antecipação</div><div class="text-sm font-semibold">R$ {{ number_format($fr['antecipacao_valor'], 2, ',', '.') }}</div></div>
+                            <div class="flex-1 px-3 py-2"><div class="text-[10px] text-gray-500">Estoque</div><div class="text-sm font-semibold">{{ $fr['estoque'] }}</div></div>
+                        </div>
+                        @if(!empty($fr['promocoes']))
+                        <div class="border-t border-gray-200 dark:border-gray-700 px-4 py-3" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+                            @foreach($fr['promocoes'] as $fp)
+                                @php
+                                    $fpMargemCor = match(true) {
+                                        $fp['margem_pct'] < 15 => 'text-red-500',
+                                        $fp['margem_pct'] < 25 => 'text-yellow-500',
+                                        default => 'text-green-500',
+                                    };
+                                @endphp
+                                <div class="rounded-lg border border-gray-600 p-2 bg-gray-800">
+                                    <div class="text-xs font-semibold text-gray-100 truncate">{{ $fp['nome'] }}</div>
+                                    <div class="flex items-center gap-1 mt-1">
+                                        <span class="text-[10px] px-1 py-0.5 rounded bg-indigo-900 text-indigo-300">{{ $fp['tipo'] }}</span>
+                                        <span class="text-[10px] px-1 py-0.5 rounded {{ $fp['status'] === 'started' ? 'bg-green-900 text-green-300' : 'bg-yellow-900 text-yellow-300' }}">{{ $fp['status'] }}</span>
+                                        @if(($fp['meli_pct'] ?? 0) > 0)
+                                            <span class="text-[10px] px-1 py-0.5 rounded bg-blue-900 text-blue-300">+{{ $fp['meli_pct'] }}%</span>
+                                        @endif
+                                    </div>
+                                    <div class="mt-2 text-center">
+                                        <div class="text-[10px] text-gray-500">R$ {{ number_format($fp['preco'], 2, ',', '.') }}</div>
+                                        <div class="text-sm font-bold {{ $fpMargemCor }}">{{ number_format($fp['margem_pct'], 1) }}% <span class="text-xs">(R$ {{ number_format($fp['margem_valor'], 2, ',', '.') }})</span></div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+            @endif
+        </div>
+
         {{-- Tabela --}}
         <div class="space-y-3">
             @forelse($this->itens as $item)
