@@ -10,3 +10,5 @@ Artisan::command('inspire', function () {
 
 Schedule::command('contas:processar-recorrentes')->daily()->withoutOverlapping();
 Schedule::command('bling:importar-automatico')->everyThreeHours()->withoutOverlapping();
+Schedule::command('ml:reprocessar-dados primary --limit=20')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('ml:reprocessar-dados secondary --limit=20')->everyFiveMinutes()->withoutOverlapping();
