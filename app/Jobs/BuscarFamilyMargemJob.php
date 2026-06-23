@@ -58,13 +58,35 @@ class BuscarFamilyMargemJob implements ShouldQueue
             ->where(function ($q) {
                 $q->where('family_id', $this->familyId)
                   ->orWhere('catalog_product_id', $this->familyId)
-                  ->orWhere('user_product_id', $this->familyId);
+                  ->orWhere('user_product_id', $this->familyId)
+                  ->orWhere('family_name', 'like', '%' . $this->familyId . '%');
             })
             ->pluck('mlb_id')
             ->toArray();
 
+        // Se não encontrou na conta específica, tentar em todas as contas
         if (empty($registros)) {
-            return ['erro' => "Nenhum item encontrado para '{$this->familyId}'. Verifique se o relatório completo já foi gerado."];
+            $registros = \App\Models\RelatorioMargemML::where(function ($q) {
+                    $q->where('family_id', $this->familyId)
+                      ->orWhere('catalog_product_id', $this->familyId)
+                      ->orWhere('user_product_id', $this->familyId)
+                      ->orWhere('family_name', 'like', '%' . $this->familyId . '%');
+                })
+                ->pluck('mlb_id')
+                ->toArray();
+        }
+
+        if (empty($registros)) {
+            // Log para debug: mostrar exemplos do que tem no banco
+            $exemplos = \App\Models\RelatorioMargemML::where('account_key', $this->accountKey)
+                ->whereNotNull('family_id')
+                ->limit(5)
+                ->pluck('family_id')
+                ->unique()
+                ->implode(', ');
+
+            Log::warning("BuscarFamilyMargemJob: '{$this->familyId}' não encontrado. Exemplos no banco: {$exemplos}");
+            return ['erro' => "Nenhum item encontrado para '{$this->familyId}'. Exemplos de family_id no banco: {$exemplos}"];
         }
 
         $itemIds = array_unique($registros);
