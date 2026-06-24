@@ -274,31 +274,34 @@ class DashboardVendas extends Page implements HasForms
 
     private function buscarNomeSituacaoBling(\App\Services\Bling\BlingClient $bling, int $situacaoId): string
     {
-        // Buscar módulo de Vendas
-        $modulos = $bling->get('/situacoes/modulos');
-        $moduloVendasId = null;
+        // Cache em memória para evitar chamadas repetidas à API
+        static $situacoesCache = null;
 
-        if ($modulos['success']) {
-            foreach ($modulos['body']['data'] ?? [] as $mod) {
-                if ($mod['nome'] === 'Vendas') {
-                    $moduloVendasId = $mod['id'];
-                    break;
+        if ($situacoesCache === null) {
+            $situacoesCache = [];
+            $modulos = $bling->get('/situacoes/modulos');
+            $moduloVendasId = null;
+
+            if ($modulos['success']) {
+                foreach ($modulos['body']['data'] ?? [] as $mod) {
+                    if ($mod['nome'] === 'Vendas') {
+                        $moduloVendasId = $mod['id'];
+                        break;
+                    }
+                }
+            }
+
+            if ($moduloVendasId) {
+                $result = $bling->getSituacoes($moduloVendasId);
+                if ($result['success'] && !empty($result['body']['data'])) {
+                    foreach ($result['body']['data'] as $sit) {
+                        $situacoesCache[$sit['id']] = $sit['nome'] ?? "ID {$sit['id']}";
+                    }
                 }
             }
         }
 
-        if (!$moduloVendasId) return "ID {$situacaoId}";
-
-        $result = $bling->getSituacoes($moduloVendasId);
-        if ($result['success'] && !empty($result['body']['data'])) {
-            foreach ($result['body']['data'] as $sit) {
-                if (($sit['id'] ?? null) == $situacaoId) {
-                    return $sit['nome'] ?? "ID {$situacaoId}";
-                }
-            }
-        }
-
-        return "ID {$situacaoId}";
+        return $situacoesCache[$situacaoId] ?? "ID {$situacaoId}";
     }
 
     public function marcarAguardandoEnvio(int $vendaId, string $dataPrevista): void
