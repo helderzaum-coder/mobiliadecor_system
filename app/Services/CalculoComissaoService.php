@@ -41,8 +41,12 @@ class CalculoComissaoService
 
         $regras = $query->get();
 
+        // Separar regras cumulativas das exclusivas (faixa)
+        $regrasCumulativas = $regras->where('cumulativa', true);
+        $regrasExclusivas = $regras->where('cumulativa', false);
+
         // Priorizar regras mais específicas (com ml_tipo_anuncio e ml_tipo_frete preenchidos)
-        $regras = $regras->sortByDesc(function ($regra) {
+        $regrasExclusivas = $regrasExclusivas->sortByDesc(function ($regra) {
             return (int) !is_null($regra->ml_tipo_anuncio) + (int) !is_null($regra->ml_tipo_frete);
         });
 
@@ -51,16 +55,16 @@ class CalculoComissaoService
         $detalhes = [];
 
         // Se canal tem faixas e comissao_sobre_frete, calcular sobre o total do pedido
-        $temFaixas = $regras->contains(fn ($r) => $r->faixa_valor_max > 0);
+        $temFaixas = $regrasExclusivas->contains(fn ($r) => $r->faixa_valor_max > 0);
         $comissaoSobreFrete = (bool) ($canal->comissao_sobre_frete ?? false);
 
-        if ($temFaixas && $comissaoSobreFrete && $valorFrete > 0) {
-            $totalProdutos = array_sum(array_map(
-                fn ($i) => (float) ($i['valor'] ?? 0) * (int) ($i['quantidade'] ?? 1),
-                $itens
-            ));
-            $totalPedido = $totalProdutos + $valorFrete;
+        $totalProdutos = array_sum(array_map(
+            fn ($i) => (float) ($i['valor'] ?? 0) * (int) ($i['quantidade'] ?? 1),
+            $itens
+        ));
+        $totalPedido = $totalProdutos + $valorFrete;
 
+        if ($temFaixas && $comissaoSobreFrete && $valorFrete > 0) {
             $itensCalculo = [[
                 'descricao' => 'Total do pedido (produtos + frete)',
                 'codigo' => 'TOTAL',
@@ -77,9 +81,8 @@ class CalculoComissaoService
 
             // Coletar todas as regras aplicáveis (faixas progressivas)
             $regrasAplicaveis = [];
-            foreach ($regras as $regra) {
+            foreach ($regrasExclusivas as $regra) {
                 $min = (float) ($regra->faixa_valor_min ?? 0);
-                $max = (float) ($regra->faixa_valor_max ?? PHP_FLOAT_MAX);
 
                 if ($valorItem > $min) {
                     $regrasAplicaveis[] = $regra;
@@ -100,8 +103,6 @@ class CalculoComissaoService
                 continue;
             }
 
-            // Se só tem 1 regra ou a regra não tem faixa_valor_max, aplicar direto
-            // Se tem múltiplas faixas, aplicar progressivamente
             $comissaoUnit = 0;
             $subsidioPixUnit = 0;
             $nomeRegra = '';
@@ -114,7 +115,6 @@ class CalculoComissaoService
                 $nomeRegra = $regra->nome_regra;
             } else {
                 // Faixas exclusivas: usar a faixa onde o valor se encaixa
-                // (a última regra aplicável, que tem o maior faixa_valor_min)
                 $regraSelecionada = null;
                 foreach ($regrasAplicaveis as $regra) {
                     $min = (float) ($regra->faixa_valor_min ?? 0);
@@ -123,7 +123,6 @@ class CalculoComissaoService
                         $regraSelecionada = $regra;
                     }
                 }
-                // Fallback: se nenhuma faixa contém o valor exato, usar a última (maior min)
                 if (!$regraSelecionada) {
                     $regraSelecionada = end($regrasAplicaveis);
                 }
@@ -150,6 +149,27 @@ class CalculoComissaoService
                 'subsidio_pix_unitario' => round($subsidioPixUnit, 2),
                 'comissao_total' => round($comissaoItem, 2),
                 'subsidio_pix_total' => round($subsidioPixItem, 2),
+            ];
+        }
+
+        // Aplicar regras cumulativas sobre o total do pedido
+        foreach ($regrasCumulativas as $regra) {
+            $baseCumulativa = $comissaoSobreFrete ? $totalPedido : $totalProdutos;
+            $comissaoCum = ($baseCumulativa * $regra->percentual / 100) + (float) $regra->valor_fixo;
+            $subsidioCum = $baseCumulativa * (float) $regra->subsidio_pix / 100;
+
+            $comissaoTotal += $comissaoCum;
+            $subsidioPixTotal += $subsidioCum;
+
+            $detalhes[] = [
+                'item' => 'Taxa cumulativa',
+                'valor' => $baseCumulativa,
+                'quantidade' => 1,
+                'regra' => $regra->nome_regra,
+                'comissao_unitaria' => round($comissaoCum, 2),
+                'subsidio_pix_unitario' => round($subsidioCum, 2),
+                'comissao_total' => round($comissaoCum, 2),
+                'subsidio_pix_total' => round($subsidioCum, 2),
             ];
         }
 

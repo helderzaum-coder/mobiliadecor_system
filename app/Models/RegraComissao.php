@@ -20,6 +20,7 @@ class RegraComissao extends Model
         'faixa_valor_min',
         'faixa_valor_max',
         'subsidio_pix',
+        'cumulativa',
         'ativo',
     ];
 
@@ -29,6 +30,7 @@ class RegraComissao extends Model
         'faixa_valor_min' => 'decimal:2',
         'faixa_valor_max' => 'decimal:2',
         'subsidio_pix' => 'decimal:2',
+        'cumulativa' => 'boolean',
         'ativo' => 'boolean',
     ];
 

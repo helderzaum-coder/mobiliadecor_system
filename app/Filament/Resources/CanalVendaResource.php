@@ -106,6 +106,10 @@ class CanalVendaResource extends Resource
                             ->numeric()
                             ->suffix('%')
                             ->default(0),
+                        Forms\Components\Toggle::make('cumulativa')
+                            ->label('Cumulativa')
+                            ->helperText('Sempre soma ao resultado (ex: taxa fixa extra)')
+                            ->default(false),
                         Forms\Components\Toggle::make('ativo')
                             ->label('Ativa')
                             ->default(true),
