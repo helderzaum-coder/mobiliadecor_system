@@ -52,28 +52,23 @@ class RastreioVendasProduto extends Page
                 ->keyBy('sku');
         }
 
-        // Filtrar vendas por período
-        $query = Venda::query()
+        // Vendas aprovadas
+        $queryVendas = Venda::query()
             ->where(fn ($q) => $q->where('cancelada', false)->orWhereNull('cancelada'));
 
-        $query = match ($this->periodo) {
-            'hoje' => $query->whereDate('data_venda', today()),
-            'esta_semana' => $query->whereBetween('data_venda', [now()->startOfWeek(), now()->endOfWeek()]),
-            'este_mes' => $query->whereBetween('data_venda', [now()->startOfMonth(), now()->endOfMonth()]),
-            'mes_passado' => $query->whereBetween('data_venda', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()]),
-            'customizado' => $query
+        $queryVendas = match ($this->periodo) {
+            'hoje' => $queryVendas->whereDate('data_venda', today()),
+            'esta_semana' => $queryVendas->whereBetween('data_venda', [now()->startOfWeek(), now()->endOfWeek()]),
+            'este_mes' => $queryVendas->whereBetween('data_venda', [now()->startOfMonth(), now()->endOfMonth()]),
+            'mes_passado' => $queryVendas->whereBetween('data_venda', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()]),
+            'customizado' => $queryVendas
                 ->when($this->data_inicio, fn ($q) => $q->whereDate('data_venda', '>=', $this->data_inicio))
                 ->when($this->data_fim, fn ($q) => $q->whereDate('data_venda', '<=', $this->data_fim)),
-            default => $query,
+            default => $queryVendas,
         };
 
-        $vendas = $query->whereNotNull('bling_id')->orderBy('data_venda', 'desc')->get();
+        $vendas = $queryVendas->whereNotNull('bling_id')->orderBy('data_venda', 'desc')->get();
         $blingIds = $vendas->pluck('bling_id')->toArray();
-
-        if (empty($blingIds)) {
-            $this->consultaRealizada = true;
-            return;
-        }
 
         $stagings = PedidoBlingStaging::whereIn('bling_id', $blingIds)->get()->keyBy('bling_id');
 
@@ -87,7 +82,6 @@ class RastreioVendasProduto extends Page
                 $itemSku = $item['codigo'] ?? '';
                 if (!$itemSku) continue;
 
-                // Venda direta do SKU
                 if ($itemSku === $skuBusca) {
                     $qtd = (int) ($item['quantidade'] ?? 1);
                     $resultados[] = [
@@ -98,11 +92,11 @@ class RastreioVendasProduto extends Page
                         'tipo' => 'Direta',
                         'kit_sku' => '-',
                         'qtd' => $qtd,
+                        'status' => 'aprovado',
                     ];
                     $this->totalUnidades += $qtd;
                 }
 
-                // Venda via kit
                 if ($kitsComEste->has($itemSku)) {
                     $comp = $kitsComEste[$itemSku];
                     $qtdItem = (int) ($item['quantidade'] ?? 1);
@@ -115,11 +109,73 @@ class RastreioVendasProduto extends Page
                         'tipo' => 'Via Kit',
                         'kit_sku' => $itemSku,
                         'qtd' => $qtd,
+                        'status' => 'aprovado',
                     ];
                     $this->totalUnidades += $qtd;
                 }
             }
         }
+
+        // Pedidos pendentes (em revisão) no staging que ainda não viraram venda
+        $blingIdsAprovados = $vendas->pluck('bling_id')->toArray();
+
+        $queryStagingPendente = PedidoBlingStaging::whereIn('status', ['pendente', 'assistencia'])
+            ->whereNotIn('bling_id', $blingIdsAprovados);
+
+        $queryStagingPendente = match ($this->periodo) {
+            'hoje' => $queryStagingPendente->whereDate('data_pedido', today()),
+            'esta_semana' => $queryStagingPendente->whereBetween('data_pedido', [now()->startOfWeek(), now()->endOfWeek()]),
+            'este_mes' => $queryStagingPendente->whereBetween('data_pedido', [now()->startOfMonth(), now()->endOfMonth()]),
+            'mes_passado' => $queryStagingPendente->whereBetween('data_pedido', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()]),
+            'customizado' => $queryStagingPendente
+                ->when($this->data_inicio, fn ($q) => $q->whereDate('data_pedido', '>=', $this->data_inicio))
+                ->when($this->data_fim, fn ($q) => $q->whereDate('data_pedido', '<=', $this->data_fim)),
+            default => $queryStagingPendente,
+        };
+
+        $pendentes = $queryStagingPendente->orderBy('data_pedido', 'desc')->get();
+
+        foreach ($pendentes as $staging) {
+            foreach ($staging->itens ?? [] as $item) {
+                $itemSku = $item['codigo'] ?? '';
+                if (!$itemSku) continue;
+
+                if ($itemSku === $skuBusca) {
+                    $qtd = (int) ($item['quantidade'] ?? 1);
+                    $resultados[] = [
+                        'data' => $staging->data_pedido,
+                        'pedido' => $staging->numero_loja ?? $staging->numero_pedido,
+                        'nfe' => '-',
+                        'canal' => $staging->canal ?? '-',
+                        'tipo' => 'Direta',
+                        'kit_sku' => '-',
+                        'qtd' => $qtd,
+                        'status' => $staging->status,
+                    ];
+                    $this->totalUnidades += $qtd;
+                }
+
+                if ($kitsComEste->has($itemSku)) {
+                    $comp = $kitsComEste[$itemSku];
+                    $qtdItem = (int) ($item['quantidade'] ?? 1);
+                    $qtd = $qtdItem * (int) $comp->quantidade;
+                    $resultados[] = [
+                        'data' => $staging->data_pedido,
+                        'pedido' => $staging->numero_loja ?? $staging->numero_pedido,
+                        'nfe' => '-',
+                        'canal' => $staging->canal ?? '-',
+                        'tipo' => 'Via Kit',
+                        'kit_sku' => $itemSku,
+                        'qtd' => $qtd,
+                        'status' => $staging->status,
+                    ];
+                    $this->totalUnidades += $qtd;
+                }
+            }
+        }
+
+        // Ordenar por data desc
+        usort($resultados, fn ($a, $b) => strtotime($b['data']) <=> strtotime($a['data']));
 
         $this->resultados = $resultados;
         $this->consultaRealizada = true;

@@ -93,11 +93,12 @@
                                         <th class="text-center px-4 py-2 text-gray-600 dark:text-gray-300">Tipo</th>
                                         <th class="text-left px-4 py-2 text-gray-600 dark:text-gray-300">Kit SKU</th>
                                         <th class="text-center px-4 py-2 text-gray-600 dark:text-gray-300">Qtd</th>
+                                        <th class="text-center px-4 py-2 text-gray-600 dark:text-gray-300">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                     @foreach($this->resultados as $r)
-                                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 {{ ($r['status'] ?? 'aprovado') !== 'aprovado' ? 'opacity-70' : '' }}">
                                             <td class="px-4 py-2 text-gray-700 dark:text-gray-200">{{ \Carbon\Carbon::parse($r['data'])->format('d/m/Y') }}</td>
                                             <td class="px-4 py-2 font-mono text-xs text-gray-700 dark:text-gray-200">{{ $r['pedido'] }}</td>
                                             <td class="px-4 py-2 text-gray-700 dark:text-gray-200">{{ $r['nfe'] }}</td>
@@ -111,6 +112,15 @@
                                             </td>
                                             <td class="px-4 py-2 font-mono text-xs text-gray-500 dark:text-gray-400">{{ $r['kit_sku'] }}</td>
                                             <td class="px-4 py-2 text-center font-bold text-gray-900 dark:text-white">{{ $r['qtd'] }}</td>
+                                            <td class="px-4 py-2 text-center">
+                                                @if(($r['status'] ?? 'aprovado') === 'aprovado')
+                                                    <span class="text-xs bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 px-2 py-0.5 rounded">✓</span>
+                                                @elseif(($r['status'] ?? '') === 'pendente')
+                                                    <span class="text-xs bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300 px-2 py-0.5 rounded font-medium">Pendente</span>
+                                                @else
+                                                    <span class="text-xs bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-300 px-2 py-0.5 rounded font-medium">{{ ucfirst($r['status'] ?? '') }}</span>
+                                                @endif
+                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>
