@@ -222,8 +222,21 @@ class BlingClient
      */
     public function getNfePorPedidoLoja(string $numeroPedidoLoja): ?array
     {
+        // Tentar busca filtrada (API v3 aceita filtro por numeroLoja)
+        $response = $this->getNfes(['numeroLoja' => $numeroPedidoLoja, 'limite' => 5]);
+        if ($response['success'] && !empty($response['body']['data'])) {
+            foreach ($response['body']['data'] as $nfeResumo) {
+                $detalhe = $this->getNfe($nfeResumo['id']);
+                if ($detalhe['success']) {
+                    return $detalhe['body']['data'] ?? null;
+                }
+            }
+        }
+
+        // Fallback: percorrer NF-es recentes comparando numeroPedidoLoja
         $pagina = 1;
         $limite = 100;
+        $maxPaginas = 5;
 
         do {
             $response = $this->getNfes(['pagina' => $pagina, 'limite' => $limite]);
@@ -235,7 +248,6 @@ class BlingClient
             $nfes = $response['body']['data'] ?? [];
 
             foreach ($nfes as $nfeResumo) {
-                // Buscar detalhe da NF-e para ver o numeroPedidoLoja
                 $detalhe = $this->getNfe($nfeResumo['id']);
 
                 if ($detalhe['success']) {
@@ -247,7 +259,7 @@ class BlingClient
             }
 
             $pagina++;
-        } while (count($nfes) >= $limite);
+        } while (count($nfes) >= $limite && $pagina <= $maxPaginas);
 
         return null;
     }

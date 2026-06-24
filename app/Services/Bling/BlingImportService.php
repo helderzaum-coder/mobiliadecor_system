@@ -477,6 +477,34 @@ class BlingImportService
             }
         }
 
+        // Fallback: buscar NF-e pelo número do pedido loja (ex: ML order ID)
+        if ((!$nfeId || $nfeId == 0) && $staging->numero_loja) {
+            try {
+                $nfe = $client->getNfePorPedidoLoja((string) $staging->numero_loja);
+                if ($nfe) {
+                    $valorNota = (float) ($nfe['valorNota'] ?? 0);
+                    $percentual = self::buscarPercentualImposto($staging);
+                    $valorImposto = round($valorNota * ($percentual / 100), 2);
+
+                    $staging->update([
+                        'nota_fiscal' => $nfe['numero'] ?? $staging->nota_fiscal,
+                        'nfe_numero' => $nfe['numero'] ?? '',
+                        'nfe_chave_acesso' => $nfe['chaveAcesso'] ?? '',
+                        'nfe_valor' => $valorNota,
+                        'nfe_xml_url' => $nfe['xml'] ?? '',
+                        'nfe_pdf_url' => $nfe['linkPDF'] ?? '',
+                        'base_imposto' => $valorNota,
+                        'percentual_imposto' => $percentual,
+                        'valor_imposto' => $valorImposto,
+                    ]);
+                    Log::info("Bling: NF-e encontrada via numeroPedidoLoja {$staging->numero_loja} para pedido {$staging->bling_id}");
+                    return true;
+                }
+            } catch (\Exception $e) {
+                Log::warning("Bling: Erro ao buscar NF-e por pedidoLoja {$staging->numero_loja}: " . $e->getMessage());
+            }
+        }
+
         if (!$nfeId || $nfeId == 0) {
             return false;
         }
