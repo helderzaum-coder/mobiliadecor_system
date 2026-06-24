@@ -93,6 +93,7 @@
                                         <th class="text-center px-4 py-2 text-gray-600 dark:text-gray-300">Tipo</th>
                                         <th class="text-left px-4 py-2 text-gray-600 dark:text-gray-300">Kit SKU</th>
                                         <th class="text-center px-4 py-2 text-gray-600 dark:text-gray-300">Qtd</th>
+                                        <th class="text-center px-4 py-2 text-gray-600 dark:text-gray-300">Etiqueta</th>
                                         <th class="text-center px-4 py-2 text-gray-600 dark:text-gray-300">Status</th>
                                     </tr>
                                 </thead>
@@ -112,6 +113,13 @@
                                             </td>
                                             <td class="px-4 py-2 font-mono text-xs text-gray-500 dark:text-gray-400">{{ $r['kit_sku'] }}</td>
                                             <td class="px-4 py-2 text-center font-bold text-gray-900 dark:text-white">{{ $r['qtd'] }}</td>
+                                            <td class="px-4 py-2 text-center text-xs text-gray-600 dark:text-gray-300">
+                                                @if(!empty($r['data_despacho']))
+                                                    {{ \Carbon\Carbon::parse($r['data_despacho'])->format('d/m H:i') }}
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
                                             <td class="px-4 py-2 text-center">
                                                 @if(($r['status'] ?? 'aprovado') === 'aprovado')
                                                     <span class="text-xs bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 px-2 py-0.5 rounded">✓</span>

@@ -78,6 +78,8 @@ class RastreioVendasProduto extends Page
             $staging = $stagings[$venda->bling_id] ?? null;
             if (!$staging) continue;
 
+            $dataDespacho = $staging->dados_originais['_data_despacho'] ?? null;
+
             foreach ($staging->itens ?? [] as $item) {
                 $itemSku = $item['codigo'] ?? '';
                 if (!$itemSku) continue;
@@ -93,6 +95,7 @@ class RastreioVendasProduto extends Page
                         'kit_sku' => '-',
                         'qtd' => $qtd,
                         'status' => 'aprovado',
+                        'data_despacho' => $dataDespacho,
                     ];
                     $this->totalUnidades += $qtd;
                 }
@@ -110,6 +113,7 @@ class RastreioVendasProduto extends Page
                         'kit_sku' => $itemSku,
                         'qtd' => $qtd,
                         'status' => 'aprovado',
+                        'data_despacho' => $dataDespacho,
                     ];
                     $this->totalUnidades += $qtd;
                 }
@@ -136,6 +140,8 @@ class RastreioVendasProduto extends Page
         $pendentes = $queryStagingPendente->orderBy('data_pedido', 'desc')->get();
 
         foreach ($pendentes as $staging) {
+            $dataDespacho = $staging->dados_originais['_data_despacho'] ?? null;
+
             foreach ($staging->itens ?? [] as $item) {
                 $itemSku = $item['codigo'] ?? '';
                 if (!$itemSku) continue;
@@ -151,6 +157,7 @@ class RastreioVendasProduto extends Page
                         'kit_sku' => '-',
                         'qtd' => $qtd,
                         'status' => $staging->status,
+                        'data_despacho' => $dataDespacho,
                     ];
                     $this->totalUnidades += $qtd;
                 }
@@ -168,6 +175,7 @@ class RastreioVendasProduto extends Page
                         'kit_sku' => $itemSku,
                         'qtd' => $qtd,
                         'status' => $staging->status,
+                        'data_despacho' => $dataDespacho,
                     ];
                     $this->totalUnidades += $qtd;
                 }
