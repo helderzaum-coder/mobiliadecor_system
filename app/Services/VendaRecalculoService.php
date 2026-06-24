@@ -372,12 +372,19 @@ class VendaRecalculoService
 
         $canal = $venda->id_canal ? CanalVenda::find($venda->id_canal) : null;
 
-        // Se comissão está zerada e canal tem regras, recalcular
-        if ((float) $venda->comissao == 0 && $canal) {
+        // Recalcular comissão via regras do canal (exceto quando veio da API/planilha ML)
+        $temDadosML = (float) ($venda->ml_sale_fee ?? 0) > 0;
+        $temPlanilhaShopee = (bool) $venda->planilha_processada && $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'shopee');
+        $temPlanilhaMagalu = (bool) $venda->planilha_processada && $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
+        $temPlanilhaMM = (bool) $venda->planilha_processada && $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'madeira');
+        $temPlanilhaWC = (bool) $venda->planilha_processada && $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'webcontinental');
+        $comissaoVeiaDeFora = $temDadosML || $temPlanilhaShopee || $temPlanilhaMagalu || $temPlanilhaMM || $temPlanilhaWC;
+
+        if (!$comissaoVeiaDeFora && $canal) {
             $staging = PedidoBlingStaging::where('bling_id', $venda->bling_id)->first();
             $itens = $staging?->itens ?? [];
             if (!empty($itens)) {
-                $comissaoData = CalculoComissaoService::calcular($canal->id_canal, $itens, null, null, (float) $venda->valor_frete_cliente);
+                $comissaoData = CalculoComissaoService::calcular($canal->id_canal, $itens, $venda->ml_tipo_anuncio, $venda->ml_tipo_frete, (float) $venda->valor_frete_cliente);
                 if ($comissaoData['comissao_total'] > 0) {
                     $venda->update([
                         'comissao' => $comissaoData['comissao_total'],
