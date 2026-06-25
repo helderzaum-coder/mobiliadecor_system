@@ -392,14 +392,10 @@ class PedidoBlingStagingResource extends Resource
                     ->color('info')
                     ->default(0),
                 Tables\Columns\TextColumn::make('valor_imposto')->label('Imposto')->money('BRL'),
-                Tables\Columns\TextColumn::make('custo_frete')->label('Frete Aprov.')
+                Tables\Columns\TextColumn::make('custo_frete')->label('Frete')
                     ->money('BRL')
                     ->color('warning')
-                    ->visible(fn () => true)
-                    ->getStateUsing(fn (PedidoBlingStaging $record) => (float) $record->custo_frete > 0 ? $record->custo_frete : null),
-                Tables\Columns\TextColumn::make('transportadora')->label('Transp.')
-                    ->limit(15)
-                    ->tooltip(fn (PedidoBlingStaging $record) => $record->transportadora),
+                    ->description(fn (PedidoBlingStaging $record) => $record->transportadora ? $record->transportadora : null),
                 Tables\Columns\TextColumn::make('status')->label('Status')->badge()
                     ->color(fn (string $state) => match ($state) {
                         'pendente' => 'warning',
@@ -980,6 +976,39 @@ class PedidoBlingStagingResource extends Resource
                         Notification::make()->title('Pedido desaprovado e voltou para pendente.')->success()->send();
                     })
                     ->visible(fn (PedidoBlingStaging $record) => $record->status === 'aprovado'),
+
+                Tables\Actions\Action::make('ver_cotacoes')
+                    ->label('Cotações')
+                    ->icon('heroicon-o-truck')
+                    ->color('gray')
+                    ->modalHeading(fn (PedidoBlingStaging $record) => 'Cotações - Pedido #' . ($record->numero_loja ?? $record->numero_pedido))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fechar')
+                    ->modalWidth('7xl')
+                    ->modalContent(function (PedidoBlingStaging $record) {
+                        if (!$record->dest_uf || !$record->dest_cep || !$record->peso_bruto) {
+                            $html = '<p class="text-sm text-warning-500">Dados de envio incompletos.</p>';
+                            if ($record->transportadora || (float) $record->custo_frete > 0) {
+                                $html .= '<div class="mt-3 p-3 rounded-lg bg-green-900/20 border border-green-700">';
+                                $html .= '<span class="text-sm text-green-400 font-semibold">\u2705 Aprovado com:</span> ';
+                                $html .= '<span class="text-sm text-white">' . e($record->transportadora ?? 'N/I') . ' \u2014 R$ ' . number_format((float) $record->custo_frete, 2, ',', '.') . '</span>';
+                                $html .= '</div>';
+                            }
+                            return new HtmlString($html);
+                        }
+
+                        // Header com info aprovada
+                        $html = '';
+                        if ($record->transportadora || (float) $record->custo_frete > 0) {
+                            $html .= '<div class="mb-4 p-3 rounded-lg bg-green-900/20 border border-green-700">';
+                            $html .= '<span class="text-sm text-green-400 font-semibold">\u2705 Aprovado com:</span> ';
+                            $html .= '<span class="text-sm text-white font-medium">' . e($record->transportadora ?? 'N/I') . ' \u2014 R$ ' . number_format((float) $record->custo_frete, 2, ',', '.') . '</span>';
+                            $html .= '</div>';
+                        }
+
+                        return new HtmlString($html . self::renderCotacaoModal($record)->toHtml());
+                    })
+                    ->visible(fn (PedidoBlingStaging $record) => $record->dest_uf && $record->dest_cep && $record->peso_bruto),
 
                 Tables\Actions\Action::make('cotacao_whatsapp')
                     ->label('Cotação WA')
