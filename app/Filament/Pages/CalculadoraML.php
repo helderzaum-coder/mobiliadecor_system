@@ -334,6 +334,7 @@ class CalculadoraML extends Page
             $impostoPct = (float) ($impostos[$cfg['id_cnpj']] ?? 0);
 
             // Calcular comissão
+            $comissaoCumulativa = 0;
             if ($cfg['tipo'] === 'shopee') {
                 $s = $this->calcularComissaoShopee($preco);
                 $comissao = $s['comissao'];
@@ -350,6 +351,7 @@ class CalculadoraML extends Page
                 $comissao = $a['comissao'];
                 $comissaoPct = $a['pct'];
                 $comissaoFixa = $a['fixo'];
+                $comissaoCumulativa = $a['cumulativa'] ?? 0;
                 $frete = 0;
             } elseif ($cfg['tipo'] === 'site_pix') {
                 // Pix: preço é o de venda com 15% de desconto
@@ -396,6 +398,7 @@ class CalculadoraML extends Page
                 'cnpj_label' => $cfg['cnpj_label'], 'id_cnpj' => $cfg['id_cnpj'],
                 'comissao_pct' => $comissaoPct, 'comissao' => $comissao,
                 'comissao_fixa' => $comissaoFixa,
+                'comissao_cumulativa' => $comissaoCumulativa,
                 'antecipacao_pct' => $cfg['antecipacao_pct'] ?? 0, 'antecipacao' => $antecipacao,
                 'frete' => $frete, 'recebe' => $recebe,
                 'imposto_pct' => $impostoPct, 'imposto' => $imposto,
@@ -481,6 +484,7 @@ class CalculadoraML extends Page
                     $comissao = $a['comissao'];
                     $comissaoPct = $a['pct'];
                     $comissaoFixa = $a['fixo'];
+                    $comissaoCumulativa = $a['cumulativa'] ?? 0;
                     $frete = 0;
                 } else {
                     $comissao = round($preco * $cfg['comissao_pct'] / 100 + $cfg['fixo'], 2);
@@ -498,6 +502,7 @@ class CalculadoraML extends Page
                     'preco_venda' => $preco,
                     'comissao_pct' => $comissaoPct, 'comissao' => $comissao,
                     'comissao_fixa' => $comissaoFixa,
+                    'comissao_cumulativa' => $comissaoCumulativa ?? 0,
                     'antecipacao_pct' => $cfg['antecipacao_pct'] ?? 0, 'antecipacao' => $antecipacao,
                     'frete' => $frete, 'recebe' => $recebe,
                     'imposto_pct' => $impostoPct, 'imposto' => $imposto,

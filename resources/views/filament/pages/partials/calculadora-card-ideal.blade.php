@@ -36,7 +36,7 @@
     </div>
     <div style="font-size:11px;">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1f2937;">
-            <span style="color:#6b7280;">Comissão ({{ $det['comissao_pct'] }}%{{ $det['comissao_fixa'] ? ' + R$'.$det['comissao_fixa'] : '' }})</span>
+            <span style="color:#6b7280;">Comissão ({{ $det['comissao_pct'] }}%{{ $det['comissao_fixa'] ? ' + R$'.$det['comissao_fixa'] : '' }}{{ ($det['comissao_cumulativa'] ?? 0) > 0 ? ' + 1,5%' : '' }})</span>
             <span style="color:#ef4444;">- R$ {{ number_format($det['comissao'], 2, ',', '.') }}</span>
         </div>
         @if($det['frete'] > 0)

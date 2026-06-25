@@ -27,7 +27,7 @@
 
     <div style="font-size:11px;">
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1f2937;">
-            <span style="color:#6b7280;">Comissão ({{ $canal['comissao_pct'] }}%{{ $canal['comissao_fixa'] ? ' + R$'.$canal['comissao_fixa'] : '' }})</span>
+            <span style="color:#6b7280;">Comissão ({{ $canal['comissao_pct'] }}%{{ $canal['comissao_fixa'] ? ' + R$'.$canal['comissao_fixa'] : '' }}{{ ($canal['comissao_cumulativa'] ?? 0) > 0 ? ' + 1,5%' : '' }})</span>
             <span style="color:#ef4444;">- R$ {{ number_format($canal['comissao'], 2, ',', '.') }}</span>
         </div>
         @if($canal['frete'] > 0)
