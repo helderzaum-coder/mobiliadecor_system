@@ -298,27 +298,36 @@ class VendaRecalculoService
         }
 
         $comissao = (float) $dado->comissao;
-        $valorOriginal = (float) $dado->valor_original;
-        $valorComDesconto = (float) $dado->valor_com_desconto;
-        $valorPedido = (float) $dado->valor_pedido;
+        $valorOriginal = (float) $dado->valor_original; // preço unitário original
+        $valorComDesconto = (float) $dado->valor_com_desconto; // valor total dos itens (qtd * preço)
+        $valorPedido = (float) $dado->valor_pedido; // valor total com frete
 
-        // Se MM deu desconto por conta própria, seller recebe valor original
+        // valor_com_desconto = total itens (já multiplicado pela quantidade)
+        // valor_original = preço unitário original (SEM multiplicar pela qtd)
+        // Para detectar subsídio MM: comparar valor_com_desconto com a quantidade * valor_original
+        // Porém não temos a qtd diretamente aqui, então comparar via percentual_desconto
         $subsidioMM = 0;
-        if ($valorOriginal > 0 && $valorComDesconto > 0 && $valorOriginal > $valorComDesconto) {
-            $subsidioMM = round($valorOriginal - $valorComDesconto, 2);
+        $percentualDesconto = (float) $dado->percentual_desconto;
+        if ($percentualDesconto > 0 && $valorComDesconto > 0) {
+            // MM deu desconto — seller recebe o valor sem desconto
+            $valorSemDesconto = round($valorComDesconto / (1 - $percentualDesconto / 100), 2);
+            $subsidioMM = round($valorSemDesconto - $valorComDesconto, 2);
         }
 
-        // Usar valor original como receita real do seller
-        $totalReal = $valorOriginal > 0 ? $valorOriginal : $valorPedido;
+        // Total de produtos = valor dos itens (valor_com_desconto)
+        $totalProdutos = $valorComDesconto > 0 ? $valorComDesconto : $valorPedido;
+        // Frete = valor pedido - total produtos
+        $frete = $valorPedido > $totalProdutos ? round($valorPedido - $totalProdutos, 2) : 0;
 
         $updates = [
             'comissao' => $comissao,
             'planilha_processada' => true,
         ];
 
-        if ($totalReal > 0) {
-            $updates['total_produtos'] = $totalReal;
-            $updates['valor_total_venda'] = $totalReal;
+        if ($totalProdutos > 0) {
+            $updates['total_produtos'] = $totalProdutos;
+            $updates['valor_total_venda'] = $valorPedido > 0 ? $valorPedido : $totalProdutos;
+            $updates['valor_frete_cliente'] = $frete;
         }
 
         if ($subsidioMM > 0) {
