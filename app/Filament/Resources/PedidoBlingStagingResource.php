@@ -392,6 +392,14 @@ class PedidoBlingStagingResource extends Resource
                     ->color('info')
                     ->default(0),
                 Tables\Columns\TextColumn::make('valor_imposto')->label('Imposto')->money('BRL'),
+                Tables\Columns\TextColumn::make('custo_frete')->label('Frete Aprov.')
+                    ->money('BRL')
+                    ->color('warning')
+                    ->visible(fn () => true)
+                    ->getStateUsing(fn (PedidoBlingStaging $record) => (float) $record->custo_frete > 0 ? $record->custo_frete : null),
+                Tables\Columns\TextColumn::make('transportadora')->label('Transp.')
+                    ->limit(15)
+                    ->tooltip(fn (PedidoBlingStaging $record) => $record->transportadora),
                 Tables\Columns\TextColumn::make('status')->label('Status')->badge()
                     ->color(fn (string $state) => match ($state) {
                         'pendente' => 'warning',
@@ -609,10 +617,19 @@ class PedidoBlingStagingResource extends Resource
                     })
                     ->action(function (PedidoBlingStaging $record, array $data) {
                         $valorFrete = (float) $data['valor_frete'];
-                        $record->update(['custo_frete' => round($valorFrete, 2)]);
+                        // Buscar nome da transportadora selecionada
+                        $valorNf = (float) ($record->nfe_valor ?: $record->total_pedido);
+                        $cotacoes = CotacaoFreteService::cotar($record->dest_uf, $record->dest_cep, (float) $record->peso_bruto, $valorNf, $record->dest_cidade);
+                        $selecionada = collect($cotacoes)->firstWhere('id_transportadora', (int) $data['id_transportadora']);
+                        $nomeTransp = $selecionada['nome'] ?? null;
+
+                        $record->update([
+                            'custo_frete' => round($valorFrete, 2),
+                            'transportadora' => $nomeTransp,
+                        ]);
                         try {
                             AprovacaoVendaService::aprovar($record);
-                            Notification::make()->title("Cotação R$ " . number_format($valorFrete, 2, ',', '.') . " — Aprovado!")->success()->send();
+                            Notification::make()->title("Cotação R$ " . number_format($valorFrete, 2, ',', '.') . ($nomeTransp ? " ({$nomeTransp})" : '') . " — Aprovado!")->success()->send();
                         } catch (\Throwable $e) {
                             Notification::make()->title("Erro ao aprovar: " . $e->getMessage())->danger()->send();
                         }
@@ -811,12 +828,24 @@ class PedidoBlingStagingResource extends Resource
                     ])
                     ->action(function (PedidoBlingStaging $record, array $data) {
                         $valorFrete = (float) $data['valor_frete'];
-                        $record->update(['custo_frete' => round($valorFrete, 2)]);
+                        // Buscar nome da transportadora selecionada
+                        $valorNf = (float) ($record->nfe_valor ?: $record->total_pedido);
+                        $cotacoes = CotacaoFreteService::cotar(
+                            $record->dest_uf, $record->dest_cep,
+                            (float) $record->peso_bruto, $valorNf, $record->dest_cidade
+                        );
+                        $selecionada = collect($cotacoes)->firstWhere('id_transportadora', (int) $data['id_transportadora']);
+                        $nomeTransp = $selecionada['nome'] ?? null;
+
+                        $record->update([
+                            'custo_frete' => round($valorFrete, 2),
+                            'transportadora' => $nomeTransp,
+                        ]);
 
                         try {
                             $venda = AprovacaoVendaService::aprovar($record);
                             Notification::make()
-                                ->title("Cotação R$ " . number_format($valorFrete, 2, ',', '.') . " — Pedido aprovado!")
+                                ->title("Cotação R$ " . number_format($valorFrete, 2, ',', '.') . ($nomeTransp ? " ({$nomeTransp})" : '') . " — Pedido aprovado!")
                                 ->success()->send();
                         } catch (\Throwable $e) {
                             Notification::make()
