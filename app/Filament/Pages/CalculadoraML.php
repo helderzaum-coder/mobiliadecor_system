@@ -185,13 +185,38 @@ class CalculadoraML extends Page
 
     private function calcularComissaoAmazon(float $preco): array
     {
+        $comissaoBase = 0;
+        $pctBase = 0;
+        $fixoBase = 0;
+
         foreach (self::$tabelaAmazon as [$min, $max, $pct, $fixo]) {
             if ($preco >= $min && $preco <= $max) {
-                return ['comissao' => round($preco * $pct / 100 + $fixo, 2), 'pct' => $pct, 'fixo' => $fixo];
+                $comissaoBase = round($preco * $pct / 100 + $fixo, 2);
+                $pctBase = $pct;
+                $fixoBase = $fixo;
+                break;
             }
         }
-        $last = end(self::$tabelaAmazon);
-        return ['comissao' => round($preco * $last[2] / 100 + $last[3], 2), 'pct' => $last[2], 'fixo' => $last[3]];
+        if ($comissaoBase == 0) {
+            $last = end(self::$tabelaAmazon);
+            $comissaoBase = round($preco * $last[2] / 100 + $last[3], 2);
+            $pctBase = $last[2];
+            $fixoBase = $last[3];
+        }
+
+        // Somar regras cumulativas do canal Amazon
+        $amazonCanal = \App\Models\CanalVenda::where('nome_canal', 'Amazon')->first();
+        $cumulativa = 0;
+        if ($amazonCanal) {
+            $regrasCum = $amazonCanal->regrasComissao()->where('ativo', true)->where('cumulativa', true)->get();
+            foreach ($regrasCum as $regra) {
+                $cumulativa += round($preco * (float) $regra->percentual / 100 + (float) $regra->valor_fixo, 2);
+            }
+        }
+
+        $comissaoTotal = $comissaoBase + $cumulativa;
+
+        return ['comissao' => $comissaoTotal, 'pct' => $pctBase, 'fixo' => $fixoBase, 'cumulativa' => $cumulativa];
     }
 
     private function getPesoCubado(): float
@@ -548,7 +573,8 @@ class CalculadoraML extends Page
             for ($i = 0; $i < 30; $i++) {
                 $a = $this->calcularComissaoAmazon($preco);
                 $imposto = $this->calcularImposto($preco, 0, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete'] ?? false);
-                $novoPreco = round(($custoTotal + $a['fixo'] + $imposto) / (1 - ($a['pct'] / 100) - ($antecipacaoPct / 100) - ($margemPct / 100)), 2);
+                $comissaoTotal = $a['comissao']; // já inclui cumulativa
+                $novoPreco = round(($custoTotal + $imposto + $comissaoTotal) / (1 - ($antecipacaoPct / 100) - ($margemPct / 100)), 2);
                 if (abs($novoPreco - $preco) < 0.01) break;
                 $preco = $novoPreco;
             }
