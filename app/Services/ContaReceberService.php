@@ -106,8 +106,8 @@ class ContaReceberService
     public static function regenerar(Venda $venda): bool
     {
         $contaExistente = ContaReceber::where('id_venda', $venda->id_venda)
-            ->where('status', 'pendente')
             ->where('forma_pagamento', 'not like', '%Subsídio%')
+            ->where('lancamento_manual', false)
             ->first();
 
         $afiliado = (float) ($venda->comissao_afiliado ?? 0);

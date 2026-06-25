@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"yaml.schemas": {
+			"https://www.schemastore.org/github-workflow.json": "file:///c%3A/wamp64/www/mobiliadecor_system/.github/workflows/deploy.yml"
+		}
+	}
+}

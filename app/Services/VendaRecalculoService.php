@@ -487,23 +487,7 @@ class VendaRecalculoService
             'margem_contribuicao' => round($margemContribuicao, 2),
         ]);
 
-        // Gerar conta a receber se venda ficou completa
-        // Regenerar conta a receber se comissao_afiliado mudou ou valores mudaram
-        if ((float) ($venda->comissao_afiliado ?? 0) > 0) {
-            ContaReceberService::regenerar($venda->fresh());
-        } else {
-            $vendaFresh = $venda->fresh();
-            $contaExistente = \App\Models\ContaReceber::where('id_venda', $vendaFresh->id_venda)
-                ->where('status', 'pendente')
-                ->where('forma_pagamento', 'not like', '%Subsídio%')
-                ->first();
-
-            if ($contaExistente) {
-                // Recalcular valor se conta já existe e está pendente
-                ContaReceberService::regenerar($vendaFresh);
-            } else {
-                ContaReceberService::gerarSeCompleta($vendaFresh);
-            }
-        }
+        // Regenerar conta a receber com valores atualizados
+        ContaReceberService::regenerar($venda->fresh());
     }
 }
