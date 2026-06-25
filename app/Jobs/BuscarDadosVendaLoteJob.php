@@ -42,6 +42,9 @@ class BuscarDadosVendaLoteJob implements ShouldQueue
                 'cte' => $this->processarCte($venda),
                 'custos' => $this->processarCustos($venda),
                 'shopee' => $this->processarShopee($venda),
+                'ml' => $this->processarML($venda),
+                'mm' => $this->processarMM($venda),
+                'wc' => $this->processarWC($venda),
                 default => false,
             };
 
@@ -53,6 +56,9 @@ class BuscarDadosVendaLoteJob implements ShouldQueue
             'cte' => 'CT-e',
             'custos' => 'Custos',
             'shopee' => 'Planilha Shopee',
+            'ml' => 'Planilha ML',
+            'mm' => 'Planilha Madeira Madeira',
+            'wc' => 'Planilha Webcontinental',
             default => $this->tipo,
         };
 
@@ -101,6 +107,33 @@ class BuscarDadosVendaLoteJob implements ShouldQueue
         $result = VendaRecalculoService::aplicarPlanilhaShopee($venda);
         if (!$result['success']) {
             Log::info("ShopeeLote falha: pedido={$venda->numero_pedido_canal} bling_id={$venda->bling_id} msg={$result['msg']}");
+        }
+        return $result['success'];
+    }
+
+    private function processarML(Venda $venda): bool
+    {
+        $result = VendaRecalculoService::aplicarPlanilhaML($venda);
+        if (!$result['success']) {
+            Log::info("MLLote falha: pedido={$venda->numero_pedido_canal} msg={$result['msg']}");
+        }
+        return $result['success'];
+    }
+
+    private function processarMM(Venda $venda): bool
+    {
+        $result = VendaRecalculoService::aplicarPlanilhaMM($venda);
+        if (!$result['success']) {
+            Log::info("MMLote falha: pedido={$venda->numero_pedido_canal} msg={$result['msg']}");
+        }
+        return $result['success'];
+    }
+
+    private function processarWC(Venda $venda): bool
+    {
+        $result = VendaRecalculoService::aplicarPlanilhaWC($venda);
+        if (!$result['success']) {
+            Log::info("WCLote falha: pedido={$venda->numero_pedido_canal} msg={$result['msg']}");
         }
         return $result['success'];
     }

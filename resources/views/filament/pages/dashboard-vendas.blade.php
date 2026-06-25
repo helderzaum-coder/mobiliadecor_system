@@ -24,6 +24,10 @@
             style="background:#ea580c;color:#fff;padding:6px 12px;font-size:11px;border-radius:6px;border:none;cursor:pointer;white-space:nowrap;">
             📊 Shopee Lote
         </button>
+        <button wire:click="aplicarPlanilhasLote" wire:loading.attr="disabled" wire:confirm="Aplicar planilhas para TODOS os canais (Shopee, ML, Magalu, WC, MM) sem planilha no período?"
+            style="background:#9333ea;color:#fff;padding:6px 12px;font-size:11px;border-radius:6px;border:none;cursor:pointer;white-space:nowrap;">
+            📊 Planilhas Lote
+        </button>
         <a href="#" wire:click.prevent="exportarPlanilha"
             style="background:#065f46;color:#fff;padding:6px 12px;font-size:11px;border-radius:6px;border:none;cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-block;">
             📥 Exportar CSV

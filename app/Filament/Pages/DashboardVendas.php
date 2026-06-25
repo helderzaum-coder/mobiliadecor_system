@@ -519,6 +519,41 @@ class DashboardVendas extends Page implements HasForms
         \Filament\Notifications\Notification::make()->title(count($ids) . ' venda(s) Shopee enviadas para aplicar planilha.')->info()->send();
     }
 
+    public function aplicarPlanilhasLote(): void
+    {
+        $baseQuery = $this->buildQuery()->where('planilha_processada', false);
+        $total = 0;
+
+        $canais = [
+            'shopee' => '%shopee%',
+            'ml' => '%ercado%',
+            'mm' => '%adeira%',
+            'wc' => '%ebcontinental%',
+        ];
+
+        foreach ($canais as $tipo => $like) {
+            $ids = (clone $baseQuery)->where('canal_nome', 'like', $like)->pluck('id_venda')->toArray();
+            if (!empty($ids)) {
+                \App\Jobs\BuscarDadosVendaLoteJob::dispatch($tipo, $ids, auth()->id());
+                $total += count($ids);
+            }
+        }
+
+        // Magalu usa mesmo service do ML
+        $idsMagalu = (clone $baseQuery)->where('canal_nome', 'like', '%agalu%')->pluck('id_venda')->toArray();
+        if (!empty($idsMagalu)) {
+            \App\Jobs\BuscarDadosVendaLoteJob::dispatch('ml', $idsMagalu, auth()->id());
+            $total += count($idsMagalu);
+        }
+
+        if ($total === 0) {
+            \Filament\Notifications\Notification::make()->title('Nenhuma venda sem planilha no período.')->warning()->send();
+            return;
+        }
+
+        \Filament\Notifications\Notification::make()->title($total . ' venda(s) enviadas para aplicar planilhas (todos os canais).')->info()->send();
+    }
+
     public function exportarPlanilha(): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $vendas = $this->buildQuery()->get();
