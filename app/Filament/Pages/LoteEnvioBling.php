@@ -10,9 +10,10 @@ use Illuminate\Support\Facades\Log;
 class LoteEnvioBling extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-truck';
-    protected static ?string $navigationGroup = 'Bling';
-    protected static ?string $navigationLabel = 'Lote Envio';
-    protected static ?string $title = 'Atualizar Situação em Lote';
+    protected static ?string $navigationGroup = 'Ferramentas';
+    protected static ?string $navigationLabel = 'Lote de Envios Bling';
+    protected static ?string $title = 'Lote de Envios Bling';
+    protected static ?int $navigationSort = 20;
     protected static string $view = 'filament.pages.lote-envio-bling';
 
     public string $blingAccount = 'primary';
