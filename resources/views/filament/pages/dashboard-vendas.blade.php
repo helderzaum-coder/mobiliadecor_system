@@ -581,7 +581,7 @@
                         @if($isShopee)
                             <button wire:click="marcarFreteEnvias({{ $venda->id_venda }})" wire:loading.attr="disabled"
                                 wire:confirm="Marcar como Shopee Xpress? Frete será zerado."
-                                style="background:#ea580c;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                                style="background:#475569;color:#e2e8f0;padding:3px 10px;font-size:11px;border-radius:5px;border:1px solid #64748b;cursor:pointer;">
                                 📦 Shopee Xpress
                             </button>
                         @endif
@@ -591,7 +591,7 @@
                         @if($isMadeiraMadeiraFrete)
                             <button wire:click="marcarFreteEnvias({{ $venda->id_venda }})" wire:loading.attr="disabled"
                                 wire:confirm="Marcar como Madeira Envios? Frete será zerado (etiqueta marketplace)."
-                                style="background:#92400e;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                                style="background:#475569;color:#e2e8f0;padding:3px 10px;font-size:11px;border-radius:5px;border:1px solid #64748b;cursor:pointer;">
                                 📦 Madeira Envios
                             </button>
                         @endif
