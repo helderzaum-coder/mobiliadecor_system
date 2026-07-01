@@ -151,6 +151,7 @@ class ShopeePlanilhaService
         $comissao = 0;
         $subsidioPix = 0;
         $freteCalculado = false;
+        $comissaoCalculada = false;
         $itens = [];
 
         foreach ($linhas as $row) {
@@ -184,9 +185,13 @@ class ShopeePlanilhaService
                 'valor' => round($precoProduto, 2),
             ];
 
-            // Taxa de comissão líquida (coluna AU) + Taxa de serviço líquida (coluna AW)
-            $comissao += abs(self::parseDecimal($row['AU'] ?? 0));
-            $comissao += abs(self::parseDecimal($row['AW'] ?? 0));
+            // Taxa de comissão líquida (AU) + Taxa de serviço líquida (AW)
+            // Shopee repete o valor TOTAL do pedido em cada linha — pegar apenas uma vez
+            if (!$comissaoCalculada) {
+                $comissao = abs(self::parseDecimal($row['AU'] ?? 0))
+                          + abs(self::parseDecimal($row['AW'] ?? 0));
+                $comissaoCalculada = true;
+            }
 
             // Frete: calcular apenas uma vez (por pedido)
             if (!$freteCalculado) {
