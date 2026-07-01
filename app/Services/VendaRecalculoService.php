@@ -35,6 +35,7 @@ class VendaRecalculoService
             'base_imposto' => $staging->base_imposto,
             'percentual_imposto' => $staging->percentual_imposto,
             'valor_imposto' => $staging->valor_imposto,
+            'data_prevista_envio' => null,
         ]);
 
         self::recalcularMargens($venda);
