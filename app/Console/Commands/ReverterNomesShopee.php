@@ -78,10 +78,24 @@ class ReverterNomesShopee extends Command
                 continue;
             }
 
-            // Atualizar contato no Bling
-            $res = $client->put("/contatos/{$contatoId}", [], [
+            // Buscar contato atual para preservar campos (mesmo padrão do ShopeeCorrigirDadosService)
+            $contatoRes = $client->get("/contatos/{$contatoId}");
+            $contatoData = $contatoRes['success'] ? ($contatoRes['body']['data'] ?? []) : [];
+
+            $cpf = $contatoData['numeroDocumento'] ?? '';
+            $tipoPessoa = (strlen(preg_replace('/\D/', '', $cpf)) > 11) ? 'J' : 'F';
+
+            $payload = [
                 'nome' => $nomeCorreto,
-            ]);
+                'tipo' => $tipoPessoa,
+                'situacao' => 'A',
+            ];
+
+            if (!empty($cpf)) {
+                $payload['numeroDocumento'] = preg_replace('/\D/', '', $cpf);
+            }
+
+            $res = $client->put("/contatos/{$contatoId}", [], $payload);
 
             if (!$res['success']) {
                 $this->error("  [{$staging->numero_loja}] Erro ao atualizar contato: HTTP " . ($res['http_code'] ?? '?'));
