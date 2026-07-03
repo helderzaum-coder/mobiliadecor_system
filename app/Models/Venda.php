@@ -61,6 +61,8 @@ class Venda extends Model
         'planilha_processada',
         'planilha_afiliado_processada',
         'cancelada',
+        'dre_lancado',
+        'dre_lancado_em',
     ];
 
     protected $casts = [
@@ -94,6 +96,8 @@ class Venda extends Model
         'planilha_processada' => 'boolean',
         'planilha_afiliado_processada' => 'boolean',
         'cancelada' => 'boolean',
+        'dre_lancado' => 'boolean',
+        'dre_lancado_em' => 'datetime',
     ];
 
     public function canal(): BelongsTo
