@@ -75,6 +75,14 @@ class ShopeeCorrigirDadosService
                 continue;
             }
 
+            // Nunca atualizar com nome mascarado (contém asteriscos)
+            if (str_contains($nome, '*')) {
+                $resultado['erros']++;
+                $resultado['detalhes'][] = "{$pedidoId}: nome mascarado na planilha ({$nome}), pulando";
+                Log::warning("ShopeeCorrigir: pedido {$pedidoId} com nome mascarado: {$nome}");
+                continue;
+            }
+
             try {
                 $client = new BlingClient($staging->bling_account);
 
