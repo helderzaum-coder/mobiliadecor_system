@@ -222,7 +222,7 @@ class BlingClient
      */
     public function getNfePorPedidoLoja(string $numeroPedidoLoja): ?array
     {
-        // Tentar busca filtrada (API v3 aceita filtro por numeroLoja)
+        // Tentar busca filtrada por numeroLoja
         $response = $this->getNfes(['numeroLoja' => $numeroPedidoLoja, 'limite' => 5]);
         if ($response['success'] && !empty($response['body']['data'])) {
             foreach ($response['body']['data'] as $nfeResumo) {
@@ -233,33 +233,16 @@ class BlingClient
             }
         }
 
-        // Fallback: percorrer NF-es recentes comparando numeroPedidoLoja
-        $pagina = 1;
-        $limite = 100;
-        $maxPaginas = 5;
-
-        do {
-            $response = $this->getNfes(['pagina' => $pagina, 'limite' => $limite]);
-
-            if (!$response['success']) {
-                break;
-            }
-
-            $nfes = $response['body']['data'] ?? [];
-
-            foreach ($nfes as $nfeResumo) {
+        // Fallback leve: buscar por numeroPedidoCompra (campo usado em algumas integrações)
+        $response = $this->getNfes(['numeroPedidoCompra' => $numeroPedidoLoja, 'limite' => 5]);
+        if ($response['success'] && !empty($response['body']['data'])) {
+            foreach ($response['body']['data'] as $nfeResumo) {
                 $detalhe = $this->getNfe($nfeResumo['id']);
-
                 if ($detalhe['success']) {
-                    $nfe = $detalhe['body']['data'] ?? null;
-                    if ($nfe && ($nfe['numeroPedidoLoja'] ?? '') === $numeroPedidoLoja) {
-                        return $nfe;
-                    }
+                    return $detalhe['body']['data'] ?? null;
                 }
             }
-
-            $pagina++;
-        } while (count($nfes) >= $limite && $pagina <= $maxPaginas);
+        }
 
         return null;
     }

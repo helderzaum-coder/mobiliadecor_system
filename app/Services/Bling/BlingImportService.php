@@ -506,6 +506,7 @@ class BlingImportService
         }
 
         if (!$nfeId || $nfeId == 0) {
+            Log::info("Bling: NF-e não encontrada para pedido {$staging->bling_id} (nota_fiscal=0, numero_loja={$staging->numero_loja})");
             return false;
         }
 
