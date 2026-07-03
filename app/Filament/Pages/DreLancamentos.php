@@ -23,7 +23,20 @@ class DreLancamentos extends Page implements HasForms
     protected static string $view = 'filament.pages.dre-lancamentos';
     protected static ?int $navigationSort = 3;
 
+    protected $queryString = [
+        'periodo'          => ['except' => 'este_mes', 'as' => 'periodo'],
+        'dia_selecionado'  => ['except' => '', 'as' => 'dia'],
+        'mes_selecionado'  => ['except' => '', 'as' => 'mes'],
+        'data_inicio'      => ['except' => '', 'as' => 'de'],
+        'data_fim'         => ['except' => '', 'as' => 'ate'],
+        'cnpj_id'          => ['except' => '', 'as' => 'cnpj'],
+        'canal'            => ['except' => '', 'as' => 'canal'],
+        'status_dre'       => ['except' => '', 'as' => 'status'],
+        'pagina'           => ['except' => 1, 'as' => 'pag'],
+    ];
+
     public ?string $periodo = 'este_mes';
+    public ?string $dia_selecionado = null;
     public ?string $mes_selecionado = null;
     public ?string $data_inicio = null;
     public ?string $data_fim = null;
@@ -35,7 +48,9 @@ class DreLancamentos extends Page implements HasForms
 
     public function mount(): void
     {
-        $this->mes_selecionado = now()->format('Y-m');
+        if (empty($this->mes_selecionado)) {
+            $this->mes_selecionado = now()->format('Y-m');
+        }
     }
 
     public function form(Forms\Form $form): Forms\Form
@@ -45,11 +60,19 @@ class DreLancamentos extends Page implements HasForms
                 Forms\Components\Select::make('periodo')
                     ->label('Período')
                     ->options([
+                        'hoje' => 'Hoje',
+                        'dia_especifico' => 'Dia específico',
+                        'esta_semana' => 'Esta semana',
                         'este_mes' => 'Este mês',
                         'mes_passado' => 'Mês passado',
                         'selecionar_mes' => 'Selecionar mês',
-                        'customizado' => 'Customizado',
+                        'customizado' => 'Período customizado',
                     ])
+                    ->reactive(),
+                Forms\Components\DatePicker::make('dia_selecionado')
+                    ->label('Dia')
+                    ->displayFormat('d/m/Y')
+                    ->visible(fn ($get) => $get('periodo') === 'dia_especifico')
                     ->reactive(),
                 Forms\Components\Select::make('mes_selecionado')
                     ->label('Mês')
@@ -98,6 +121,11 @@ class DreLancamentos extends Page implements HasForms
     private function getDataRange(): array
     {
         return match ($this->periodo) {
+            'hoje' => [today()->toDateString(), today()->toDateString()],
+            'dia_especifico' => $this->dia_selecionado
+                ? [$this->dia_selecionado, $this->dia_selecionado]
+                : [today()->toDateString(), today()->toDateString()],
+            'esta_semana' => [now()->startOfWeek()->toDateString(), now()->endOfWeek()->toDateString()],
             'este_mes' => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
             'mes_passado' => [now()->subMonth()->startOfMonth()->toDateString(), now()->subMonth()->endOfMonth()->toDateString()],
             'selecionar_mes' => $this->mes_selecionado
@@ -308,7 +336,10 @@ class DreLancamentos extends Page implements HasForms
     }
 
     public function updatedPeriodo(): void { $this->pagina = 1; }
+    public function updatedDiaSelecionado(): void { $this->pagina = 1; }
     public function updatedMesSelecionado(): void { $this->pagina = 1; }
+    public function updatedDataInicio(): void { $this->pagina = 1; }
+    public function updatedDataFim(): void { $this->pagina = 1; }
     public function updatedCnpjId(): void { $this->pagina = 1; }
     public function updatedCanal(): void { $this->pagina = 1; }
     public function updatedStatusDre(): void { $this->pagina = 1; }

@@ -6,3 +6,12 @@ Eu tenho acesso SSH ao servidor caso precise rodar algo direto no servidor via t
 Versão do PHP do servidor:8.3.28
 Não esquecer do "cache do worker" quando as atualizações estiverem demorando para surtir efeito
 o caminho no servidor é cd var/www/html
+Todas as novas páginas com filtro de data devem conter:
+- Hoje
+- Opção de selecionar um dia especifico
+- Esta semana
+- Este mês
+- Mês Passado
+- Selecionar Mês
+- Periodo Customizado
+Além disto, páginas com filtro devem ter o filtro na URL, para quando atualizar a página não perder a seleção
