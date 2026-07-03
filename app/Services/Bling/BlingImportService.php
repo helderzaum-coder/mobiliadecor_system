@@ -295,7 +295,8 @@ class BlingImportService
             $canal,
             (float) ($pedido['total'] ?? 0),
             (float) ($pedido['transporte']['frete'] ?? 0),
-            $pedido['data'] ?? now()->toDateString()
+            $pedido['data'] ?? now()->toDateString(),
+            $mlDados['ml_tipo_frete'] ?? null
         );
 
         $staging = PedidoBlingStaging::create([
@@ -859,7 +860,7 @@ class BlingImportService
         TelegramService::enviar($msg);
     }
 
-    private function preCalcularImposto(string $canalNome, float $total, float $frete, string $data): array
+    private function preCalcularImposto(string $canalNome, float $total, float $frete, string $data, ?string $mlTipoFrete = null): array
     {
         $canal = \App\Models\CanalVenda::where('nome_canal', $canalNome)->first();
         if (!$canal) {
@@ -868,6 +869,12 @@ class BlingImportService
             );
         }
         $tipoNota = $canal->tipo_nota ?? 'cheia';
+
+        // ML: tipo de nota depende do tipo de frete
+        $isML = str_contains(strtolower($canalNome), 'mercado') || str_contains(strtolower($canalNome), 'meli');
+        if ($isML && $mlTipoFrete) {
+            $tipoNota = in_array($mlTipoFrete, ['ME2', 'FULL']) ? 'cheia' : 'meia_nota';
+        }
 
         $mes = (int) date('m', strtotime($data));
         $ano = (int) date('Y', strtotime($data));
