@@ -25,18 +25,20 @@ class DashboardVendas extends Page implements HasForms
     }
 
     protected $queryString = [
-        'periodo'      => ['except' => 'este_mes', 'as' => 'periodo'],
-        'mes_selecionado' => ['except' => '', 'as' => 'mes'],
-        'canal'        => ['except' => '', 'as' => 'canal'],
-        'conta'        => ['except' => '', 'as' => 'conta'],
-        'status_filtro' => ['except' => '', 'as' => 'status'],
-        'busca_pedido' => ['except' => '', 'as' => 'pedido'],
-        'data_inicio'  => ['except' => '', 'as' => 'de'],
-        'data_fim'     => ['except' => '', 'as' => 'ate'],
-        'pagina'       => ['except' => 1, 'as' => 'pag'],
+        'periodo'          => ['except' => 'este_mes', 'as' => 'periodo'],
+        'dia_selecionado'  => ['except' => '', 'as' => 'dia'],
+        'mes_selecionado'  => ['except' => '', 'as' => 'mes'],
+        'canal'            => ['except' => '', 'as' => 'canal'],
+        'conta'            => ['except' => '', 'as' => 'conta'],
+        'status_filtro'    => ['except' => '', 'as' => 'status'],
+        'busca_pedido'     => ['except' => '', 'as' => 'pedido'],
+        'data_inicio'      => ['except' => '', 'as' => 'de'],
+        'data_fim'         => ['except' => '', 'as' => 'ate'],
+        'pagina'           => ['except' => 1, 'as' => 'pag'],
     ];
 
     public ?string $periodo = 'este_mes';
+    public ?string $dia_selecionado = null;
     public ?string $mes_selecionado = null;
     public ?string $canal = null;
     public ?string $conta = null;
@@ -665,6 +667,7 @@ class DashboardVendas extends Page implements HasForms
     }
 
     public function updatedPeriodo(): void { $this->pagina = 1; }
+    public function updatedDiaSelecionado(): void { $this->pagina = 1; }
     public function updatedMesSelecionado(): void { $this->pagina = 1; }
     public function updatedCanal(): void { $this->pagina = 1; }
     public function updatedConta(): void { $this->pagina = 1; }
@@ -688,12 +691,18 @@ class DashboardVendas extends Page implements HasForms
                     ->label('Período')
                     ->options([
                         'hoje' => 'Hoje',
+                        'dia_especifico' => 'Dia específico',
                         'esta_semana' => 'Esta semana',
                         'este_mes' => 'Este mês',
                         'mes_passado' => 'Mês passado',
                         'selecionar_mes' => 'Selecionar mês',
                         'customizado' => 'Período customizado',
                     ])
+                    ->reactive(),
+                Forms\Components\DatePicker::make('dia_selecionado')
+                    ->label('Dia')
+                    ->displayFormat('d/m/Y')
+                    ->visible(fn ($get) => $get('periodo') === 'dia_especifico')
                     ->reactive(),
                 Forms\Components\Select::make('mes_selecionado')
                     ->label('Mês')
@@ -769,6 +778,9 @@ class DashboardVendas extends Page implements HasForms
         if (empty($this->busca_pedido)) {
             $query = match ($this->periodo) {
                 'hoje' => $query->whereDate('data_venda', today()),
+                'dia_especifico' => $this->dia_selecionado
+                    ? $query->whereDate('data_venda', $this->dia_selecionado)
+                    : $query->whereDate('data_venda', today()),
                 'esta_semana' => $query->whereBetween('data_venda', [now()->startOfWeek(), now()->endOfWeek()]),
                 'este_mes' => $query->whereBetween('data_venda', [now()->startOfMonth(), now()->endOfMonth()]),
                 'mes_passado' => $query->whereBetween('data_venda', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()]),
