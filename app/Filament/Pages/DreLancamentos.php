@@ -165,6 +165,59 @@ class DreLancamentos extends Page implements HasForms
         return max(1, (int) ceil($this->totais['total'] / $this->porPagina));
     }
 
+    public ?int $editandoId = null;
+    public ?string $edit_total_produtos = null;
+    public ?string $edit_valor_frete_cliente = null;
+    public ?string $edit_valor_imposto = null;
+    public ?string $edit_valor_frete_transportadora = null;
+    public ?string $edit_comissao = null;
+    public ?string $edit_comissao_afiliado = null;
+    public ?string $edit_custo_produtos = null;
+
+    public function editarVenda(int $vendaId): void
+    {
+        $venda = Venda::find($vendaId);
+        if (!$venda) return;
+
+        $this->editandoId = $vendaId;
+        $this->edit_total_produtos = number_format((float) $venda->total_produtos, 2, '.', '');
+        $this->edit_valor_frete_cliente = number_format((float) $venda->valor_frete_cliente, 2, '.', '');
+        $this->edit_valor_imposto = number_format((float) $venda->valor_imposto, 2, '.', '');
+        $this->edit_valor_frete_transportadora = number_format((float) $venda->valor_frete_transportadora, 2, '.', '');
+        $this->edit_comissao = number_format((float) $venda->comissao, 2, '.', '');
+        $this->edit_comissao_afiliado = number_format((float) $venda->comissao_afiliado, 2, '.', '');
+        $this->edit_custo_produtos = number_format((float) $venda->custo_produtos, 2, '.', '');
+    }
+
+    public function salvarEdicao(): void
+    {
+        $venda = Venda::find($this->editandoId);
+        if (!$venda) return;
+
+        $venda->update([
+            'total_produtos' => (float) str_replace(',', '.', $this->edit_total_produtos),
+            'valor_frete_cliente' => (float) str_replace(',', '.', $this->edit_valor_frete_cliente),
+            'valor_imposto' => (float) str_replace(',', '.', $this->edit_valor_imposto),
+            'valor_frete_transportadora' => (float) str_replace(',', '.', $this->edit_valor_frete_transportadora),
+            'comissao' => (float) str_replace(',', '.', $this->edit_comissao),
+            'comissao_afiliado' => (float) str_replace(',', '.', $this->edit_comissao_afiliado),
+            'custo_produtos' => (float) str_replace(',', '.', $this->edit_custo_produtos),
+        ]);
+
+        // Recalcular margens
+        if (class_exists(\App\Services\VendaRecalculoService::class)) {
+            \App\Services\VendaRecalculoService::recalcularMargens($venda);
+        }
+
+        $this->editandoId = null;
+        Notification::make()->title("Pedido #{$venda->numero_pedido_canal} atualizado.")->success()->send();
+    }
+
+    public function cancelarEdicao(): void
+    {
+        $this->editandoId = null;
+    }
+
     /**
      * Lança uma venda individual no DRE (trava).
      */
