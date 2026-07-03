@@ -481,8 +481,8 @@ class PedidoBlingStagingResource extends Resource
                             ->label('Período')
                             ->options([
                                 'hoje'             => 'Hoje',
+                                'dia_especifico'   => 'Dia específico',
                                 'esta_semana'      => 'Esta semana',
-                                'semana_passada'   => 'Semana passada',
                                 'este_mes'         => 'Este mês',
                                 'mes_passado'      => 'Mês passado',
                                 'selecionar_mes'   => 'Selecionar mês',
@@ -490,6 +490,10 @@ class PedidoBlingStagingResource extends Resource
                             ])
                             ->reactive()
                             ->placeholder('Selecione um período'),
+                        Forms\Components\DatePicker::make('dia_selecionado')
+                            ->label('Dia')
+                            ->displayFormat('d/m/Y')
+                            ->visible(fn ($get) => $get('periodo_rapido') === 'dia_especifico'),
                         Forms\Components\Select::make('mes_selecionado')
                             ->label('Mês')
                             ->options(function () {
@@ -516,11 +520,11 @@ class PedidoBlingStagingResource extends Resource
 
                         return match ($periodo) {
                             'hoje' => $query->whereDate('data_pedido', today()),
+                            'dia_especifico' => $data['dia_selecionado']
+                                ? $query->whereDate('data_pedido', $data['dia_selecionado'])
+                                : $query->whereDate('data_pedido', today()),
                             'esta_semana' => $query->whereBetween('data_pedido', [
                                 now()->startOfWeek(), now()->endOfWeek(),
-                            ]),
-                            'semana_passada' => $query->whereBetween('data_pedido', [
-                                now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek(),
                             ]),
                             'este_mes' => $query->whereBetween('data_pedido', [
                                 now()->startOfMonth(), now()->endOfMonth(),
@@ -545,8 +549,8 @@ class PedidoBlingStagingResource extends Resource
                         if (!$periodo) return null;
                         return match ($periodo) {
                             'hoje'           => 'Hoje',
+                            'dia_especifico' => $data['dia_selecionado'] ? 'Dia: ' . $data['dia_selecionado'] : 'Dia específico',
                             'esta_semana'    => 'Esta semana',
-                            'semana_passada' => 'Semana passada',
                             'este_mes'       => 'Este mês',
                             'mes_passado'    => 'Mês passado',
                             'selecionar_mes' => $data['mes_selecionado'] ? 'Mês: ' . $data['mes_selecionado'] : 'Mês selecionado',
