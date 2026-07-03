@@ -39,7 +39,19 @@
                     $base = (float) $venda->nfe_valor ?: (float) $venda->valor_total_venda;
                     $imposto = round($base * ($percentual / 100), 2);
                 }
-                $frete = (float) $venda->valor_frete_transportadora;
+                $fretePagoFlag = (bool) $venda->frete_pago;
+                $mlTipoFrete = $venda->ml_tipo_frete ?? null;
+                $isMlMe2Full = in_array($mlTipoFrete, ['ME2', 'FULL']);
+                $freteCliente = (float) $venda->valor_frete_cliente;
+                $custoFreteReal = (float) $venda->valor_frete_transportadora;
+                // Canal se responsabiliza pelo frete (exceções que podem lançar DRE)
+                $freteIsento = $isMlMe2Full
+                    || ($freteCliente == 0 && $custoFreteReal == 0);
+                // Frete confirmado: pago OU isento pelo canal
+                $freteConfirmado = $fretePagoFlag || $freteIsento;
+                // Se frete é apenas cotação, exibir zerado no DRE
+                $frete = $freteConfirmado ? $custoFreteReal : 0;
+                $somenteEstimativa = !$freteConfirmado && $custoFreteReal > 0;
                 $comissao = (float) $venda->comissao + (float) $venda->comissao_afiliado;
                 $cmv = (float) $venda->custo_produtos;
                 $resultado = $totalVenda - $imposto - $frete - $comissao - $cmv;
@@ -62,7 +74,13 @@
                             <button wire:click="destravarDre({{ $venda->id_venda }})" style="padding:4px 10px;border-radius:6px;background:#7f1d1d;color:#fca5a5;font-size:11px;border:none;cursor:pointer;">Destravar</button>
                         @else
                             <button wire:click="editarVenda({{ $venda->id_venda }})" style="padding:4px 10px;border-radius:6px;background:#1e3a5f;color:#93c5fd;font-size:11px;border:none;cursor:pointer;">✏️ Editar</button>
-                            <button wire:click="lancarDre({{ $venda->id_venda }})" style="padding:4px 12px;border-radius:6px;background:#065f46;color:#6ee7b7;font-size:11px;font-weight:600;border:none;cursor:pointer;">Lançar DRE</button>
+                            @if($somenteEstimativa)
+                                <button disabled style="padding:4px 12px;border-radius:6px;background:#374151;color:#6b7280;font-size:11px;font-weight:600;border:none;cursor:not-allowed;opacity:0.6;" title="Frete ainda é cotação. Aguarde o CT-e para lançar.">
+                                    🚫 Aguardando Frete
+                                </button>
+                            @else
+                                <button wire:click="lancarDre({{ $venda->id_venda }})" style="padding:4px 12px;border-radius:6px;background:#065f46;color:#6ee7b7;font-size:11px;font-weight:600;border:none;cursor:pointer;">Lançar DRE</button>
+                            @endif
                         @endif
                     </div>
                 </div>
@@ -122,8 +140,14 @@
                         </tr>
                         <tr style="border-bottom:1px solid #374151;">
                             <td style="padding:6px 16px;color:#ef4444;">🚚 Frete Transportadora</td>
-                            <td style="padding:6px 16px;text-align:right;color:#ef4444;">-R$ {{ number_format($frete, 2, ',', '.') }}</td>
-                            <td style="padding:6px 16px;color:#6b7280;font-size:11px;">{{ $venda->transportadora_manual ?? '' }}</td>
+                            <td style="padding:6px 16px;text-align:right;color:{{ $somenteEstimativa ? '#6b7280' : '#ef4444' }};">-R$ {{ number_format($frete, 2, ',', '.') }}</td>
+                            <td style="padding:6px 16px;color:#6b7280;font-size:11px;">
+                                @if($somenteEstimativa)
+                                    <span style="color:#f59e0b;">⚠ cotação (R$ {{ number_format($custoFreteReal, 2, ',', '.') }})</span>
+                                @else
+                                    {{ $venda->transportadora_manual ?? '' }}
+                                @endif
+                            </td>
                         </tr>
                         <tr style="border-bottom:1px solid #374151;">
                             <td style="padding:6px 16px;color:#a78bfa;">💰 Comissão de Vendas</td>

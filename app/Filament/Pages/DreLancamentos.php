@@ -226,6 +226,12 @@ class DreLancamentos extends Page implements HasForms
         $venda = Venda::find($vendaId);
         if (!$venda || $venda->dre_lancado) return;
 
+        // Bloquear se frete é apenas cotação (não pago e não isento)
+        if (!$this->freteConfirmado($venda)) {
+            Notification::make()->title('Frete ainda é cotação. Aguarde o CT-e.')->warning()->send();
+            return;
+        }
+
         $venda->update([
             'dre_lancado' => true,
             'dre_lancado_em' => now(),
@@ -236,17 +242,43 @@ class DreLancamentos extends Page implements HasForms
 
     /**
      * Lança todas as vendas visíveis (pendentes) no DRE.
+     * Exclui vendas com frete apenas cotação.
      */
     public function lancarTodos(): void
     {
-        $count = $this->buildQuery()
+        $vendas = $this->buildQuery()
             ->where(fn ($q) => $q->where('dre_lancado', false)->orWhereNull('dre_lancado'))
-            ->update([
-                'dre_lancado' => true,
-                'dre_lancado_em' => now(),
-            ]);
+            ->get();
 
-        Notification::make()->title("{$count} venda(s) lançadas no DRE.")->success()->send();
+        $count = 0;
+        foreach ($vendas as $venda) {
+            if (!$this->freteConfirmado($venda)) continue;
+            $venda->update(['dre_lancado' => true, 'dre_lancado_em' => now()]);
+            $count++;
+        }
+
+        $ignorados = $vendas->count() - $count;
+        $msg = "{$count} venda(s) lançadas no DRE.";
+        if ($ignorados > 0) {
+            $msg .= " ({$ignorados} ignoradas — frete pendente)";
+        }
+
+        Notification::make()->title($msg)->success()->send();
+    }
+
+    /**
+     * Verifica se o frete da venda está confirmado (pago ou isento pelo canal).
+     */
+    private function freteConfirmado(Venda $venda): bool
+    {
+        $fretePago = (bool) $venda->frete_pago;
+        $mlTipoFrete = $venda->ml_tipo_frete ?? null;
+        $isMlMe2Full = in_array($mlTipoFrete, ['ME2', 'FULL']);
+        $freteCliente = (float) $venda->valor_frete_cliente;
+        $custoFrete = (float) $venda->valor_frete_transportadora;
+        $freteIsento = $isMlMe2Full || ($freteCliente == 0 && $custoFrete == 0);
+
+        return $fretePago || $freteIsento;
     }
 
     /**
