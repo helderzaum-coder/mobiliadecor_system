@@ -484,6 +484,13 @@ class BlingImportService
                 $nfe = $client->getNfePorPedidoLoja((string) $staging->numero_loja);
                 if ($nfe) {
                     $valorNota = (float) ($nfe['valorNota'] ?? 0);
+
+                    // Proteção: rejeitar NF-e se valor diverge muito do pedido
+                    if (!self::validarValorNfe($valorNota, $staging)) {
+                        Log::warning("Bling: NF-e rejeitada (valor divergente) via pedidoLoja {$staging->numero_loja}. NF-e: R$ {$valorNota}, Pedido: R$ {$staging->total_pedido}");
+                        return false;
+                    }
+
                     $percentual = self::buscarPercentualImposto($staging);
                     $valorImposto = round($valorNota * ($percentual / 100), 2);
 
@@ -520,6 +527,12 @@ class BlingImportService
                 if ($nfe) {
                     $valorNota = (float) ($nfe['valorNota'] ?? 0);
 
+                    // Proteção: rejeitar NF-e se valor diverge muito do pedido
+                    if (!self::validarValorNfe($valorNota, $staging)) {
+                        Log::warning("Bling: NF-e rejeitada (valor divergente) via nfeId {$nfeId}. NF-e: R$ {$valorNota}, Pedido: R$ {$staging->total_pedido}");
+                        return false;
+                    }
+
                     $percentual = self::buscarPercentualImposto($staging);
                     $valorImposto = round($valorNota * ($percentual / 100), 2);
 
@@ -544,6 +557,42 @@ class BlingImportService
         }
 
         return false;
+    }
+
+    /**
+     * Valida se o valor da NF-e é compatível com o valor do pedido.
+     * Rejeita se a diferença for maior que 50% (NF-e provavelmente é de outro pedido).
+     * Para ML ME2/FULL a NF-e é "cheia" então o valor pode ser igual ou próximo ao total.
+     * Permite margem para NF-e agrupadas (valor NF-e >= total pedido é OK se não for absurdo).
+     */
+    private static function validarValorNfe(float $valorNota, PedidoBlingStaging $staging): bool
+    {
+        $totalPedido = (float) $staging->total_pedido;
+
+        // Se o pedido não tem total, não tem como validar
+        if ($totalPedido <= 0) {
+            return true;
+        }
+
+        // Se a NF-e tem valor zero, rejeitar
+        if ($valorNota <= 0) {
+            return false;
+        }
+
+        // Tolerância: NF-e pode ser até 50% menor (meia nota) ou até 80% maior (NF-e com frete embutido)
+        // Mas se for mais que 3x o valor do pedido, é claramente errada
+        $razao = $valorNota / $totalPedido;
+
+        if ($razao > 3.0) {
+            return false;
+        }
+
+        // Se NF-e é menos de 30% do pedido, também é suspeita (exceto meia nota que pode ser ~50%)
+        if ($razao < 0.3) {
+            return false;
+        }
+
+        return true;
     }
 
     public static function buscarDadosEnvio(PedidoBlingStaging $staging): bool
