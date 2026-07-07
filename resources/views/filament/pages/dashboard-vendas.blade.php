@@ -302,9 +302,10 @@
                     $mlRebate = (float) ($venda->ml_valor_rebate ?? 0);
                     $temDadosML = $mlSaleFee > 0 || $mlFreteCusto > 0;
                     $isMagaluRepasse = str_contains(strtolower($canal), 'magalu');
+                    $afiliado = (float) ($venda->comissao_afiliado ?? 0);
                     $repasse = $isMagaluRepasse
-                        ? $total - $comissao
-                        : $totalProd + $freteCliente - $comissao;
+                        ? $total - $comissao - $afiliado
+                        : $totalProd + $freteCliente - $comissao - $afiliado;
                     $fretePago = (bool) $venda->frete_pago;
                     $freteCotado = (float) ($venda->frete_cotado ?? 0);
                     $alertaCte = false;
