@@ -572,33 +572,29 @@ class BlingImportService
 
     /**
      * Valida se o valor da NF-e é compatível com o valor do pedido.
-     * Rejeita se a diferença for maior que 50% (NF-e provavelmente é de outro pedido).
-     * Para ML ME2/FULL a NF-e é "cheia" então o valor pode ser igual ou próximo ao total.
-     * Permite margem para NF-e agrupadas (valor NF-e >= total pedido é OK se não for absurdo).
+     * Usa o total original do Bling como referência confiável (dados_originais.total),
+     * pois o total_pedido pode ter sido sobrescrito pela planilha Shopee com valor incorreto.
      */
     private static function validarValorNfe(float $valorNota, PedidoBlingStaging $staging): bool
     {
-        $totalPedido = (float) $staging->total_pedido;
+        // Usar total original do Bling como referência primária (não é afetado pela planilha)
+        $totalOriginal = (float) ($staging->dados_originais['total'] ?? 0);
+        $totalPedido = $totalOriginal > 0 ? $totalOriginal : (float) $staging->total_pedido;
 
-        // Se o pedido não tem total, não tem como validar
         if ($totalPedido <= 0) {
             return true;
         }
 
-        // Se a NF-e tem valor zero, rejeitar
         if ($valorNota <= 0) {
             return false;
         }
 
-        // Tolerância: NF-e pode ser até 50% menor (meia nota) ou até 80% maior (NF-e com frete embutido)
-        // Mas se for mais que 3x o valor do pedido, é claramente errada
         $razao = $valorNota / $totalPedido;
 
         if ($razao > 3.0) {
             return false;
         }
 
-        // Se NF-e é menos de 30% do pedido, também é suspeita (exceto meia nota que pode ser ~50%)
         if ($razao < 0.3) {
             return false;
         }
