@@ -13,7 +13,7 @@ class MlForcarMe1 extends Command
     public function handle(): int
     {
         $itemId = $this->argument('item_id');
-        $account = $this->option('account');
+        $account = $this->option('account'); 
         $debug = $this->option('debug');
 
         $client = new MercadoLivreClient($account);

@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Log;
 
 class MercadoLivreClient
 {
-    private string $apiBase;
+    private string $apiBase; 
     private string $accountKey;
     private MercadoLivreOAuthService $oauth;
 
