@@ -12,6 +12,7 @@ use App\Services\MercadoLivrePlanilhaService;
 use App\Services\AprovacaoVendaService;
 use App\Services\Shopee\ShopeeService;
 use App\Services\TelegramService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class BlingImportService
@@ -343,14 +344,15 @@ class BlingImportService
             'status' => 'pendente',
         ]);
 
-        // Notificação Telegram — novo pedido importado
-        $this->notificarTelegram($staging, $itens);
-
-        $isMl = str_contains(strtolower($canal), 'mercado')
-            || str_contains(strtolower($canal), 'meli')
-            || str_starts_with((string) ($pedido['numeroLoja'] ?? ''), '2000')
-            || str_contains(strtolower($pedido['intermediador']['nomeUsuario'] ?? ''), 'meli')
-            || str_contains(strtolower($pedido['intermediador']['descricao'] ?? ''), 'mercado');
+        // Auto-detectar pedidos internos (empréstimo): baixar estoque e rejeitar
+        $clienteNome = strtolower(trim($staging->cliente_nome));
+        $isEmprestimo = str_contains($clienteNome, 'new haus') || str_contains($clienteNome, 'amazonas ltda');
+        if ($isEmprestimo) {
+            SyncEstoquePedidoJob::dispatch($staging->id);
+            $staging->update(['status' => 'rejeitado']);
+            Log::info("Empréstimo detectado: pedido {$staging->numero_pedido} (cliente: {$staging->cliente_nome}) — estoque baixado, rejeitado automaticamente.");
+            return $staging;
+        }
 
         // Auto-detectar assistência: SKU 90000002
         $isAssistencia = false;
@@ -365,6 +367,15 @@ class BlingImportService
             Log::info("Assistência detectada: pedido {$staging->numero_pedido} (SKU 90000002)");
             return $staging;
         }
+
+        // Notificação Telegram — novo pedido importado
+        $this->notificarTelegram($staging, $itens);
+
+        $isMl = str_contains(strtolower($canal), 'mercado')
+            || str_contains(strtolower($canal), 'meli')
+            || str_starts_with((string) ($pedido['numeroLoja'] ?? ''), '2000')
+            || str_contains(strtolower($pedido['intermediador']['nomeUsuario'] ?? ''), 'meli')
+            || str_contains(strtolower($pedido['intermediador']['descricao'] ?? ''), 'mercado');
 
         if ($isMl) {
             // Se a API do ML já trouxe dados financeiros (net_received_amount > 0),
@@ -870,6 +881,13 @@ class BlingImportService
 
     private function notificarTelegram(PedidoBlingStaging $staging, array $itens): void
     {
+        // Evitar notificação duplicada para o mesmo número de pedido
+        $notifKey = "telegram_notif_pedido_{$staging->numero_pedido}";
+        if (Cache::has($notifKey)) {
+            return;
+        }
+        Cache::put($notifKey, true, now()->addHours(48));
+
         $pedidoCanal = $staging->numero_loja ?? $staging->numero_pedido;
 
         $msg = "\xF0\x9F\x9B\x92 <b>Novo Pedido!</b>\n"

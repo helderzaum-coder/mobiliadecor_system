@@ -86,7 +86,19 @@ class ProdutoEstoqueResource extends Resource
                     ->alignCenter(),
                 Tables\Columns\TextColumn::make('saldo')->label('Total')
                     ->sortable()
-                    ->color(fn ($record) => $record->saldo <= $record->saldo_minimo ? 'danger' : 'success')
+                    ->getStateUsing(function ($record) {
+                        if ($record->isKit() && $record->componentes_count > 0) {
+                            $min = PHP_INT_MAX;
+                            foreach ($record->componentes as $comp) {
+                                $qtdNecessaria = $comp->pivot->quantidade ?: 1;
+                                $disponivel = intdiv($comp->saldo, $qtdNecessaria);
+                                $min = min($min, $disponivel);
+                            }
+                            return $min === PHP_INT_MAX ? 0 : $min;
+                        }
+                        return $record->saldo;
+                    })
+                    ->color(fn ($state, $record) => $state <= $record->saldo_minimo ? 'danger' : 'success')
                     ->weight('bold')
                     ->alignCenter(),
                 Tables\Columns\TextColumn::make('saldo_tampo')
