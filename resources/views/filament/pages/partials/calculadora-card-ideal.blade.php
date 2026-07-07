@@ -53,6 +53,12 @@
             <span style="color:#6b7280;">Custo</span>
             <span style="color:#ef4444;">- R$ {{ number_format($r['custo_total'], 2, ',', '.') }}</span>
         </div>
+        @if(($r['rebate'] ?? 0) > 0)
+        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1f2937;">
+            <span style="color:#6b7280;">Rebate</span>
+            <span style="color:#10b981;">+ R$ {{ number_format($r['rebate'], 2, ',', '.') }}</span>
+        </div>
+        @endif
         <div style="display:flex;justify-content:space-between;padding:3px 0;">
             <span style="color:#6b7280;">Imposto ({{ $det['imposto_pct'] }}% {{ $tipoNotaLabel }})</span>
             <span style="color:#ef4444;">- R$ {{ number_format($det['imposto'], 2, ',', '.') }}</span>

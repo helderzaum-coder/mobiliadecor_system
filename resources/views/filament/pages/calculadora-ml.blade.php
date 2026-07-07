@@ -43,6 +43,11 @@
                 background:{{ $usar_cubagem ? 'rgba(59,130,246,.15)' : 'transparent' }};color:{{ $usar_cubagem ? '#3b82f6' : '#9ca3af' }};">
                 📦 {{ $usar_cubagem ? 'Fechar Cubagem' : 'Calcular Cubagem (ML)' }}
             </button>
+            <button wire:click="$set('usar_rebate', {{ $usar_rebate ? 'false' : 'true' }})"
+                style="padding:8px 14px;font-size:12px;border-radius:8px;border:1px solid {{ $usar_rebate ? '#f59e0b' : '#374151' }};cursor:pointer;margin-left:8px;
+                background:{{ $usar_rebate ? 'rgba(245,158,11,.15)' : 'transparent' }};color:{{ $usar_rebate ? '#f59e0b' : '#9ca3af' }};">
+                💰 {{ $usar_rebate ? 'Fechar Rebate' : 'Incluir Rebate' }}
+            </button>
 
             @if($usar_cubagem)
             <div style="display:flex;gap:12px;margin-top:10px;padding:12px 16px;border-radius:8px;border:1px solid #3b82f6;background:#111827;">
@@ -72,6 +77,19 @@
                     @else
                         <div style="font-size:11px;color:#6b7280;">A×C×L / 6000</div>
                     @endif
+                </div>
+            </div>
+            @endif
+
+            @if($usar_rebate)
+            <div style="display:flex;gap:12px;margin-top:10px;padding:12px 16px;border-radius:8px;border:1px solid #f59e0b;background:#111827;">
+                <div style="flex:1;max-width:200px;">
+                    <label style="font-size:11px;color:#f59e0b;display:block;margin-bottom:2px;">Rebate por Unidade (R$)</label>
+                    <input type="number" step="0.01" wire:model="rebate_valor" placeholder="0,00"
+                        style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid #f59e0b;background:#1f2937;color:#fff;font-size:14px;">
+                </div>
+                <div style="display:flex;flex-direction:column;justify-content:flex-end;">
+                    <div style="font-size:10px;color:#6b7280;">Valor devolvido pelo marketplace por unidade vendida</div>
                 </div>
             </div>
             @endif

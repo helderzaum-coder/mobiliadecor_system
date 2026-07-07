@@ -25,6 +25,10 @@ class CalculadoraML extends Page
     public ?float $peso_unitario = null;
     public int $quantidade = 1;
 
+    // Rebate
+    public bool $usar_rebate = false;
+    public ?float $rebate_valor = null;
+
     // Cubagem ML
     public bool $usar_cubagem = false;
     public ?float $cubagem_altura = null;
@@ -233,6 +237,7 @@ class CalculadoraML extends Page
     }
 
     private function getCustoTotal(): float { return round(($this->custo_produto ?? 0) * $this->quantidade, 2); }
+    private function getRebateTotal(): float { return $this->usar_rebate ? round(($this->rebate_valor ?? 0) * $this->quantidade, 2) : 0; }
 
     private function detectarFaixaPeso(float $peso): string
     {
@@ -327,6 +332,7 @@ class CalculadoraML extends Page
         $impostos = $this->getImpostosPorCnpj();
         $canaisConfig = $this->getCanaisConfig();
 
+        $rebateTotal = $this->getRebateTotal();
         $canais = [];
         $freteML = $this->calcularFreteML($preco, $pesoTotal);
 
@@ -363,7 +369,7 @@ class CalculadoraML extends Page
                 $imposto = $this->calcularImposto($precoPix, 0, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete']);
                 $antecipacao = round($precoPix * ($cfg['antecipacao_pct'] ?? 0) / 100, 2);
                 $recebe = round($precoPix - $comissao - $antecipacao, 2);
-                $margem = round($recebe - $custoTotal - $imposto, 2);
+                $margem = round($recebe - $custoTotal - $imposto + $rebateTotal, 2);
 
                 $canais[] = [
                     'key' => $key,
@@ -376,6 +382,7 @@ class CalculadoraML extends Page
                     'imposto_pct' => $impostoPct, 'imposto' => $imposto,
                     'tipo_nota' => $cfg['tipo_nota'],
                     'preco_pix' => $precoPix,
+                    'rebate' => $rebateTotal,
                     'margem' => $margem,
                     'margem_pct' => $precoPix > 0 ? round(($margem / $precoPix) * 100, 1) : 0,
                 ];
@@ -390,7 +397,7 @@ class CalculadoraML extends Page
             $imposto = $this->calcularImposto($preco, $frete, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete']);
             $antecipacao = round($preco * ($cfg['antecipacao_pct'] ?? 0) / 100, 2);
             $recebe = round($preco - $comissao - $frete - $antecipacao, 2);
-            $margem = round($recebe - $custoTotal - $imposto, 2);
+            $margem = round($recebe - $custoTotal - $imposto + $rebateTotal, 2);
 
             $canais[] = [
                 'key' => $key,
@@ -403,6 +410,7 @@ class CalculadoraML extends Page
                 'frete' => $frete, 'recebe' => $recebe,
                 'imposto_pct' => $impostoPct, 'imposto' => $imposto,
                 'tipo_nota' => $cfg['tipo_nota'],
+                'rebate' => $rebateTotal,
                 'margem' => $margem,
                 'margem_pct' => $preco > 0 ? round(($margem / $preco) * 100, 1) : 0,
             ];
@@ -416,6 +424,7 @@ class CalculadoraML extends Page
             'preco_venda' => $preco,
             'custo_unitario' => $this->custo_produto,
             'custo_total' => $custoTotal,
+            'rebate' => $rebateTotal,
             'quantidade' => $this->quantidade,
             'peso_total' => $pesoTotal,
             'faixa_peso' => $faixaPeso,
@@ -426,6 +435,8 @@ class CalculadoraML extends Page
     private function calcularPrecoIdeal(): void
     {
         $custoTotal = $this->getCustoTotal();
+        $rebateTotal = $this->getRebateTotal();
+        $custoLiquido = $custoTotal - $rebateTotal;
         $pesoTotal = $this->getPesoTotal();
         $impostos = $this->getImpostosPorCnpj();
         $canaisConfig = $this->getCanaisConfig();
@@ -449,7 +460,7 @@ class CalculadoraML extends Page
                     $comissao = $cfg['fixo'];
                     $imposto = $this->calcularImposto($precoPix, 0, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete']);
                     $recebe = round($precoPix - $comissao, 2);
-                    $margem = round($recebe - $custoTotal - $imposto, 2);
+                    $margem = round($recebe - $custoLiquido - $imposto, 2);
 
                     $canais[$key][$tipo] = [
                         'preco_venda' => $precoPix,
@@ -464,7 +475,7 @@ class CalculadoraML extends Page
                     continue;
                 }
 
-                $preco = $this->calcularPrecoIterativo($custoTotal, $pesoTotal, $cfg, $impostoPct, $mp);
+                $preco = $this->calcularPrecoIterativo($custoLiquido, $pesoTotal, $cfg, $impostoPct, $mp);
                 if (!$preco) continue;
 
                 // Recalcular detalhes com o preço encontrado
@@ -496,7 +507,7 @@ class CalculadoraML extends Page
                 $imposto = $this->calcularImposto($preco, $frete, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete']);
                 $antecipacao = round($preco * ($cfg['antecipacao_pct'] ?? 0) / 100, 2);
                 $recebe = round($preco - $comissao - $frete - $antecipacao, 2);
-                $margem = round($recebe - $custoTotal - $imposto, 2);
+                $margem = round($recebe - $custoLiquido - $imposto, 2);
 
                 $canais[$key][$tipo] = [
                     'preco_venda' => $preco,
@@ -517,6 +528,7 @@ class CalculadoraML extends Page
             'modo' => 'preco_ideal',
             'custo_unitario' => $this->custo_produto,
             'custo_total' => $custoTotal,
+            'rebate' => $rebateTotal,
             'quantidade' => $this->quantidade,
             'peso_total' => $pesoTotal,
             'faixa_peso' => $faixaPeso,
@@ -607,6 +619,8 @@ class CalculadoraML extends Page
         $this->quantidade = 1;
         $this->resultados = null;
         $this->frete_manual_override = false;
+        $this->usar_rebate = false;
+        $this->rebate_valor = null;
         $this->usar_cubagem = false;
         $this->cubagem_altura = null;
         $this->cubagem_comprimento = null;
