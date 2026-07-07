@@ -45,10 +45,24 @@
             <span style="color:#ef4444;">- R$ {{ number_format($det['frete'], 2, ',', '.') }}</span>
         </div>
         @endif
+        @php
+            $recebeCanal = $det['preco_venda'] - $det['comissao'] - $det['frete'] + ($r['rebate'] ?? 0);
+            $recebeReal = $recebeCanal - ($det['antecipacao'] ?? 0);
+        @endphp
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1f2937;">
-            <span style="color:#6b7280;">Recebe</span>
-            <span style="color:#f59e0b;font-weight:600;">R$ {{ number_format($det['recebe'], 2, ',', '.') }}</span>
+            <span style="color:#6b7280;">Exibe no Canal</span>
+            <span style="color:#f59e0b;font-weight:600;">R$ {{ number_format($recebeCanal, 2, ',', '.') }}</span>
         </div>
+        @if(($det['antecipacao'] ?? 0) > 0)
+        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1f2937;">
+            <span style="color:#6b7280;">Antecipação ({{ $det['antecipacao_pct'] }}%)</span>
+            <span style="color:#ef4444;">- R$ {{ number_format($det['antecipacao'], 2, ',', '.') }}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1f2937;">
+            <span style="color:#6b7280;">Repasse Real</span>
+            <span style="color:#f59e0b;font-weight:600;">R$ {{ number_format($recebeReal, 2, ',', '.') }}</span>
+        </div>
+        @endif
         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1f2937;">
             <span style="color:#6b7280;">Custo</span>
             <span style="color:#ef4444;">- R$ {{ number_format($r['custo_total'], 2, ',', '.') }}</span>
