@@ -625,13 +625,13 @@
                     @endphp
                     @if($isMadeiraMadeira && !$temPlanilha)
                         <button wire:click="aplicarPlanilhaMM({{ $venda->id_venda }})" wire:loading.attr="disabled"
-                            style="background:#b45309;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                            style="background:#7e22ce;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
                             📊 Aplicar Planilha MM
                         </button>
                     @endif
                     @if($isWebcontinental && !$temPlanilha)
                         <button wire:click="aplicarPlanilhaWC({{ $venda->id_venda }})" wire:loading.attr="disabled"
-                            style="background:#7c2d12;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                            style="background:#0e7490;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
                             📊 Aplicar Planilha WC
                         </button>
                     @endif
