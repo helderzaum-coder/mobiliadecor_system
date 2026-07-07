@@ -51,7 +51,8 @@ class MlForcarMe1 extends Command
             } else {
                 $this->info("Opções de frete encontradas: " . count($opts));
                 foreach ($opts as $opt) {
-                    $this->line("  - {$opt['name']}: R$ " . number_format(($opt['cost'] ?? 0), 2, ',', '.') . " ({$opt['estimated_delivery_time']['shipping'] ?? '?'} dias)");
+                    $dias = $opt['estimated_delivery_time']['shipping'] ?? '?';
+                    $this->line("  - {$opt['name']}: R$ " . number_format(($opt['cost'] ?? 0), 2, ',', '.') . " ({$dias} dias)");
                 }
             }
         } else {
