@@ -23,8 +23,21 @@ class MercadoLivreClient
         return $this->request('GET', $path, $query);
     }
 
-    private function request(string $method, string $path, array $query = [], bool $isRetry = false): array
+    public function put(string $path, array $body = []): array
     {
+        return $this->request('PUT', $path, [], $body);
+    }
+
+    private function request(string $method, string $path, array $query = [], array|bool $bodyOrRetry = false, bool $isRetry = false): array
+    {
+        // Compatibilidade: se bodyOrRetry é bool, é o antigo parâmetro isRetry
+        $body = [];
+        if (is_array($bodyOrRetry)) {
+            $body = $bodyOrRetry;
+        } elseif (is_bool($bodyOrRetry)) {
+            $isRetry = $bodyOrRetry;
+        }
+
         $token = $this->oauth->getAccessToken();
 
         if (!$token) {
@@ -37,14 +50,16 @@ class MercadoLivreClient
 
         $url = $this->apiBase . $path;
 
-        $response = Http::withToken($token)
-            ->withOptions(['verify' => false])
-            ->timeout(30)
-            ->get($url, $query);
+        $http = Http::withToken($token)->withOptions(['verify' => false])->timeout(30);
+
+        $response = match ($method) {
+            'PUT' => $http->put($url, $body),
+            default => $http->get($url, $query),
+        };
 
         if ($response->status() === 401 && !$isRetry) {
             Log::warning("ML [{$this->accountKey}]: Token expirado (401), renovando...");
-            return $this->request($method, $path, $query, true);
+            return $this->request($method, $path, $query, $body, true);
         }
 
         return [
