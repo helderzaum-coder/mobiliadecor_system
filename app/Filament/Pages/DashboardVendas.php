@@ -167,6 +167,21 @@ class DashboardVendas extends Page implements HasForms
             ->success()->send();
     }
 
+    public function lancarAfiliadoManual(int $vendaId, string $valor): void
+    {
+        $venda = Venda::find($vendaId);
+        if (!$venda) return;
+        $valorAfiliado = (float) str_replace(',', '.', $valor);
+        $venda->update([
+            'comissao_afiliado' => round(abs($valorAfiliado), 2),
+            'planilha_afiliado_processada' => true,
+        ]);
+        \App\Services\VendaRecalculoService::recalcularMargens($venda);
+        \Filament\Notifications\Notification::make()
+            ->title('Afiliado lançado: R$ ' . number_format(abs($valorAfiliado), 2, ',', '.'))
+            ->success()->send();
+    }
+
     public function buscarCustos(int $vendaId): void
     {
         $venda = Venda::find($vendaId);

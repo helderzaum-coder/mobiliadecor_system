@@ -635,6 +635,20 @@
                             📊 Aplicar Planilha WC
                         </button>
                     @endif
+                    @if($precisaAfiliado && !$afiliadoOk)
+                        <div x-data="{ open: false, valor: '' }" style="display:inline-block;">
+                            <button @click="open = !open" type="button"
+                                style="background:#db2777;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                                👥 Afiliado Manual
+                            </button>
+                            <span x-show="open" x-cloak style="display:inline-flex;align-items:center;gap:4px;margin-left:4px;">
+                                <input x-model="valor" type="text" placeholder="Valor (0 se não tem)" style="width:100px;padding:3px 6px;font-size:11px;border-radius:4px;border:1px solid #4b5563;background:#1f2937;color:#fff;">
+                                <button @click="if(valor!=='') { $wire.lancarAfiliadoManual({{ $venda->id_venda }}, valor); open=false; }" type="button"
+                                    style="background:#059669;color:#fff;padding:3px 8px;font-size:11px;border-radius:4px;border:none;cursor:pointer;">✓</button>
+                                <button @click="open=false" type="button" style="color:#9ca3af;font-size:10px;cursor:pointer;background:none;border:none;">✖</button>
+                            </span>
+                        </div>
+                    @endif
                     <button wire:click="recalcular({{ $venda->id_venda }})" wire:loading.attr="disabled"
                         style="background:#059669;color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
                         🔄 Recalcular
