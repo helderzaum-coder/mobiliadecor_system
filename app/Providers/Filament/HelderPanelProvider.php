@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -57,9 +58,7 @@ class HelderPanelProvider extends PanelProvider
                 'Cadastros',
                 'Ajuda',
             ])
-            ->navigationItems(
-                $this->getFavoriteNavigationItems()
-            )
+
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,
@@ -84,20 +83,20 @@ class HelderPanelProvider extends PanelProvider
             ->databaseNotificationsPolling('15s');
     }
 
-    private function getFavoriteNavigationItems(): array
+    public function boot(): void
     {
-        try {
+        Filament::serving(function () {
             $user = auth()->user();
-            if (!$user) return [];
+            if (!$user) return;
 
-            return $user->favorites->map(fn ($fav) => NavigationItem::make($fav->label)
+            $items = $user->favorites->map(fn ($fav) => NavigationItem::make($fav->label)
                 ->url($fav->url)
                 ->icon($fav->icon ?: 'heroicon-o-star')
                 ->group('Favoritos')
                 ->sort($fav->sort_order)
             )->toArray();
-        } catch (\Throwable $e) {
-            return [];
-        }
+
+            Filament::getCurrentPanel()?->navigationItems($items);
+        });
     }
 }
