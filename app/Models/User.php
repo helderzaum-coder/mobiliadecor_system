@@ -54,4 +54,9 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->hasAnyRole(['admin', 'operador', 'tampo', 'marketing']);
     }
+
+    public function favorites()
+    {
+        return $this->hasMany(UserFavorite::class)->orderBy('sort_order');
+    }
 }

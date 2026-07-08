@@ -6,6 +6,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationItem;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -43,6 +44,7 @@ class HelderPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([])
             ->navigationGroups([
+                'Favoritos',
                 'Administração',
                 'Integrações',
                 'Financeiro',
@@ -55,6 +57,9 @@ class HelderPanelProvider extends PanelProvider
                 'Cadastros',
                 'Ajuda',
             ])
+            ->navigationItems(
+                $this->getFavoriteNavigationItems()
+            )
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 Widgets\AccountWidget::class,
@@ -77,5 +82,22 @@ class HelderPanelProvider extends PanelProvider
             ->darkMode(true)
             ->databaseNotifications()
             ->databaseNotificationsPolling('15s');
+    }
+
+    private function getFavoriteNavigationItems(): array
+    {
+        try {
+            $user = auth()->user();
+            if (!$user) return [];
+
+            return $user->favorites->map(fn ($fav) => NavigationItem::make($fav->label)
+                ->url($fav->url)
+                ->icon($fav->icon ?: 'heroicon-o-star')
+                ->group('Favoritos')
+                ->sort($fav->sort_order)
+            )->toArray();
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 }
