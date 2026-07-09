@@ -390,7 +390,28 @@ class VendaRecalculoService
         $temPlanilhaWC = (bool) $venda->planilha_processada && $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'webcontinental');
         $comissaoVeiaDeFora = $temDadosML || $temPlanilhaShopee || $temPlanilhaMagalu || $temPlanilhaMM || $temPlanilhaWC;
 
-        if (!$comissaoVeiaDeFora && $canal) {
+        // ML: recalcular comissão a partir dos campos ML editados
+        if ($temDadosML) {
+            $mlSaleFee = (float) ($venda->ml_sale_fee ?? 0);
+            $mlFreteCusto = (float) ($venda->ml_frete_custo ?? 0);
+            $mlFreteReceita = (float) ($venda->ml_frete_receita ?? 0);
+            $tipoFreteML = $venda->ml_tipo_frete ?? null;
+
+            if ($tipoFreteML === 'ME2' || $tipoFreteML === 'FULL') {
+                $freteLiquidoML = $mlFreteCusto > 0 ? round($mlFreteCusto - $mlFreteReceita, 2) : 0;
+                $novaComissao = round($mlSaleFee + $freteLiquidoML, 2);
+                $venda->update([
+                    'comissao' => $novaComissao,
+                    'valor_frete_cliente' => 0,
+                    'valor_frete_transportadora' => 0,
+                ]);
+            } else {
+                $venda->update([
+                    'comissao' => $mlSaleFee,
+                ]);
+            }
+            $venda->refresh();
+        } elseif (!$comissaoVeiaDeFora && $canal) {
             $staging = PedidoBlingStaging::where('bling_id', $venda->bling_id)->first();
             $itens = $staging?->itens ?? [];
             if (!empty($itens)) {
