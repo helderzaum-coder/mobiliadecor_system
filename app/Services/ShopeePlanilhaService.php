@@ -33,19 +33,19 @@ class ShopeePlanilhaService
      */
     public const COLUNAS_ESPERADAS = [
         'A'  => 'Nº do pedido',
-        'G'  => 'Opção de envio',
-        'N'  => 'Nome do Produto',
-        'O'  => 'Número de referência SKU',
-        'R'  => 'Preço acordado',
-        'S'  => 'Quantidade',
-        'U'  => 'Subtotal do produto',
-        'AH' => 'ps_csv_pix_discount_br',
-        'AO' => 'Taxa de envio pagas pelo comprador',
-        'AP' => 'Desconto de Frete Aproximado',
-        'AT' => 'Taxa de comissão líquida',
-        'AV' => 'Taxa de serviço líquida',
-        'AZ' => 'Nome do destinatário',
-        'BB' => 'CPF do Comprador',
+        'B'  => 'Tipo de pedido',
+        'H'  => 'Opção de envio',
+        'O'  => 'Nome do Produto',
+        'P'  => 'Número de referência SKU',
+        'S'  => 'Preço acordado',
+        'T'  => 'Quantidade',
+        'V'  => 'Subtotal do produto',
+        'AP' => 'Taxa de envio pagas pelo comprador',
+        'AQ' => 'Desconto de Frete Aproximado',
+        'AU' => 'Taxa de comissão líquida',
+        'AW' => 'Taxa de serviço líquida',
+        'BA' => 'Nome do destinatário',
+        'BC' => 'CPF do Comprador',
     ];
 
     /**
@@ -196,13 +196,14 @@ class ShopeePlanilhaService
     /**
      * Calcula valores consolidados de um pedido a partir de suas linhas.
      *
-     * ⚠️ MAPEAMENTO ATUALIZADO (planilha Shopee SEM coluna "Tipo de pedido"):
-     *  - R = Preço acordado, S = Quantidade
-     *  - U = Subtotal do produto
-     *  - AH = Ajuste por pagamento via PIX (ps_csv_pix_discount_br)
-     *  - G = Opção de envio (Xpress → frete = 0)
-     *  - AO = Taxa envio comprador, AP = Desconto de Frete Aproximado
-     *  - AT = Taxa de comissão líquida, AV = Taxa de serviço líquida
+     * ⚠️ MAPEAMENTO (planilha Shopee com coluna "Tipo de pedido" na pos 2):
+     *  - S = Preço acordado, T = Quantidade
+     *  - V = Subtotal do produto
+     *  - Z = Ajuste por pagamento via PIX (subsídio pix)
+     *  - H = Opção de envio (Xpress → frete = 0)
+     *  - AP = Taxa envio comprador, AQ = Desconto frete
+     *  - AO = Desconto de Frete Aproximado
+     *  - AU = Taxa de comissão líquida, AW = Taxa de serviço líquida
      */
     private static function calcularPedido(array $linhas): array
     {
@@ -215,19 +216,19 @@ class ShopeePlanilhaService
         $itens = [];
 
         foreach ($linhas as $row) {
-            // Subtotal do produto (coluna U)
-            $precoProduto = self::parseDecimal($row['U'] ?? 0);
+            // Subtotal do produto (coluna V)
+            $precoProduto = self::parseDecimal($row['V'] ?? 0);
             $precosProduto += $precoProduto;
 
-            // Subsídio Pix (coluna AH = ps_csv_pix_discount_br)
-            $subsidioPix += abs(self::parseDecimal($row['AH'] ?? 0));
+            // Subsídio Pix (coluna Z)
+            $subsidioPix += abs(self::parseDecimal($row['Z'] ?? 0));
 
-            // Quantidade (coluna S)
-            $quantidade = (int) (self::parseDecimal($row['S'] ?? 1) ?: 1);
+            // Quantidade (coluna T)
+            $quantidade = (int) (self::parseDecimal($row['T'] ?? 1) ?: 1);
 
-            // SKU (coluna O) e Descrição (coluna N)
-            $skuRaw = trim($row['O'] ?? '');
-            $descRaw = trim($row['N'] ?? '');
+            // SKU (coluna P) e Descrição (coluna O)
+            $skuRaw = trim($row['P'] ?? '');
+            $descRaw = trim($row['O'] ?? '');
             if (preg_match('/^\d+$/', $skuRaw)) {
                 $sku = $skuRaw;
                 $desc = $descRaw;
@@ -245,26 +246,26 @@ class ShopeePlanilhaService
                 'valor' => round($precoProduto, 2),
             ];
 
-            // Taxa de comissão líquida (AT) + Taxa de serviço líquida (AV)
+            // Taxa de comissão líquida (AU) + Taxa de serviço líquida (AW)
             // Shopee repete o valor TOTAL do pedido em cada linha — pegar apenas uma vez
             if (!$comissaoCalculada) {
-                $comissao = abs(self::parseDecimal($row['AT'] ?? 0))
-                          + abs(self::parseDecimal($row['AV'] ?? 0));
+                $comissao = abs(self::parseDecimal($row['AU'] ?? 0))
+                          + abs(self::parseDecimal($row['AW'] ?? 0));
                 $comissaoCalculada = true;
             }
 
             // Frete: calcular apenas uma vez (por pedido)
             if (!$freteCalculado) {
-                // Verificar se é Shopee Xpress (coluna G)
-                $opcaoEnvio = strtolower(trim($row['G'] ?? ''));
+                // Verificar se é Shopee Xpress (coluna H)
+                $opcaoEnvio = strtolower(trim($row['H'] ?? ''));
                 $isXpress = str_contains($opcaoEnvio, 'xpress') || str_contains($opcaoEnvio, 'express');
 
                 if ($isXpress) {
                     $frete = 0;
                 } else {
-                    // Frete = Taxa envio comprador (AO) + Desconto de Frete Aproximado (AP)
-                    $taxaEnvioComprador = self::parseDecimal($row['AO'] ?? 0);
-                    $descontoFrete = self::parseDecimal($row['AP'] ?? 0);
+                    // Frete = Taxa envio comprador (AP) + Desconto frete (AQ)
+                    $taxaEnvioComprador = self::parseDecimal($row['AP'] ?? 0);
+                    $descontoFrete = self::parseDecimal($row['AQ'] ?? 0);
                     $frete = $taxaEnvioComprador + abs($descontoFrete);
                 }
                 $freteCalculado = true;
@@ -278,7 +279,7 @@ class ShopeePlanilhaService
         if ($frete == 0) {
             $totalPedido = $subtotalReal;
         } else {
-            $totalPedido = $subtotalReal + $frete - abs(self::parseDecimal($linhas[0]['AP'] ?? 0));
+            $totalPedido = $subtotalReal + $frete - abs(self::parseDecimal($linhas[0]['AO'] ?? 0));
         }
 
         return [
