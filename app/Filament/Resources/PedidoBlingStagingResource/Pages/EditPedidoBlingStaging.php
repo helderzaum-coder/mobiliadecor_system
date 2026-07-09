@@ -64,6 +64,29 @@ class EditPedidoBlingStaging extends EditRecord
                     }
                 })
                 ->visible(fn () => $this->record->status === 'pendente' && !empty($this->record->nfe_chave_acesso)),
+            Actions\Action::make('retirada_maos')
+                ->label('Retirada em Mãos')
+                ->icon('heroicon-o-hand-raised')
+                ->color('gray')
+                ->requiresConfirmation()
+                ->modalHeading('Retirada em Mãos')
+                ->modalDescription('Marca o pedido como retirado pelo cliente (frete zerado) e aprova a venda.')
+                ->action(function () {
+                    $this->record->update([
+                        'custo_frete' => 0,
+                        'frete' => 0,
+                    ]);
+                    $this->save();
+                    $venda = AprovacaoVendaService::aprovar($this->record);
+                    $venda->update([
+                        'frete_pago' => true,
+                        'observacoes' => trim(($venda->observacoes ? $venda->observacoes . ' | ' : '') . 'Retirada em mãos'),
+                    ]);
+                    \App\Services\VendaRecalculoService::recalcularMargens($venda);
+                    Notification::make()->title('Pedido aprovado como retirada em mãos.')->success()->send();
+                    $this->redirect(PedidoBlingStagingResource::getUrl());
+                })
+                ->visible(fn () => $this->record->status === 'pendente'),
             Actions\Action::make('aprovar')
                 ->label('Aprovar e Salvar')
                 ->icon('heroicon-o-check-circle')
