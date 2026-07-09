@@ -468,114 +468,140 @@ class BlingImportService
     {
         $client = new BlingClient($staging->bling_account);
 
-        $nfeId = $staging->nota_fiscal;
+        // Resolver o ID real da NF-e na API do Bling
+        $nfeId = self::resolverNfeId($client, $staging);
 
-        if (!$nfeId || $nfeId == '0' || $nfeId == '') {
-            $nfeId = $staging->dados_originais['notaFiscal']['id'] ?? 0;
+        // -1 = já foi aplicado diretamente pelo fallback
+        if ($nfeId === -1) {
+            return true;
         }
 
         if (!$nfeId || $nfeId == 0) {
-            try {
-                $response = $client->getPedido((int) $staging->bling_id);
-                if ($response['success']) {
-                    $pedidoAtualizado = $response['body']['data'] ?? null;
-                    if ($pedidoAtualizado) {
-                        $nfeId = $pedidoAtualizado['notaFiscal']['id'] ?? 0;
-                        Log::info("Bling: Re-fetch pedido {$staging->bling_id} -> notaFiscal.id = {$nfeId}");
+            Log::info("Bling: NF-e não encontrada para pedido {$staging->bling_id} (numero_loja={$staging->numero_loja})");
+            return false;
+        }
 
-                        // Atualizar dados_originais com o pedido atualizado
-                        if ($nfeId && $nfeId != 0) {
-                            $staging->update([
-                                'nota_fiscal' => $nfeId,
-                                'dados_originais' => $pedidoAtualizado,
-                            ]);
-                        }
-                    }
-                }
-            } catch (\Exception $e) {
-                Log::warning("Bling: Erro ao re-fetch pedido {$staging->bling_id}: " . $e->getMessage());
+        // Buscar detalhes da NF-e pelo ID
+        try {
+            $response = $client->getNfe((int) $nfeId);
+
+            if (!$response['success']) {
+                Log::warning("Bling: getNfe({$nfeId}) falhou com HTTP {$response['http_code']} para pedido {$staging->bling_id}");
+                return false;
+            }
+
+            $nfe = $response['body']['data'] ?? null;
+            if (!$nfe) return false;
+
+            return self::aplicarNfe($staging, $nfe, "nfeId={$nfeId}");
+        } catch (\Exception $e) {
+            Log::warning("Bling: Erro ao buscar NF-e {$nfeId} para pedido {$staging->bling_id}", ['error' => $e->getMessage()]);
+            return false;
+        }
+    }
+
+    /**
+     * Resolve o ID real da NF-e na API do Bling.
+     * Tenta múltiplas estratégias em ordem de confiabilidade.
+     */
+    private static function resolverNfeId(BlingClient $client, PedidoBlingStaging $staging): int
+    {
+        // 1. Tentar ID salvo no staging (se for numérico grande = ID da API)
+        $nfeId = $staging->nota_fiscal;
+        if ($nfeId && is_numeric($nfeId) && (int) $nfeId > 1000000) {
+            // Validar que o ID ainda funciona
+            $check = $client->getNfe((int) $nfeId);
+            if ($check['success']) {
+                return (int) $nfeId;
             }
         }
 
-        // Fallback: buscar NF-e pelo número do pedido loja (ex: ML order ID) e número Bling
-        if ((!$nfeId || $nfeId == 0) && $staging->numero_loja) {
+        // 2. Tentar dos dados_originais
+        $nfeIdOriginal = $staging->dados_originais['notaFiscal']['id'] ?? 0;
+        if ($nfeIdOriginal && (int) $nfeIdOriginal > 0) {
+            $check = $client->getNfe((int) $nfeIdOriginal);
+            if ($check['success']) {
+                return (int) $nfeIdOriginal;
+            }
+        }
+
+        // 3. Re-fetch do pedido na API (NF-e pode ter sido vinculada depois)
+        try {
+            $response = $client->getPedido((int) $staging->bling_id);
+            if ($response['success']) {
+                $pedidoAtualizado = $response['body']['data'] ?? null;
+                if ($pedidoAtualizado) {
+                    $nfeIdRefetch = $pedidoAtualizado['notaFiscal']['id'] ?? 0;
+                    Log::info("Bling: Re-fetch pedido {$staging->bling_id} -> notaFiscal.id = {$nfeIdRefetch}");
+
+                    if ($nfeIdRefetch && (int) $nfeIdRefetch > 0) {
+                        $staging->update([
+                            'nota_fiscal' => $nfeIdRefetch,
+                            'dados_originais' => $pedidoAtualizado,
+                        ]);
+                        return (int) $nfeIdRefetch;
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning("Bling: Erro ao re-fetch pedido {$staging->bling_id}: " . $e->getMessage());
+        }
+
+        // 4. Buscar por filtros na API de NF-es (numeroLoja, numeroPedidoCompra, idsPedidosVendas)
+        if ($staging->numero_loja) {
             try {
-                $nfe = $client->getNfePorPedidoLoja((string) $staging->numero_loja, (string) $staging->numero_pedido, (int) $staging->bling_id);
+                $nfe = $client->getNfePorPedidoLoja(
+                    (string) $staging->numero_loja,
+                    (string) $staging->numero_pedido,
+                    (int) $staging->bling_id
+                );
                 if ($nfe) {
                     $valorNota = (float) ($nfe['valorNota'] ?? 0);
-
-                    // Proteção: rejeitar NF-e se valor diverge muito do pedido
-                    if (!self::validarValorNfe($valorNota, $staging)) {
+                    if (self::validarValorNfe($valorNota, $staging)) {
+                        // Aplicar diretamente e retornar via flag especial
+                        self::aplicarNfe($staging, $nfe, "pedidoLoja={$staging->numero_loja}");
+                        return -1; // Sinaliza que já foi aplicado
+                    } else {
                         Log::warning("Bling: NF-e rejeitada (valor divergente) via pedidoLoja {$staging->numero_loja}. NF-e: R$ {$valorNota}, Pedido: R$ {$staging->total_pedido}");
-                        return false;
                     }
-
-                    $percentual = self::buscarPercentualImposto($staging);
-                    $valorImposto = round($valorNota * ($percentual / 100), 2);
-
-                    $staging->update([
-                        'nota_fiscal' => $nfe['numero'] ?? $staging->nota_fiscal,
-                        'nfe_numero' => $nfe['numero'] ?? '',
-                        'nfe_chave_acesso' => $nfe['chaveAcesso'] ?? '',
-                        'nfe_valor' => $valorNota,
-                        'nfe_xml_url' => $nfe['xml'] ?? '',
-                        'nfe_pdf_url' => $nfe['linkPDF'] ?? '',
-                        'base_imposto' => $valorNota,
-                        'percentual_imposto' => $percentual,
-                        'valor_imposto' => $valorImposto,
-                    ]);
-                    Log::info("Bling: NF-e encontrada via numeroPedidoLoja {$staging->numero_loja} para pedido {$staging->bling_id}");
-                    return true;
                 }
             } catch (\Exception $e) {
                 Log::warning("Bling: Erro ao buscar NF-e por pedidoLoja {$staging->numero_loja}: " . $e->getMessage());
             }
         }
 
-        if (!$nfeId || $nfeId == 0) {
-            Log::info("Bling: NF-e não encontrada para pedido {$staging->bling_id} (nota_fiscal=0, numero_loja={$staging->numero_loja})");
+        return 0;
+    }
+
+    /**
+     * Aplica os dados da NF-e no staging.
+     */
+    private static function aplicarNfe(PedidoBlingStaging $staging, array $nfe, string $origem): bool
+    {
+        $valorNota = (float) ($nfe['valorNota'] ?? 0);
+
+        if (!self::validarValorNfe($valorNota, $staging)) {
+            Log::warning("Bling: NF-e rejeitada (valor divergente) via {$origem}. NF-e: R$ {$valorNota}, Pedido: R$ {$staging->total_pedido}");
             return false;
         }
 
-        try {
-            $response = $client->getNfe((int) $nfeId);
+        $percentual = self::buscarPercentualImposto($staging);
+        $valorImposto = round($valorNota * ($percentual / 100), 2);
 
-            if ($response['success']) {
-                $nfe = $response['body']['data'] ?? null;
+        $staging->update([
+            'nota_fiscal' => $nfe['id'] ?? $staging->nota_fiscal,
+            'nfe_numero' => $nfe['numero'] ?? '',
+            'nfe_chave_acesso' => $nfe['chaveAcesso'] ?? '',
+            'nfe_valor' => $valorNota,
+            'nfe_xml_url' => $nfe['xml'] ?? '',
+            'nfe_pdf_url' => $nfe['linkPDF'] ?? '',
+            'base_imposto' => $valorNota,
+            'percentual_imposto' => $percentual,
+            'valor_imposto' => $valorImposto,
+        ]);
 
-                if ($nfe) {
-                    $valorNota = (float) ($nfe['valorNota'] ?? 0);
-
-                    // Proteção: rejeitar NF-e se valor diverge muito do pedido
-                    if (!self::validarValorNfe($valorNota, $staging)) {
-                        Log::warning("Bling: NF-e rejeitada (valor divergente) via nfeId {$nfeId}. NF-e: R$ {$valorNota}, Pedido: R$ {$staging->total_pedido}");
-                        return false;
-                    }
-
-                    $percentual = self::buscarPercentualImposto($staging);
-                    $valorImposto = round($valorNota * ($percentual / 100), 2);
-
-                    $staging->update([
-                        'nota_fiscal' => $nfe['numero'] ?? $staging->nota_fiscal,
-                        'nfe_numero' => $nfe['numero'] ?? '',
-                        'nfe_chave_acesso' => $nfe['chaveAcesso'] ?? '',
-                        'nfe_valor' => $valorNota,
-                        'nfe_xml_url' => $nfe['xml'] ?? '',
-                        'nfe_pdf_url' => $nfe['linkPDF'] ?? '',
-                        'base_imposto' => $valorNota,
-                        'percentual_imposto' => $percentual,
-                        'valor_imposto' => $valorImposto,
-                    ]);
-                    return true;
-                }
-            }
-        } catch (\Exception $e) {
-            Log::warning("Bling: Erro ao buscar NF-e {$nfeId} para pedido {$staging->bling_id}", [
-                'error' => $e->getMessage(),
-            ]);
-        }
-
-        return false;
+        Log::info("Bling: NF-e aplicada via {$origem} para pedido {$staging->bling_id} (numero={$nfe['numero']}, valor={$valorNota})");
+        return true;
     }
 
     /**
