@@ -1007,7 +1007,7 @@ class PedidoBlingStagingResource extends Resource
                     ->label('Cotações')
                     ->icon('heroicon-o-truck')
                     ->color('gray')
-                    ->modalHeading(fn (PedidoBlingStaging $record) => 'Cotações - Pedido #' . ($record->numero_loja ?? $record->numero_pedido .'Transportadora:' . $record->transportadora))
+                    ->modalHeading(fn (PedidoBlingStaging $record) => 'Cotações - Pedido #' . ($record->numero_loja ?? $record->numero_pedido) . ($record->transportadora ? ' — ' . $record->transportadora . ' R$ ' . number_format((float) $record->custo_frete, 2, ',', '.') : ''))
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Fechar')
                     ->modalWidth('7xl')
