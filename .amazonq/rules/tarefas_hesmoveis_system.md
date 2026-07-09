@@ -17,3 +17,4 @@ Todas as novas páginas com filtro de data devem conter:
 Além disto, páginas com filtro devem ter o filtro na URL, para quando atualizar a página não perder a seleção
 Já existe um deploy.yml na pasta github/workflows
 Somente indicar comandos de deploy no github, caso este comando não esteja no arquivo deploy.yml
+-
