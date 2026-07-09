@@ -46,6 +46,51 @@ class ImportarShopeeAfiliados extends Page implements HasForms
     }
 
     /**
+     * Resolve o caminho do arquivo e valida cabeçalho.
+     */
+    private function resolverArquivoComValidacao(): ?string
+    {
+        try {
+            $data = $this->form->getState();
+        } catch (\Exception $e) {
+            $this->data = [];
+            $this->form->fill();
+            Notification::make()->title('O arquivo enviado expirou. Faça o upload novamente.')->danger()->send();
+            return null;
+        }
+
+        $arquivo = $data['arquivo'] ?? null;
+        if (!$arquivo) {
+            Notification::make()->title('Selecione um arquivo.')->danger()->send();
+            return null;
+        }
+
+        $filePath = storage_path('app/public/' . $arquivo);
+        if (!file_exists($filePath)) {
+            $filePath = storage_path('app/' . $arquivo);
+        }
+        if (!file_exists($filePath)) {
+            Notification::make()->title('Arquivo não encontrado.')->danger()->send();
+            return null;
+        }
+
+        // Validar cabeçalho
+        $validacao = ShopeeAfiliadosService::validarCabecalho($filePath);
+        if (!$validacao['valido']) {
+            $detalhes = implode("\n", $validacao['divergencias']);
+            Notification::make()
+                ->title('⚠ Formato da planilha divergente — colunas precisam ser remapeadas')
+                ->body($detalhes)
+                ->danger()
+                ->persistent()
+                ->send();
+            return null;
+        }
+
+        return $filePath;
+    }
+
+    /**
      * Retorna a data do primeiro pedido Shopee pendente de afiliado.
      */
     public function getDataPrimeiroPendenteProperty(): ?string
@@ -91,29 +136,8 @@ class ImportarShopeeAfiliados extends Page implements HasForms
             return;
         }
 
-        try {
-            $data = $this->form->getState();
-        } catch (\Exception $e) {
-            $this->data = [];
-            $this->form->fill();
-            Notification::make()->title('O arquivo enviado expirou. Faça o upload novamente.')->danger()->send();
-            return;
-        }
-
-        $arquivo = $data['arquivo'] ?? null;
-        if (!$arquivo) {
-            Notification::make()->title('Selecione um arquivo.')->danger()->send();
-            return;
-        }
-
-        $filePath = storage_path('app/public/' . $arquivo);
-        if (!file_exists($filePath)) {
-            $filePath = storage_path('app/' . $arquivo);
-        }
-        if (!file_exists($filePath)) {
-            Notification::make()->title('Arquivo não encontrado.')->danger()->send();
-            return;
-        }
+        $filePath = $this->resolverArquivoComValidacao();
+        if (!$filePath) return;
 
         // 1) Travar pedidos anteriores ao período (marcar como processados sem afiliado)
         $travados = \App\Models\Venda::where('planilha_afiliado_processada', false)

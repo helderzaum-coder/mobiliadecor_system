@@ -15,6 +15,63 @@ use Illuminate\Support\Facades\Log;
  */
 class ShopeeAfiliadosService
 {
+    /**
+     * Colunas esperadas no cabeçalho para validação.
+     * Índice (base 0) => substring que deve conter (case-insensitive).
+     */
+    public const COLUNAS_ESPERADAS = [
+        0 => 'id do pedido',
+        32 => 'despesas',
+    ];
+
+    /**
+     * Valida se o cabeçalho da planilha corresponde ao mapeamento esperado.
+     */
+    public static function validarCabecalho(string $filePath): array
+    {
+        try {
+            $handle = fopen($filePath, 'r');
+            if (!$handle) {
+                return ['valido' => false, 'divergencias' => ['Erro ao abrir arquivo']];
+            }
+
+            $header = fgetcsv($handle);
+            fclose($handle);
+
+            if (!$header) {
+                return ['valido' => false, 'divergencias' => ['Arquivo vazio ou sem cabeçalho']];
+            }
+        } catch (\Exception $e) {
+            return ['valido' => false, 'divergencias' => ["Erro ao ler arquivo: {$e->getMessage()}"]];
+        }
+
+        $divergencias = [];
+        foreach (self::COLUNAS_ESPERADAS as $idx => $substringEsperada) {
+            $valorReal = mb_strtolower(trim($header[$idx] ?? ''));
+            if (!str_contains($valorReal, $substringEsperada)) {
+                $colLetra = self::idxParaLetra($idx);
+                $divergencias[] = "Coluna {$colLetra} (pos {$idx}): esperado conter \"{$substringEsperada}\" → encontrado \"" . trim($header[$idx] ?? '(vazio)') . "\"";
+            }
+        }
+
+        return [
+            'valido' => empty($divergencias),
+            'divergencias' => $divergencias,
+        ];
+    }
+
+    private static function idxParaLetra(int $idx): string
+    {
+        $letra = '';
+        $idx++;
+        while ($idx > 0) {
+            $idx--;
+            $letra = chr(65 + ($idx % 26)) . $letra;
+            $idx = intdiv($idx, 26);
+        }
+        return $letra;
+    }
+
     public static function processar(string $filePath): array
     {
         $resultado = ['atualizados' => 0, 'nao_encontrados' => 0, 'sem_valor' => 0, 'erros' => 0, 'detalhes' => []];
