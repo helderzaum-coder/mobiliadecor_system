@@ -94,13 +94,14 @@
             <thead>
                 <tr class="border-b border-gray-300 dark:border-gray-600 text-gray-500 text-xs">
                     <th class="text-left p-2">Nº CT-e</th>
-                    <th class="text-left p-2">Chave NF-e</th>
+                    <th class="text-left p-2">NF-e</th>
                     <th class="text-right p-2">Valor Frete</th>
                     <th class="text-left p-2">Transportadora</th>
+                    <th class="text-left p-2">Remetente</th>
                     <th class="text-left p-2">Destinatário</th>
                     <th class="text-center p-2">Tipo</th>
                     <th class="text-center p-2">Status</th>
-                    <th class="text-left p-2">Data Emissão</th>
+                    <th class="text-left p-2">Data</th>
                     <th class="text-center p-2">Ações</th>
                 </tr>
             </thead>
@@ -110,12 +111,23 @@
                         <td class="p-2 font-mono text-gray-800 dark:text-white">{{ $cte->numero_cte }}</td>
                         <td class="p-2 font-mono text-xs text-gray-600 dark:text-gray-400"
                             style="cursor:pointer;" title="{{ $cte->chave_nfe }}"
-                            onclick="navigator.clipboard.writeText('{{ $cte->chave_nfe }}').then(()=>{this.innerText='Copiado!';setTimeout(()=>this.innerText='{{ substr($cte->chave_nfe, 0, 20) }}...',1500)})">
-                            {{ substr($cte->chave_nfe, 0, 20) }}...
+                            onclick="navigator.clipboard.writeText('{{ $cte->chave_nfe }}').then(()=>{this.innerText='Copiado!';setTimeout(()=>this.innerText='{{ $cte->numero_nfe ?: substr($cte->chave_nfe, 0, 15) . '...' }}',1500)})">
+                            {{ $cte->numero_nfe ?: substr($cte->chave_nfe, 0, 15) . '...' }}
                         </td>
                         <td class="p-2 text-right font-semibold text-gray-800 dark:text-white">R$ {{ number_format($cte->valor_frete, 2, ',', '.') }}</td>
-                        <td class="p-2 text-gray-600 dark:text-gray-400">{{ $cte->transportadora }}</td>
-                        <td class="p-2 text-gray-600 dark:text-gray-400">{{ $cte->destinatario }}</td>
+                        <td class="p-2 text-gray-600 dark:text-gray-400 text-xs">{{ $cte->transportadora }}</td>
+                        <td class="p-2 text-xs">
+                            <div class="text-gray-600 dark:text-gray-400">{{ $cte->remetente }}</div>
+                            @if($cte->rem_documento)
+                                <div class="text-gray-500" style="font-size:10px;">{{ $cte->rem_documento }}</div>
+                            @endif
+                        </td>
+                        <td class="p-2 text-xs">
+                            <div class="text-gray-600 dark:text-gray-400">{{ $cte->destinatario }}</div>
+                            @if($cte->dest_documento)
+                                <div class="text-gray-500" style="font-size:10px;">{{ $cte->dest_documento }}</div>
+                            @endif
+                        </td>
                         <td class="p-2 text-center">
                             <select wire:change="alterarTipo({{ $cte->id }}, $event.target.value)"
                                 class="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs px-2 py-1 text-gray-800 dark:text-white"
@@ -161,7 +173,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="p-4 text-center text-gray-500">Nenhum CT-e encontrado.</td>
+                        <td colspan="10" class="p-4 text-center text-gray-500">Nenhum CT-e encontrado.</td>
                     </tr>
                 @endforelse
             </tbody>

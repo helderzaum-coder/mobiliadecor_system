@@ -233,8 +233,11 @@ class ConsultaCtes extends Page
                 $q->where('numero_cte', 'like', "%{$busca}%")
                   ->orWhere('chave_nfe', 'like', "%{$busca}%")
                   ->orWhere('chave_cte', 'like', "%{$busca}%")
+                  ->orWhere('numero_nfe', 'like', "%{$busca}%")
                   ->orWhere('destinatario', 'like', "%{$busca}%")
-                  ->orWhere('remetente', 'like', "%{$busca}%");
+                  ->orWhere('dest_documento', 'like', "%{$busca}%")
+                  ->orWhere('remetente', 'like', "%{$busca}%")
+                  ->orWhere('rem_documento', 'like', "%{$busca}%");
             });
         }
 

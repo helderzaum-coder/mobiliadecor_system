@@ -51,9 +51,12 @@ class CteService
                     'numero_cte' => $dados['numero_cte'],
                     'chave_cte' => $dados['chave_cte'],
                     'chave_nfe' => $dados['chave_nfe'],
+                    'numero_nfe' => $dados['numero_nfe'],
                     'valor_frete' => $dados['valor_frete'],
                     'remetente' => $dados['remetente'],
+                    'rem_documento' => $dados['rem_documento'],
                     'destinatario' => $dados['destinatario'],
+                    'dest_documento' => $dados['dest_documento'],
                     'transportadora' => $dados['transportadora'],
                     'data_emissao' => $dados['data_emissao'],
                     'arquivo' => basename($arquivo),
@@ -171,9 +174,12 @@ class CteService
             'numero_cte' => '',
             'chave_cte' => '',
             'chave_nfe' => '',
+            'numero_nfe' => '',
             'valor_frete' => 0,
             'remetente' => '',
+            'rem_documento' => '',
             'destinatario' => '',
+            'dest_documento' => '',
             'transportadora' => '',
             'data_emissao' => null,
         ];
@@ -187,6 +193,11 @@ class CteService
             $chaveNfe = $xml->xpath('//cte:infNFe/cte:chave');
             $dados['chave_nfe'] = !empty($chaveNfe) ? (string) $chaveNfe[0] : '';
 
+            // Extrair número da NF-e da chave (posições 25-33)
+            if (!empty($dados['chave_nfe']) && strlen($dados['chave_nfe']) === 44) {
+                $dados['numero_nfe'] = ltrim(substr($dados['chave_nfe'], 25, 9), '0');
+            }
+
             $vTPrest = $xml->xpath('//cte:vTPrest');
             $dados['valor_frete'] = !empty($vTPrest) ? round((float) $vTPrest[0], 2) : 0;
 
@@ -195,12 +206,23 @@ class CteService
                 $dados['chave_cte'] = str_replace('CTe', '', (string) $chaveCte[0]);
             }
 
+            // Remetente
             $rem = $xml->xpath('//cte:rem/cte:xNome');
             $dados['remetente'] = !empty($rem) ? (string) $rem[0] : '';
 
+            $remCnpj = $xml->xpath('//cte:rem/cte:CNPJ');
+            $remCpf = $xml->xpath('//cte:rem/cte:CPF');
+            $dados['rem_documento'] = !empty($remCnpj) ? (string) $remCnpj[0] : (!empty($remCpf) ? (string) $remCpf[0] : '');
+
+            // Destinatário
             $dest = $xml->xpath('//cte:dest/cte:xNome');
             $dados['destinatario'] = !empty($dest) ? (string) $dest[0] : '';
 
+            $destCnpj = $xml->xpath('//cte:dest/cte:CNPJ');
+            $destCpf = $xml->xpath('//cte:dest/cte:CPF');
+            $dados['dest_documento'] = !empty($destCnpj) ? (string) $destCnpj[0] : (!empty($destCpf) ? (string) $destCpf[0] : '');
+
+            // Transportadora (emitente)
             $emit = $xml->xpath('//cte:emit/cte:xNome');
             $dados['transportadora'] = !empty($emit) ? (string) $emit[0] : '';
 
@@ -218,8 +240,26 @@ class CteService
             $chaveNfe = $xml->xpath('//infNFe/chave');
             $dados['chave_nfe'] = !empty($chaveNfe) ? (string) $chaveNfe[0] : '';
 
+            if (!empty($dados['chave_nfe']) && strlen($dados['chave_nfe']) === 44) {
+                $dados['numero_nfe'] = ltrim(substr($dados['chave_nfe'], 25, 9), '0');
+            }
+
             $vTPrest = $xml->xpath('//vTPrest');
             $dados['valor_frete'] = !empty($vTPrest) ? round((float) $vTPrest[0], 2) : 0;
+
+            $rem = $xml->xpath('//rem/xNome');
+            $dados['remetente'] = !empty($rem) ? (string) $rem[0] : '';
+
+            $remCnpj = $xml->xpath('//rem/CNPJ');
+            $remCpf = $xml->xpath('//rem/CPF');
+            $dados['rem_documento'] = !empty($remCnpj) ? (string) $remCnpj[0] : (!empty($remCpf) ? (string) $remCpf[0] : '');
+
+            $dest = $xml->xpath('//dest/xNome');
+            $dados['destinatario'] = !empty($dest) ? (string) $dest[0] : '';
+
+            $destCnpj = $xml->xpath('//dest/CNPJ');
+            $destCpf = $xml->xpath('//dest/CPF');
+            $dados['dest_documento'] = !empty($destCnpj) ? (string) $destCnpj[0] : (!empty($destCpf) ? (string) $destCpf[0] : '');
         }
 
         return $dados;
