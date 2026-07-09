@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\Log;
  * Soma o valor de "Despesas(R$)" na comissão da venda.
  *
  * Colunas relevantes:
- * A = ID do Pedido
- * AG (posição 33) = Despesas(R$) — valor da comissão de afiliados
+ * A = ID do Pedido (posição 1, índice 0)
+ * AI (posição 35, índice 34) = Despesas(R$) — valor da comissão de afiliados
  */
 class ShopeeAfiliadosService
 {
@@ -21,7 +21,7 @@ class ShopeeAfiliadosService
      */
     public const COLUNAS_ESPERADAS = [
         0 => 'id do pedido',
-        32 => 'despesas',
+        34 => 'despesas',
     ];
 
     /**
@@ -101,8 +101,8 @@ class ShopeeAfiliadosService
             }
 
             if ($idxDespesas === null) {
-                // Fallback: posição 32 (AG = índice 32 em base 0)
-                $idxDespesas = 32;
+                // Fallback: posição 34 (AJ = índice 34 em base 0)
+                $idxDespesas = 34;
             }
 
             Log::info("Shopee Afiliados: coluna despesas idx={$idxDespesas}");
