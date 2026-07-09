@@ -44,7 +44,11 @@ class ImportarPlanilhaShopee extends Page implements HasForms
         ])->statePath('data');
     }
 
-    public function processar(): void
+    /**
+     * Resolve o caminho do arquivo e valida cabeçalho.
+     * Retorna o filePath ou null (com notificação de erro).
+     */
+    private function resolverArquivoComValidacao(): ?string
     {
         try {
             $data = $this->form->getState();
@@ -52,26 +56,44 @@ class ImportarPlanilhaShopee extends Page implements HasForms
             $this->data = [];
             $this->form->fill();
             Notification::make()->title('O arquivo enviado expirou. Faça o upload novamente.')->danger()->send();
-            return;
+            return null;
         }
 
         $arquivo = $data['arquivo'] ?? null;
-
         if (!$arquivo) {
             Notification::make()->title('Selecione um arquivo.')->danger()->send();
-            return;
+            return null;
         }
 
         $filePath = storage_path('app/public/' . $arquivo);
-
         if (!file_exists($filePath)) {
             $filePath = storage_path('app/' . $arquivo);
         }
-
         if (!file_exists($filePath)) {
             Notification::make()->title('Arquivo não encontrado.')->danger()->send();
-            return;
+            return null;
         }
+
+        // Validar cabeçalho
+        $validacao = ShopeePlanilhaService::validarCabecalho($filePath);
+        if (!$validacao['valido']) {
+            $detalhes = implode("\n", $validacao['divergencias']);
+            Notification::make()
+                ->title('⚠ Formato da planilha divergente — colunas precisam ser remapeadas')
+                ->body($detalhes)
+                ->danger()
+                ->persistent()
+                ->send();
+            return null;
+        }
+
+        return $filePath;
+    }
+
+    public function processar(): void
+    {
+        $filePath = $this->resolverArquivoComValidacao();
+        if (!$filePath) return;
 
         $resultado = ShopeePlanilhaService::processar($filePath);
 
@@ -94,30 +116,8 @@ class ImportarPlanilhaShopee extends Page implements HasForms
 
     public function corrigirDadosBling(bool $forcar = false): void
     {
-        try {
-            $data = $this->form->getState();
-        } catch (\Exception $e) {
-            $this->data = [];
-            $this->form->fill();
-            Notification::make()->title('O arquivo enviado expirou. Faça o upload novamente.')->danger()->send();
-            return;
-        }
-
-        $arquivo = $data['arquivo'] ?? null;
-
-        if (!$arquivo) {
-            Notification::make()->title('Selecione um arquivo.')->danger()->send();
-            return;
-        }
-
-        $filePath = storage_path('app/public/' . $arquivo);
-        if (!file_exists($filePath)) {
-            $filePath = storage_path('app/' . $arquivo);
-        }
-        if (!file_exists($filePath)) {
-            Notification::make()->title('Arquivo não encontrado.')->danger()->send();
-            return;
-        }
+        $filePath = $this->resolverArquivoComValidacao();
+        if (!$filePath) return;
 
         $resultado = \App\Services\ShopeeCorrigirDadosService::processar($filePath, $forcar);
 

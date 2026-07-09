@@ -28,6 +28,67 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 class ShopeePlanilhaService
 {
     /**
+     * Colunas esperadas no cabeçalho (coluna Excel => nome esperado).
+     * Usado para validar se a planilha está no formato correto antes de processar.
+     */
+    public const COLUNAS_ESPERADAS = [
+        'A'  => 'Nº do pedido',
+        'G'  => 'Opção de envio',
+        'N'  => 'Nome do Produto',
+        'O'  => 'Número de referência SKU',
+        'R'  => 'Preço acordado',
+        'S'  => 'Quantidade',
+        'U'  => 'Subtotal do produto',
+        'AH' => 'ps_csv_pix_discount_br',
+        'AO' => 'Taxa de envio pagas pelo comprador',
+        'AP' => 'Desconto de Frete Aproximado',
+        'AT' => 'Taxa de comissão líquida',
+        'AV' => 'Taxa de serviço líquida',
+        'AZ' => 'Nome do destinatário',
+        'BB' => 'CPF do Comprador',
+    ];
+
+    /**
+     * Valida se o cabeçalho da planilha corresponde ao mapeamento esperado.
+     * Retorna array com 'valido' => bool e 'divergencias' => [...]
+     */
+    public static function validarCabecalho(string $filePath): array
+    {
+        try {
+            $spreadsheet = IOFactory::load($filePath);
+            $sheet = $spreadsheet->getActiveSheet();
+            $rows = $sheet->toArray(null, true, true, true);
+        } catch (\Exception $e) {
+            return ['valido' => false, 'divergencias' => ["Erro ao ler arquivo: {$e->getMessage()}"]];
+        }
+
+        $header = null;
+        foreach ($rows as $row) {
+            $header = $row;
+            break;
+        }
+
+        if (!$header) {
+            return ['valido' => false, 'divergencias' => ['Planilha vazia ou sem cabeçalho']];
+        }
+
+        $divergencias = [];
+        foreach (self::COLUNAS_ESPERADAS as $coluna => $nomeEsperado) {
+            $valorReal = mb_strtolower(trim($header[$coluna] ?? ''));
+            $esperado = mb_strtolower($nomeEsperado);
+
+            if ($valorReal !== $esperado) {
+                $divergencias[] = "Coluna {$coluna}: esperado \"{$nomeEsperado}\" → encontrado \"" . trim($header[$coluna] ?? '(vazio)') . "\"";
+            }
+        }
+
+        return [
+            'valido' => empty($divergencias),
+            'divergencias' => $divergencias,
+        ];
+    }
+
+    /**
      * Processa planilha da Shopee e atualiza pedidos no staging.
      * Agrupa linhas por pedido (um pedido pode ter vários itens/linhas).
      *
