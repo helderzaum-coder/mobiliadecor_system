@@ -218,9 +218,9 @@ class BlingClient
     }
 
     /**
-     * Busca NF-e vinculada a um pedido pelo numeroPedidoLoja
+     * Busca NF-e vinculada a um pedido pelo numeroPedidoLoja, número Bling e/ou ID do pedido
      */
-    public function getNfePorPedidoLoja(string $numeroPedidoLoja): ?array
+    public function getNfePorPedidoLoja(string $numeroPedidoLoja, ?string $numeroPedidoBling = null, ?int $pedidoVendaId = null): ?array
     {
         // Tentar busca filtrada por numeroLoja
         $response = $this->getNfes(['numeroLoja' => $numeroPedidoLoja, 'limite' => 5]);
@@ -233,13 +233,40 @@ class BlingClient
             }
         }
 
-        // Fallback leve: buscar por numeroPedidoCompra (campo usado em algumas integrações)
+        // Fallback: buscar por numeroPedidoCompra com numero_loja
         $response = $this->getNfes(['numeroPedidoCompra' => $numeroPedidoLoja, 'limite' => 5]);
         if ($response['success'] && !empty($response['body']['data'])) {
             foreach ($response['body']['data'] as $nfeResumo) {
                 $detalhe = $this->getNfe($nfeResumo['id']);
                 if ($detalhe['success']) {
                     return $detalhe['body']['data'] ?? null;
+                }
+            }
+        }
+
+        // Fallback: buscar por número do pedido Bling
+        if ($numeroPedidoBling) {
+            $response = $this->getNfes(['numeroPedidoCompra' => $numeroPedidoBling, 'limite' => 5]);
+            if ($response['success'] && !empty($response['body']['data'])) {
+                foreach ($response['body']['data'] as $nfeResumo) {
+                    $detalhe = $this->getNfe($nfeResumo['id']);
+                    if ($detalhe['success']) {
+                        return $detalhe['body']['data'] ?? null;
+                    }
+                }
+            }
+        }
+
+        // Fallback: buscar por ID do pedido de venda (vínculo direto Bling)
+        if ($pedidoVendaId) {
+            $response = $this->getNfes(['idsPedidosVendas' => (string) $pedidoVendaId, 'limite' => 5]);
+            if ($response['success'] && !empty($response['body']['data'])) {
+                foreach ($response['body']['data'] as $nfeResumo) {
+                    $detalhe = $this->getNfe($nfeResumo['id']);
+                    if ($detalhe['success']) {
+                        Log::info("Bling: NF-e encontrada via idsPedidosVendas={$pedidoVendaId}");
+                        return $detalhe['body']['data'] ?? null;
+                    }
                 }
             }
         }

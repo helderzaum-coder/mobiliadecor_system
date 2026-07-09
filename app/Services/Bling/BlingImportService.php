@@ -482,6 +482,14 @@ class BlingImportService
                     if ($pedidoAtualizado) {
                         $nfeId = $pedidoAtualizado['notaFiscal']['id'] ?? 0;
                         Log::info("Bling: Re-fetch pedido {$staging->bling_id} -> notaFiscal.id = {$nfeId}");
+
+                        // Atualizar dados_originais com o pedido atualizado
+                        if ($nfeId && $nfeId != 0) {
+                            $staging->update([
+                                'nota_fiscal' => $nfeId,
+                                'dados_originais' => $pedidoAtualizado,
+                            ]);
+                        }
                     }
                 }
             } catch (\Exception $e) {
@@ -489,10 +497,10 @@ class BlingImportService
             }
         }
 
-        // Fallback: buscar NF-e pelo número do pedido loja (ex: ML order ID)
+        // Fallback: buscar NF-e pelo número do pedido loja (ex: ML order ID) e número Bling
         if ((!$nfeId || $nfeId == 0) && $staging->numero_loja) {
             try {
-                $nfe = $client->getNfePorPedidoLoja((string) $staging->numero_loja);
+                $nfe = $client->getNfePorPedidoLoja((string) $staging->numero_loja, (string) $staging->numero_pedido, (int) $staging->bling_id);
                 if ($nfe) {
                     $valorNota = (float) ($nfe['valorNota'] ?? 0);
 
