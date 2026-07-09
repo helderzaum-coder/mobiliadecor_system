@@ -251,7 +251,14 @@ class PedidoBlingStagingResource extends Resource
                                 if (!$record->dest_uf || !$record->dest_cep || !$record->peso_bruto) {
                                     return new HtmlString('<p class="text-sm text-danger-500">Dados de envio incompletos (UF, CEP ou peso). Reimporte o pedido.</p>');
                                 }
-                                return self::renderCotacaoModal($record);
+                                $html = '';
+                                if ($record->transportadora || (float) $record->custo_frete > 0) {
+                                    $html .= '<div class="mb-4 p-3 rounded-lg bg-green-900/20 border border-green-700">';
+                                    $html .= '<span class="text-sm text-green-400 font-semibold">&#x2705; Aprovado com:</span> ';
+                                    $html .= '<span class="text-sm text-white font-medium">' . e($record->transportadora ?? 'N/I') . ' &mdash; R$ ' . number_format((float) $record->custo_frete, 2, ',', '.') . '</span>';
+                                    $html .= '</div>';
+                                }
+                                return new HtmlString($html . self::renderCotacaoModal($record)->toHtml());
                             })
                             ->form(function (PedidoBlingStaging $record) {
                                 if (!$record->dest_uf || !$record->dest_cep || !$record->peso_bruto || $record->status !== 'pendente') {
@@ -573,7 +580,14 @@ class PedidoBlingStagingResource extends Resource
                         if (!$record->dest_uf || !$record->dest_cep || !$record->peso_bruto) {
                             return new HtmlString('<p class="text-sm text-danger-500">Dados de envio incompletos (UF, CEP ou peso). Reimporte o pedido.</p>');
                         }
-                        return self::renderCotacaoModal($record);
+                        $html = '';
+                        if ($record->transportadora || (float) $record->custo_frete > 0) {
+                            $html .= '<div class="mb-4 p-3 rounded-lg bg-green-900/20 border border-green-700">';
+                            $html .= '<span class="text-sm text-green-400 font-semibold">&#x2705; Aprovado com:</span> ';
+                            $html .= '<span class="text-sm text-white font-medium">' . e($record->transportadora ?? 'N/I') . ' &mdash; R$ ' . number_format((float) $record->custo_frete, 2, ',', '.') . '</span>';
+                            $html .= '</div>';
+                        }
+                        return new HtmlString($html . self::renderCotacaoModal($record)->toHtml());
                     })
                     ->form(function (PedidoBlingStaging $record) {
                         if (!$record->dest_uf || !$record->dest_cep || !$record->peso_bruto) {
