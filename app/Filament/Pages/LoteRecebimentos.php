@@ -43,7 +43,10 @@ class LoteRecebimentos extends Page
 
         return ContaReceber::with('venda')
             ->where('status', 'pendente')
-            ->whereHas('venda', fn ($q) => $q->where('numero_pedido_canal', 'like', '%' . $this->busca . '%'))
+            ->where(function ($q) {
+                $q->whereHas('venda', fn ($q2) => $q2->where('numero_pedido_canal', 'like', '%' . $this->busca . '%'))
+                  ->orWhere('observacoes', 'like', '%' . $this->busca . '%');
+            })
             ->whereNotIn('id_conta_receber', $this->lote)
             ->limit(10)
             ->get();
@@ -150,9 +153,12 @@ class LoteRecebimentos extends Page
         $naoEncontrados = [];
 
         foreach ($pedidos as $numeroPedido) {
-            // Primeiro: buscar conta a receber pendente
+            // Primeiro: buscar conta a receber pendente (por venda ou observação)
             $conta = ContaReceber::where('status', 'pendente')
-                ->whereHas('venda', fn ($q) => $q->where('numero_pedido_canal', $numeroPedido))
+                ->where(function ($q) use ($numeroPedido) {
+                    $q->whereHas('venda', fn ($q2) => $q2->where('numero_pedido_canal', $numeroPedido))
+                      ->orWhere('observacoes', 'like', '%' . $numeroPedido . '%');
+                })
                 ->first();
 
             // Se não tem conta, tentar criar a partir da venda
