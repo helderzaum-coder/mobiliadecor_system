@@ -253,9 +253,12 @@ class PedidoBlingStagingResource extends Resource
                                 }
                                 $html = '';
                                 if ($record->transportadora || (float) $record->custo_frete > 0) {
+                                    $valorNf = (float) ($record->nfe_valor ?: $record->total_pedido);
+                                    $cots = CotacaoFreteService::cotar($record->dest_uf, $record->dest_cep, (float) $record->peso_bruto, $valorNf, $record->dest_cidade);
+                                    $nomeT = self::resolverNomeTransportadora($record, $cots);
                                     $html .= '<div class="mb-4 p-3 rounded-lg bg-green-900/20 border border-green-700">';
                                     $html .= '<span class="text-sm text-green-400 font-semibold">&#x2705; Aprovado com:</span> ';
-                                    $html .= '<span class="text-sm text-white font-medium">' . e($record->transportadora ?? 'N/I') . ' &mdash; R$ ' . number_format((float) $record->custo_frete, 2, ',', '.') . '</span>';
+                                    $html .= '<span class="text-sm text-white font-medium">' . e($nomeT ?? 'N/I') . ' &mdash; R$ ' . number_format((float) $record->custo_frete, 2, ',', '.') . '</span>';
                                     $html .= '</div>';
                                 }
                                 return new HtmlString($html . self::renderCotacaoModal($record)->toHtml());
@@ -590,9 +593,12 @@ class PedidoBlingStagingResource extends Resource
                         }
                         $html = '';
                         if ($record->transportadora || (float) $record->custo_frete > 0) {
+                            $valorNf2 = (float) ($record->nfe_valor ?: $record->total_pedido);
+                            $cots2 = CotacaoFreteService::cotar($record->dest_uf, $record->dest_cep, (float) $record->peso_bruto, $valorNf2, $record->dest_cidade);
+                            $nomeT2 = self::resolverNomeTransportadora($record, $cots2);
                             $html .= '<div class="mb-4 p-3 rounded-lg bg-green-900/20 border border-green-700">';
                             $html .= '<span class="text-sm text-green-400 font-semibold">&#x2705; Aprovado com:</span> ';
-                            $html .= '<span class="text-sm text-white font-medium">' . e($record->transportadora ?? 'N/I') . ' &mdash; R$ ' . number_format((float) $record->custo_frete, 2, ',', '.') . '</span>';
+                            $html .= '<span class="text-sm text-white font-medium">' . e($nomeT2 ?? 'N/I') . ' &mdash; R$ ' . number_format((float) $record->custo_frete, 2, ',', '.') . '</span>';
                             $html .= '</div>';
                         }
                         return new HtmlString($html . self::renderCotacaoModal($record)->toHtml());
@@ -1015,9 +1021,10 @@ class PedidoBlingStagingResource extends Resource
                         if (!$record->dest_uf || !$record->dest_cep || !$record->peso_bruto) {
                             $html = '<p class="text-sm text-warning-500">Dados de envio incompletos.</p>';
                             if ($record->transportadora || (float) $record->custo_frete > 0) {
+                                $nomeT3 = $record->transportadora ?? 'N/I';
                                 $html .= '<div class="mt-3 p-3 rounded-lg bg-green-900/20 border border-green-700">';
                                 $html .= '<span class="text-sm text-green-400 font-semibold">&#x2705; Aprovado com:</span> ';
-                                $html .= '<span class="text-sm text-white">' . e($record->transportadora ?? 'N/I') . ' &mdash; R$ ' . number_format((float) $record->custo_frete, 2, ',', '.') . '</span>';
+                                $html .= '<span class="text-sm text-white">' . e($nomeT3) . ' &mdash; R$ ' . number_format((float) $record->custo_frete, 2, ',', '.') . '</span>';
                                 $html .= '</div>';
                             }
                             return new HtmlString($html);
@@ -1026,9 +1033,12 @@ class PedidoBlingStagingResource extends Resource
                         // Header com info aprovada
                         $html = '';
                         if ($record->transportadora || (float) $record->custo_frete > 0) {
+                            $valorNf3 = (float) ($record->nfe_valor ?: $record->total_pedido);
+                            $cots3 = CotacaoFreteService::cotar($record->dest_uf, $record->dest_cep, (float) $record->peso_bruto, $valorNf3, $record->dest_cidade);
+                            $nomeT3 = self::resolverNomeTransportadora($record, $cots3);
                             $html .= '<div class="mb-4 p-3 rounded-lg bg-green-900/20 border border-green-700">';
                             $html .= '<span class="text-sm text-green-400 font-semibold">&#x2705; Aprovado com:</span> ';
-                            $html .= '<span class="text-sm text-white font-medium">' . e($record->transportadora ?? 'N/I') . ' &mdash; R$ ' . number_format((float) $record->custo_frete, 2, ',', '.') . '</span>';
+                            $html .= '<span class="text-sm text-white font-medium">' . e($nomeT3 ?? 'N/I') . ' &mdash; R$ ' . number_format((float) $record->custo_frete, 2, ',', '.') . '</span>';
                             $html .= '</div>';
                         }
 
@@ -1246,6 +1256,16 @@ class PedidoBlingStagingResource extends Resource
     /**
      * Renderiza o conteúdo do modal de cotação de frete (reutilizado pela coluna e pela action).
      */
+    private static function resolverNomeTransportadora(PedidoBlingStaging $record, array $cotacoes): ?string
+    {
+        if ($record->transportadora) return $record->transportadora;
+        if ((float) $record->custo_frete <= 0) return null;
+
+        // Tentar encontrar a transportadora pelo valor do frete aprovado
+        $match = collect($cotacoes)->first(fn ($c) => !empty($c['total']) && abs($c['total'] - (float) $record->custo_frete) < 0.02);
+        return $match['nome'] ?? null;
+    }
+
     private static function renderCotacaoModal(PedidoBlingStaging $record): HtmlString
     {
         if (!array_key_exists('itens', $record->getAttributes())) {
