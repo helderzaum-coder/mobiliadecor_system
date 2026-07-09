@@ -24,9 +24,9 @@ class PedidoBlingStagingResource extends Resource
     protected static ?string $model = PedidoBlingStaging::class;
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';
     protected static ?string $navigationGroup = 'Vendas';
-    protected static ?string $navigationLabel = 'RevisÃ£o de Pedidos';
-    protected static ?string $modelLabel = 'Pedido (RevisÃ£o)';
-    protected static ?string $pluralModelLabel = 'Pedidos (RevisÃ£o)';
+    protected static ?string $navigationLabel = 'Revisão de Pedidos';
+    protected static ?string $modelLabel = 'Pedido (Revisão)';
+    protected static ?string $pluralModelLabel = 'Pedidos (Revisão)';
 
     public static function getNavigationUrl(): string
     {
@@ -43,10 +43,10 @@ class PedidoBlingStagingResource extends Resource
         return $form->schema([
             Forms\Components\Section::make('Dados do Pedido')->schema([
                 Forms\Components\TextInput::make('numero_pedido')
-                    ->label('NÂº Pedido Bling')
+                    ->label('Nº Pedido Bling')
                     ->disabled(),
                 Forms\Components\TextInput::make('numero_loja')
-                    ->label('NÂº Pedido Canal')
+                    ->label('Nº Pedido Canal')
                     ->required(),
                 Forms\Components\TextInput::make('canal')
                     ->label('Canal de Venda')
@@ -62,7 +62,7 @@ class PedidoBlingStagingResource extends Resource
                     ->disabled(),
             ])->columns(2),
 
-            Forms\Components\Section::make('Valores (editÃ¡veis)')->schema([
+            Forms\Components\Section::make('Valores (editáveis)')->schema([
                 Forms\Components\TextInput::make('total_produtos')
                     ->label('Total Produtos')
                     ->numeric()
@@ -94,24 +94,24 @@ class PedidoBlingStagingResource extends Resource
                     ->disabled(),
             ])->columns(2),
 
-            Forms\Components\Section::make('ObservaÃ§Ãµes')->schema([
+            Forms\Components\Section::make('Observações')->schema([
                 Forms\Components\Textarea::make('observacoes')
-                    ->label('ObservaÃ§Ãµes')
+                    ->label('Observações')
                     ->columnSpanFull(),
             ]),
 
-            Forms\Components\Section::make('ComissÃ£o e Impostos (editÃ¡veis)')->schema([
+            Forms\Components\Section::make('Comissão e Impostos (editáveis)')->schema([
                 Forms\Components\TextInput::make('comissao_calculada')
-                    ->label(fn ($record) => $record && self::isML($record) ? 'Descontos ML (ComissÃ£o + Frete)' : 'ComissÃ£o')
+                    ->label(fn ($record) => $record && self::isML($record) ? 'Descontos ML (Comissão + Frete)' : 'Comissão')
                     ->numeric()
                     ->prefix('R$')
-                    ->helperText(fn ($record) => $record && self::isML($record) ? 'Total retido pelo ML (sale_fee + frete envio)' : 'PrÃ©-calculado pelas regras do canal. Edite se necessÃ¡rio.'),
+                    ->helperText(fn ($record) => $record && self::isML($record) ? 'Total retido pelo ML (sale_fee + frete envio)' : 'Pré-calculado pelas regras do canal. Edite se necessário.'),
                 Forms\Components\TextInput::make('subsidio_pix')
-                    ->label('SubsÃ­dio Pix')
+                    ->label('Subsídio Pix')
                     ->numeric()
                     ->prefix('R$'),
                 Forms\Components\TextInput::make('base_imposto')
-                    ->label('Base de CÃ¡lculo Imposto')
+                    ->label('Base de Cálculo Imposto')
                     ->numeric()
                     ->prefix('R$'),
                 Forms\Components\TextInput::make('percentual_imposto')
@@ -126,23 +126,23 @@ class PedidoBlingStagingResource extends Resource
 
             Forms\Components\Section::make('Mercado Livre')->schema([
                 Forms\Components\TextInput::make('ml_tipo_anuncio')
-                    ->label('Tipo AnÃºncio')
+                    ->label('Tipo Anúncio')
                     ->disabled(),
                 Forms\Components\TextInput::make('ml_tipo_frete')
                     ->label('Tipo Frete')
                     ->disabled(),
                 Forms\Components\Placeholder::make('ml_comissao_bruta')
-                    ->label('ComissÃ£o Bruta (tarifa de venda)')
+                    ->label('Comissão Bruta (tarifa de venda)')
                     ->content(fn ($record) => 'R$ ' . number_format(
                         (float) ($record->ml_sale_fee ?? 0) + (float) ($record->ml_valor_rebate ?? 0), 2, ',', '.')
                     )
                     ->helperText('sale_fee + rebate = tarifa cheia do ML'),
                 Forms\Components\TextInput::make('ml_sale_fee')
-                    ->label('ComissÃ£o LÃ­quida (sale_fee)')
+                    ->label('Comissão Líquida (sale_fee)')
                     ->numeric()
                     ->prefix('R$')
                     ->disabled()
-                    ->helperText('ComissÃ£o real cobrada (jÃ¡ com estorno descontado)'),
+                    ->helperText('Comissão real cobrada (já com estorno descontado)'),
                 Forms\Components\TextInput::make('ml_frete_custo')
                     ->label('Frete ML (envios)')
                     ->numeric()
@@ -159,7 +159,7 @@ class PedidoBlingStagingResource extends Resource
                     ->label('Estorno / Rebate')
                     ->numeric()
                     ->prefix('R$')
-                    ->helperText('Desconto/bÃ´nus devolvido pelo ML'),
+                    ->helperText('Desconto/bônus devolvido pelo ML'),
                 Forms\Components\Toggle::make('ml_tem_rebate')
                     ->label('Tem Rebate'),
             ])->columns(4)
@@ -202,7 +202,7 @@ class PedidoBlingStagingResource extends Resource
                     ->label('')
                     ->schema([
                         Forms\Components\TextInput::make('codigo')->label('SKU')->disabled(),
-                        Forms\Components\TextInput::make('descricao')->label('DescriÃ§Ã£o')->disabled(),
+                        Forms\Components\TextInput::make('descricao')->label('Descrição')->disabled(),
                         Forms\Components\TextInput::make('quantidade')->label('Qtd')->numeric(),
                         Forms\Components\TextInput::make('valor')->label('Valor')->numeric()->prefix('R$'),
                         Forms\Components\TextInput::make('custo')->label('Custo')->numeric()->prefix('R$'),
@@ -237,13 +237,13 @@ class PedidoBlingStagingResource extends Resource
                     ->html()
                     ->getStateUsing(function (PedidoBlingStaging $record) {
                         if (!$record->dest_uf || !$record->dest_cep || !$record->peso_bruto) {
-                            return '<span style="color:#6b7280;font-size:11px;">â€”</span>';
+                            return '<span style="color:#6b7280;font-size:11px;">—</span>';
                         }
-                        return '<span style="cursor:pointer;font-size:13px;" title="Cotar Frete">ðŸšš</span>';
+                        return '<span style="cursor:pointer;font-size:13px;" title="Cotar Frete">🚚</span>';
                     })
                     ->action(
                         Tables\Actions\Action::make('cotar_frete_col')
-                            ->modalHeading('CotaÃ§Ã£o de Frete')
+                            ->modalHeading('Cotação de Frete')
                             ->modalSubmitActionLabel('Aplicar Frete e Aprovar')
                             ->modalCancelActionLabel('Fechar')
                             ->modalWidth('7xl')
@@ -290,7 +290,7 @@ class PedidoBlingStagingResource extends Resource
                                         ->numeric()
                                         ->prefix('R$')
                                         ->required()
-                                        ->helperText('EditÃ¡vel: altere se necessÃ¡rio.'),
+                                        ->helperText('Editável: altere se necessário.'),
                                 ];
                             })
                             ->action(function (PedidoBlingStaging $record, array $data) {
@@ -298,7 +298,7 @@ class PedidoBlingStagingResource extends Resource
                                 $record->update(['custo_frete' => round($valorFrete, 2)]);
                                 try {
                                     AprovacaoVendaService::aprovar($record);
-                                    Notification::make()->title("CotaÃ§Ã£o R$ " . number_format($valorFrete, 2, ',', '.') . " â€” Aprovado!")->success()->send();
+                                    Notification::make()->title("Cotação R$ " . number_format($valorFrete, 2, ',', '.') . " — Aprovado!")->success()->send();
                                 } catch (\Throwable $e) {
                                     Notification::make()->title("Erro ao aprovar: " . $e->getMessage())->danger()->send();
                                 }
@@ -312,7 +312,7 @@ class PedidoBlingStagingResource extends Resource
                         if ($record->status !== 'pendente' || !$record->dest_uf || !$record->dest_cep || !$record->peso_bruto) {
                             return '';
                         }
-                        return '<span style="cursor:pointer;font-size:13px;" title="Aplicar Frete e Aprovar">âœ…</span>';
+                        return '<span style="cursor:pointer;font-size:13px;" title="Aplicar Frete e Aprovar">✅</span>';
                     })
                     ->action(
                         Tables\Actions\Action::make('aplicar_frete_col')
@@ -352,18 +352,18 @@ class PedidoBlingStagingResource extends Resource
                                         }
                                     }),
                                 Forms\Components\TextInput::make('valor_frete')
-                                    ->label('Valor da CotaÃ§Ã£o')
+                                    ->label('Valor da Cotação')
                                     ->numeric()
                                     ->prefix('R$')
                                     ->required()
-                                    ->helperText('EditÃ¡vel: altere se necessÃ¡rio ou informe para transportadoras sem tabela.'),
+                                    ->helperText('Editável: altere se necessário ou informe para transportadoras sem tabela.'),
                             ])
                             ->action(function (PedidoBlingStaging $record, array $data) {
                                 $valorFrete = (float) $data['valor_frete'];
                                 $record->update(['custo_frete' => round($valorFrete, 2)]);
                                 try {
                                     AprovacaoVendaService::aprovar($record);
-                                    Notification::make()->title("CotaÃ§Ã£o R$ " . number_format($valorFrete, 2, ',', '.') . " â€” Aprovado!")->success()->send();
+                                    Notification::make()->title("Cotação R$ " . number_format($valorFrete, 2, ',', '.') . " — Aprovado!")->success()->send();
                                 } catch (\Throwable $e) {
                                     Notification::make()->title("Erro ao aprovar: " . $e->getMessage())->danger()->send();
                                 }
@@ -387,8 +387,8 @@ class PedidoBlingStagingResource extends Resource
                 Tables\Columns\TextColumn::make('total_pedido')->label('Total')->money('BRL'),
                 Tables\Columns\TextColumn::make('frete')->label('Frete')->money('BRL'),
                 Tables\Columns\TextColumn::make('nota_fiscal')->label('NF')->searchable(),
-                Tables\Columns\TextColumn::make('comissao_calculada')->label('ComissÃ£o')->money('BRL'),
-                Tables\Columns\TextColumn::make('subsidio_pix')->label('SubsÃ­dio Pix')->money('BRL')
+                Tables\Columns\TextColumn::make('comissao_calculada')->label('Comissão')->money('BRL'),
+                Tables\Columns\TextColumn::make('subsidio_pix')->label('Subsídio Pix')->money('BRL')
                     ->color('info')
                     ->default(0),
                 Tables\Columns\TextColumn::make('valor_imposto')->label('Imposto')->money('BRL'),
@@ -429,11 +429,11 @@ class PedidoBlingStagingResource extends Resource
                         $pendentes = array_filter($checks, fn ($v) => !$v['ok']);
 
                         if (empty($pendentes)) {
-                            return '<span title="Pronto para aprovar" class="text-success-500">âœ…</span>';
+                            return '<span title="Pronto para aprovar" class="text-success-500">✅</span>';
                         }
 
-                        $faltam = implode('&#10;', array_map(fn ($v) => 'âŒ ' . $v['label'], $pendentes));
-                        return '<span title="' . $faltam . '" class="text-danger-500 cursor-help">âŒ ' . count($pendentes) . '</span>';
+                        $faltam = implode('&#10;', array_map(fn ($v) => '❌ ' . $v['label'], $pendentes));
+                        return '<span title="' . $faltam . '" class="text-danger-500 cursor-help">❌ ' . count($pendentes) . '</span>';
                     }),
             ])
             ->defaultSort('data_pedido', 'desc')
@@ -443,7 +443,7 @@ class PedidoBlingStagingResource extends Resource
                         'pendente' => 'Pendente',
                         'aprovado' => 'Aprovado',
                         'cancelado' => 'Cancelado',
-                        'assistencia' => 'AssistÃªncia',
+                        'assistencia' => 'Assistência',
                         'rejeitado' => 'Rejeitado',
                     ])
                     ->default('pendente'),
@@ -451,7 +451,7 @@ class PedidoBlingStagingResource extends Resource
                     ->label('Conta')
                     ->options([
                         'primary' => 'Mobilia Decor',
-                        'secondary' => 'HES MÃ³veis',
+                        'secondary' => 'HES Móveis',
                     ]),
                 Tables\Filters\SelectFilter::make('canal')
                     ->label('Canal')
@@ -478,24 +478,24 @@ class PedidoBlingStagingResource extends Resource
                 Tables\Filters\Filter::make('periodo')
                     ->form([
                         Forms\Components\Select::make('periodo_rapido')
-                            ->label('PerÃ­odo')
+                            ->label('Período')
                             ->options([
                                 'hoje'             => 'Hoje',
-                                'dia_especifico'   => 'Dia especÃ­fico',
+                                'dia_especifico'   => 'Dia específico',
                                 'esta_semana'      => 'Esta semana',
-                                'este_mes'         => 'Este mÃªs',
-                                'mes_passado'      => 'MÃªs passado',
-                                'selecionar_mes'   => 'Selecionar mÃªs',
-                                'customizado'      => 'PerÃ­odo customizado',
+                                'este_mes'         => 'Este mês',
+                                'mes_passado'      => 'Mês passado',
+                                'selecionar_mes'   => 'Selecionar mês',
+                                'customizado'      => 'Período customizado',
                             ])
                             ->reactive()
-                            ->placeholder('Selecione um perÃ­odo'),
+                            ->placeholder('Selecione um período'),
                         Forms\Components\DatePicker::make('dia_selecionado')
                             ->label('Dia')
                             ->displayFormat('d/m/Y')
                             ->visible(fn ($get) => $get('periodo_rapido') === 'dia_especifico'),
                         Forms\Components\Select::make('mes_selecionado')
-                            ->label('MÃªs')
+                            ->label('Mês')
                             ->options(function () {
                                 $options = [];
                                 for ($i = 0; $i < 12; $i++) {
@@ -510,7 +510,7 @@ class PedidoBlingStagingResource extends Resource
                             ->displayFormat('d/m/Y')
                             ->visible(fn ($get) => $get('periodo_rapido') === 'customizado'),
                         Forms\Components\DatePicker::make('data_fim')
-                            ->label('AtÃ©')
+                            ->label('Até')
                             ->displayFormat('d/m/Y')
                             ->visible(fn ($get) => $get('periodo_rapido') === 'customizado'),
                     ])
@@ -549,12 +549,12 @@ class PedidoBlingStagingResource extends Resource
                         if (!$periodo) return null;
                         return match ($periodo) {
                             'hoje'           => 'Hoje',
-                            'dia_especifico' => $data['dia_selecionado'] ? 'Dia: ' . $data['dia_selecionado'] : 'Dia especÃ­fico',
+                            'dia_especifico' => $data['dia_selecionado'] ? 'Dia: ' . $data['dia_selecionado'] : 'Dia específico',
                             'esta_semana'    => 'Esta semana',
-                            'este_mes'       => 'Este mÃªs',
-                            'mes_passado'    => 'MÃªs passado',
-                            'selecionar_mes' => $data['mes_selecionado'] ? 'MÃªs: ' . $data['mes_selecionado'] : 'MÃªs selecionado',
-                            'customizado'    => trim(($data['data_inicio'] ?? '') . ' â†’ ' . ($data['data_fim'] ?? '')),
+                            'este_mes'       => 'Este mês',
+                            'mes_passado'    => 'Mês passado',
+                            'selecionar_mes' => $data['mes_selecionado'] ? 'Mês: ' . $data['mes_selecionado'] : 'Mês selecionado',
+                            'customizado'    => trim(($data['data_inicio'] ?? '') . ' → ' . ($data['data_fim'] ?? '')),
                             default          => null,
                         };
                     }),
@@ -565,7 +565,7 @@ class PedidoBlingStagingResource extends Resource
                     ->label('Cotar Frete')
                     ->icon('heroicon-o-calculator')
                     ->color('warning')
-                    ->modalHeading('CotaÃ§Ã£o de Frete')
+                    ->modalHeading('Cotação de Frete')
                     ->modalSubmitActionLabel('Aplicar Frete e Aprovar')
                     ->modalCancelActionLabel('Fechar')
                     ->modalWidth('7xl')
@@ -612,7 +612,7 @@ class PedidoBlingStagingResource extends Resource
                                 ->numeric()
                                 ->prefix('R$')
                                 ->required()
-                                ->helperText('EditÃ¡vel: altere se necessÃ¡rio.'),
+                                ->helperText('Editável: altere se necessário.'),
                         ];
                     })
                     ->action(function (PedidoBlingStaging $record, array $data) {
@@ -629,7 +629,7 @@ class PedidoBlingStagingResource extends Resource
                         ]);
                         try {
                             AprovacaoVendaService::aprovar($record);
-                            Notification::make()->title("CotaÃ§Ã£o R$ " . number_format($valorFrete, 2, ',', '.') . ($nomeTransp ? " ({$nomeTransp})" : '') . " â€” Aprovado!")->success()->send();
+                            Notification::make()->title("Cotação R$ " . number_format($valorFrete, 2, ',', '.') . ($nomeTransp ? " ({$nomeTransp})" : '') . " — Aprovado!")->success()->send();
                         } catch (\Throwable $e) {
                             Notification::make()->title("Erro ao aprovar: " . $e->getMessage())->danger()->send();
                         }
@@ -654,7 +654,7 @@ class PedidoBlingStagingResource extends Resource
                         $html = '<table class="w-full text-sm border-collapse text-gray-700 dark:text-gray-200">';
                         $html .= '<thead><tr class="border-b border-gray-300 dark:border-gray-600">'
                             . '<th class="text-left p-2">SKU</th>'
-                            . '<th class="text-left p-2">DescriÃ§Ã£o</th>'
+                            . '<th class="text-left p-2">Descrição</th>'
                             . '<th class="text-center p-2">Tipo</th>'
                             . '<th class="text-center p-2">Qtd</th>'
                             . '</tr></thead><tbody>';
@@ -663,7 +663,7 @@ class PedidoBlingStagingResource extends Resource
                             $sku = $item['codigo'] ?? '';
                             $desc = $item['descricao'] ?? '';
                             $qtd = $item['quantidade'] ?? 1;
-                            $formato = 'â€”';
+                            $formato = '—';
                             $componentes = [];
 
                             if ($sku) {
@@ -672,7 +672,7 @@ class PedidoBlingStagingResource extends Resource
                                     $f = strtoupper($produto['formato'] ?? 'S');
                                     $formato = match ($f) {
                                         'S' => '<span class="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Simples</span>',
-                                        'V' => '<span class="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">VariaÃ§Ã£o</span>',
+                                        'V' => '<span class="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Variação</span>',
                                         'E', 'C' => '<span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">Kit</span>',
                                         default => $f,
                                     };
@@ -685,8 +685,8 @@ class PedidoBlingStagingResource extends Resource
                                                     ? $client->getProductById((int) $comp['produto']['id'])
                                                     : null;
                                                 $componentes[] = [
-                                                    'sku' => $compProd['codigo'] ?? 'â€”',
-                                                    'descricao' => $comp['produto']['nome'] ?? $compProd['nome'] ?? 'â€”',
+                                                    'sku' => $compProd['codigo'] ?? '—',
+                                                    'descricao' => $comp['produto']['nome'] ?? $compProd['nome'] ?? '—',
                                                     'quantidade' => $comp['quantidade'] ?? 1,
                                                 ];
                                             }
@@ -704,7 +704,7 @@ class PedidoBlingStagingResource extends Resource
 
                             foreach ($componentes as $comp) {
                                 $html .= '<tr class="border-b border-gray-200 dark:border-gray-700">'
-                                    . '<td class="p-2 pl-6 font-mono text-xs text-gray-700 dark:text-gray-200">â†³ ' . e($comp['sku']) . '</td>'
+                                    . '<td class="p-2 pl-6 font-mono text-xs text-gray-700 dark:text-gray-200">↳ ' . e($comp['sku']) . '</td>'
                                     . '<td class="p-2 text-xs text-gray-700 dark:text-gray-200">' . e($comp['descricao']) . '</td>'
                                     . '<td class="p-2 text-center"><span class="px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-100">Componente</span></td>'
                                     . '<td class="p-2 text-center text-xs text-gray-700 dark:text-gray-200">' . ($comp['quantidade'] * $qtd) . '</td>'
@@ -723,12 +723,12 @@ class PedidoBlingStagingResource extends Resource
                     ->color('primary')
                     ->requiresConfirmation()
                     ->modalHeading('Sincronizar Estoque')
-                    ->modalDescription('A sincronizaÃ§Ã£o serÃ¡ processada em background. VocÃª receberÃ¡ uma notificaÃ§Ã£o quando concluir.')
+                    ->modalDescription('A sincronização será processada em background. Você receberá uma notificação quando concluir.')
                     ->action(function (PedidoBlingStaging $record) {
                         SyncEstoquePedidoJob::dispatch($record->id);
                         Notification::make()
-                            ->title('SincronizaÃ§Ã£o enviada para processamento')
-                            ->body("Pedido #{$record->numero_pedido} serÃ¡ sincronizado em background.")
+                            ->title('Sincronização enviada para processamento')
+                            ->body("Pedido #{$record->numero_pedido} será sincronizado em background.")
                             ->info()->send();
                     })
                     ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente' && !$record->estoque_sincronizado),
@@ -744,7 +744,7 @@ class PedidoBlingStagingResource extends Resource
                         if ($found) {
                             Notification::make()->title('NF-e encontrada e vinculada.')->success()->send();
                         } else {
-                            Notification::make()->title('NF-e nÃ£o encontrada para este pedido.')->warning()->send();
+                            Notification::make()->title('NF-e não encontrada para este pedido.')->warning()->send();
                         }
                     })
                     ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente' && empty($record->nfe_chave_acesso)),
@@ -754,13 +754,13 @@ class PedidoBlingStagingResource extends Resource
                     ->color('info')
                     ->requiresConfirmation()
                     ->modalHeading('Buscar Dados de Envio')
-                    ->modalDescription('Vai buscar CEP, cidade, UF e dimensÃµes do pedido no Bling.')
+                    ->modalDescription('Vai buscar CEP, cidade, UF e dimensões do pedido no Bling.')
                     ->action(function (PedidoBlingStaging $record) {
                         $found = BlingImportService::buscarDadosEnvio($record);
                         if ($found) {
                             Notification::make()->title('Dados de envio atualizados.')->success()->send();
                         } else {
-                            Notification::make()->title('NÃ£o foi possÃ­vel obter dados de envio.')->warning()->send();
+                            Notification::make()->title('Não foi possível obter dados de envio.')->warning()->send();
                         }
                     })
                     ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente' && (empty($record->dest_cep) || empty($record->dest_uf))),
@@ -820,11 +820,11 @@ class PedidoBlingStagingResource extends Resource
                                 }
                             }),
                         Forms\Components\TextInput::make('valor_frete')
-                            ->label('Valor da CotaÃ§Ã£o')
+                            ->label('Valor da Cotação')
                             ->numeric()
                             ->prefix('R$')
                             ->required()
-                            ->helperText('EditÃ¡vel: altere se necessÃ¡rio ou informe para transportadoras sem tabela.'),
+                            ->helperText('Editável: altere se necessário ou informe para transportadoras sem tabela.'),
                     ])
                     ->action(function (PedidoBlingStaging $record, array $data) {
                         $valorFrete = (float) $data['valor_frete'];
@@ -845,11 +845,11 @@ class PedidoBlingStagingResource extends Resource
                         try {
                             $venda = AprovacaoVendaService::aprovar($record);
                             Notification::make()
-                                ->title("CotaÃ§Ã£o R$ " . number_format($valorFrete, 2, ',', '.') . ($nomeTransp ? " ({$nomeTransp})" : '') . " â€” Pedido aprovado!")
+                                ->title("Cotação R$ " . number_format($valorFrete, 2, ',', '.') . ($nomeTransp ? " ({$nomeTransp})" : '') . " — Pedido aprovado!")
                                 ->success()->send();
                         } catch (\Throwable $e) {
                             Notification::make()
-                                ->title("CotaÃ§Ã£o aplicada, mas erro ao aprovar: " . $e->getMessage())
+                                ->title("Cotação aplicada, mas erro ao aprovar: " . $e->getMessage())
                                 ->danger()->send();
                         }
                     })
@@ -870,13 +870,13 @@ class PedidoBlingStagingResource extends Resource
                     ->color('danger')
                     ->requiresConfirmation()
                     ->modalHeading('Rejeitar e Excluir')
-                    ->modalDescription('Isso vai excluir o pedido do staging e a venda vinculada (se houver). Na prÃ³xima importaÃ§Ã£o ele serÃ¡ reimportado do zero.')
+                    ->modalDescription('Isso vai excluir o pedido do staging e a venda vinculada (se houver). Na próxima importação ele será reimportado do zero.')
                     ->action(function (PedidoBlingStaging $record) {
                         // Excluir venda vinculada se existir
                         \App\Models\Venda::where('bling_id', $record->bling_id)->delete();
                         // Deletar o staging
                         $record->delete();
-                        Notification::make()->title('Pedido excluÃ­do. Reimporte para trazer do zero.')->success()->send();
+                        Notification::make()->title('Pedido excluído. Reimporte para trazer do zero.')->success()->send();
                     })
                     ->visible(fn (PedidoBlingStaging $record) => in_array($record->status, ['pendente', 'aprovado'])),
 
@@ -889,15 +889,15 @@ class PedidoBlingStagingResource extends Resource
                     ->modalDescription(function (PedidoBlingStaging $record) {
                         $venda = \App\Models\Venda::where('bling_id', $record->bling_id)->first();
                         if ($venda && $venda->repasse_recebido) {
-                            return 'âš ï¸ ATENÃ‡ÃƒO: Esta venda jÃ¡ teve repasse recebido! Use a Dashboard para cancelar com estorno.';
+                            return '⚠️ ATENÇÃO: Esta venda já teve repasse recebido! Use a Dashboard para cancelar com estorno.';
                         }
-                        return 'O pedido serÃ¡ marcado como cancelado. A venda serÃ¡ removida da dashboard mas o pedido nÃ£o volta para a fila de importaÃ§Ã£o.';
+                        return 'O pedido será marcado como cancelado. A venda será removida da dashboard mas o pedido não volta para a fila de importação.';
                     })
                     ->action(function (PedidoBlingStaging $record) {
                         $venda = \App\Models\Venda::where('bling_id', $record->bling_id)->first();
                         if ($venda && $venda->repasse_recebido) {
                             Notification::make()
-                                ->title('NÃ£o Ã© possÃ­vel cancelar: repasse jÃ¡ recebido.')
+                                ->title('Não é possível cancelar: repasse já recebido.')
                                 ->body('Use a Dashboard de Vendas para cancelar com estorno.')
                                 ->danger()->send();
                             return;
@@ -909,16 +909,16 @@ class PedidoBlingStagingResource extends Resource
                     ->visible(fn (PedidoBlingStaging $record) => in_array($record->status, ['pendente', 'aprovado'])),
 
                 Tables\Actions\Action::make('marcar_assistencia')
-                    ->label('AssistÃªncia')
+                    ->label('Assistência')
                     ->icon('heroicon-o-wrench-screwdriver')
                     ->color('info')
                     ->requiresConfirmation()
-                    ->modalHeading('Marcar como AssistÃªncia')
-                    ->modalDescription('O pedido serÃ¡ marcado como assistÃªncia/garantia. NÃ£o conta como venda e nÃ£o volta para importaÃ§Ã£o.')
+                    ->modalHeading('Marcar como Assistência')
+                    ->modalDescription('O pedido será marcado como assistência/garantia. Não conta como venda e não volta para importação.')
                     ->action(function (PedidoBlingStaging $record) {
                         \App\Models\Venda::where('bling_id', $record->bling_id)->delete();
                         $record->update(['status' => 'assistencia']);
-                        Notification::make()->title('Pedido marcado como assistÃªncia.')->success()->send();
+                        Notification::make()->title('Pedido marcado como assistência.')->success()->send();
                     })
                     ->visible(fn (PedidoBlingStaging $record) => in_array($record->status, ['pendente', 'aprovado'])),
 
@@ -956,7 +956,7 @@ class PedidoBlingStagingResource extends Resource
                                         'ml_shipping_id' => $dados['shipping_id'],
                                     ];
 
-                                    // Atualizar comissÃ£o com sale_fee real
+                                    // Atualizar comissão com sale_fee real
                                     if ($dados['sale_fee'] > 0) {
                                         $isME2Full = in_array($dados['tipo_frete'], ['ME2', 'FULL']);
                                         if ($isME2Full) {
@@ -969,7 +969,7 @@ class PedidoBlingStagingResource extends Resource
                                     }
 
                                     $record->update($updates);
-                                    Notification::make()->title('Desaprovado e dados ML atualizados. ComissÃ£o: R$ ' . number_format($updates['comissao_calculada'] ?? 0, 2, ',', '.'))->success()->send();
+                                    Notification::make()->title('Desaprovado e dados ML atualizados. Comissão: R$ ' . number_format($updates['comissao_calculada'] ?? 0, 2, ',', '.'))->success()->send();
                                     return;
                                 }
                             } catch (\Exception $e) {
@@ -982,10 +982,10 @@ class PedidoBlingStagingResource extends Resource
                     ->visible(fn (PedidoBlingStaging $record) => $record->status === 'aprovado'),
 
                 Tables\Actions\Action::make('ver_cotacoes')
-                    ->label('CotaÃ§Ãµes')
+                    ->label('Cotações')
                     ->icon('heroicon-o-truck')
                     ->color('gray')
-                    ->modalHeading(fn (PedidoBlingStaging $record) => 'CotaÃ§Ãµes - Pedido #' . ($record->numero_loja ?? $record->numero_pedido))
+                    ->modalHeading(fn (PedidoBlingStaging $record) => 'Cotações - Pedido #' . ($record->numero_loja ?? $record->numero_pedido))
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Fechar')
                     ->modalWidth('7xl')
@@ -1015,10 +1015,10 @@ class PedidoBlingStagingResource extends Resource
                     ->visible(fn (PedidoBlingStaging $record) => $record->dest_uf && $record->dest_cep && $record->peso_bruto),
 
                 Tables\Actions\Action::make('cotacao_whatsapp')
-                    ->label('CotaÃ§Ã£o WA')
+                    ->label('Cotação WA')
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
                     ->color('success')
-                    ->modalHeading('CotaÃ§Ã£o para WhatsApp')
+                    ->modalHeading('Cotação para WhatsApp')
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Fechar')
                     ->modalContent(function (PedidoBlingStaging $record) {
@@ -1041,14 +1041,14 @@ class PedidoBlingStagingResource extends Resource
                         $itensHtml = '<table class="w-full text-xs mt-3 mb-4 border-collapse">';
                         $itensHtml .= '<thead><tr class="border-b border-gray-600 text-gray-400">'
                             . '<th class="text-left p-1">SKU</th>'
-                            . '<th class="text-left p-1">DescriÃ§Ã£o</th>'
+                            . '<th class="text-left p-1">Descrição</th>'
                             . '<th class="text-center p-1">Tipo</th>'
                             . '<th class="text-center p-1">Qtd</th>'
                             . '<th class="text-center p-1">Vol/un</th>'
                             . '<th class="text-center p-1">Total Vol</th>'
                             . '</tr></thead><tbody>';
                         foreach ($resultado['itens_detalhes'] as $item) {
-                            $aviso = isset($item['aviso']) ? ' <span class="text-warning-400">âš  ' . e($item['aviso']) . '</span>' : '';
+                            $aviso = isset($item['aviso']) ? ' <span class="text-warning-400">⚠ ' . e($item['aviso']) . '</span>' : '';
                             $itensHtml .= '<tr class="border-b border-gray-700">'
                                 . '<td class="p-1 font-mono">' . e($item['sku']) . '</td>'
                                 . '<td class="p-1">' . e($item['descricao']) . $aviso . '</td>'
@@ -1082,7 +1082,7 @@ class PedidoBlingStagingResource extends Resource
                     ->color('primary')
                     ->requiresConfirmation()
                     ->modalHeading('Sincronizar Estoque em Massa')
-                    ->modalDescription('Os pedidos selecionados serÃ£o sincronizados em background. VocÃª receberÃ¡ notificaÃ§Ãµes ao concluir.')
+                    ->modalDescription('Os pedidos selecionados serão sincronizados em background. Você receberá notificações ao concluir.')
                     ->action(function ($records) {
                         $enviados = 0;
                         foreach ($records as $record) {
@@ -1091,7 +1091,7 @@ class PedidoBlingStagingResource extends Resource
                             $enviados++;
                         }
                         if ($enviados > 0) {
-                            Notification::make()->title("{$enviados} pedido(s) enviados para sincronizaÃ§Ã£o.")->info()->send();
+                            Notification::make()->title("{$enviados} pedido(s) enviados para sincronização.")->info()->send();
                         } else {
                             Notification::make()->title('Nenhum pedido para sincronizar.')->info()->send();
                         }
@@ -1116,7 +1116,7 @@ class PedidoBlingStagingResource extends Resource
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->modalDescription('Isso vai excluir os pedidos selecionados e suas vendas vinculadas. Na prÃ³xima importaÃ§Ã£o serÃ£o reimportados do zero.')
+                    ->modalDescription('Isso vai excluir os pedidos selecionados e suas vendas vinculadas. Na próxima importação serão reimportados do zero.')
                     ->action(function ($records) {
                         $excluidos = 0;
                         foreach ($records as $record) {
@@ -1125,7 +1125,7 @@ class PedidoBlingStagingResource extends Resource
                             $excluidos++;
                         }
                         if ($excluidos > 0) {
-                            Notification::make()->title("{$excluidos} pedido(s) excluÃ­do(s).")->success()->send();
+                            Notification::make()->title("{$excluidos} pedido(s) excluído(s).")->success()->send();
                         }
                     }),
                 Tables\Actions\BulkAction::make('desaprovar_reimportar_massa')
@@ -1134,7 +1134,7 @@ class PedidoBlingStagingResource extends Resource
                     ->color('danger')
                     ->requiresConfirmation()
                     ->modalHeading('Desaprovar e Reimportar em Massa')
-                    ->modalDescription('Isso vai excluir as vendas vinculadas, voltar os pedidos para pendente e rebuscar dados do ML (quando aplicÃ¡vel). Continuar?')
+                    ->modalDescription('Isso vai excluir as vendas vinculadas, voltar os pedidos para pendente e rebuscar dados do ML (quando aplicável). Continuar?')
                     ->action(function ($records) {
                         $processados = 0;
                         foreach ($records as $record) {
@@ -1216,13 +1216,13 @@ class PedidoBlingStagingResource extends Resource
     }
 
     /**
-     * Verifica se um pedido estÃ¡ pronto para aprovaÃ§Ã£o.
+     * Verifica se um pedido está pronto para aprovação.
      * Retorna array de checks com 'ok' e 'label'.
      *
-     * âš ï¸ NÃƒO ALTERAR: Regras de aprovaÃ§Ã£o por canal:
-     *  - NF-e obrigatÃ³ria para todos
+     * ⚠️ NÃO ALTERAR: Regras de aprovação por canal:
+     *  - NF-e obrigatória para todos
     /**
-     * Renderiza o conteÃºdo do modal de cotaÃ§Ã£o de frete (reutilizado pela coluna e pela action).
+     * Renderiza o conteúdo do modal de cotação de frete (reutilizado pela coluna e pela action).
      */
     private static function renderCotacaoModal(PedidoBlingStaging $record): HtmlString
     {
@@ -1254,10 +1254,10 @@ class PedidoBlingStagingResource extends Resource
         $html .= '<table class="w-full text-sm border-collapse text-gray-700 dark:text-gray-200">';
         $html .= '<thead><tr class="border-b border-gray-300 dark:border-gray-600">'
             . '<th class="text-left p-2">Transportadora</th>'
-            . '<th class="text-left p-2">RegiÃ£o</th>'
+            . '<th class="text-left p-2">Região</th>'
             . '<th class="text-right p-2">Frete</th>'
             . '<th class="text-right p-2">Despacho</th>'
-            . '<th class="text-right p-2">PedÃ¡gio</th>'
+            . '<th class="text-right p-2">Pedágio</th>'
             . '<th class="text-right p-2">ADV</th>'
             . '<th class="text-right p-2">GRIS</th>'
             . '<th class="text-right p-2">TAS</th>'
@@ -1281,7 +1281,7 @@ class PedidoBlingStagingResource extends Resource
                 $html .= '<tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">'
                     . '<td class="p-2 font-medium">' . e($c['nome']) . ' <span class="text-xs text-blue-600 dark:text-blue-400">(consultar)</span></td>'
                     . '<td class="p-2">' . e($c['uf_faixa']) . '</td>'
-                    . '<td colspan="7" class="p-2 text-center text-gray-500 dark:text-gray-400 text-xs">Atende a regiÃ£o â€” solicitar cotaÃ§Ã£o direta ' . $taxaBadge . '</td>'
+                    . '<td colspan="7" class="p-2 text-center text-gray-500 dark:text-gray-400 text-xs">Atende a região — solicitar cotação direta ' . $taxaBadge . '</td>'
                     . '<td class="text-right p-2">-</td>'
                     . '<td class="text-right p-2 font-bold text-blue-600 dark:text-blue-400">Consultar</td>'
                     . '</tr>';
@@ -1318,7 +1318,7 @@ class PedidoBlingStagingResource extends Resource
                     . number_format((float)$record->peso_bruto, 2, ',', '.') . 'kg'
                     . ' - ' . $volumes . ' vol'
                     . ' - NF R$ ' . number_format($valorNf, 2, ',', '.') . "\n"
-                    . $c['nome'] . ': SOLICITAR COTAÃ‡ÃƒO'
+                    . $c['nome'] . ': SOLICITAR COTAÇÃO'
                     . ' (' . $tdaTexto . ')';
             } else {
                 $icmsTexto = ($c['icms_percentual'] ?? 0) > 0
@@ -1341,8 +1341,8 @@ class PedidoBlingStagingResource extends Resource
                 ? 'background:#2563eb;color:#fff;padding:4px 12px;font-size:12px;border-radius:6px;border:none;cursor:pointer;'
                 : 'background:#16a34a;color:#fff;padding:4px 12px;font-size:12px;border-radius:6px;border:none;cursor:pointer;';
             $btnLabel = $isConsulta
-                ? 'ðŸ“‹ ' . e($c['nome']) . ' (consultar)'
-                : 'ðŸ“‹ ' . e($c['nome']);
+                ? '📋 ' . e($c['nome']) . ' (consultar)'
+                : '📋 ' . e($c['nome']);
             $html .= '<button onclick="navigator.clipboard.writeText(this.dataset.texto).then(()=>{this.innerText=\'Copiado!\';setTimeout(()=>this.innerText=this.dataset.label,2000)})" '
                 . 'data-texto="' . str_replace('"', '&quot;', $waTextos[$i]) . '" '
                 . 'data-label="' . $btnLabel . '" '
@@ -1356,8 +1356,8 @@ class PedidoBlingStagingResource extends Resource
     }
 
     /**
-     *  Verifica se o pedido estÃ¡ pronto para aprovaÃ§Ã£o.
-     *  - Custo frete obrigatÃ³rio EXCETO: ML (qualquer tipo) e Shopee Xpress (frete=0)
+     *  Verifica se o pedido está pronto para aprovação.
+     *  - Custo frete obrigatório EXCETO: ML (qualquer tipo) e Shopee Xpress (frete=0)
      *  - ML: requer planilha ML processada (rebate)
      *  - Shopee: requer planilha Shopee processada
      */
@@ -1367,13 +1367,13 @@ class PedidoBlingStagingResource extends Resource
         $isML = self::isML($record);
         $isShopee = self::isShopee($record);
 
-        // NF-e â€” obrigatÃ³rio para todos
+        // NF-e — obrigatório para todos
         $checks[] = [
             'ok' => !empty($record->nfe_chave_acesso),
             'label' => 'NF-e',
         ];
 
-        // Custo frete â€” obrigatÃ³rio exceto ML e Shopee Xpress (frete = 0 apÃ³s planilha)
+        // Custo frete — obrigatório exceto ML e Shopee Xpress (frete = 0 após planilha)
         if (!$isML) {
             $shopeeXpress = $isShopee && $record->planilha_shopee && (float) ($record->frete ?? 0) == 0;
             if (!$shopeeXpress) {
@@ -1401,4 +1401,3 @@ class PedidoBlingStagingResource extends Resource
         return empty(array_filter($checks, fn ($v) => !$v['ok']));
     }
 }
-
