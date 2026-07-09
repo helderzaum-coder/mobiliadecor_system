@@ -383,7 +383,7 @@ class VendaRecalculoService
         $canal = $venda->id_canal ? CanalVenda::find($venda->id_canal) : null;
 
         // Recalcular comissão via regras do canal (exceto quando veio da API/planilha ML)
-        $temDadosML = (float) ($venda->ml_sale_fee ?? 0) > 0;
+        $temDadosML = (float) ($venda->ml_sale_fee ?? 0) > 0 || (float) ($venda->ml_frete_custo ?? 0) > 0;
         $temPlanilhaShopee = (bool) $venda->planilha_processada && $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'shopee');
         $temPlanilhaMagalu = (bool) $venda->planilha_processada && $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
         $temPlanilhaMM = (bool) $venda->planilha_processada && $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'madeira');
