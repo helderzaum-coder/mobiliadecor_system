@@ -197,11 +197,12 @@ class ConsultaCtes extends Page
 
     public function getTotaisProperty(): array
     {
+        $base = Cte::where('transportadora', 'not like', '%TIKTOK%');
         return [
-            'total' => Cte::count(),
-            'utilizados' => Cte::where('utilizado', true)->count(),
-            'nao_utilizados' => Cte::where('utilizado', false)->count(),
-            'valor_nao_utilizado' => Cte::where('utilizado', false)->sum('valor_frete'),
+            'total' => (clone $base)->count(),
+            'utilizados' => (clone $base)->where('utilizado', true)->count(),
+            'nao_utilizados' => (clone $base)->where('utilizado', false)->count(),
+            'valor_nao_utilizado' => (clone $base)->where('utilizado', false)->sum('valor_frete'),
         ];
     }
 
@@ -209,6 +210,7 @@ class ConsultaCtes extends Page
     {
         return Cte::distinct()->whereNotNull('transportadora')
             ->where('transportadora', '!=', '')
+            ->where('transportadora', 'not like', '%TIKTOK%')
             ->orderBy('transportadora')
             ->pluck('transportadora')
             ->toArray();
@@ -216,7 +218,8 @@ class ConsultaCtes extends Page
 
     private function buildCtesQuery()
     {
-        $query = Cte::orderByRaw('COALESCE(data_emissao, created_at) DESC');
+        $query = Cte::where('transportadora', 'not like', '%TIKTOK%')
+            ->orderByRaw('COALESCE(data_emissao, created_at) DESC');
 
         if ($this->filtro === 'nao_utilizados') {
             $query->where('utilizado', false);
