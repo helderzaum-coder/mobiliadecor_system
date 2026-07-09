@@ -1320,8 +1320,8 @@ class PedidoBlingStagingResource extends Resource
                 $taxaBadge = $temTaxa
                     ? '<span class="text-xs bg-amber-100 dark:bg-amber-700 text-amber-800 dark:text-amber-100 px-1.5 py-0.5 rounded">TDA: R$ ' . number_format($c['taxas_especiais_total'], 2, ',', '.') . '</span>'
                     : '<span class="text-xs bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-100 px-1.5 py-0.5 rounded">Sem TDA</span>';
-                $html .= '<tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">'
-                    . '<td class="p-2 font-medium">' . e($c['nome']) . ' <span class="text-xs text-blue-600 dark:text-blue-400">(consultar)</span></td>'
+                $html .= '<tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">'
+                    . '<td class="p-2">' . e($c['nome']) . ' <span class="text-xs text-blue-600 dark:text-blue-400">(consultar)</span></td>'
                     . '<td class="p-2">' . e($c['uf_faixa']) . '</td>'
                     . '<td colspan="7" class="p-2 text-center text-gray-500 dark:text-gray-400 text-xs">Atende a região — solicitar cotação direta ' . $taxaBadge . '</td>'
                     . '<td class="text-right p-2">-</td>'
