@@ -264,7 +264,7 @@
             <div style="margin-bottom:16px;">
                 <label style="font-size:12px;color:#9ca3af;display:block;margin-bottom:4px;">Data</label>
                 <input type="date" wire:model="contaPagarData"
-                    class="w-full rounded-lg border border-gray-600 bg-gray-900 text-sm px-3 py-2 text-white">
+                    style="width:100%;border-radius:8px;border:1px solid #4b5563;background:#111827;font-size:14px;padding:8px 12px;color:#f9fafb;color-scheme:dark;">
             </div>
 
             <div style="display:flex;gap:8px;justify-content:flex-end;">
