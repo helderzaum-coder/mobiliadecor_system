@@ -302,10 +302,14 @@ class PedidoBlingStagingResource extends Resource
                             })
                             ->action(function (PedidoBlingStaging $record, array $data) {
                                 $valorFrete = (float) $data['valor_frete'];
-                                $record->update(['custo_frete' => round($valorFrete, 2)]);
+                                $valorNf = (float) ($record->nfe_valor ?: $record->total_pedido);
+                                $cotacoes = CotacaoFreteService::cotar($record->dest_uf, $record->dest_cep, (float) $record->peso_bruto, $valorNf, $record->dest_cidade);
+                                $selecionada = collect($cotacoes)->firstWhere('id_transportadora', (int) $data['id_transportadora']);
+                                $nomeTransp = $selecionada['nome'] ?? null;
+                                $record->update(['custo_frete' => round($valorFrete, 2), 'transportadora' => $nomeTransp]);
                                 try {
                                     AprovacaoVendaService::aprovar($record);
-                                    Notification::make()->title("Cotação R$ " . number_format($valorFrete, 2, ',', '.') . " — Aprovado!")->success()->send();
+                                    Notification::make()->title("Cotação R$ " . number_format($valorFrete, 2, ',', '.') . ($nomeTransp ? " ({$nomeTransp})" : '') . " — Aprovado!")->success()->send();
                                 } catch (\Throwable $e) {
                                     Notification::make()->title("Erro ao aprovar: " . $e->getMessage())->danger()->send();
                                 }
@@ -367,10 +371,14 @@ class PedidoBlingStagingResource extends Resource
                             ])
                             ->action(function (PedidoBlingStaging $record, array $data) {
                                 $valorFrete = (float) $data['valor_frete'];
-                                $record->update(['custo_frete' => round($valorFrete, 2)]);
+                                $valorNf = (float) ($record->nfe_valor ?: $record->total_pedido);
+                                $cotacoes = CotacaoFreteService::cotar($record->dest_uf, $record->dest_cep, (float) $record->peso_bruto, $valorNf, $record->dest_cidade);
+                                $selecionada = collect($cotacoes)->firstWhere('id_transportadora', (int) $data['id_transportadora']);
+                                $nomeTransp = $selecionada['nome'] ?? null;
+                                $record->update(['custo_frete' => round($valorFrete, 2), 'transportadora' => $nomeTransp]);
                                 try {
                                     AprovacaoVendaService::aprovar($record);
-                                    Notification::make()->title("Cotação R$ " . number_format($valorFrete, 2, ',', '.') . " — Aprovado!")->success()->send();
+                                    Notification::make()->title("Cotação R$ " . number_format($valorFrete, 2, ',', '.') . ($nomeTransp ? " ({$nomeTransp})" : '') . " — Aprovado!")->success()->send();
                                 } catch (\Throwable $e) {
                                     Notification::make()->title("Erro ao aprovar: " . $e->getMessage())->danger()->send();
                                 }
