@@ -148,7 +148,7 @@
                         <td class="p-2 text-xs text-gray-500">{{ $cte->data_emissao?->format('d/m/Y') ?? $cte->created_at?->format('d/m/Y') }}</td>
                         <td class="p-2 text-center">
                             @if(!$cte->utilizado)
-                                <div class="flex items-center gap-1 justify-center" x-data="{ open: false, pedido: '' }">
+                                <div class="flex items-center gap-1 justify-center flex-wrap" x-data="{ open: false, pedido: '' }">
                                     <button wire:click="vincularManual({{ $cte->id }})"
                                         style="background:#2563eb;color:#fff;padding:2px 8px;font-size:10px;border-radius:4px;border:none;cursor:pointer;"
                                         title="Vincular automaticamente pelo nome do destinatário">
@@ -158,6 +158,11 @@
                                         style="background:#7c3aed;color:#fff;padding:2px 8px;font-size:10px;border-radius:4px;border:none;cursor:pointer;"
                                         title="Vincular por número do pedido">
                                         Pedido
+                                    </button>
+                                    <button wire:click="abrirModalContaPagar({{ $cte->id }})"
+                                        style="background:#dc2626;color:#fff;padding:2px 8px;font-size:10px;border-radius:4px;border:none;cursor:pointer;"
+                                        title="Lançar como Conta a Pagar">
+                                        Conta a Pagar
                                     </button>
                                     <div x-show="open" x-cloak class="flex items-center gap-1">
                                         <input type="text" x-model="pedido" placeholder="Nº pedido"
@@ -240,6 +245,38 @@
                 </div>
             @endif
 
+        </div>
+    </div>
+    @endif
+
+    {{-- Modal Conta a Pagar --}}
+    @if($modalContaPagar)
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;" wire:click.self="fecharModalContaPagar">
+        <div style="background:#1f2937;border-radius:12px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4);">
+            <h3 style="font-size:16px;font-weight:700;color:#f9fafb;margin-bottom:16px;">💰 Lançar como Conta a Pagar</h3>
+
+            <div style="margin-bottom:12px;">
+                <label style="font-size:12px;color:#9ca3af;display:block;margin-bottom:4px;">Descrição</label>
+                <input type="text" wire:model="contaPagarDescricao"
+                    class="w-full rounded-lg border border-gray-600 bg-gray-900 text-sm px-3 py-2 text-white">
+            </div>
+
+            <div style="margin-bottom:16px;">
+                <label style="font-size:12px;color:#9ca3af;display:block;margin-bottom:4px;">Data</label>
+                <input type="date" wire:model="contaPagarData"
+                    class="w-full rounded-lg border border-gray-600 bg-gray-900 text-sm px-3 py-2 text-white">
+            </div>
+
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button wire:click="fecharModalContaPagar"
+                    style="background:#374151;color:#d1d5db;padding:8px 16px;font-size:13px;border-radius:6px;border:none;cursor:pointer;">
+                    Cancelar
+                </button>
+                <button wire:click="confirmarContaPagar"
+                    style="background:#dc2626;color:#fff;padding:8px 16px;font-size:13px;border-radius:6px;border:none;cursor:pointer;font-weight:600;">
+                    Confirmar
+                </button>
+            </div>
         </div>
     </div>
     @endif

@@ -27,6 +27,12 @@ class ConsultaCtes extends Page
     public ?array $modalVendaDados = null;
     public ?string $modalTipoPendente = null;
 
+    // Modal conta a pagar
+    public bool $modalContaPagar = false;
+    public ?int $contaPagarCteId = null;
+    public string $contaPagarDescricao = '';
+    public ?string $contaPagarData = null;
+
     public function vincularManual(int $cteId): void
     {
         $cte = Cte::find($cteId);
@@ -187,6 +193,60 @@ class ConsultaCtes extends Page
         $this->modalCteId = null;
         $this->modalVendaDados = null;
         $this->modalTipoPendente = null;
+    }
+
+    public function abrirModalContaPagar(int $cteId): void
+    {
+        $cte = Cte::find($cteId);
+        if (!$cte) return;
+
+        $this->contaPagarCteId = $cteId;
+        $this->contaPagarDescricao = "Frete Devolução - CT-e {$cte->numero_cte} - {$cte->destinatario}";
+        $this->contaPagarData = $cte->data_emissao?->format('Y-m-d') ?? now()->format('Y-m-d');
+        $this->modalContaPagar = true;
+    }
+
+    public function confirmarContaPagar(): void
+    {
+        $cte = Cte::find($this->contaPagarCteId);
+        if (!$cte) {
+            $this->modalContaPagar = false;
+            return;
+        }
+
+        $categoria = \App\Models\CategoriaFinanceira::firstOrCreate(
+            ['nome' => 'Frete Assistência/Devolução'],
+            ['tipo' => 'saida', 'ativo' => true, 'sistema' => false]
+        );
+
+        \App\Models\ContaPagar::create([
+            'descricao' => $this->contaPagarDescricao,
+            'valor_parcela' => $cte->valor_frete,
+            'data_vencimento' => $this->contaPagarData,
+            'data_lancamento' => $this->contaPagarData,
+            'status' => 'pendente',
+            'numero_parcela' => 1,
+            'total_parcelas' => 1,
+            'forma_pagamento' => 'boleto',
+            'lancamento_manual' => true,
+            'categoria_id' => $categoria->id,
+            'observacoes' => "CT-e #{$cte->numero_cte} | Chave: {$cte->chave_cte}",
+        ]);
+
+        $cte->update(['utilizado' => true]);
+
+        $this->modalContaPagar = false;
+        $this->contaPagarCteId = null;
+
+        \Filament\Notifications\Notification::make()
+            ->title("Conta a pagar criada: R$ " . number_format($cte->valor_frete, 2, ',', '.'))
+            ->success()->send();
+    }
+
+    public function fecharModalContaPagar(): void
+    {
+        $this->modalContaPagar = false;
+        $this->contaPagarCteId = null;
     }
 
     public function getCtesProperty()
