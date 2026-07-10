@@ -15,7 +15,7 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
  * ║  dados financeiros no staging:                                     ║
  * ║  - Comissão (colunas AT + AV)                                      ║
  * ║  - Subsídio Pix (colunas AE + Y)                                   ║
- * ║  - Frete (coluna AO/AP, com lógica Xpress = 0)                    ║
+ * ║  - Frete (coluna AP/AQ, com lógica Xpress = 0)                    ║
  * ║  - Total produtos (coluna R × S)                                   ║
  * ║  - Total pedido (coluna AU)                                        ║
  * ║                                                                    ║
@@ -32,7 +32,7 @@ class ShopeePlanilhaService
      * Usado para validar se a planilha está no formato correto antes de processar.
      */
     public const COLUNAS_ESPERADAS = [
-        'A'  => 'Nº do pedido',
+        'A'  => 'ID do pedido',
         'B'  => 'Tipo de pedido',
         'H'  => 'Opção de envio',
         'O'  => 'Nome do Produto',
@@ -40,6 +40,7 @@ class ShopeePlanilhaService
         'S'  => 'Preço acordado',
         'T'  => 'Quantidade',
         'V'  => 'Subtotal do produto',
+        'AI' => 'Ajuste por pagamento via PIX',
         'AP' => 'Taxa de envio pagas pelo comprador',
         'AQ' => 'Desconto de Frete Aproximado',
         'AU' => 'Taxa de comissão líquida',
@@ -196,13 +197,13 @@ class ShopeePlanilhaService
     /**
      * Calcula valores consolidados de um pedido a partir de suas linhas.
      *
-     * ⚠️ MAPEAMENTO (planilha Shopee com coluna "Tipo de pedido" na pos 2):
+     * ⚠️ MAPEAMENTO (planilha Shopee atualizada jul/2026):
      *  - S = Preço acordado, T = Quantidade
      *  - V = Subtotal do produto
-     *  - Z = Ajuste por pagamento via PIX (subsídio pix)
+     *  - AI = Ajuste por pagamento via PIX (subsídio pix)
      *  - H = Opção de envio (Xpress → frete = 0)
-     *  - AP = Taxa envio comprador, AQ = Desconto frete
-     *  - AO = Desconto de Frete Aproximado
+     *  - AP = Taxa envio comprador, AQ = Desconto de Frete Aproximado
+     *  - AO = Valor Total (informativo, não usar no cálculo)
      *  - AU = Taxa de comissão líquida, AW = Taxa de serviço líquida
      */
     private static function calcularPedido(array $linhas): array
@@ -220,8 +221,8 @@ class ShopeePlanilhaService
             $precoProduto = self::parseDecimal($row['V'] ?? 0);
             $precosProduto += $precoProduto;
 
-            // Subsídio Pix (coluna Z)
-            $subsidioPix += abs(self::parseDecimal($row['Z'] ?? 0));
+            // Subsídio Pix (coluna AI)
+            $subsidioPix += abs(self::parseDecimal($row['AI'] ?? 0));
 
             // Quantidade (coluna T)
             $quantidade = (int) (self::parseDecimal($row['T'] ?? 1) ?: 1);
@@ -276,11 +277,9 @@ class ShopeePlanilhaService
         $subtotalReal = $precosProduto - $subsidioPix;
 
         // Total do pedido
-        if ($frete == 0) {
-            $totalPedido = $subtotalReal;
-        } else {
-            $totalPedido = $subtotalReal + $frete - abs(self::parseDecimal($linhas[0]['AO'] ?? 0));
-        }
+        // Frete líquido = AP (taxa envio comprador) — AQ já está somado no frete acima
+        // Total = subtotal + frete (o que o vendedor efetivamente recebe de produto + frete)
+        $totalPedido = $subtotalReal + $frete;
 
         return [
             'total_produtos' => round($subtotalReal, 2),

@@ -265,7 +265,7 @@ class ShopeeCorrigirDadosService
     ): void {
         try {
             $precoU = self::parseDecimalValue($row['V'] ?? 0);
-            $subsidioY = abs(self::parseDecimalValue($row['Z'] ?? 0));
+            $subsidioY = abs(self::parseDecimalValue($row['AI'] ?? 0));
             $subtotal = $precoU - $subsidioY;
             $taxaEnvio = self::parseDecimalValue($row['AP'] ?? 0);
             $descontoFrete = abs(self::parseDecimalValue($row['AQ'] ?? 0));
