@@ -127,6 +127,7 @@ class LoteRecebimentos extends Page
     public function adicionarAoLote(int $id): void
     {
         if (!in_array($id, $this->lote)) {
+            $this->recalcularValorConta($id);
             $this->lote[] = $id;
         }
         $this->busca = '';
@@ -170,6 +171,7 @@ class LoteRecebimentos extends Page
             }
 
             if ($conta && !in_array($conta->id_conta_receber, $this->lote)) {
+                $this->recalcularValorConta($conta->id_conta_receber);
                 $this->lote[] = $conta->id_conta_receber;
                 $adicionados++;
             } elseif (!$conta) {
@@ -188,16 +190,24 @@ class LoteRecebimentos extends Page
     }
 
     /**
-     * Cria conta a receber para uma venda que não tem (força criação).
+     * Recalcula o valor_parcela de uma conta a receber existente usando a mesma lógica da dashboard.
      */
-    private function criarContaReceber(\App\Models\Venda $venda): ?ContaReceber
+    private function recalcularValorConta(int $contaId): void
     {
-        // Verificar se já existe (qualquer status)
-        $existente = ContaReceber::where('id_venda', $venda->id_venda)->first();
-        if ($existente) {
-            return $existente->status === 'pendente' ? $existente : null;
-        }
+        $conta = ContaReceber::with('venda.canal')->find($contaId);
+        if (!$conta || !$conta->venda || $conta->lancamento_manual) return;
 
+        $repasse = $this->calcularRepasse($conta->venda);
+        if ($repasse !== null && round($repasse, 2) !== round((float) $conta->valor_parcela, 2)) {
+            $conta->update(['valor_parcela' => round($repasse, 2)]);
+        }
+    }
+
+    /**
+     * Calcula o repasse de uma venda (mesma lógica da dashboard).
+     */
+    private function calcularRepasse(\App\Models\Venda $venda): ?float
+    {
         $canal = $venda->canal;
         $isMagalu = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
         $isShopee = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'shopee');
@@ -220,11 +230,27 @@ class LoteRecebimentos extends Page
             $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
         }
 
-        // Subsídio pix: para canais onde o marketplace repassa ao vendedor
         $subsidioPix = (float) ($venda->subsidio_pix ?? 0);
         if ($subsidioPix > 0 && !$isShopee && !$isMagalu) {
             $repasse += $subsidioPix;
         }
+
+        return $repasse;
+    }
+
+    /**
+     * Cria conta a receber para uma venda que não tem (força criação).
+     */
+    private function criarContaReceber(\App\Models\Venda $venda): ?ContaReceber
+    {
+        // Verificar se já existe (qualquer status)
+        $existente = ContaReceber::where('id_venda', $venda->id_venda)->first();
+        if ($existente) {
+            return $existente->status === 'pendente' ? $existente : null;
+        }
+
+        $canal = $venda->canal;
+        $repasse = $this->calcularRepasse($venda);
 
         return ContaReceber::create([
             'id_venda' => $venda->id_venda,
