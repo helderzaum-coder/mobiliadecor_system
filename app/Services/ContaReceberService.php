@@ -28,11 +28,25 @@ class ContaReceberService
         $canal = $venda->canal;
         $isMagalu = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
         $isShopee = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'shopee');
+        $isML = $canal && (str_contains(strtolower($canal->nome_canal ?? ''), 'mercado') || str_starts_with($venda->numero_pedido_canal ?? '', '2000'));
 
         if ($isMagalu) {
             $repasse = (float) $venda->valor_total_venda - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
         } else {
             $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
+        }
+
+        // ML ME1: o frete é cobrado pelo ML do vendedor (desconta do repasse)
+        if ($isML && !in_array($venda->ml_tipo_frete, ['ME2', 'FULL'])) {
+            $mlFreteCusto = (float) ($venda->ml_frete_custo ?? 0);
+            if ($mlFreteCusto > 0) {
+                $repasse -= $mlFreteCusto;
+            }
+            // Rebate/estorno: se ml_sale_fee > 0, o rebate NÃO está descontado da sale_fee
+            $mlRebate = (float) ($venda->ml_valor_rebate ?? 0);
+            if ($mlRebate > 0) {
+                $repasse += $mlRebate;
+            }
         }
 
         // Subsídio pix: para canais onde o marketplace repassa o subsídio ao vendedor (exceto Shopee e Magalu)
@@ -115,6 +129,8 @@ class ContaReceberService
         $isMagalu = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
         $isShopee = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'shopee');
 
+        $isML = $canal && (str_contains(strtolower($canal->nome_canal ?? ''), 'mercado') || str_starts_with($venda->numero_pedido_canal ?? '', '2000'));
+
         if ($isMagalu) {
             $repasseBase = (float) $venda->valor_total_venda - (float) $venda->comissao;
         } else {
@@ -122,6 +138,18 @@ class ContaReceberService
         }
 
         $repasse = round($repasseBase - $afiliado, 2);
+
+        // ML ME1: o frete é cobrado pelo ML do vendedor (desconta do repasse)
+        if ($isML && !in_array($venda->ml_tipo_frete, ['ME2', 'FULL'])) {
+            $mlFreteCusto = (float) ($venda->ml_frete_custo ?? 0);
+            if ($mlFreteCusto > 0) {
+                $repasse -= $mlFreteCusto;
+            }
+            $mlRebate = (float) ($venda->ml_valor_rebate ?? 0);
+            if ($mlRebate > 0) {
+                $repasse += $mlRebate;
+            }
+        }
 
         // Subsídio pix: para canais onde o marketplace repassa ao vendedor (exceto Shopee e Magalu)
         $subsidioPix = (float) ($venda->subsidio_pix ?? 0);

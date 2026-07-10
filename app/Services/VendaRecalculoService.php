@@ -455,8 +455,9 @@ class VendaRecalculoService
         $percentualImposto = (float) $venda->percentual_imposto;
         $valorRebate = (float) ($venda->ml_valor_rebate ?? 0);
 
-        // Se sale_fee veio da API, o rebate já está descontado — não somar de novo
-        if ((float) ($venda->ml_sale_fee ?? 0) > 0) {
+        // Rebate: para ME2/FULL com sale_fee da API, o rebate já está descontado
+        $tipoFreteML = $venda->ml_tipo_frete ?? null;
+        if (in_array($tipoFreteML, ['ME2', 'FULL']) && (float) ($venda->ml_sale_fee ?? 0) > 0) {
             $valorRebate = 0;
         }
 

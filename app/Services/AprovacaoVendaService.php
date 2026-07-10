@@ -96,7 +96,6 @@ class AprovacaoVendaService
                 }
                 if ($mlSaleFee > 0) {
                     $comissao = $mlSaleFee;
-                    $valorRebate = 0;
                 }
             }
         }

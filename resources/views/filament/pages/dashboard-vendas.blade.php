@@ -302,10 +302,22 @@
                     $mlRebate = (float) ($venda->ml_valor_rebate ?? 0);
                     $temDadosML = $mlSaleFee > 0 || $mlFreteCusto > 0;
                     $isMagaluRepasse = str_contains(strtolower($canal), 'magalu');
+                    $isMLRepasse = str_contains(strtolower($canal), 'mercado') || str_starts_with($venda->numero_pedido_canal ?? '', '2000');
                     $afiliado = (float) ($venda->comissao_afiliado ?? 0);
                     $repasse = $isMagaluRepasse
                         ? $total - $comissao - $afiliado
                         : $totalProd + $freteCliente - $comissao - $afiliado;
+                    // ML ME1: descontar frete cobrado pelo ML e somar rebate
+                    if ($isMLRepasse && !in_array($venda->ml_tipo_frete, ['ME2', 'FULL'])) {
+                        $mlFreteCustoRepasse = (float) ($venda->ml_frete_custo ?? 0);
+                        if ($mlFreteCustoRepasse > 0) {
+                            $repasse -= $mlFreteCustoRepasse;
+                        }
+                        $mlRebateRepasse = (float) ($venda->ml_valor_rebate ?? 0);
+                        if ($mlRebateRepasse > 0) {
+                            $repasse += $mlRebateRepasse;
+                        }
+                    }
                     $fretePago = (bool) $venda->frete_pago;
                     $freteCotado = (float) ($venda->frete_cotado ?? 0);
                     $alertaCte = false;

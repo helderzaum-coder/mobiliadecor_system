@@ -346,10 +346,19 @@ class DashboardVendas extends Page implements HasForms
 
         $canal = $venda->canal?->nome_canal ?? 'Marketplace';
         $isMagalu = str_contains(strtolower($canal), 'magalu');
+        $isML = str_contains(strtolower($canal), 'mercado') || str_starts_with($venda->numero_pedido_canal ?? '', '2000');
         $afiliado = (float) ($venda->comissao_afiliado ?? 0);
         $repasse = $isMagalu
             ? (float) $venda->valor_total_venda - (float) $venda->comissao - $afiliado
             : (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - $afiliado;
+
+        // ML ME1: descontar frete cobrado pelo ML e somar rebate
+        if ($isML && !in_array($venda->ml_tipo_frete, ['ME2', 'FULL'])) {
+            $mlFreteCusto = (float) ($venda->ml_frete_custo ?? 0);
+            if ($mlFreteCusto > 0) $repasse -= $mlFreteCusto;
+            $mlRebate = (float) ($venda->ml_valor_rebate ?? 0);
+            if ($mlRebate > 0) $repasse += $mlRebate;
+        }
 
         // Gerar conta a receber se não existe (forçar mesmo sem NF-e)
         $contaReceber = \App\Models\ContaReceber::where('id_venda', $venda->id_venda)->first();
@@ -405,10 +414,19 @@ class DashboardVendas extends Page implements HasForms
 
         $canal = $venda->canal?->nome_canal ?? 'Marketplace';
         $isMagalu = str_contains(strtolower($canal), 'magalu');
+        $isML = str_contains(strtolower($canal), 'mercado') || str_starts_with($venda->numero_pedido_canal ?? '', '2000');
         $afiliado = (float) ($venda->comissao_afiliado ?? 0);
         $repasse = $isMagalu
             ? (float) $venda->valor_total_venda - (float) $venda->comissao - $afiliado
             : (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - $afiliado;
+
+        // ML ME1: descontar frete cobrado pelo ML e somar rebate
+        if ($isML && !in_array($venda->ml_tipo_frete, ['ME2', 'FULL'])) {
+            $mlFreteCusto = (float) ($venda->ml_frete_custo ?? 0);
+            if ($mlFreteCusto > 0) $repasse -= $mlFreteCusto;
+            $mlRebate = (float) ($venda->ml_valor_rebate ?? 0);
+            if ($mlRebate > 0) $repasse += $mlRebate;
+        }
 
         $contaReceber = \App\Models\ContaReceber::where('id_venda', $venda->id_venda)->first();
 
