@@ -41,7 +41,7 @@ class LoteRecebimentos extends Page
     {
         if (strlen($this->busca) < 3) return collect();
 
-        return ContaReceber::with('venda')
+        $contas = ContaReceber::with('venda.canal')
             ->where('status', 'pendente')
             ->where(function ($q) {
                 $q->whereHas('venda', fn ($q2) => $q2->where('numero_pedido_canal', 'like', '%' . $this->busca . '%'))
@@ -50,6 +50,18 @@ class LoteRecebimentos extends Page
             ->whereNotIn('id_conta_receber', $this->lote)
             ->limit(10)
             ->get();
+
+        // Recalcular valor em tempo real para exibição
+        foreach ($contas as $conta) {
+            if ($conta->venda && !$conta->lancamento_manual) {
+                $repasse = $this->calcularRepasse($conta->venda);
+                if ($repasse !== null) {
+                    $conta->valor_parcela = round($repasse, 2);
+                }
+            }
+        }
+
+        return $contas;
     }
 
     public function getLoteItensProperty()
