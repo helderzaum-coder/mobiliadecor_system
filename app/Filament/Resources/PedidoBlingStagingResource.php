@@ -900,7 +900,9 @@ class PedidoBlingStagingResource extends Resource
                     ->modalHeading('Rejeitar e Excluir')
                     ->modalDescription('Isso vai excluir o pedido do staging e a venda vinculada (se houver). Na próxima importação ele será reimportado do zero.')
                     ->action(function (PedidoBlingStaging $record) {
-                        // Excluir venda vinculada se existir
+                        // Excluir conta a receber e venda vinculada se existir
+                        $vendaIds = \App\Models\Venda::where('bling_id', $record->bling_id)->pluck('id_venda');
+                        \App\Models\ContaReceber::whereIn('id_venda', $vendaIds)->where('status', 'pendente')->delete();
                         \App\Models\Venda::where('bling_id', $record->bling_id)->delete();
                         // Deletar o staging
                         $record->delete();
@@ -930,6 +932,8 @@ class PedidoBlingStagingResource extends Resource
                                 ->danger()->send();
                             return;
                         }
+                        $vendaIds = \App\Models\Venda::where('bling_id', $record->bling_id)->pluck('id_venda');
+                        \App\Models\ContaReceber::whereIn('id_venda', $vendaIds)->where('status', 'pendente')->delete();
                         \App\Models\Venda::where('bling_id', $record->bling_id)->delete();
                         $record->update(['status' => 'cancelado']);
                         Notification::make()->title('Pedido cancelado.')->success()->send();
@@ -944,6 +948,8 @@ class PedidoBlingStagingResource extends Resource
                     ->modalHeading('Marcar como Assistência')
                     ->modalDescription('O pedido será marcado como assistência/garantia. Não conta como venda e não volta para importação.')
                     ->action(function (PedidoBlingStaging $record) {
+                        $vendaIds = \App\Models\Venda::where('bling_id', $record->bling_id)->pluck('id_venda');
+                        \App\Models\ContaReceber::whereIn('id_venda', $vendaIds)->where('status', 'pendente')->delete();
                         \App\Models\Venda::where('bling_id', $record->bling_id)->delete();
                         $record->update(['status' => 'assistencia']);
                         Notification::make()->title('Pedido marcado como assistência.')->success()->send();
@@ -958,7 +964,9 @@ class PedidoBlingStagingResource extends Resource
                     ->modalHeading('Desaprovar e Reimportar')
                     ->modalDescription('Isso vai excluir a venda criada, voltar o pedido para pendente e rebuscar dados da API do ML. Continuar?')
                     ->action(function (PedidoBlingStaging $record) {
-                        // Excluir venda vinculada
+                        // Excluir conta a receber e venda vinculada
+                        $vendaIds = \App\Models\Venda::where('bling_id', $record->bling_id)->pluck('id_venda');
+                        \App\Models\ContaReceber::whereIn('id_venda', $vendaIds)->where('status', 'pendente')->delete();
                         \App\Models\Venda::where('bling_id', $record->bling_id)->delete();
 
                         // Voltar para pendente
@@ -1152,6 +1160,8 @@ class PedidoBlingStagingResource extends Resource
                     ->action(function ($records) {
                         $excluidos = 0;
                         foreach ($records as $record) {
+                            $vendaIds = \App\Models\Venda::where('bling_id', $record->bling_id)->pluck('id_venda');
+                            \App\Models\ContaReceber::whereIn('id_venda', $vendaIds)->where('status', 'pendente')->delete();
                             \App\Models\Venda::where('bling_id', $record->bling_id)->delete();
                             $record->delete();
                             $excluidos++;
@@ -1172,6 +1182,8 @@ class PedidoBlingStagingResource extends Resource
                         foreach ($records as $record) {
                             if ($record->status !== 'aprovado') continue;
 
+                            $vendaIds = \App\Models\Venda::where('bling_id', $record->bling_id)->pluck('id_venda');
+                            \App\Models\ContaReceber::whereIn('id_venda', $vendaIds)->where('status', 'pendente')->delete();
                             \App\Models\Venda::where('bling_id', $record->bling_id)->delete();
                             $record->update(['status' => 'pendente']);
 
