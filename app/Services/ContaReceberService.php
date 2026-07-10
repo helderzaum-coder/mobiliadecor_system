@@ -32,21 +32,22 @@ class ContaReceberService
 
         if ($isMagalu) {
             $repasse = (float) $venda->valor_total_venda - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
+        } elseif ($isML && (float) ($venda->ml_sale_fee ?? 0) > 0) {
+            // ML com dados da API: usar campos ML diretamente
+            $mlSaleFee = (float) $venda->ml_sale_fee;
+            $mlFreteCusto = (float) ($venda->ml_frete_custo ?? 0);
+            $mlFreteReceita = (float) ($venda->ml_frete_receita ?? 0);
+            $mlRebate = (float) ($venda->ml_valor_rebate ?? 0);
+            if (in_array($venda->ml_tipo_frete, ['ME2', 'FULL'])) {
+                // ME2/FULL: repasse = total_produtos - sale_fee - frete_liquido
+                $freteLiquido = $mlFreteCusto > 0 ? $mlFreteCusto - $mlFreteReceita : 0;
+                $repasse = (float) $venda->total_produtos - $mlSaleFee - $freteLiquido - (float) ($venda->comissao_afiliado ?? 0);
+            } else {
+                // ME1: repasse = total_produtos + frete_receita - sale_fee - frete_custo + rebate
+                $repasse = (float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee - $mlFreteCusto + $mlRebate - (float) ($venda->comissao_afiliado ?? 0);
+            }
         } else {
             $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
-        }
-
-        // ML ME1: o frete é cobrado pelo ML do vendedor (desconta do repasse)
-        if ($isML && !in_array($venda->ml_tipo_frete, ['ME2', 'FULL'])) {
-            $mlFreteCusto = (float) ($venda->ml_frete_custo ?? 0);
-            if ($mlFreteCusto > 0) {
-                $repasse -= $mlFreteCusto;
-            }
-            // Rebate/estorno: se ml_sale_fee > 0, o rebate NÃO está descontado da sale_fee
-            $mlRebate = (float) ($venda->ml_valor_rebate ?? 0);
-            if ($mlRebate > 0) {
-                $repasse += $mlRebate;
-            }
         }
 
         // Subsídio pix: para canais onde o marketplace repassa o subsídio ao vendedor (exceto Shopee e Magalu)
@@ -133,22 +134,21 @@ class ContaReceberService
 
         if ($isMagalu) {
             $repasseBase = (float) $venda->valor_total_venda - (float) $venda->comissao;
+            $repasse = round($repasseBase - $afiliado, 2);
+        } elseif ($isML && (float) ($venda->ml_sale_fee ?? 0) > 0) {
+            $mlSaleFee = (float) $venda->ml_sale_fee;
+            $mlFreteCusto = (float) ($venda->ml_frete_custo ?? 0);
+            $mlFreteReceita = (float) ($venda->ml_frete_receita ?? 0);
+            $mlRebate = (float) ($venda->ml_valor_rebate ?? 0);
+            if (in_array($venda->ml_tipo_frete, ['ME2', 'FULL'])) {
+                $freteLiquido = $mlFreteCusto > 0 ? $mlFreteCusto - $mlFreteReceita : 0;
+                $repasse = round((float) $venda->total_produtos - $mlSaleFee - $freteLiquido - $afiliado, 2);
+            } else {
+                $repasse = round((float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee - $mlFreteCusto + $mlRebate - $afiliado, 2);
+            }
         } else {
             $repasseBase = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao;
-        }
-
-        $repasse = round($repasseBase - $afiliado, 2);
-
-        // ML ME1: o frete é cobrado pelo ML do vendedor (desconta do repasse)
-        if ($isML && !in_array($venda->ml_tipo_frete, ['ME2', 'FULL'])) {
-            $mlFreteCusto = (float) ($venda->ml_frete_custo ?? 0);
-            if ($mlFreteCusto > 0) {
-                $repasse -= $mlFreteCusto;
-            }
-            $mlRebate = (float) ($venda->ml_valor_rebate ?? 0);
-            if ($mlRebate > 0) {
-                $repasse += $mlRebate;
-            }
+            $repasse = round($repasseBase - $afiliado, 2);
         }
 
         // Subsídio pix: para canais onde o marketplace repassa ao vendedor (exceto Shopee e Magalu)

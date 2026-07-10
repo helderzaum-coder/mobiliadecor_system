@@ -304,19 +304,21 @@
                     $isMagaluRepasse = str_contains(strtolower($canal), 'magalu');
                     $isMLRepasse = str_contains(strtolower($canal), 'mercado') || str_starts_with($venda->numero_pedido_canal ?? '', '2000');
                     $afiliado = (float) ($venda->comissao_afiliado ?? 0);
-                    $repasse = $isMagaluRepasse
-                        ? $total - $comissao - $afiliado
-                        : $totalProd + $freteCliente - $comissao - $afiliado;
-                    // ML ME1: descontar frete cobrado pelo ML e somar rebate
-                    if ($isMLRepasse && !in_array($venda->ml_tipo_frete, ['ME2', 'FULL'])) {
-                        $mlFreteCustoRepasse = (float) ($venda->ml_frete_custo ?? 0);
-                        if ($mlFreteCustoRepasse > 0) {
-                            $repasse -= $mlFreteCustoRepasse;
+                    if ($isMagaluRepasse) {
+                        $repasse = $total - $comissao - $afiliado;
+                    } elseif ($isMLRepasse && (float) ($venda->ml_sale_fee ?? 0) > 0) {
+                        $mlSaleFeeR = (float) $venda->ml_sale_fee;
+                        $mlFreteCustoR = (float) ($venda->ml_frete_custo ?? 0);
+                        $mlFreteReceitaR = (float) ($venda->ml_frete_receita ?? 0);
+                        $mlRebateR = (float) ($venda->ml_valor_rebate ?? 0);
+                        if (in_array($venda->ml_tipo_frete, ['ME2', 'FULL'])) {
+                            $freteLiqR = $mlFreteCustoR > 0 ? $mlFreteCustoR - $mlFreteReceitaR : 0;
+                            $repasse = $totalProd - $mlSaleFeeR - $freteLiqR - $afiliado;
+                        } else {
+                            $repasse = $totalProd + $mlFreteReceitaR - $mlSaleFeeR - $mlFreteCustoR + $mlRebateR - $afiliado;
                         }
-                        $mlRebateRepasse = (float) ($venda->ml_valor_rebate ?? 0);
-                        if ($mlRebateRepasse > 0) {
-                            $repasse += $mlRebateRepasse;
-                        }
+                    } else {
+                        $repasse = $totalProd + $freteCliente - $comissao - $afiliado;
                     }
                     $fretePago = (bool) $venda->frete_pago;
                     $freteCotado = (float) ($venda->frete_cotado ?? 0);
