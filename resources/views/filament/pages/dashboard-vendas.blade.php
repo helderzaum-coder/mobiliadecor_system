@@ -315,7 +315,7 @@
                             $freteLiqR = $mlFreteCustoR > 0 ? $mlFreteCustoR - $mlFreteReceitaR : 0;
                             $repasse = $totalProd - $mlSaleFeeR - $freteLiqR - $afiliado;
                         } else {
-                            $repasse = $totalProd + $mlFreteReceitaR - $mlSaleFeeR - $mlFreteCustoR + $mlRebateR - $afiliado;
+                            $repasse = $totalProd + $mlFreteReceitaR - $mlSaleFeeR + $mlRebateR - $afiliado;
                         }
                     } else {
                         $repasse = $totalProd + $freteCliente - $comissao - $afiliado;

@@ -236,7 +236,7 @@ class LoteRecebimentos extends Page
                 $freteLiquido = $mlFreteCusto > 0 ? $mlFreteCusto - $mlFreteReceita : 0;
                 $repasse = (float) $venda->total_produtos - $mlSaleFee - $freteLiquido - (float) ($venda->comissao_afiliado ?? 0);
             } else {
-                $repasse = (float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee - $mlFreteCusto + $mlRebate - (float) ($venda->comissao_afiliado ?? 0);
+                $repasse = (float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee + $mlRebate - (float) ($venda->comissao_afiliado ?? 0);
             }
         } else {
             $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);

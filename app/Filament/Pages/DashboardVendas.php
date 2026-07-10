@@ -360,7 +360,7 @@ class DashboardVendas extends Page implements HasForms
                 $freteLiq = $mlFreteCusto > 0 ? $mlFreteCusto - $mlFreteReceita : 0;
                 $repasse = (float) $venda->total_produtos - $mlSaleFee - $freteLiq - $afiliado;
             } else {
-                $repasse = (float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee - $mlFreteCusto + $mlRebate - $afiliado;
+                $repasse = (float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee + $mlRebate - $afiliado;
             }
         } else {
             $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - $afiliado;
@@ -434,7 +434,7 @@ class DashboardVendas extends Page implements HasForms
                 $freteLiq = $mlFreteCusto > 0 ? $mlFreteCusto - $mlFreteReceita : 0;
                 $repasse = (float) $venda->total_produtos - $mlSaleFee - $freteLiq - $afiliado;
             } else {
-                $repasse = (float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee - $mlFreteCusto + $mlRebate - $afiliado;
+                $repasse = (float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee + $mlRebate - $afiliado;
             }
         } else {
             $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - $afiliado;

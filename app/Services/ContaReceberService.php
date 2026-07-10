@@ -43,8 +43,8 @@ class ContaReceberService
                 $freteLiquido = $mlFreteCusto > 0 ? $mlFreteCusto - $mlFreteReceita : 0;
                 $repasse = (float) $venda->total_produtos - $mlSaleFee - $freteLiquido - (float) ($venda->comissao_afiliado ?? 0);
             } else {
-                // ME1: repasse = total_produtos + frete_receita - sale_fee - frete_custo + rebate
-                $repasse = (float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee - $mlFreteCusto + $mlRebate - (float) ($venda->comissao_afiliado ?? 0);
+                // ME1: repasse = total_produtos + frete_receita - sale_fee + rebate
+                $repasse = (float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee + $mlRebate - (float) ($venda->comissao_afiliado ?? 0);
             }
         } else {
             $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
@@ -144,7 +144,7 @@ class ContaReceberService
                 $freteLiquido = $mlFreteCusto > 0 ? $mlFreteCusto - $mlFreteReceita : 0;
                 $repasse = round((float) $venda->total_produtos - $mlSaleFee - $freteLiquido - $afiliado, 2);
             } else {
-                $repasse = round((float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee - $mlFreteCusto + $mlRebate - $afiliado, 2);
+                $repasse = round((float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee + $mlRebate - $afiliado, 2);
             }
         } else {
             $repasseBase = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao;

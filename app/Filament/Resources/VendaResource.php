@@ -44,7 +44,6 @@ class VendaResource extends Resource
                                 ? (float) $record->valor_total_venda - (float) $record->comissao
                                 : (float) $record->total_produtos + (float) $record->valor_frete_cliente - (float) $record->comissao;
                             if ($isML && !in_array($record->ml_tipo_frete, ['ME2', 'FULL'])) {
-                                $repasse -= (float) ($record->ml_frete_custo ?? 0);
                                 $repasse += (float) ($record->ml_valor_rebate ?? 0);
                             }
                             return 'R$ ' . number_format(round($repasse, 2), 2, ',', '.');
@@ -229,7 +228,6 @@ class VendaResource extends Resource
                             ? round((float) $r->valor_total_venda - (float) $r->comissao, 2)
                             : round((float) $r->total_produtos + (float) $r->valor_frete_cliente - (float) $r->comissao, 2);
                         if ($isML && !in_array($r->ml_tipo_frete, ['ME2', 'FULL'])) {
-                            $repasse -= (float) ($r->ml_frete_custo ?? 0);
                             $repasse += (float) ($r->ml_valor_rebate ?? 0);
                         }
                         return $repasse;
