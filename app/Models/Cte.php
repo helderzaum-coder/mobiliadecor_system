@@ -24,6 +24,7 @@ class Cte extends Model
         'utilizado',
         'venda_id',
         'tipo',
+        'id_fatura',
     ];
 
     protected $casts = [
@@ -31,4 +32,9 @@ class Cte extends Model
         'utilizado' => 'boolean',
         'data_emissao' => 'date',
     ];
+
+    public function fatura(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(FaturaTransportadora::class, 'id_fatura', 'id_fatura');
+    }
 }

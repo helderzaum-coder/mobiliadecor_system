@@ -34,4 +34,9 @@ class FaturaTransportadora extends Model
     {
         return $this->hasMany(ContaPagar::class, 'id_fatura', 'id_fatura');
     }
+
+    public function ctes(): HasMany
+    {
+        return $this->hasMany(Cte::class, 'id_fatura', 'id_fatura');
+    }
 }
