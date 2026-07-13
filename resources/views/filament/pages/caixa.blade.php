@@ -118,62 +118,61 @@
             </table>
         @endif
     </div>
-</x-filament-panels::page>
 
-{{-- Modal Editar Movimentação --}}
-@if($this->showEditModal)
-<div
-    x-data="{ open: @entangle('showEditModal') }"
-    x-show="open"
-    x-cloak
-    style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);"
->
-    <div style="background:#1f2937;border-radius:12px;padding:24px;width:100%;max-width:480px;">
-        <h3 style="color:#e5e7eb;font-size:16px;font-weight:600;margin-bottom:16px;">Editar Movimentação</h3>
+    {{-- Modal Editar Movimentação --}}
+    @if($this->showEditModal)
+    <div
+        x-data="{ open: true }"
+        x-show="open"
+        style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);"
+    >
+        <div style="background:#1f2937;border-radius:12px;padding:24px;width:100%;max-width:480px;">
+            <h3 style="color:#e5e7eb;font-size:16px;font-weight:600;margin-bottom:16px;">Editar Movimentação</h3>
 
-        <div style="display:flex;flex-direction:column;gap:12px;">
-            <div>
-                <label style="color:#9ca3af;font-size:12px;">Descrição</label>
-                <input type="text" wire:model="editDescricao" style="width:100%;padding:8px 12px;border-radius:8px;background:#111827;border:1px solid #374151;color:#e5e7eb;">
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <div>
+                    <label style="color:#9ca3af;font-size:12px;">Descrição</label>
+                    <input type="text" wire:model="editDescricao" style="width:100%;padding:8px 12px;border-radius:8px;background:#111827;border:1px solid #374151;color:#e5e7eb;">
+                </div>
+                <div style="display:flex;gap:12px;">
+                    <div style="flex:1;">
+                        <label style="color:#9ca3af;font-size:12px;">Valor</label>
+                        <input type="text" wire:model="editValor" style="width:100%;padding:8px 12px;border-radius:8px;background:#111827;border:1px solid #374151;color:#e5e7eb;">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="color:#9ca3af;font-size:12px;">Data</label>
+                        <input type="date" wire:model="editData" style="width:100%;padding:8px 12px;border-radius:8px;background:#111827;border:1px solid #374151;color:#e5e7eb;">
+                    </div>
+                </div>
+                @if($this->editTransferenciaId)
+                <div style="display:flex;gap:12px;">
+                    <div style="flex:1;">
+                        <label style="color:#9ca3af;font-size:12px;">Banco Origem (saída)</label>
+                        <select wire:model="editContaOrigemId" style="width:100%;padding:8px 12px;border-radius:8px;background:#111827;border:1px solid #374151;color:#e5e7eb;">
+                            <option value="">Selecione</option>
+                            @foreach(\App\Models\ContaBancaria::where('ativo', true)->orderBy('nome')->get() as $banco)
+                                <option value="{{ $banco->id }}">{{ $banco->nome }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div style="flex:1;">
+                        <label style="color:#9ca3af;font-size:12px;">Banco Destino (entrada)</label>
+                        <select wire:model="editContaDestinoId" style="width:100%;padding:8px 12px;border-radius:8px;background:#111827;border:1px solid #374151;color:#e5e7eb;">
+                            <option value="">Selecione</option>
+                            @foreach(\App\Models\ContaBancaria::where('ativo', true)->orderBy('nome')->get() as $banco)
+                                <option value="{{ $banco->id }}">{{ $banco->nome }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                @endif
             </div>
-            <div style="display:flex;gap:12px;">
-                <div style="flex:1;">
-                    <label style="color:#9ca3af;font-size:12px;">Valor</label>
-                    <input type="text" wire:model="editValor" style="width:100%;padding:8px 12px;border-radius:8px;background:#111827;border:1px solid #374151;color:#e5e7eb;">
-                </div>
-                <div style="flex:1;">
-                    <label style="color:#9ca3af;font-size:12px;">Data</label>
-                    <input type="date" wire:model="editData" style="width:100%;padding:8px 12px;border-radius:8px;background:#111827;border:1px solid #374151;color:#e5e7eb;">
-                </div>
-            </div>
-            @if($this->editTransferenciaId)
-            <div style="display:flex;gap:12px;">
-                <div style="flex:1;">
-                    <label style="color:#9ca3af;font-size:12px;">Banco Origem (saída)</label>
-                    <select wire:model="editContaOrigemId" style="width:100%;padding:8px 12px;border-radius:8px;background:#111827;border:1px solid #374151;color:#e5e7eb;">
-                        <option value="">Selecione</option>
-                        @foreach(\App\Models\ContaBancaria::where('ativo', true)->orderBy('nome')->get() as $banco)
-                            <option value="{{ $banco->id }}">{{ $banco->nome }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div style="flex:1;">
-                    <label style="color:#9ca3af;font-size:12px;">Banco Destino (entrada)</label>
-                    <select wire:model="editContaDestinoId" style="width:100%;padding:8px 12px;border-radius:8px;background:#111827;border:1px solid #374151;color:#e5e7eb;">
-                        <option value="">Selecione</option>
-                        @foreach(\App\Models\ContaBancaria::where('ativo', true)->orderBy('nome')->get() as $banco)
-                            <option value="{{ $banco->id }}">{{ $banco->nome }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            </div>
-            @endif
-        </div>
 
-        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px;">
-            <button wire:click="$set('showEditModal', false)" style="padding:8px 16px;border-radius:8px;background:#374151;color:#e5e7eb;border:none;cursor:pointer;">Cancelar</button>
-            <button wire:click="salvarEdicao" style="padding:8px 16px;border-radius:8px;background:#10b981;color:#fff;border:none;cursor:pointer;font-weight:600;">Salvar</button>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px;">
+                <button wire:click="$set('showEditModal', false)" style="padding:8px 16px;border-radius:8px;background:#374151;color:#e5e7eb;border:none;cursor:pointer;">Cancelar</button>
+                <button wire:click="salvarEdicao" style="padding:8px 16px;border-radius:8px;background:#10b981;color:#fff;border:none;cursor:pointer;font-weight:600;">Salvar</button>
+            </div>
         </div>
     </div>
-</div>
-@endif
+    @endif
+</x-filament-panels::page>
