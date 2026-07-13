@@ -487,7 +487,7 @@ class ContaReceberResource extends Resource
 
                         $lote = null;
                         if ($count > 0) {
-                            $canal = $records->pluck('forma_pagamento')->filter()->countBy()->sortDesc()->keys()->first() ?? 'Geral';
+                            $canal = ContaReceber::whereIn('id_conta_receber', $records->pluck('id_conta_receber'))->pluck('forma_pagamento')->filter()->countBy()->sortDesc()->keys()->first() ?? 'Geral';
                             $dataFormatada = \Carbon\Carbon::parse($data['data_recebimento'])->format('d/m/Y');
                             $descricao = !empty($data['descricao']) ? $data['descricao'] : "Repasse {$canal} {$dataFormatada}";
                             $lote = LoteRecebimento::create([
@@ -535,7 +535,7 @@ class ContaReceberResource extends Resource
 
                         $valorTotal = (float) $records->sum('valor_parcela');
                         $dataRecebimento = $records->first()->data_recebimento ?? now()->toDateString();
-                        $canal = $records->pluck('forma_pagamento')->filter()->countBy()->sortDesc()->keys()->first() ?? 'Geral';
+                        $canal = ContaReceber::whereIn('id_conta_receber', $records->pluck('id_conta_receber'))->pluck('forma_pagamento')->filter()->countBy()->sortDesc()->keys()->first() ?? 'Geral';
                         $dataFormatada = \Carbon\Carbon::parse($dataRecebimento)->format('d/m/Y');
                         $descricao = !empty($data['descricao']) ? $data['descricao'] : "Repasse {$canal} {$dataFormatada}";
 
