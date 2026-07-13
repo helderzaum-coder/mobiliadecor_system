@@ -180,6 +180,9 @@ class Caixa extends Page implements HasForms
                 'categoria' => $itensLote->first()->categoria?->nome ?? $itensLote->first()->forma_pagamento ?? '-',
                 'banco' => $itensLote->first()->contaBancaria?->nome ?? '-',
                 'valor' => round($valorLiquido, 2),
+                'id' => $itensLote->first()->id_conta_receber,
+                'model' => 'receber',
+                'transferencia_id' => $itensLote->first()->transferencia_id,
             ]);
         }
 
@@ -195,6 +198,9 @@ class Caixa extends Page implements HasForms
                 'categoria' => $itensLote->first()->categoria?->nome ?? $itensLote->first()->forma_pagamento ?? '-',
                 'banco' => $itensLote->first()->contaBancaria?->nome ?? '-',
                 'valor' => (float) $itensLote->sum('valor_parcela'),
+                'id' => $itensLote->first()->id_conta_receber,
+                'model' => 'receber',
+                'transferencia_id' => $itensLote->first()->transferencia_id,
             ]);
         }
 
@@ -206,6 +212,9 @@ class Caixa extends Page implements HasForms
                 'categoria' => $r->categoria?->nome ?? $r->forma_pagamento ?? '-',
                 'banco' => $r->contaBancaria?->nome ?? '-',
                 'valor' => (float) $r->valor_parcela,
+                'id' => $r->id_conta_receber,
+                'model' => 'receber',
+                'transferencia_id' => $r->transferencia_id,
             ]);
         }
 
@@ -246,6 +255,9 @@ class Caixa extends Page implements HasForms
             'categoria' => $r->categoria?->nome ?? $r->forma_pagamento ?? '-',
             'banco' => $r->contaBancaria?->nome ?? '-',
             'valor' => (float) $r->valor_parcela,
+            'id' => $r->id_conta_pagar,
+            'model' => 'pagar',
+            'transferencia_id' => $r->transferencia_id,
         ]);
     }
 
@@ -367,6 +379,68 @@ class Caixa extends Page implements HasForms
     public static function canAccess(): bool
     {
         return auth()->user()?->hasRole('admin') ?? false;
+    }
+
+    public function excluirMovimentacao(string $model, int $id): void
+    {
+        if ($model === 'pagar') {
+            $registro = ContaPagar::find($id);
+            if ($registro) {
+                $registro->delete(); // deleting event já remove ContaReceber vinculada se for transferência
+            }
+        } else {
+            $registro = ContaReceber::find($id);
+            if ($registro) {
+                $registro->delete(); // deleting event já remove ContaPagar vinculada se for transferência
+            }
+        }
+
+        Notification::make()->title('Movimentação excluída.')->success()->send();
+    }
+
+    public function editarMovimentacao(string $model, int $id, string $descricao, string $valor, string $data): void
+    {
+        $valorFloat = round((float) str_replace(['.', ','], ['', '.'], $valor), 2);
+
+        if ($model === 'pagar') {
+            $registro = ContaPagar::find($id);
+            if ($registro) {
+                $registro->update([
+                    'descricao' => $descricao,
+                    'valor_parcela' => $valorFloat,
+                    'data_pagamento' => $data,
+                    'data_vencimento' => $data,
+                ]);
+                // Se for transferência, atualizar o par
+                if ($registro->transferencia_id) {
+                    ContaReceber::where('transferencia_id', $registro->transferencia_id)->update([
+                        'valor_parcela' => $valorFloat,
+                        'data_recebimento' => $data,
+                        'data_vencimento' => $data,
+                    ]);
+                }
+            }
+        } else {
+            $registro = ContaReceber::find($id);
+            if ($registro) {
+                $registro->update([
+                    'observacoes' => $descricao,
+                    'valor_parcela' => $valorFloat,
+                    'data_recebimento' => $data,
+                    'data_vencimento' => $data,
+                ]);
+                // Se for transferência, atualizar o par
+                if ($registro->transferencia_id) {
+                    ContaPagar::where('transferencia_id', $registro->transferencia_id)->update([
+                        'valor_parcela' => $valorFloat,
+                        'data_pagamento' => $data,
+                        'data_vencimento' => $data,
+                    ]);
+                }
+            }
+        }
+
+        Notification::make()->title('Movimentação atualizada.')->success()->send();
     }
 
     protected function getHeaderActions(): array

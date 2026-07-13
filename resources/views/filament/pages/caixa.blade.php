@@ -39,9 +39,11 @@
                             </th>
                             <th style="padding:10px;text-align:right;color:#10b981;font-size:12px;font-weight:400;">+R$ {{ number_format($dia['entradas'], 2, ',', '.') }}</th>
                             <th style="padding:10px;text-align:right;color:#ef4444;font-size:12px;font-weight:400;">-R$ {{ number_format($dia['saidas'], 2, ',', '.') }}</th>
-                            @if($this->exibir_saldo_anterior)
-                            <th style="padding:10px;text-align:right;color:#9ca3af;font-size:12px;font-weight:400;">Saldo: R$ {{ number_format($dia['saldo_inicio_dia'], 2, ',', '.') }}</th>
-                            @endif
+                            <th style="padding:10px;text-align:right;color:#9ca3af;font-size:12px;font-weight:400;">
+                                @if($this->exibir_saldo_anterior)
+                                    Saldo: R$ {{ number_format($dia['saldo_inicio_dia'], 2, ',', '.') }}
+                                @endif
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -57,8 +59,32 @@
                                 <td style="padding:8px 10px;color:#e5e7eb;">{{ $item['descricao'] }}</td>
                                 <td style="padding:8px 10px;color:#6b7280;font-size:11px;">{{ $item['categoria'] }}</td>
                                 <td style="padding:8px 10px;color:#6b7280;font-size:11px;">{{ $item['banco'] !== '-' ? $item['banco'] : '' }}</td>
-                                <td colspan="{{ $this->exibir_saldo_anterior ? '2' : '1' }}" style="padding:8px 10px;text-align:right;font-weight:600;{{ $item['tipo'] === 'entrada' ? 'color:#10b981;' : 'color:#ef4444;' }}">
+                                <td style="padding:8px 10px;text-align:right;font-weight:600;{{ $item['tipo'] === 'entrada' ? 'color:#10b981;' : 'color:#ef4444;' }}">
                                     {{ $item['tipo'] === 'entrada' ? '+' : '-' }}R$ {{ number_format($item['valor'], 2, ',', '.') }}
+                                </td>
+                                <td style="padding:4px 8px;text-align:right;white-space:nowrap;width:80px;">
+                                    @if(!empty($item['id']))
+                                        <button
+                                            x-data=""
+                                            x-on:click="
+                                                let desc = prompt('Descrição:', '{{ addslashes($item['descricao']) }}');
+                                                if(desc === null) return;
+                                                let valor = prompt('Valor:', '{{ number_format($item['valor'], 2, ',', '.') }}');
+                                                if(valor === null) return;
+                                                let data = prompt('Data (AAAA-MM-DD):', '{{ $item['data'] }}');
+                                                if(data === null) return;
+                                                $wire.editarMovimentacao('{{ $item['model'] }}', {{ $item['id'] }}, desc, valor, data);
+                                            "
+                                            style="background:none;border:none;cursor:pointer;color:#6b7280;font-size:14px;padding:2px 4px;"
+                                            title="Editar"
+                                        >✏️</button>
+                                        <button
+                                            x-data=""
+                                            x-on:click="if(confirm('Excluir esta movimentação?')) $wire.excluirMovimentacao('{{ $item['model'] }}', {{ $item['id'] }})"
+                                            style="background:none;border:none;cursor:pointer;color:#6b7280;font-size:14px;padding:2px 4px;"
+                                            title="Excluir"
+                                        >🗑️</button>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach
