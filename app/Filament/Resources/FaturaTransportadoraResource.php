@@ -83,7 +83,7 @@ class FaturaTransportadoraResource extends Resource
                             ->acceptedFileTypes(['text/csv', 'application/vnd.ms-excel', 'text/plain'])
                             ->helperText('Coluna K = NUMERO CT-E. Após upload, clique em "Processar CSV".')
                             ->disk('local')
-                            ->directory('csv-temp')
+                            ->directory('livewire-tmp')
                             ->visibility('private')
                             ->live()
                             ->visible(fn (Forms\Get $get) => (bool) $get('id_transportadora')),
@@ -99,8 +99,27 @@ class FaturaTransportadoraResource extends Resource
 
                                     $path = is_array($state) ? collect($state)->first() : $state;
                                     if (!$path) return;
-                                    $fullPath = storage_path('app/csv-temp/' . $path);
-                                    if (!file_exists($fullPath)) return;
+
+                                    // Tentar múltiplos caminhos possíveis
+                                    $possiblePaths = [
+                                        storage_path('app/livewire-tmp/' . $path),
+                                        storage_path('app/public/livewire-tmp/' . $path),
+                                        storage_path('app/' . $path),
+                                        storage_path('app/public/' . $path),
+                                    ];
+                                    $fullPath = null;
+                                    foreach ($possiblePaths as $p) {
+                                        if (file_exists($p)) { $fullPath = $p; break; }
+                                    }
+                                    if (!$fullPath) {
+                                        // Buscar em livewire-tmp por glob
+                                        $files = glob(storage_path('app/livewire-tmp/*'));
+                                        if (!empty($files)) $fullPath = end($files);
+                                    }
+                                    if (!$fullPath) {
+                                        Notification::make()->title('Arquivo não encontrado.')->danger()->send();
+                                        return;
+                                    }
 
                                     $numeros = [];
                                     if (($handle = fopen($fullPath, 'r')) !== false) {
@@ -109,8 +128,8 @@ class FaturaTransportadoraResource extends Resource
                                             $row++;
                                             if ($row <= 2) continue;
                                             $numero = trim($line[10] ?? '');
-                                            if ($numero && is_numeric($numero)) {
-                                                $numeros[] = $numero;
+                                            if ($numero) {
+                                                $numeros[] = ltrim($numero, '0');
                                             }
                                         }
                                         fclose($handle);
@@ -133,7 +152,7 @@ class FaturaTransportadoraResource extends Resource
                                         ->toArray();
 
                                     $set('ctes_selecionados', $ids);
-                                    Notification::make()->title(count($ids) . ' CTe(s) selecionado(s) de ' . count($numeros) . ' encontrado(s) no CSV.')->success()->send();
+                                    Notification::make()->title(count($ids) . ' CTe(s) selecionado(s) de ' . count($numeros) . ' no CSV.')->success()->send();
                                 }),
                         ])->visible(fn (Forms\Get $get) => !empty($get('csv_import'))),
                         Forms\Components\CheckboxList::make('ctes_selecionados')
