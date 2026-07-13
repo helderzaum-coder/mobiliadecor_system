@@ -124,8 +124,8 @@ class FaturaTransportadoraResource extends Resource
                                             $row++;
                                             if ($row <= 2) continue;
                                             $numero = trim($line[10] ?? '');
-                                            if ($numero) {
-                                                $numeros[] = ltrim($numero, '0');
+                                            if ($numero && strlen($numero) > 5) {
+                                                $numeros[] = (string) (int) substr($numero, 5);
                                             }
                                         }
                                         fclose($handle);
