@@ -78,6 +78,49 @@ class FaturaTransportadoraResource extends Resource
                             ->searchable()
                             ->reactive()
                             ->afterStateUpdated(fn (Forms\Set $set) => $set('ctes_selecionados', [])),
+                        Forms\Components\FileUpload::make('csv_import')
+                            ->label('Importar CSV (opcional)')
+                            ->acceptedFileTypes(['text/csv', 'application/vnd.ms-excel', 'text/plain'])
+                            ->helperText('Coluna K = NUMERO CT-E. Pré-seleciona os CTEs encontrados.')
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
+                                if (!$state || !$get('id_transportadora')) return;
+                                $path = collect($state)->first();
+                                if (!$path) return;
+                                $fullPath = storage_path('app/public/' . $path);
+                                if (!file_exists($fullPath)) return;
+
+                                $numeros = [];
+                                if (($handle = fopen($fullPath, 'r')) !== false) {
+                                    $row = 0;
+                                    while (($line = fgetcsv($handle, 0, ';')) !== false) {
+                                        $row++;
+                                        if ($row <= 2) continue; // pula cabeçalhos
+                                        $numero = trim($line[10] ?? ''); // coluna K (index 10)
+                                        if ($numero && is_numeric($numero)) {
+                                            $numeros[] = $numero;
+                                        }
+                                    }
+                                    fclose($handle);
+                                }
+                                @unlink($fullPath);
+
+                                if (empty($numeros)) return;
+
+                                $transportadora = Transportadora::find($get('id_transportadora'));
+                                $nomes = collect([$transportadora->nome_transportadora])
+                                    ->merge($transportadora->aliases ?? [])
+                                    ->filter()->toArray();
+
+                                $ids = Cte::whereNull('id_fatura')
+                                    ->whereIn('transportadora', $nomes)
+                                    ->whereIn('numero_cte', $numeros)
+                                    ->pluck('id')
+                                    ->toArray();
+
+                                $set('ctes_selecionados', $ids);
+                            })
+                            ->visible(fn (Forms\Get $get) => (bool) $get('id_transportadora')),
                         Forms\Components\CheckboxList::make('ctes_selecionados')
                             ->label('CTEs pendentes')
                             ->options(function (Forms\Get $get) {
