@@ -343,11 +343,17 @@ class ContaReceberResource extends Resource
                             ->label('Data do Recebimento')
                             ->default(now())
                             ->required(),
+                        Forms\Components\Select::make('conta_bancaria_id')
+                            ->label('Banco')
+                            ->options(fn () => \App\Models\ContaBancaria::where('ativo', true)->orderBy('nome')->pluck('nome', 'id')->toArray())
+                            ->searchable()
+                            ->placeholder('Selecione o banco'),
                     ])
                     ->action(function (ContaReceber $record, array $data) {
                         $record->update([
                             'status' => 'recebido',
                             'data_recebimento' => $data['data_recebimento'],
+                            'conta_bancaria_id' => $data['conta_bancaria_id'] ?? $record->conta_bancaria_id,
                         ]);
                         // Atualizar venda também
                         if ($record->venda) {
