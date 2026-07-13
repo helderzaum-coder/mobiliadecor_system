@@ -487,9 +487,9 @@ class ContaReceberResource extends Resource
 
                         $lote = null;
                         if ($count > 0) {
-                            $descricao = $data['descricao'] ?? null;
+                            $descricao = !empty($data['descricao']) ? $data['descricao'] : null;
                             if (!$descricao) {
-                                $canal = $records->first()?->forma_pagamento ?? 'Repasse';
+                                $canal = $records->pluck('forma_pagamento')->filter()->countBy()->sortDesc()->keys()->first() ?? 'Geral';
                                 $dataFormatada = \Carbon\Carbon::parse($data['data_recebimento'])->format('d/m/Y');
                                 $descricao = "Repasse {$canal} {$dataFormatada}";
                             }
