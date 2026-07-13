@@ -468,6 +468,7 @@ class ContaReceberResource extends Resource
                     ->action(function ($records, array $data) {
                         $count = 0;
                         $valorTotal = 0;
+                        $canais = [];
                         foreach ($records as $record) {
                             if ($record->status !== 'pendente') continue;
                             $record->update([
@@ -481,13 +482,16 @@ class ContaReceberResource extends Resource
                                     'data_recebimento' => $data['data_recebimento'],
                                 ]);
                             }
+                            if ($record->forma_pagamento) {
+                                $canais[] = $record->forma_pagamento;
+                            }
                             $valorTotal += (float) $record->valor_parcela;
                             $count++;
                         }
 
                         $lote = null;
                         if ($count > 0) {
-                            $canal = ContaReceber::whereIn('id_conta_receber', $records->pluck('id_conta_receber'))->pluck('forma_pagamento')->filter()->countBy()->sortDesc()->keys()->first() ?? 'Geral';
+                            $canal = collect($canais)->countBy()->sortDesc()->keys()->first() ?? 'Geral';
                             $dataFormatada = \Carbon\Carbon::parse($data['data_recebimento'])->format('d/m/Y');
                             $descricao = !empty($data['descricao']) ? $data['descricao'] : "Repasse {$canal} {$dataFormatada}";
                             $lote = LoteRecebimento::create([
@@ -533,9 +537,16 @@ class ContaReceberResource extends Resource
                             return;
                         }
 
-                        $valorTotal = (float) $records->sum('valor_parcela');
-                        $dataRecebimento = $records->first()->data_recebimento ?? now()->toDateString();
-                        $canal = ContaReceber::whereIn('id_conta_receber', $records->pluck('id_conta_receber'))->pluck('forma_pagamento')->filter()->countBy()->sortDesc()->keys()->first() ?? 'Geral';
+                        $valorTotal = 0;
+                        $canais = [];
+                        $dataRecebimento = null;
+                        foreach ($records as $record) {
+                            $valorTotal += (float) $record->valor_parcela;
+                            if ($record->forma_pagamento) $canais[] = $record->forma_pagamento;
+                            if (!$dataRecebimento && $record->data_recebimento) $dataRecebimento = $record->data_recebimento;
+                        }
+                        $dataRecebimento = $dataRecebimento ?? now()->toDateString();
+                        $canal = collect($canais)->countBy()->sortDesc()->keys()->first() ?? 'Geral';
                         $dataFormatada = \Carbon\Carbon::parse($dataRecebimento)->format('d/m/Y');
                         $descricao = !empty($data['descricao']) ? $data['descricao'] : "Repasse {$canal} {$dataFormatada}";
 
