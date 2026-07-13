@@ -538,9 +538,11 @@ class ContaReceberResource extends Resource
                         $ids = $records->map(fn ($r) => $r->getKey())->toArray();
                         $valorTotal = (float) ContaReceber::whereIn('id_conta_receber', $ids)->sum('valor_parcela');
                         $dataRecebimento = $records->first()->data_recebimento ?? now()->toDateString();
-                        $canal = ContaReceber::whereIn('id_conta_receber', $ids)->whereNotNull('forma_pagamento')->pluck('forma_pagamento')->countBy()->sortDesc()->keys()->first() ?? 'Geral';
-                        $dataFormatada = \Carbon\Carbon::parse($dataRecebimento)->format('d/m/Y');
-                        $descricao = !empty($data['descricao']) ? $data['descricao'] : "Repasse {$canal} {$dataFormatada}";
+                        $descricao = LoteRecebimento::gerarDescricao(
+                            $data['conta_bancaria_id'] ? optional(\App\Models\ContaBancaria::find($data['conta_bancaria_id']))->nome : null,
+                            $dataRecebimento,
+                            $data['descricao'] ?? null,
+                        );
 
                         $lote = LoteRecebimento::create([
                             'data_recebimento' => $dataRecebimento,

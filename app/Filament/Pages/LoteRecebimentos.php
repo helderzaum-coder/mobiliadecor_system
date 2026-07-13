@@ -313,10 +313,16 @@ class LoteRecebimentos extends Page
             $count++;
         }
 
+        $descricaoLote = LoteRecebimento::gerarDescricao(
+            $this->conta_bancaria_id ? optional(\App\Models\ContaBancaria::find($this->conta_bancaria_id))->nome : null,
+            $this->data_recebimento,
+            $this->identificador_lote ?: null,
+        );
+
         // Criar lote
         $lote = LoteRecebimento::create([
             'data_recebimento' => $this->data_recebimento,
-            'descricao' => $this->identificador_lote ?: null,
+            'descricao' => $descricaoLote,
             'valor_total' => round($valorTotal - collect($this->descontos)->sum('valor'), 2),
             'quantidade_contas' => $count,
         ]);

@@ -9,6 +9,31 @@ class LoteRecebimento extends Model
 {
     protected $table = 'lotes_recebimento';
 
+    public static function gerarDescricao(?string $bancoNome, ?string $dataRecebimento, ?string $descricaoManual = null): string
+    {
+        if (!empty(trim((string) $descricaoManual))) {
+            return trim((string) $descricaoManual);
+        }
+
+        $banco = trim((string) ($bancoNome ?? ''));
+        $data = trim((string) ($dataRecebimento ?? ''));
+
+        if ($banco !== '' && $data !== '') {
+            $dataFormatada = \Carbon\Carbon::parse($data)->format('d/m/Y');
+            return "{$banco} - {$dataFormatada}";
+        }
+
+        if ($banco !== '') {
+            return $banco;
+        }
+
+        if ($data !== '') {
+            return \Carbon\Carbon::parse($data)->format('d/m/Y');
+        }
+
+        return 'Lote';
+    }
+
     protected $fillable = [
         'data_recebimento',
         'descricao',
