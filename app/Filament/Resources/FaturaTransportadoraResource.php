@@ -82,9 +82,6 @@ class FaturaTransportadoraResource extends Resource
                             ->label('Importar CSV (opcional)')
                             ->acceptedFileTypes(['text/csv', 'application/vnd.ms-excel', 'text/plain'])
                             ->helperText('Coluna K = NUMERO CT-E. Após upload, clique em "Processar CSV".')
-                            ->disk('local')
-                            ->directory('livewire-tmp')
-                            ->visibility('private')
                             ->live()
                             ->visible(fn (Forms\Get $get) => (bool) $get('id_transportadora')),
                         Forms\Components\Actions::make([
@@ -100,21 +97,20 @@ class FaturaTransportadoraResource extends Resource
                                     $path = is_array($state) ? collect($state)->first() : $state;
                                     if (!$path) return;
 
-                                    // Tentar múltiplos caminhos possíveis
-                                    $possiblePaths = [
-                                        storage_path('app/livewire-tmp/' . $path),
-                                        storage_path('app/public/livewire-tmp/' . $path),
-                                        storage_path('app/' . $path),
-                                        storage_path('app/public/' . $path),
-                                    ];
+                                    // Buscar o CSV mais recente no livewire-tmp
                                     $fullPath = null;
-                                    foreach ($possiblePaths as $p) {
-                                        if (file_exists($p)) { $fullPath = $p; break; }
-                                    }
-                                    if (!$fullPath) {
-                                        // Buscar em livewire-tmp por glob
-                                        $files = glob(storage_path('app/livewire-tmp/*'));
-                                        if (!empty($files)) $fullPath = end($files);
+                                    $searchPaths = [
+                                        storage_path('app/private/livewire-tmp/' . $path),
+                                        storage_path('app/private/livewire-tmp/'),
+                                    ];
+                                    if (file_exists($searchPaths[0])) {
+                                        $fullPath = $searchPaths[0];
+                                    } else {
+                                        $files = glob(storage_path('app/private/livewire-tmp/*.csv'));
+                                        if (!empty($files)) {
+                                            usort($files, fn($a, $b) => filemtime($b) - filemtime($a));
+                                            $fullPath = $files[0];
+                                        }
                                     }
                                     if (!$fullPath) {
                                         Notification::make()->title('Arquivo não encontrado.')->danger()->send();
