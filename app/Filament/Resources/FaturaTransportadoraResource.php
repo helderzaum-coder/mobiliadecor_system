@@ -81,46 +81,61 @@ class FaturaTransportadoraResource extends Resource
                         Forms\Components\FileUpload::make('csv_import')
                             ->label('Importar CSV (opcional)')
                             ->acceptedFileTypes(['text/csv', 'application/vnd.ms-excel', 'text/plain'])
-                            ->helperText('Coluna K = NUMERO CT-E. Pré-seleciona os CTEs encontrados.')
-                            ->reactive()
-                            ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
-                                if (!$state || !$get('id_transportadora')) return;
-                                $path = collect($state)->first();
-                                if (!$path) return;
-                                $fullPath = storage_path('app/public/' . $path);
-                                if (!file_exists($fullPath)) return;
-
-                                $numeros = [];
-                                if (($handle = fopen($fullPath, 'r')) !== false) {
-                                    $row = 0;
-                                    while (($line = fgetcsv($handle, 0, ';')) !== false) {
-                                        $row++;
-                                        if ($row <= 2) continue; // pula cabeçalhos
-                                        $numero = trim($line[10] ?? ''); // coluna K (index 10)
-                                        if ($numero && is_numeric($numero)) {
-                                            $numeros[] = $numero;
-                                        }
-                                    }
-                                    fclose($handle);
-                                }
-                                @unlink($fullPath);
-
-                                if (empty($numeros)) return;
-
-                                $transportadora = Transportadora::find($get('id_transportadora'));
-                                $nomes = collect([$transportadora->nome_transportadora])
-                                    ->merge($transportadora->aliases ?? [])
-                                    ->filter()->toArray();
-
-                                $ids = Cte::whereNull('id_fatura')
-                                    ->whereIn('transportadora', $nomes)
-                                    ->whereIn('numero_cte', $numeros)
-                                    ->pluck('id')
-                                    ->toArray();
-
-                                $set('ctes_selecionados', $ids);
-                            })
+                            ->helperText('Coluna K = NUMERO CT-E. Após upload, clique em "Processar CSV".')
+                            ->disk('local')
+                            ->directory('csv-temp')
+                            ->visibility('private')
+                            ->live()
                             ->visible(fn (Forms\Get $get) => (bool) $get('id_transportadora')),
+                        Forms\Components\Actions::make([
+                            Forms\Components\Actions\Action::make('processar_csv')
+                                ->label('Processar CSV')
+                                ->icon('heroicon-o-arrow-path')
+                                ->color('info')
+                                ->action(function (Forms\Get $get, Forms\Set $set) {
+                                    $state = $get('csv_import');
+                                    $transportadoraId = $get('id_transportadora');
+                                    if (!$state || !$transportadoraId) return;
+
+                                    $path = is_array($state) ? collect($state)->first() : $state;
+                                    if (!$path) return;
+                                    $fullPath = storage_path('app/csv-temp/' . $path);
+                                    if (!file_exists($fullPath)) return;
+
+                                    $numeros = [];
+                                    if (($handle = fopen($fullPath, 'r')) !== false) {
+                                        $row = 0;
+                                        while (($line = fgetcsv($handle, 0, ';')) !== false) {
+                                            $row++;
+                                            if ($row <= 2) continue;
+                                            $numero = trim($line[10] ?? '');
+                                            if ($numero && is_numeric($numero)) {
+                                                $numeros[] = $numero;
+                                            }
+                                        }
+                                        fclose($handle);
+                                    }
+
+                                    if (empty($numeros)) {
+                                        Notification::make()->title('Nenhum CT-e encontrado no CSV.')->warning()->send();
+                                        return;
+                                    }
+
+                                    $transportadora = Transportadora::find($transportadoraId);
+                                    $nomes = collect([$transportadora->nome_transportadora])
+                                        ->merge($transportadora->aliases ?? [])
+                                        ->filter()->toArray();
+
+                                    $ids = Cte::whereNull('id_fatura')
+                                        ->whereIn('transportadora', $nomes)
+                                        ->whereIn('numero_cte', $numeros)
+                                        ->pluck('id')
+                                        ->toArray();
+
+                                    $set('ctes_selecionados', $ids);
+                                    Notification::make()->title(count($ids) . ' CTe(s) selecionado(s) de ' . count($numeros) . ' encontrado(s) no CSV.')->success()->send();
+                                }),
+                        ])->visible(fn (Forms\Get $get) => !empty($get('csv_import'))),
                         Forms\Components\CheckboxList::make('ctes_selecionados')
                             ->label('CTEs pendentes')
                             ->options(function (Forms\Get $get) {
