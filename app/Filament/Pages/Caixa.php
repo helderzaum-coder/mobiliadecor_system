@@ -23,6 +23,8 @@ class Caixa extends Page implements HasForms
     protected static ?string $navigationGroup = 'Financeiro';
     protected static ?string $navigationLabel = 'Caixa';
     protected static ?string $title = 'Fluxo de Caixa';
+    protected ?string $maxContentWidth = 'full';
+
     protected static string $view = 'filament.pages.caixa';
     protected static ?int $navigationSort = 1;
 
@@ -36,9 +38,23 @@ class Caixa extends Page implements HasForms
     public bool $exibir_saldo_anterior = true;
     public bool $exibir_transferencias = false;
 
+    protected $queryString = [
+        'periodo' => ['except' => 'este_mes'],
+        'mes_selecionado' => ['except' => ''],
+        'data_inicio' => ['except' => ''],
+        'data_fim' => ['except' => ''],
+        'conta_bancaria_id' => ['except' => ''],
+        'categoria_id' => ['except' => ''],
+        'visao' => ['except' => 'diaria'],
+        'exibir_saldo_anterior' => ['except' => true],
+        'exibir_transferencias' => ['except' => false],
+    ];
+
     public function mount(): void
     {
-        $this->mes_selecionado = now()->format('Y-m');
+        if (!$this->mes_selecionado) {
+            $this->mes_selecionado = now()->format('Y-m');
+        }
     }
 
     public function form(Forms\Form $form): Forms\Form
