@@ -487,9 +487,15 @@ class ContaReceberResource extends Resource
 
                         $lote = null;
                         if ($count > 0) {
+                            $descricao = $data['descricao'] ?? null;
+                            if (!$descricao) {
+                                $canal = $records->first()?->forma_pagamento ?? 'Repasse';
+                                $dataFormatada = \Carbon\Carbon::parse($data['data_recebimento'])->format('d/m/Y');
+                                $descricao = "Repasse {$canal} {$dataFormatada}";
+                            }
                             $lote = LoteRecebimento::create([
                                 'data_recebimento' => $data['data_recebimento'],
-                                'descricao' => $data['descricao'] ?? null,
+                                'descricao' => $descricao,
                                 'valor_total' => round($valorTotal, 2),
                                 'quantidade_contas' => $count,
                             ]);
