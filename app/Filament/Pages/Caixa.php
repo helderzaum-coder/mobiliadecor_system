@@ -23,8 +23,6 @@ class Caixa extends Page implements HasForms
     protected static ?string $navigationGroup = 'Financeiro';
     protected static ?string $navigationLabel = 'Caixa';
     protected static ?string $title = 'Fluxo de Caixa';
-    protected ?string $maxContentWidth = 'full';
-
     protected static string $view = 'filament.pages.caixa';
     protected static ?int $navigationSort = 1;
 
