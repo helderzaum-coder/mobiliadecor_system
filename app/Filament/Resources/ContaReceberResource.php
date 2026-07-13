@@ -487,12 +487,9 @@ class ContaReceberResource extends Resource
 
                         $lote = null;
                         if ($count > 0) {
-                            $descricao = !empty($data['descricao']) ? $data['descricao'] : null;
-                            if (!$descricao) {
-                                $canal = $records->pluck('forma_pagamento')->filter()->countBy()->sortDesc()->keys()->first() ?? 'Geral';
-                                $dataFormatada = \Carbon\Carbon::parse($data['data_recebimento'])->format('d/m/Y');
-                                $descricao = "Repasse {$canal} {$dataFormatada}";
-                            }
+                            $canal = $records->pluck('forma_pagamento')->filter()->countBy()->sortDesc()->keys()->first() ?? 'Geral';
+                            $dataFormatada = \Carbon\Carbon::parse($data['data_recebimento'])->format('d/m/Y');
+                            $descricao = !empty($data['descricao']) ? $data['descricao'] : "Repasse {$canal} {$dataFormatada}";
                             $lote = LoteRecebimento::create([
                                 'data_recebimento' => $data['data_recebimento'],
                                 'descricao' => $descricao,
@@ -538,10 +535,13 @@ class ContaReceberResource extends Resource
 
                         $valorTotal = (float) $records->sum('valor_parcela');
                         $dataRecebimento = $records->first()->data_recebimento ?? now()->toDateString();
+                        $canal = $records->pluck('forma_pagamento')->filter()->countBy()->sortDesc()->keys()->first() ?? 'Geral';
+                        $dataFormatada = \Carbon\Carbon::parse($dataRecebimento)->format('d/m/Y');
+                        $descricao = !empty($data['descricao']) ? $data['descricao'] : "Repasse {$canal} {$dataFormatada}";
 
                         $lote = LoteRecebimento::create([
                             'data_recebimento' => $dataRecebimento,
-                            'descricao' => $data['descricao'] ?? null,
+                            'descricao' => $descricao,
                             'valor_total' => round($valorTotal, 2),
                             'quantidade_contas' => $records->count(),
                         ]);
