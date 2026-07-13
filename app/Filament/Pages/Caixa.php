@@ -376,71 +376,102 @@ class Caixa extends Page implements HasForms
         ];
     }
 
+    public ?string $editId = null;
+    public ?string $editModel = null;
+    public ?string $editDescricao = null;
+    public ?string $editValor = null;
+    public ?string $editData = null;
+    public ?string $editContaOrigemId = null;
+    public ?string $editContaDestinoId = null;
+    public ?string $editTransferenciaId = null;
+    public bool $showEditModal = false;
+
     public static function canAccess(): bool
     {
         return auth()->user()?->hasRole('admin') ?? false;
     }
 
+    public function abrirEditModal(string $model, int $id): void
+    {
+        $this->editModel = $model;
+        $this->editId = $id;
+
+        if ($model === 'pagar') {
+            $registro = ContaPagar::find($id);
+            $this->editDescricao = $registro->descricao ?? $registro->observacoes;
+            $this->editValor = number_format((float) $registro->valor_parcela, 2, ',', '.');
+            $this->editData = $registro->data_pagamento?->format('Y-m-d');
+            $this->editContaOrigemId = $registro->conta_bancaria_id;
+            $this->editTransferenciaId = $registro->transferencia_id;
+            if ($registro->transferencia_id) {
+                $par = ContaReceber::where('transferencia_id', $registro->transferencia_id)->first();
+                $this->editContaDestinoId = $par?->conta_bancaria_id;
+            }
+        } else {
+            $registro = ContaReceber::find($id);
+            $this->editDescricao = $registro->observacoes;
+            $this->editValor = number_format((float) $registro->valor_parcela, 2, ',', '.');
+            $this->editData = $registro->data_recebimento?->format('Y-m-d');
+            $this->editContaDestinoId = $registro->conta_bancaria_id;
+            $this->editTransferenciaId = $registro->transferencia_id;
+            if ($registro->transferencia_id) {
+                $par = ContaPagar::where('transferencia_id', $registro->transferencia_id)->first();
+                $this->editContaOrigemId = $par?->conta_bancaria_id;
+            }
+        }
+
+        $this->showEditModal = true;
+    }
+
+    public function salvarEdicao(): void
+    {
+        $valorFloat = round((float) str_replace(['.', ','], ['', '.'], $this->editValor), 2);
+
+        if ($this->editTransferenciaId) {
+            // Atualizar ambos os lados da transferência
+            ContaPagar::where('transferencia_id', $this->editTransferenciaId)->update([
+                'valor_parcela' => $valorFloat,
+                'data_pagamento' => $this->editData,
+                'data_vencimento' => $this->editData,
+                'conta_bancaria_id' => $this->editContaOrigemId,
+                'descricao' => $this->editDescricao,
+            ]);
+            ContaReceber::where('transferencia_id', $this->editTransferenciaId)->update([
+                'valor_parcela' => $valorFloat,
+                'data_recebimento' => $this->editData,
+                'data_vencimento' => $this->editData,
+                'conta_bancaria_id' => $this->editContaDestinoId,
+                'observacoes' => $this->editDescricao,
+            ]);
+        } elseif ($this->editModel === 'pagar') {
+            ContaPagar::where('id_conta_pagar', $this->editId)->update([
+                'valor_parcela' => $valorFloat,
+                'data_pagamento' => $this->editData,
+                'data_vencimento' => $this->editData,
+                'descricao' => $this->editDescricao,
+            ]);
+        } else {
+            ContaReceber::where('id_conta_receber', $this->editId)->update([
+                'valor_parcela' => $valorFloat,
+                'data_recebimento' => $this->editData,
+                'data_vencimento' => $this->editData,
+                'observacoes' => $this->editDescricao,
+            ]);
+        }
+
+        $this->showEditModal = false;
+        Notification::make()->title('Movimentação atualizada.')->success()->send();
+    }
+
     public function excluirMovimentacao(string $model, int $id): void
     {
         if ($model === 'pagar') {
-            $registro = ContaPagar::find($id);
-            if ($registro) {
-                $registro->delete(); // deleting event já remove ContaReceber vinculada se for transferência
-            }
+            ContaPagar::find($id)?->delete();
         } else {
-            $registro = ContaReceber::find($id);
-            if ($registro) {
-                $registro->delete(); // deleting event já remove ContaPagar vinculada se for transferência
-            }
+            ContaReceber::find($id)?->delete();
         }
 
         Notification::make()->title('Movimentação excluída.')->success()->send();
-    }
-
-    public function editarMovimentacao(string $model, int $id, string $descricao, string $valor, string $data): void
-    {
-        $valorFloat = round((float) str_replace(['.', ','], ['', '.'], $valor), 2);
-
-        if ($model === 'pagar') {
-            $registro = ContaPagar::find($id);
-            if ($registro) {
-                $registro->update([
-                    'descricao' => $descricao,
-                    'valor_parcela' => $valorFloat,
-                    'data_pagamento' => $data,
-                    'data_vencimento' => $data,
-                ]);
-                // Se for transferência, atualizar o par
-                if ($registro->transferencia_id) {
-                    ContaReceber::where('transferencia_id', $registro->transferencia_id)->update([
-                        'valor_parcela' => $valorFloat,
-                        'data_recebimento' => $data,
-                        'data_vencimento' => $data,
-                    ]);
-                }
-            }
-        } else {
-            $registro = ContaReceber::find($id);
-            if ($registro) {
-                $registro->update([
-                    'observacoes' => $descricao,
-                    'valor_parcela' => $valorFloat,
-                    'data_recebimento' => $data,
-                    'data_vencimento' => $data,
-                ]);
-                // Se for transferência, atualizar o par
-                if ($registro->transferencia_id) {
-                    ContaPagar::where('transferencia_id', $registro->transferencia_id)->update([
-                        'valor_parcela' => $valorFloat,
-                        'data_pagamento' => $data,
-                        'data_vencimento' => $data,
-                    ]);
-                }
-            }
-        }
-
-        Notification::make()->title('Movimentação atualizada.')->success()->send();
     }
 
     protected function getHeaderActions(): array
