@@ -32,9 +32,9 @@ class CteService
             try {
                 $dados = self::extrairDadosXml($arquivo);
 
-                if (!$dados || empty($dados['chave_nfe'])) {
+                if (!$dados) {
                     $resultado['erros']++;
-                    $resultado['detalhes'][] = basename($arquivo) . ': chave NF-e não encontrada';
+                    $resultado['detalhes'][] = basename($arquivo) . ': XML inválido';
                     continue;
                 }
 
@@ -198,6 +198,14 @@ class CteService
                 $dados['numero_nfe'] = ltrim(substr($dados['chave_nfe'], 25, 9), '0');
             }
 
+            // Fallback: infOutros/nDoc (coletas, devoluções sem NF-e)
+            if (empty($dados['chave_nfe'])) {
+                $nDoc = $xml->xpath('//cte:infOutros/cte:nDoc');
+                if (!empty($nDoc)) {
+                    $dados['numero_nfe'] = (string) $nDoc[0];
+                }
+            }
+
             $vTPrest = $xml->xpath('//cte:vTPrest');
             $dados['valor_frete'] = !empty($vTPrest) ? round((float) $vTPrest[0], 2) : 0;
 
@@ -242,6 +250,14 @@ class CteService
 
             if (!empty($dados['chave_nfe']) && strlen($dados['chave_nfe']) === 44) {
                 $dados['numero_nfe'] = ltrim(substr($dados['chave_nfe'], 25, 9), '0');
+            }
+
+            // Fallback: infOutros/nDoc
+            if (empty($dados['chave_nfe'])) {
+                $nDoc = $xml->xpath('//infOutros/nDoc');
+                if (!empty($nDoc)) {
+                    $dados['numero_nfe'] = (string) $nDoc[0];
+                }
             }
 
             $vTPrest = $xml->xpath('//vTPrest');
