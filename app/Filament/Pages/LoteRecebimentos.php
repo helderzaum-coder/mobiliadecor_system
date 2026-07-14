@@ -305,10 +305,14 @@ class LoteRecebimentos extends Page
             ]);
 
             if ($conta->venda) {
-                $conta->venda->update([
-                    'repasse_recebido' => true,
-                    'data_recebimento' => $this->data_recebimento,
-                ]);
+                $pendentes = ContaReceber::where('id_venda', $conta->id_venda)
+                    ->where('status', 'pendente')->count();
+                if ($pendentes === 0) {
+                    $conta->venda->update([
+                        'repasse_recebido' => true,
+                        'data_recebimento' => $this->data_recebimento,
+                    ]);
+                }
             }
             $valorTotal += (float) $conta->valor_parcela;
             $count++;

@@ -355,12 +355,16 @@ class ContaReceberResource extends Resource
                             'data_recebimento' => $data['data_recebimento'],
                             'conta_bancaria_id' => $data['conta_bancaria_id'] ?? $record->conta_bancaria_id,
                         ]);
-                        // Atualizar venda também
+                        // Marcar venda como recebida somente se todas as contas estão recebidas
                         if ($record->venda) {
-                            $record->venda->update([
-                                'repasse_recebido' => true,
-                                'data_recebimento' => $data['data_recebimento'],
-                            ]);
+                            $pendentes = ContaReceber::where('id_venda', $record->id_venda)
+                                ->where('status', 'pendente')->count();
+                            if ($pendentes === 0) {
+                                $record->venda->update([
+                                    'repasse_recebido' => true,
+                                    'data_recebimento' => $data['data_recebimento'],
+                                ]);
+                            }
                         }
                         Notification::make()->title('Recebimento confirmado.')->success()->send();
                     })
@@ -477,10 +481,14 @@ class ContaReceberResource extends Resource
                                 'conta_bancaria_id' => $data['conta_bancaria_id'] ?? null,
                             ]);
                             if ($record->venda) {
-                                $record->venda->update([
-                                    'repasse_recebido' => true,
-                                    'data_recebimento' => $data['data_recebimento'],
-                                ]);
+                                $pendentes = ContaReceber::where('id_venda', $record->id_venda)
+                                    ->where('status', 'pendente')->count();
+                                if ($pendentes === 0) {
+                                    $record->venda->update([
+                                        'repasse_recebido' => true,
+                                        'data_recebimento' => $data['data_recebimento'],
+                                    ]);
+                                }
                             }
                             $processedIds[] = $record->getKey();
                             $valorTotal += (float) $record->valor_parcela;
