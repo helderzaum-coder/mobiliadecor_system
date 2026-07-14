@@ -76,7 +76,7 @@ class FaturaTransportadoraResource extends Resource
                             ->options(fn () => Transportadora::where('ativo', true)->orderBy('nome_transportadora')->pluck('nome_transportadora', 'id_transportadora')->toArray())
                             ->required()
                             ->searchable()
-                            ->reactive()
+                            ->live()
                             ->afterStateUpdated(fn (Forms\Set $set) => $set('ctes_selecionados', [])),
                         Forms\Components\FileUpload::make('csv_import')
                             ->label('Importar CSV (opcional)')
@@ -174,6 +174,8 @@ class FaturaTransportadoraResource extends Resource
                                     ->toArray();
                             })
                             ->required()
+                            ->searchable()
+                            ->bulkToggleable()
                             ->columns(1)
                             ->visible(fn (Forms\Get $get) => (bool) $get('id_transportadora')),
                         Forms\Components\TextInput::make('numero_fatura')
