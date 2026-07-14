@@ -61,6 +61,7 @@ class MagaluPlanilhaService
 
             try {
                 $comissaoServicos = abs(self::parseDecimal($sheet->getCell("AE{$i}")->getValue()));
+                $comissaoServicos2 = abs(self::parseDecimal($sheet->getCell("AL{$i}")->getValue()));
                 $tarifaFixa = abs(self::parseDecimal($sheet->getCell("AR{$i}")->getValue()));
                 $subsidioMagaluVista = self::parseDecimal($sheet->getCell("AZ{$i}")->getValue());
                 $descontoVendedorVista = abs(self::parseDecimal($sheet->getCell("BA{$i}")->getValue()));
@@ -70,8 +71,8 @@ class MagaluPlanilhaService
                 $descontoCupomVendedor = abs(self::parseDecimal($sheet->getCell("BE{$i}")->getValue()));
                 $valorLiquido = self::parseDecimal($sheet->getCell("BF{$i}")->getValue());
 
-                // Comissão real = serviços marketplace + tarifa fixa
-                $comissaoReal = round($comissaoServicos + $tarifaFixa, 2);
+                // Comissão real = serviços marketplace (forma 1 + forma 2) + tarifa fixa
+                $comissaoReal = round($comissaoServicos + $comissaoServicos2 + $tarifaFixa, 2);
 
                 // Descontos pagos pelo seller (Promo, Vista, Cupom)
                 // Esses valores REDUZEM o repasse — a Magalu desconta do vendedor
@@ -131,6 +132,26 @@ class MagaluPlanilhaService
                             'lancamento_manual' => false,
                         ]);
                     }
+                }
+
+                // Gerar conta a receber principal se não existir
+                $contaPrincipal = \App\Models\ContaReceber::where('id_venda', $venda->id_venda)
+                    ->where('forma_pagamento', 'not like', '%Subsídio%')
+                    ->first();
+
+                if (!$contaPrincipal) {
+                    $repasseCalc = (float) $venda->valor_total_venda - $comissaoReal - (float) ($venda->comissao_afiliado ?? 0);
+                    \App\Models\ContaReceber::create([
+                        'id_venda' => $venda->id_venda,
+                        'valor_parcela' => round($repasseCalc, 2),
+                        'data_vencimento' => $venda->data_venda,
+                        'status' => 'pendente',
+                        'numero_parcela' => 1,
+                        'total_parcelas' => 1,
+                        'forma_pagamento' => $venda->canal?->nome_canal ?? 'Magalu',
+                        'observacoes' => "Repasse #{$venda->numero_pedido_canal}",
+                        'lancamento_manual' => false,
+                    ]);
                 }
 
                 VendaRecalculoService::recalcularMargens($venda);
