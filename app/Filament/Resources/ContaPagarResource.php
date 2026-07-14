@@ -144,16 +144,19 @@ class ContaPagarResource extends Resource
 
             Forms\Components\Section::make('Juros por Atraso')->schema([
                 Forms\Components\TextInput::make('juros_atraso')
-                    ->label('Juros (%)')
+                    ->label('Juros (R$)')
                     ->numeric()
-                    ->placeholder('Ex: 2.00')
-                    ->helperText('Percentual aplicado por dia ou por mês de atraso'),
+                    ->prefix('R$')
+                    ->placeholder('Ex: 15.00')
+                    ->helperText('Valor em reais a ser adicionado ao pagamento'),
                 Forms\Components\Select::make('tipo_juros')
                     ->label('Tipo de Juros')
                     ->options([
+                        'fixo' => 'Valor fixo',
                         'ao_dia' => 'Ao dia',
                         'ao_mes' => 'Ao mês',
                     ])
+                    ->default('fixo')
                     ->placeholder('Selecione...')
                     ->required(fn ($get) => filled($get('juros_atraso'))),
             ])->columns(2),
