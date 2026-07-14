@@ -84,6 +84,21 @@ class EditContaPagar extends EditRecord
             $data['grupo_recorrencia'] = Str::uuid()->toString();
         }
 
+        // Somar juros fixo ao valor_parcela
+        if (($data['tipo_juros'] ?? null) === 'fixo' && (float) ($data['juros_atraso'] ?? 0) > 0) {
+            $jurosAnterior = (float) ($this->record->juros_atraso ?? 0);
+            $tipoAnterior = $this->record->tipo_juros ?? null;
+            // Só soma se o juros mudou ou é novo
+            if ($tipoAnterior !== 'fixo' || $jurosAnterior != (float) $data['juros_atraso']) {
+                // Remove juros anterior se já tinha sido aplicado
+                $valorBase = (float) $data['valor_parcela'];
+                if ($tipoAnterior === 'fixo' && $jurosAnterior > 0) {
+                    $valorBase = $valorBase - $jurosAnterior;
+                }
+                $data['valor_parcela'] = round($valorBase + (float) $data['juros_atraso'], 2);
+            }
+        }
+
         return $data;
     }
 }
