@@ -59,10 +59,15 @@ class CreateContaPagar extends CreateRecord
         $vencimento = Carbon::parse($data['data_vencimento']);
         $fim = !empty($data['data_fim_recorrencia']) ? Carbon::parse($data['data_fim_recorrencia']) : null;
 
-        // Gera 12 meses à frente (ou até data fim) para recorrências
+        // Gera 1 ano à frente (ou até data fim)
+        $defaultQtd = match ($data['intervalo_recorrencia']) {
+            'semanal' => 52,
+            'quinzenal' => 26,
+            default => 12,
+        };
         $meses = $fim
-            ? min(52, $this->calcularQuantidade($data['intervalo_recorrencia'], $vencimento, $fim))
-            : 12;
+            ? min($defaultQtd, $this->calcularQuantidade($data['intervalo_recorrencia'], $vencimento, $fim))
+            : $defaultQtd;
 
         $primeiro = null;
 

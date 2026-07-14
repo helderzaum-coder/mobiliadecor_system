@@ -127,10 +127,9 @@ class ContaPagarResource extends Resource
                     ->visible(fn ($get) => $get('recorrente'))
                     ->required(fn ($get) => $get('recorrente')),
                 Forms\Components\DatePicker::make('data_fim_recorrencia')
-                    ->label('Fim da Recorrência')
-                    ->helperText('Obrigatório para semanal/quinzenal. Mensal: se vazio, gera 12 meses.')
-                    ->visible(fn ($get) => $get('recorrente'))
-                    ->required(fn ($get) => in_array($get('intervalo_recorrencia'), ['semanal', 'quinzenal'])),
+                    ->label('Fim da Recorrência (opcional)')
+                    ->helperText('Se vazio: semanal=52 semanas, quinzenal=26, mensal=12 meses')
+                    ->visible(fn ($get) => $get('recorrente')),
                 Forms\Components\TextInput::make('numero_parcela')
                     ->label('Nº Parcela')
                     ->numeric()
