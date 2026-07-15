@@ -27,6 +27,7 @@ class LoteRecebimentos extends Page
     public array $descontos = [];
     public string $desconto_descricao = '';
     public string $desconto_valor = '';
+    public string $busca_reembolso = '';
     public array $entradas_avulsas = [];
     public string $entrada_descricao = '';
     public string $entrada_valor = '';
@@ -100,10 +101,43 @@ class LoteRecebimentos extends Page
         $this->descontos[] = [
             'descricao' => trim($this->desconto_descricao),
             'valor' => round((float) $this->desconto_valor, 2),
+            'conta_pagar_id' => null,
         ];
 
         $this->desconto_descricao = '';
         $this->desconto_valor = '';
+    }
+
+    public function buscarReembolso(): void
+    {
+        if (empty(trim($this->busca_reembolso))) return;
+
+        $contaPagar = ContaPagar::where('status', 'pendente')
+            ->whereIn('forma_pagamento', ['Estorno', 'Reembolso'])
+            ->where('observacoes', 'like', '%' . trim($this->busca_reembolso) . '%')
+            ->first();
+
+        if (!$contaPagar) {
+            Notification::make()->title('Nenhum reembolso/estorno pendente encontrado para este pedido.')->warning()->send();
+            return;
+        }
+
+        // Verificar se já foi adicionado
+        foreach ($this->descontos as $d) {
+            if (($d['conta_pagar_id'] ?? null) == $contaPagar->id_conta_pagar) {
+                Notification::make()->title('Este reembolso já está no lote.')->warning()->send();
+                return;
+            }
+        }
+
+        $this->descontos[] = [
+            'descricao' => "🔄 {$contaPagar->forma_pagamento} - Pedido #{$this->busca_reembolso}",
+            'valor' => round((float) $contaPagar->valor_parcela, 2),
+            'conta_pagar_id' => $contaPagar->id_conta_pagar,
+        ];
+
+        Notification::make()->title("Reembolso de R$ " . number_format($contaPagar->valor_parcela, 2, ',', '.') . " adicionado.")->success()->send();
+        $this->busca_reembolso = '';
     }
 
     public function removerDesconto(int $index): void
@@ -339,19 +373,29 @@ class LoteRecebimentos extends Page
 
         // Lançar descontos como contas a pagar (já pagas) vinculadas ao lote
         foreach ($this->descontos as $desconto) {
-            ContaPagar::create([
-                'valor_parcela' => $desconto['valor'],
-                'data_vencimento' => $this->data_recebimento,
-                'data_pagamento' => $this->data_recebimento,
-                'status' => 'pago',
-                'numero_parcela' => 1,
-                'total_parcelas' => 1,
-                'forma_pagamento' => 'Desconto Canal',
-                'observacoes' => $desconto['descricao'] . ($this->identificador_lote ? " | {$this->identificador_lote}" : ''),
-                'lancamento_manual' => true,
-                'conta_bancaria_id' => $this->conta_bancaria_id ?: null,
-                'lote_recebimento_id' => $lote->id,
-            ]);
+            if (!empty($desconto['conta_pagar_id'])) {
+                // Reembolso existente: dar baixa e vincular ao lote
+                ContaPagar::where('id_conta_pagar', $desconto['conta_pagar_id'])->update([
+                    'status' => 'pago',
+                    'data_pagamento' => $this->data_recebimento,
+                    'conta_bancaria_id' => $this->conta_bancaria_id ?: null,
+                    'lote_recebimento_id' => $lote->id,
+                ]);
+            } else {
+                ContaPagar::create([
+                    'valor_parcela' => $desconto['valor'],
+                    'data_vencimento' => $this->data_recebimento,
+                    'data_pagamento' => $this->data_recebimento,
+                    'status' => 'pago',
+                    'numero_parcela' => 1,
+                    'total_parcelas' => 1,
+                    'forma_pagamento' => 'Desconto Canal',
+                    'observacoes' => $desconto['descricao'] . ($this->identificador_lote ? " | {$this->identificador_lote}" : ''),
+                    'lancamento_manual' => true,
+                    'conta_bancaria_id' => $this->conta_bancaria_id ?: null,
+                    'lote_recebimento_id' => $lote->id,
+                ]);
+            }
         }
 
         // Lançar entradas avulsas como contas a receber (já recebidas) vinculadas ao lote

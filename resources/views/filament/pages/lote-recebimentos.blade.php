@@ -89,8 +89,8 @@
                         <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Descontos / Abatimentos</h4>
 
                         @foreach($descontos as $index => $desconto)
-                            <div class="flex items-center justify-between p-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm mb-2">
-                                <span class="text-red-700 dark:text-red-300">{{ $desconto['descricao'] }}</span>
+                            <div class="flex items-center justify-between p-2 rounded-lg {{ !empty($desconto['conta_pagar_id']) ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' }} border text-sm mb-2">
+                                <span class="{{ !empty($desconto['conta_pagar_id']) ? 'text-orange-700 dark:text-orange-300' : 'text-red-700 dark:text-red-300' }}">{{ $desconto['descricao'] }}</span>
                                 <div class="flex items-center gap-2">
                                     <span class="font-semibold text-red-600">- R$ {{ number_format($desconto['valor'], 2, ',', '.') }}</span>
                                     <button wire:click="removerDesconto({{ $index }})"
@@ -98,6 +98,17 @@
                                 </div>
                             </div>
                         @endforeach
+
+                        {{-- Buscar reembolso por pedido --}}
+                        <div class="flex gap-2 mb-2">
+                            <input type="text" wire:model="busca_reembolso" placeholder="Nº pedido com reembolso/estorno..."
+                                wire:keydown.enter="buscarReembolso"
+                                style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;font-size:13px;">
+                            <button wire:click="buscarReembolso"
+                                style="padding:8px 14px;border-radius:8px;border:none;cursor:pointer;background:#f59e0b;color:#fff;font-size:12px;font-weight:600;white-space:nowrap;">
+                                🔄 Reembolso
+                            </button>
+                        </div>
 
                         <div class="flex gap-2">
                             <input type="text" wire:model="desconto_descricao" placeholder="Ex: Crédito publicidade"
