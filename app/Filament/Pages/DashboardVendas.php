@@ -855,9 +855,14 @@ class DashboardVendas extends Page implements HasForms
         }
         if ($this->busca_cpf) {
             $cpfLimpo = preg_replace('/\D/', '', $this->busca_cpf);
-            $query->where(function ($q) use ($cpfLimpo) {
+            $blingIds = \App\Models\PedidoBlingStaging::where(function ($sq) use ($cpfLimpo) {
+                $sq->where('cliente_documento', 'like', '%' . $cpfLimpo . '%')
+                   ->orWhereRaw("REPLACE(REPLACE(REPLACE(cliente_documento, '.', ''), '-', ''), '/', '') LIKE ?", ['%' . $cpfLimpo . '%']);
+            })->pluck('bling_id');
+            $query->where(function ($q) use ($cpfLimpo, $blingIds) {
                 $q->where('cliente_documento', 'like', '%' . $cpfLimpo . '%')
-                  ->orWhereIn('bling_id', \App\Models\PedidoBlingStaging::where('cliente_documento', 'like', '%' . $cpfLimpo . '%')->pluck('bling_id'));
+                  ->orWhereRaw("REPLACE(REPLACE(REPLACE(cliente_documento, '.', ''), '-', ''), '/', '') LIKE ?", ['%' . $cpfLimpo . '%'])
+                  ->orWhereIn('bling_id', $blingIds);
             });
         }
         if ($this->canal) {
