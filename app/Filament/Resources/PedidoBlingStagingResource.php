@@ -964,8 +964,16 @@ class PedidoBlingStagingResource extends Resource
                     ->modalHeading('Desaprovar e Reimportar')
                     ->modalDescription('Isso vai excluir a venda criada, voltar o pedido para pendente e rebuscar dados da API do ML. Continuar?')
                     ->action(function (PedidoBlingStaging $record) {
-                        // Excluir conta a receber e venda vinculada
+                        // Excluir contas a pagar (reembolsos/estornos) vinculadas
                         $vendaIds = \App\Models\Venda::where('bling_id', $record->bling_id)->pluck('id_venda');
+                        $vendas = \App\Models\Venda::where('bling_id', $record->bling_id)->get();
+                        foreach ($vendas as $v) {
+                            \App\Models\ContaPagar::where('status', 'pendente')
+                                ->where('observacoes', 'like', '%' . $v->numero_pedido_canal . '%')
+                                ->whereIn('forma_pagamento', ['Estorno', 'Reembolso'])
+                                ->delete();
+                        }
+                        // Excluir contas a receber (qualquer status pendente)
                         \App\Models\ContaReceber::whereIn('id_venda', $vendaIds)->where('status', 'pendente')->delete();
                         \App\Models\Venda::where('bling_id', $record->bling_id)->delete();
 
@@ -1182,7 +1190,15 @@ class PedidoBlingStagingResource extends Resource
                         foreach ($records as $record) {
                             if ($record->status !== 'aprovado') continue;
 
+                            // Excluir contas a pagar (reembolsos/estornos) vinculadas
                             $vendaIds = \App\Models\Venda::where('bling_id', $record->bling_id)->pluck('id_venda');
+                            $vendas = \App\Models\Venda::where('bling_id', $record->bling_id)->get();
+                            foreach ($vendas as $v) {
+                                \App\Models\ContaPagar::where('status', 'pendente')
+                                    ->where('observacoes', 'like', '%' . $v->numero_pedido_canal . '%')
+                                    ->whereIn('forma_pagamento', ['Estorno', 'Reembolso'])
+                                    ->delete();
+                            }
                             \App\Models\ContaReceber::whereIn('id_venda', $vendaIds)->where('status', 'pendente')->delete();
                             \App\Models\Venda::where('bling_id', $record->bling_id)->delete();
                             $record->update(['status' => 'pendente']);
