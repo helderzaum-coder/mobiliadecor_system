@@ -33,6 +33,7 @@ class Caixa extends Page implements HasForms
     public ?string $conta_bancaria_id = null;
     public ?string $categoria_id = null;
     public ?string $visao = 'diaria';
+    public ?string $tipo_movimento = null;
     public bool $exibir_saldo_anterior = true;
     public bool $exibir_transferencias = false;
 
@@ -44,6 +45,7 @@ class Caixa extends Page implements HasForms
         'conta_bancaria_id' => ['except' => ''],
         'categoria_id' => ['except' => ''],
         'visao' => ['except' => 'diaria'],
+        'tipo_movimento' => ['except' => ''],
         'exibir_saldo_anterior' => ['except' => true],
         'exibir_transferencias' => ['except' => false],
     ];
@@ -105,6 +107,14 @@ class Caixa extends Page implements HasForms
                         'categoria' => '📊 Por Categoria',
                     ])
                     ->default('diaria')
+                    ->reactive(),
+                Forms\Components\Select::make('tipo_movimento')
+                    ->label('Tipo')
+                    ->options([
+                        'entradas' => '▲ Somente Entradas',
+                        'saidas' => '▼ Somente Saídas',
+                    ])
+                    ->placeholder('Todas')
                     ->reactive(),
                 Forms\Components\Toggle::make('exibir_saldo_anterior')
                     ->label('Exibir saldo anterior')
@@ -318,8 +328,8 @@ class Caixa extends Page implements HasForms
 
     public function getMovimentacoesProperty(): array
     {
-        $entradas = $this->getEntradas();
-        $saidas = $this->getSaidas();
+        $entradas = $this->tipo_movimento === 'saidas' ? collect() : $this->getEntradas();
+        $saidas = $this->tipo_movimento === 'entradas' ? collect() : $this->getSaidas();
 
         $todas = $entradas->concat($saidas)->sortBy('data')->values();
 
@@ -379,8 +389,8 @@ class Caixa extends Page implements HasForms
 
     public function getTotaisProperty(): array
     {
-        $entradas = $this->getEntradas()->sum('valor');
-        $saidas = $this->getSaidas()->sum('valor');
+        $entradas = $this->tipo_movimento === 'saidas' ? 0 : $this->getEntradas()->sum('valor');
+        $saidas = $this->tipo_movimento === 'entradas' ? 0 : $this->getSaidas()->sum('valor');
 
         return [
             'entradas' => $entradas,

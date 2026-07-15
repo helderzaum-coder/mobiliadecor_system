@@ -1,5 +1,5 @@
 <x-filament-panels::page>
-    <div class="mb-4 grid grid-cols-4 gap-4">
+    <div class="mb-4 grid grid-cols-5 gap-4">
         <x-filament::section>
             <x-slot name="heading">Data Recebimento</x-slot>
             {{ $this->record->data_recebimento->format('d/m/Y') }}
@@ -20,6 +20,11 @@
             @else
                 -
             @endif
+        </x-filament::section>
+        <x-filament::section>
+            <x-slot name="heading">Banco</x-slot>
+            @php $banco = $this->record->contasReceber()->first()?->contaBancaria; @endphp
+            {{ $banco?->nome ?? '-' }}
         </x-filament::section>
     </div>
 
