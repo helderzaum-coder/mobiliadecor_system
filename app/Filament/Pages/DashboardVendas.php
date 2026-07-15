@@ -376,8 +376,8 @@ class DashboardVendas extends Page implements HasForms
         // Gerar conta a receber se não existe (forçar mesmo sem NF-e)
         $contaReceber = \App\Models\ContaReceber::where('id_venda', $venda->id_venda)->first();
 
-        // Usar valor da conta a receber existente (valor real recebido)
-        if ($contaReceber) {
+        // Usar valor da conta a receber existente (valor real recebido), exceto quando canal cobra valor total
+        if ($contaReceber && !$reembolsoTotal) {
             $repasse = (float) $contaReceber->valor_parcela;
         }
         if (!$contaReceber) {
@@ -453,9 +453,11 @@ class DashboardVendas extends Page implements HasForms
 
         $contaReceber = \App\Models\ContaReceber::where('id_venda', $venda->id_venda)->first();
 
-        // Usar valor da conta a receber existente (valor real recebido)
-        if ($contaReceber) {
+        // Usar valor da conta a receber existente (valor real recebido), exceto quando canal cobra valor total
+        if ($contaReceber && !$reembolsoTotal) {
             $repasse = (float) $contaReceber->valor_parcela;
+            $contaReceber->update(['estorno_pendente' => true]);
+        } elseif ($contaReceber) {
             $contaReceber->update(['estorno_pendente' => true]);
         }
 
