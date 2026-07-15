@@ -16,6 +16,7 @@ class CanalVenda extends Model
         'comissao_sobre_frete',
         'imposto_sobre_frete',
         'percentual_antecipacao',
+        'reembolso_valor_total',
         'ativo',
     ];
 
@@ -23,6 +24,7 @@ class CanalVenda extends Model
         'ativo' => 'boolean',
         'comissao_sobre_frete' => 'boolean',
         'imposto_sobre_frete' => 'boolean',
+        'reembolso_valor_total' => 'boolean',
         'percentual_antecipacao' => 'decimal:2',
     ];
 

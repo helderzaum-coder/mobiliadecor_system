@@ -52,6 +52,10 @@ class CanalVendaResource extends Resource
                     ->suffix('%')
                     ->default(0)
                     ->helperText('Taxa cobrada pela antecipação de recebíveis'),
+                Forms\Components\Toggle::make('reembolso_valor_total')
+                    ->label('Reembolso = Valor Total')
+                    ->helperText('Canal não devolve comissão em cancelamentos (estorno usa valor total do pedido)')
+                    ->default(false),
             ])->columns(2),
 
             Forms\Components\Section::make('Regras de Comissão')->schema([

@@ -347,11 +347,16 @@ class DashboardVendas extends Page implements HasForms
         if (!$venda) return;
 
         $canal = $venda->canal?->nome_canal ?? 'Marketplace';
+        $canalModel = $venda->canal;
+        $reembolsoTotal = (bool) ($canalModel->reembolso_valor_total ?? false);
         $isMagalu = str_contains(strtolower($canal), 'magalu');
         $isML = str_contains(strtolower($canal), 'mercado') || str_starts_with($venda->numero_pedido_canal ?? '', '2000');
         $afiliado = (float) ($venda->comissao_afiliado ?? 0);
 
-        if ($isMagalu) {
+        if ($reembolsoTotal) {
+            // Canal não devolve comissão: reembolso = valor total do pedido
+            $repasse = (float) $venda->valor_total_venda;
+        } elseif ($isMagalu) {
             $repasse = (float) $venda->valor_total_venda - (float) $venda->comissao - $afiliado;
         } elseif ($isML && (float) ($venda->ml_sale_fee ?? 0) > 0) {
             $mlSaleFee = (float) $venda->ml_sale_fee;
@@ -421,11 +426,15 @@ class DashboardVendas extends Page implements HasForms
         if (!$venda) return;
 
         $canal = $venda->canal?->nome_canal ?? 'Marketplace';
+        $canalModel = $venda->canal;
+        $reembolsoTotal = (bool) ($canalModel->reembolso_valor_total ?? false);
         $isMagalu = str_contains(strtolower($canal), 'magalu');
         $isML = str_contains(strtolower($canal), 'mercado') || str_starts_with($venda->numero_pedido_canal ?? '', '2000');
         $afiliado = (float) ($venda->comissao_afiliado ?? 0);
 
-        if ($isMagalu) {
+        if ($reembolsoTotal) {
+            $repasse = (float) $venda->valor_total_venda;
+        } elseif ($isMagalu) {
             $repasse = (float) $venda->valor_total_venda - (float) $venda->comissao - $afiliado;
         } elseif ($isML && (float) ($venda->ml_sale_fee ?? 0) > 0) {
             $mlSaleFee = (float) $venda->ml_sale_fee;
