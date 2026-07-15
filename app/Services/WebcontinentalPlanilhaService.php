@@ -94,11 +94,15 @@ class WebcontinentalPlanilhaService
         }
 
         // Buscar no staging por todas as chaves possíveis
-        $stagings = PedidoBlingStaging::where(function ($q) use ($chavesPedidoErp, $chavesPedidoSite, $chavesPedidoParceiro) {
-                if (!empty($chavesPedidoErp)) $q->orWhereIn('numero_loja', array_keys($chavesPedidoErp));
-                if (!empty($chavesPedidoSite)) $q->orWhereIn('numero_loja', array_keys($chavesPedidoSite));
-                if (!empty($chavesPedidoParceiro)) $q->orWhereIn('numero_loja', array_keys($chavesPedidoParceiro));
-                if (!empty($chavesPedidoParceiro)) $q->orWhereIn('numero_pedido', array_keys($chavesPedidoParceiro));
+        $todasChaves = array_unique(array_merge(
+            array_keys($chavesPedidoErp),
+            array_keys($chavesPedidoSite),
+            array_keys($chavesPedidoParceiro),
+        ));
+
+        $stagings = PedidoBlingStaging::where(function ($q) use ($todasChaves) {
+                $q->whereIn('numero_loja', $todasChaves)
+                  ->orWhereIn('numero_pedido', $todasChaves);
             })
             ->whereNotNull('bling_id')
             ->get();
