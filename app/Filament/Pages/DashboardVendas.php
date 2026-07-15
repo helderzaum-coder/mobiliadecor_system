@@ -32,6 +32,7 @@ class DashboardVendas extends Page implements HasForms
         'conta'            => ['except' => '', 'as' => 'conta'],
         'status_filtro'    => ['except' => '', 'as' => 'status'],
         'busca_pedido'     => ['except' => '', 'as' => 'pedido'],
+        'busca_cpf'        => ['except' => '', 'as' => 'cpf'],
         'data_inicio'      => ['except' => '', 'as' => 'de'],
         'data_fim'         => ['except' => '', 'as' => 'ate'],
         'pagina'           => ['except' => 1, 'as' => 'pag'],
@@ -44,6 +45,7 @@ class DashboardVendas extends Page implements HasForms
     public ?string $conta = null;
     public ?string $status_filtro = null;
     public ?string $busca_pedido = null;
+    public ?string $busca_cpf = null;
     public ?string $data_inicio = null;
     public ?string $data_fim = null;
     public int $pagina = 1;
@@ -718,6 +720,7 @@ class DashboardVendas extends Page implements HasForms
     public function updatedConta(): void { $this->pagina = 1; }
     public function updatedStatusFiltro(): void { $this->pagina = 1; }
     public function updatedBuscaPedido(): void { $this->pagina = 1; }
+    public function updatedBuscaCpf(): void { $this->pagina = 1; }
     public function updatedDataInicio(): void { $this->pagina = 1; }
     public function updatedDataFim(): void { $this->pagina = 1; }
 
@@ -730,6 +733,11 @@ class DashboardVendas extends Page implements HasForms
                 Forms\Components\TextInput::make('busca_pedido')
                     ->label('Pedido')
                     ->placeholder('Nº pedido...')
+                    ->reactive()
+                    ->debounce(400),
+                Forms\Components\TextInput::make('busca_cpf')
+                    ->label('CPF/CNPJ')
+                    ->placeholder('CPF ou CNPJ...')
                     ->reactive()
                     ->debounce(400),
                 Forms\Components\Select::make('periodo')
@@ -819,8 +827,8 @@ class DashboardVendas extends Page implements HasForms
             $query->where(fn ($q) => $q->where('cancelada', false)->orWhereNull('cancelada'));
         }
 
-        // Se tem busca por pedido, ignorar filtro de período
-        if (empty($this->busca_pedido)) {
+        // Se tem busca por pedido ou CPF, ignorar filtro de período
+        if (empty($this->busca_pedido) && empty($this->busca_cpf)) {
             $query = match ($this->periodo) {
                 'hoje' => $query->whereDate('data_venda', today()),
                 'dia_especifico' => $this->dia_selecionado
@@ -844,6 +852,13 @@ class DashboardVendas extends Page implements HasForms
 
         if ($this->busca_pedido) {
             $query->where('numero_pedido_canal', 'like', '%' . $this->busca_pedido . '%');
+        }
+        if ($this->busca_cpf) {
+            $cpfLimpo = preg_replace('/\D/', '', $this->busca_cpf);
+            $query->where(function ($q) use ($cpfLimpo) {
+                $q->where('cliente_documento', 'like', '%' . $cpfLimpo . '%')
+                  ->orWhereIn('bling_id', \App\Models\PedidoBlingStaging::where('cliente_documento', 'like', '%' . $cpfLimpo . '%')->pluck('bling_id'));
+            });
         }
         if ($this->canal) {
             $query->whereHas('canal', fn ($q) => $q->where('nome_canal', $this->canal));
