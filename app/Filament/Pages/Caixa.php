@@ -211,8 +211,25 @@ class Caixa extends Page implements HasForms
         }
 
         // Sem lote: agrupar por observacoes+data (lotes antigos) ou individual
-        $comObs = $semLote->filter(fn ($r) => !empty($r->observacoes) && !str_starts_with($r->observacoes, 'Repasse #'));
-        $semObs = $semLote->filter(fn ($r) => empty($r->observacoes) || str_starts_with($r->observacoes, 'Repasse #'));
+        // Transferências nunca agrupam (cada uma é individual para facilitar conciliação)
+        $transferencias = $semLote->filter(fn ($r) => !empty($r->transferencia_id));
+        $naoTransf = $semLote->filter(fn ($r) => empty($r->transferencia_id));
+        $comObs = $naoTransf->filter(fn ($r) => !empty($r->observacoes) && !str_starts_with($r->observacoes, 'Repasse #'));
+        $semObs = $naoTransf->filter(fn ($r) => empty($r->observacoes) || str_starts_with($r->observacoes, 'Repasse #'));
+
+        foreach ($transferencias as $r) {
+            $resultado->push([
+                'data' => $r->data_recebimento->format('Y-m-d'),
+                'tipo' => 'entrada',
+                'descricao' => $r->observacoes ?: 'Transferência',
+                'categoria' => $r->categoria?->nome ?? $r->forma_pagamento ?? '-',
+                'banco' => $r->contaBancaria?->nome ?? '-',
+                'valor' => (float) $r->valor_parcela,
+                'id' => $r->id_conta_receber,
+                'model' => 'receber',
+                'transferencia_id' => $r->transferencia_id,
+            ]);
+        }
 
         foreach ($comObs->groupBy(fn ($r) => $r->observacoes . '|' . $r->data_recebimento->format('Y-m-d')) as $chave => $itensLote) {
             $resultado->push([
