@@ -103,11 +103,20 @@ class WebcontinentalPlanilhaService
             ->whereNotNull('bling_id')
             ->get();
 
-        // Indexar por todas as chaves possíveis
+        // Indexar por todas as chaves possíveis (priorizar não processados)
         $stagingMap = [];
         foreach ($stagings as $s) {
-            if ($s->numero_loja) $stagingMap[$s->numero_loja] = $s;
-            if ($s->numero_pedido) $stagingMap[(string) $s->numero_pedido] = $s;
+            if ($s->numero_loja) {
+                if (!isset($stagingMap[$s->numero_loja]) || !$s->planilha_shopee) {
+                    $stagingMap[$s->numero_loja] = $s;
+                }
+            }
+            if ($s->numero_pedido) {
+                $key = (string) $s->numero_pedido;
+                if (!isset($stagingMap[$key]) || !$s->planilha_shopee) {
+                    $stagingMap[$key] = $s;
+                }
+            }
         }
 
         Log::info('WebcontinentalPlanilha: stagings encontrados', [
