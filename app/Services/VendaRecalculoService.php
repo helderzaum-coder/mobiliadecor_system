@@ -52,27 +52,30 @@ class VendaRecalculoService
         $account = $venda->bling_account ?? 'primary';
         $client = new \App\Services\Bling\BlingClient($account);
 
-        // Buscar NF-e por número na API
-        $pagina = 1;
+        // Tentar variações do número (com e sem zero à esquerda)
+        $tentativas = array_unique([$numeroNfe, str_pad($numeroNfe, 6, '0', STR_PAD_LEFT)]);
         $nfeEncontrada = null;
 
-        do {
-            $res = $client->get('/nfe', ['pagina' => $pagina, 'limite' => 100, 'numero' => $numeroNfe]);
-            if (!$res['success']) break;
+        foreach ($tentativas as $tentativa) {
+            $pagina = 1;
+            do {
+                $res = $client->get('/nfe', ['pagina' => $pagina, 'limite' => 100, 'numero' => $tentativa]);
+                if (!$res['success']) break;
 
-            $nfes = $res['body']['data'] ?? [];
-            foreach ($nfes as $nfeResumo) {
-                $numero = (string) ($nfeResumo['numero'] ?? '');
-                if ($numero === $numeroNfe) {
-                    $detalhe = $client->getNfe((int) $nfeResumo['id']);
-                    if ($detalhe['success']) {
-                        $nfeEncontrada = $detalhe['body']['data'] ?? null;
-                        break 2;
+                $nfes = $res['body']['data'] ?? [];
+                foreach ($nfes as $nfeResumo) {
+                    $numero = (string) ($nfeResumo['numero'] ?? '');
+                    if (ltrim($numero, '0') === ltrim($numeroNfe, '0')) {
+                        $detalhe = $client->getNfe((int) $nfeResumo['id']);
+                        if ($detalhe['success']) {
+                            $nfeEncontrada = $detalhe['body']['data'] ?? null;
+                            break 3;
+                        }
                     }
                 }
-            }
-            $pagina++;
-        } while (count($nfes) >= 100);
+                $pagina++;
+            } while (count($nfes) >= 100);
+        }
 
         if (!$nfeEncontrada) {
             return ['success' => false, 'msg' => "NF-e {$numeroNfe} não encontrada no Bling."];
