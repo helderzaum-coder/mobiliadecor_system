@@ -255,8 +255,13 @@ class LoteRecebimentos extends Page
         if (str_contains($conta->forma_pagamento ?? '', 'Subsídio')) return;
 
         $repasse = $this->calcularRepasse($conta->venda);
-        if ($repasse !== null && round($repasse, 2) !== round((float) $conta->valor_parcela, 2)) {
-            $conta->update(['valor_parcela' => round($repasse, 2)]);
+        if ($repasse === null) return;
+
+        $totalParcelas = $conta->total_parcelas > 1 ? $conta->total_parcelas : 1;
+        $valorParcela = round($repasse / $totalParcelas, 2);
+
+        if ($valorParcela !== round((float) $conta->valor_parcela, 2)) {
+            $conta->update(['valor_parcela' => $valorParcela]);
         }
     }
 
