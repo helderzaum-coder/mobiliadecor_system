@@ -20,8 +20,8 @@ class ShopeeAfiliadosService
      * Índice (base 0) => substring que deve conter (case-insensitive).
      */
     public const COLUNAS_ESPERADAS = [
-        0 => 'id do pedido',
-        34 => 'despesas',
+        0 => ['id do pedido', 'order id'],
+        34 => ['despesas', 'expense'],
     ];
 
     /**
@@ -46,11 +46,19 @@ class ShopeeAfiliadosService
         }
 
         $divergencias = [];
-        foreach (self::COLUNAS_ESPERADAS as $idx => $substringEsperada) {
+        foreach (self::COLUNAS_ESPERADAS as $idx => $variantes) {
             $valorReal = mb_strtolower(trim($header[$idx] ?? ''));
-            if (!str_contains($valorReal, $substringEsperada)) {
+            $encontrou = false;
+            foreach ((array) $variantes as $substringEsperada) {
+                if (str_contains($valorReal, $substringEsperada)) {
+                    $encontrou = true;
+                    break;
+                }
+            }
+            if (!$encontrou) {
                 $colLetra = self::idxParaLetra($idx);
-                $divergencias[] = "Coluna {$colLetra} (pos {$idx}): esperado conter \"{$substringEsperada}\" → encontrado \"" . trim($header[$idx] ?? '(vazio)') . "\"";
+                $esperados = implode('" ou "', (array) $variantes);
+                $divergencias[] = "Coluna {$colLetra} (pos {$idx}): esperado conter \"{$esperados}\" → encontrado \"" . trim($header[$idx] ?? '(vazio)') . "\"";
             }
         }
 
