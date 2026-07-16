@@ -49,14 +49,17 @@ class LoteRecebimentos extends Page
                   ->orWhere('observacoes', 'like', '%' . $this->busca . '%');
             })
             ->whereNotIn('id_conta_receber', $this->lote)
-            ->limit(10)
+            ->orderBy('numero_parcela')
+            ->limit(20)
             ->get();
 
         // Recalcular valor em tempo real para exibição
         foreach ($contas as $conta) {
             if ($conta->venda && !$conta->lancamento_manual && !str_contains($conta->forma_pagamento ?? '', 'Subsídio')) {
                 $repasse = $this->calcularRepasse($conta->venda);
-                if ($repasse !== null) {
+                if ($repasse !== null && $conta->total_parcelas > 1) {
+                    $conta->valor_parcela = round($repasse / $conta->total_parcelas, 2);
+                } elseif ($repasse !== null) {
                     $conta->valor_parcela = round($repasse, 2);
                 }
             }
@@ -200,28 +203,35 @@ class LoteRecebimentos extends Page
         $naoEncontrados = [];
 
         foreach ($pedidos as $numeroPedido) {
-            // Primeiro: buscar conta a receber pendente (por venda ou observação)
-            $conta = ContaReceber::where('status', 'pendente')
+            // Buscar todas as contas a receber pendentes do pedido
+            $contas = ContaReceber::where('status', 'pendente')
                 ->where(function ($q) use ($numeroPedido) {
                     $q->whereHas('venda', fn ($q2) => $q2->where('numero_pedido_canal', $numeroPedido))
                       ->orWhere('observacoes', 'like', '%' . $numeroPedido . '%');
                 })
-                ->first();
+                ->orderBy('numero_parcela')
+                ->get();
 
             // Se não tem conta, tentar criar a partir da venda
-            if (!$conta) {
+            if ($contas->isEmpty()) {
                 $venda = \App\Models\Venda::where('numero_pedido_canal', $numeroPedido)->first();
                 if ($venda) {
                     $conta = $this->criarContaReceber($venda);
+                    if ($conta) $contas = collect([$conta]);
                 }
             }
 
-            if ($conta && !in_array($conta->id_conta_receber, $this->lote)) {
-                $this->recalcularValorConta($conta->id_conta_receber);
-                $this->lote[] = $conta->id_conta_receber;
-                $adicionados++;
-            } elseif (!$conta) {
+            if ($contas->isEmpty()) {
                 $naoEncontrados[] = $numeroPedido;
+                continue;
+            }
+
+            foreach ($contas as $conta) {
+                if (!in_array($conta->id_conta_receber, $this->lote)) {
+                    $this->recalcularValorConta($conta->id_conta_receber);
+                    $this->lote[] = $conta->id_conta_receber;
+                    $adicionados++;
+                }
             }
         }
 

@@ -15,6 +15,9 @@
                         <div class="flex items-center justify-between p-3 rounded-lg bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm">
                             <div class="flex items-center gap-2 flex-wrap">
                                 <span class="font-mono text-xs text-gray-800 dark:text-gray-100 font-semibold">{{ $conta->venda?->numero_pedido_canal }}</span>
+                                @if($conta->total_parcelas > 1)
+                                    <span style="background:#7c3aed;color:#fff;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;">{{ $conta->numero_parcela }}/{{ $conta->total_parcelas }}</span>
+                                @endif
                                 <span class="text-gray-400">·</span>
                                 <span class="text-xs text-gray-600 dark:text-gray-300">{{ $conta->forma_pagamento }}</span>
                                 <span class="text-gray-400">·</span>
@@ -67,6 +70,9 @@
                         <div class="flex items-center justify-between p-3 rounded-lg bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm">
                             <div>
                                 <span class="font-mono text-xs text-gray-800 dark:text-gray-100 font-semibold">{{ $conta->venda?->numero_pedido_canal }}</span>
+                                @if($conta->total_parcelas > 1)
+                                    <span style="background:#7c3aed;color:#fff;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;margin-left:4px;">{{ $conta->numero_parcela }}/{{ $conta->total_parcelas }}</span>
+                                @endif
                                 <span class="text-gray-400 mx-1">·</span>
                                 <span class="text-xs text-gray-600 dark:text-gray-300">{{ $conta->forma_pagamento }}</span>
                                 <span class="text-gray-400 mx-1">·</span>
