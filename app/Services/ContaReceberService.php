@@ -29,6 +29,7 @@ class ContaReceberService
         $isMagalu = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
         $isShopee = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'shopee');
         $isML = $canal && (str_contains(strtolower($canal->nome_canal ?? ''), 'mercado') || str_starts_with($venda->numero_pedido_canal ?? '', '2000'));
+        $isMM = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'madeira');
 
         if ($isMagalu) {
             $repasse = (float) $venda->valor_total_venda - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
@@ -56,19 +57,36 @@ class ContaReceberService
             $repasse += $subsidioPix;
         }
 
-        ContaReceber::create([
-            'id_venda' => $venda->id_venda,
-            'valor_parcela' => round($repasse, 2),
-            'data_vencimento' => $venda->data_venda,
-            'status' => 'pendente',
-            'numero_parcela' => 1,
-            'total_parcelas' => 1,
-            'forma_pagamento' => $canal?->nome_canal ?? 'Marketplace',
-            'observacoes' => "Repasse #{$venda->numero_pedido_canal}",
-            'lancamento_manual' => false,
-        ]);
+        // MM com parcelas: criar múltiplas ContaReceber
+        $totalParcelas = 1;
+        if ($isMM) {
+            $dadoMM = \App\Models\PlanilhaMmDado::where('numero_pedido', $venda->numero_pedido_canal)->first();
+            if ($dadoMM && $dadoMM->parcelas > 1) {
+                $totalParcelas = $dadoMM->parcelas;
+            }
+        }
 
-        Log::info("ContaReceber gerada para venda #{$venda->id_venda} ({$venda->numero_pedido_canal}) - R$ " . number_format($repasse, 2));
+        $valorParcela = round($repasse / $totalParcelas, 2);
+
+        for ($i = 1; $i <= $totalParcelas; $i++) {
+            $obs = $totalParcelas > 1
+                ? "Repasse #{$venda->numero_pedido_canal} {$i}/{$totalParcelas}"
+                : "Repasse #{$venda->numero_pedido_canal}";
+
+            ContaReceber::create([
+                'id_venda' => $venda->id_venda,
+                'valor_parcela' => $valorParcela,
+                'data_vencimento' => $venda->data_venda,
+                'status' => 'pendente',
+                'numero_parcela' => $i,
+                'total_parcelas' => $totalParcelas,
+                'forma_pagamento' => $canal?->nome_canal ?? 'Marketplace',
+                'observacoes' => $obs,
+                'lancamento_manual' => false,
+            ]);
+        }
+
+        Log::info("ContaReceber gerada para venda #{$venda->id_venda} ({$venda->numero_pedido_canal}) - R$ " . number_format($repasse, 2) . " em {$totalParcelas}x");
 
         return true;
     }
@@ -120,17 +138,17 @@ class ContaReceberService
      */
     public static function regenerar(Venda $venda): bool
     {
-        $contaExistente = ContaReceber::where('id_venda', $venda->id_venda)
+        $contasExistentes = ContaReceber::where('id_venda', $venda->id_venda)
             ->where('forma_pagamento', 'not like', '%Subsídio%')
             ->where('lancamento_manual', false)
-            ->first();
+            ->get();
 
         $afiliado = (float) ($venda->comissao_afiliado ?? 0);
         $canal = $venda->canal;
         $isMagalu = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
         $isShopee = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'shopee');
-
         $isML = $canal && (str_contains(strtolower($canal->nome_canal ?? ''), 'mercado') || str_starts_with($venda->numero_pedido_canal ?? '', '2000'));
+        $isMM = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'madeira');
 
         if ($isMagalu) {
             $repasseBase = (float) $venda->valor_total_venda - (float) $venda->comissao;
@@ -157,8 +175,57 @@ class ContaReceberService
             $repasse += $subsidioPix;
         }
 
-        if ($contaExistente) {
-            $contaExistente->update(['valor_parcela' => $repasse]);
+        // Determinar parcelas
+        $totalParcelas = 1;
+        if ($isMM) {
+            $dadoMM = \App\Models\PlanilhaMmDado::where('numero_pedido', $venda->numero_pedido_canal)->first();
+            if ($dadoMM && $dadoMM->parcelas > 1) {
+                $totalParcelas = $dadoMM->parcelas;
+            }
+        }
+
+        $valorParcela = round($repasse / $totalParcelas, 2);
+
+        if ($contasExistentes->isNotEmpty()) {
+            // Se quantidade de parcelas mudou, deletar e recriar
+            if ($contasExistentes->count() !== $totalParcelas) {
+                // Só deletar as que não estão em lote
+                $contasExistentes->each(function ($conta) {
+                    if (!$conta->lote_recebimento_id) {
+                        $conta->delete();
+                    }
+                });
+                // Recriar as que faltam
+                $existentesRestantes = ContaReceber::where('id_venda', $venda->id_venda)
+                    ->where('forma_pagamento', 'not like', '%Subsídio%')
+                    ->where('lancamento_manual', false)
+                    ->count();
+                for ($i = $existentesRestantes + 1; $i <= $totalParcelas; $i++) {
+                    ContaReceber::create([
+                        'id_venda' => $venda->id_venda,
+                        'valor_parcela' => $valorParcela,
+                        'data_vencimento' => $venda->data_venda,
+                        'status' => 'pendente',
+                        'numero_parcela' => $i,
+                        'total_parcelas' => $totalParcelas,
+                        'forma_pagamento' => $canal?->nome_canal ?? 'Marketplace',
+                        'observacoes' => "Repasse #{$venda->numero_pedido_canal} {$i}/{$totalParcelas}",
+                        'lancamento_manual' => false,
+                    ]);
+                }
+            } else {
+                // Mesma quantidade, só atualizar valores
+                foreach ($contasExistentes as $idx => $conta) {
+                    $obs = $totalParcelas > 1
+                        ? "Repasse #{$venda->numero_pedido_canal} " . ($idx + 1) . "/{$totalParcelas}"
+                        : "Repasse #{$venda->numero_pedido_canal}";
+                    $conta->update([
+                        'valor_parcela' => $valorParcela,
+                        'total_parcelas' => $totalParcelas,
+                        'observacoes' => $obs,
+                    ]);
+                }
+            }
             return true;
         }
 

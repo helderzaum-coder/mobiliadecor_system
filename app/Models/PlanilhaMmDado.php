@@ -16,6 +16,7 @@ class PlanilhaMmDado extends Model
         'comissao',
         'valor_pedido',
         'tipo_pagamento',
+        'parcelas',
         'dados_originais',
     ];
 
@@ -25,6 +26,7 @@ class PlanilhaMmDado extends Model
         'valor_com_desconto' => 'decimal:2',
         'comissao' => 'decimal:2',
         'valor_pedido' => 'decimal:2',
+        'parcelas' => 'integer',
         'dados_originais' => 'array',
     ];
 }

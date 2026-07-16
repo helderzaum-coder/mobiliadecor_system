@@ -40,6 +40,7 @@ class MadeiraMadeiraPlanilhaService
         $iValorOriginal = $colMap['valor original'] ?? null;
         $iDesconto = $colMap['% desconto'] ?? null;
         $iValor = $colMap['valor'] ?? null;
+        $iParcelas = $colMap['parcelas'] ?? null;
 
         if ($iPedido === null || $iComissao === null) {
             Log::error('PlanilhaMM: colunas obrigatórias não encontradas', [
@@ -64,6 +65,8 @@ class MadeiraMadeiraPlanilhaService
                 $desconto = self::parseDecimal($row[$iDesconto] ?? '0');
                 $valorComDesconto = self::parseDecimal($row[$iValor] ?? '0');
                 $tipoPagamento = trim($row[$iTipoPagamento] ?? '');
+                $parcelas = $iParcelas !== null ? (int) ($row[$iParcelas] ?? 1) : 1;
+                if ($parcelas < 1) $parcelas = 1;
 
                 PlanilhaMmDado::updateOrCreate(
                     ['numero_pedido' => $numeroPedido],
@@ -74,6 +77,7 @@ class MadeiraMadeiraPlanilhaService
                         'comissao' => $comissao,
                         'valor_pedido' => $valorPedido,
                         'tipo_pagamento' => $tipoPagamento,
+                        'parcelas' => $parcelas,
                         'dados_originais' => array_combine(
                             array_slice($header, 0, count($row)),
                             $row
