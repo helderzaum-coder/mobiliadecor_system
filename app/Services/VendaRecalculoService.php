@@ -391,7 +391,7 @@ class VendaRecalculoService
         $temPlanilhaMagalu = (bool) $venda->planilha_processada && $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
         $temPlanilhaMM = (bool) $venda->planilha_processada && $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'madeira');
         $temPlanilhaWC = (bool) $venda->planilha_processada && $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'webcontinental');
-        $comissaoVeiaDeFora = $temDadosML || $temPlanilhaShopee || $temPlanilhaMagalu || $temPlanilhaMM || $temPlanilhaWC;
+        $comissaoVeiaDeFora = $temDadosML || $temPlanilhaShopee || $temPlanilhaMagalu || $temPlanilhaMM || $temPlanilhaWC || (bool) $venda->planilha_processada;
 
         // ML: recalcular comissão a partir dos campos ML editados
         if ($temDadosML) {
