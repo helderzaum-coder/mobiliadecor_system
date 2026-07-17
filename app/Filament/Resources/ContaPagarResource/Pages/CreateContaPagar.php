@@ -81,6 +81,8 @@ class CreateContaPagar extends CreateRecord
                 'data_vencimento' => $dataVenc->toDateString(),
                 'numero_parcela' => $i + 1,
                 'total_parcelas' => $meses,
+                'status' => $i === 0 ? ($data['status'] ?? 'pendente') : 'pendente',
+                'data_pagamento' => $i === 0 ? ($data['data_pagamento'] ?? null) : null,
             ]);
 
             $record = ContaPagar::create($parcela);
