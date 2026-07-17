@@ -140,7 +140,7 @@ class ContaPagarResource extends Resource
                     ->numeric()
                     ->default(1)
                     ->visible(fn ($get) => !$get('recorrente')),
-            ])->columns(2),
+            ])->columns(3),
 
             Forms\Components\Section::make('Juros por Atraso')->schema([
                 Forms\Components\TextInput::make('juros_atraso')
