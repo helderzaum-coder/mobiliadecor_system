@@ -296,7 +296,7 @@ class ContaPagarResource extends Resource
                     ->form([
                         Forms\Components\DatePicker::make('data_pagamento')
                             ->label('Data do Pagamento')
-                            ->default(now())
+                            ->default(fn (ContaPagar $record) => $record->data_vencimento ?? now())
                             ->required(),
                     ])
                     ->action(function (ContaPagar $record, array $data) {
