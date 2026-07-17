@@ -65,6 +65,43 @@ class FaturaTransportadoraResource extends Resource
                     ->color('info'),
             ])
             ->defaultSort('data_emissao', 'desc')
+            ->filters([
+                Tables\Filters\SelectFilter::make('id_transportadora')
+                    ->label('Transportadora')
+                    ->relationship('transportadora', 'nome_transportadora')
+                    ->searchable()
+                    ->preload(),
+                Tables\Filters\Filter::make('periodo')
+                    ->form([
+                        Forms\Components\Select::make('periodo_rapido')
+                            ->label('Período')
+                            ->options([
+                                'este_mes' => 'Este mês',
+                                'mes_passado' => 'Mês passado',
+                                'customizado' => 'Customizado',
+                            ])
+                            ->reactive(),
+                        Forms\Components\DatePicker::make('data_inicio')
+                            ->label('De')
+                            ->visible(fn ($get) => $get('periodo_rapido') === 'customizado'),
+                        Forms\Components\DatePicker::make('data_fim')
+                            ->label('Até')
+                            ->visible(fn ($get) => $get('periodo_rapido') === 'customizado'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        $periodo = $data['periodo_rapido'] ?? null;
+                        if (!$periodo) return $query;
+                        return match ($periodo) {
+                            'este_mes' => $query->whereBetween('data_emissao', [now()->startOfMonth(), now()->endOfMonth()]),
+                            'mes_passado' => $query->whereBetween('data_emissao', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()]),
+                            'customizado' => $query
+                                ->when($data['data_inicio'] ?? null, fn ($q) => $q->whereDate('data_emissao', '>=', $data['data_inicio']))
+                                ->when($data['data_fim'] ?? null, fn ($q) => $q->whereDate('data_emissao', '<=', $data['data_fim'])),
+                            default => $query,
+                        };
+                    }),
+            ])
+            ->filtersFormColumns(2)
             ->headerActions([
                 Tables\Actions\Action::make('fechar_fatura')
                     ->label('Fechar Fatura')
