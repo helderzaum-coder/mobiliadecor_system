@@ -417,11 +417,11 @@ class VendaRecalculoService
             }
             $venda->refresh();
         } elseif ($isShopeeCanal2 && $cupomShopee > 0 && !$temPlanilhaShopee && $canal) {
-            // Shopee sem planilha + cupom manual:
-            // base = total_produtos - cupom_vendedor (AE)
-            // comissao = base × % + fixo - cupom_plataforma (Z)
+            // base = V bruto (total_produtos + cupom_plataforma) - cupom_vendedor
+            // comissao = base x % + fixo - cupom_plataforma
             $cupomPlataforma = (float) ($venda->cupom_plataforma ?? 0);
-            $baseComissao = (float) $venda->total_produtos - $cupomShopee;
+            $vBruto = (float) $venda->total_produtos + $cupomPlataforma;
+            $baseComissao = $vBruto - $cupomShopee;
             if ($baseComissao > 0) {
                 $regra = $canal->regrasComissao()
                     ->where('ativo', true)
