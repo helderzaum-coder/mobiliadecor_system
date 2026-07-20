@@ -392,12 +392,13 @@ class VendaRecalculoService
 
         // Recalcular comissão via regras do canal (exceto quando veio da API/planilha ML)
         $temDadosML = (float) ($venda->ml_sale_fee ?? 0) > 0 || (float) ($venda->ml_frete_custo ?? 0) > 0;
-        $temPlanilhaShopee = (bool) $venda->planilha_processada && $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'shopee');
+        $isShopeeCanal2 = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'shopee');
+        $temPlanilhaShopee = (bool) $venda->planilha_processada && $isShopeeCanal2;
         $cupomShopee = (float) ($venda->cupom_shopee ?? 0);
         $temPlanilhaMagalu = (bool) $venda->planilha_processada && $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
         $temPlanilhaMM = (bool) $venda->planilha_processada && $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'madeira');
         $temPlanilhaWC = (bool) $venda->planilha_processada && $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'webcontinental');
-        $comissaoVeiaDeFora = $temDadosML || $temPlanilhaShopee || $temPlanilhaMagalu || $temPlanilhaMM || $temPlanilhaWC;
+        $comissaoVeiaDeFora = $temDadosML || $temPlanilhaShopee || ($isShopeeCanal2 && $cupomShopee > 0) || $temPlanilhaMagalu || $temPlanilhaMM || $temPlanilhaWC;
 
         // ML: recalcular comissão a partir dos campos ML editados
         if ($temDadosML) {
@@ -418,7 +419,7 @@ class VendaRecalculoService
                 $venda->update(['comissao' => $mlSaleFee]);
             }
             $venda->refresh();
-        } elseif ($temPlanilhaShopee && $cupomShopee > 0 && $canal) {
+        } elseif ($isShopeeCanal2 && $cupomShopee > 0 && $canal) {
             // Shopee com cupom: recalcular pela regra sobre valor total (não excedente)
             $baseComissao = (float) $venda->total_produtos - $cupomShopee;
             if ($baseComissao > 0) {
