@@ -320,7 +320,7 @@ class Caixa extends Page implements HasForms
             $query->where('categoria_id', $this->categoria_id);
         }
 
-        return $query->get()->map(fn ($r) => [
+        $resultado = $query->get()->map(fn ($r) => [
             'data' => $r->data_pagamento->format('Y-m-d'),
             'tipo' => 'saida',
             'descricao' => $r->descricao ?: $r->observacoes ?: ($r->fatura ? "Fatura #{$r->fatura->id_fatura}" : 'Pagamento'),
@@ -331,6 +331,34 @@ class Caixa extends Page implements HasForms
             'model' => 'pagar',
             'transferencia_id' => $r->transferencia_id,
         ]);
+
+        // Previsões: contas a pagar abertas/pendentes no período
+        if ($this->exibir_previsoes) {
+            $previsoes = ContaPagar::with(['contaBancaria', 'categoria'])
+                ->whereIn('status', ['aberto', 'pendente'])
+                ->whereBetween('data_vencimento', [$inicio, $fim])
+                ->whereNull('lote_recebimento_id')
+                ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
+                ->when($this->categoria_id, fn ($q) => $q->where('categoria_id', $this->categoria_id))
+                ->get();
+
+            foreach ($previsoes as $r) {
+                $resultado->push([
+                    'data' => $r->data_vencimento->format('Y-m-d'),
+                    'tipo' => 'saida',
+                    'descricao' => $r->descricao ?: $r->observacoes ?: 'Conta a pagar',
+                    'categoria' => $r->categoria?->nome ?? $r->forma_pagamento ?? '-',
+                    'banco' => $r->contaBancaria?->nome ?? '-',
+                    'valor' => (float) $r->valor_parcela,
+                    'id' => $r->id_conta_pagar,
+                    'model' => 'pagar',
+                    'transferencia_id' => null,
+                    'previsao' => true,
+                ]);
+            }
+        }
+
+        return $resultado;
     }
 
     public function getSaldoAnteriorProperty(): float

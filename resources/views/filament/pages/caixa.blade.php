@@ -54,15 +54,15 @@
                                     @if($item['tipo'] === 'entrada')
                                         <span style="color:{{ $isPrevisao ? '#f59e0b' : '#10b981' }};">{{ $isPrevisao ? '◎' : '▲' }}</span>
                                     @else
-                                        <span style="color:#ef4444;">▼</span>
+                                        <span style="color:{{ $isPrevisao ? '#fb923c' : '#ef4444' }};">{{ $isPrevisao ? '◎' : '▼' }}</span>
                                     @endif
                                 </td>
                                 <td style="padding:8px 10px;color:{{ $isPrevisao ? '#d1d5db' : '#e5e7eb' }};font-style:{{ $isPrevisao ? 'italic' : 'normal' }};">{{ $item['descricao'] }}</td>
                                 <td style="padding:8px 10px;color:#6b7280;font-size:11px;">{{ $item['categoria'] }}</td>
                                 <td style="padding:8px 10px;color:#6b7280;font-size:11px;">{{ $item['banco'] !== '-' ? $item['banco'] : '' }}</td>
-                                <td style="padding:8px 10px;text-align:right;font-weight:600;{{ $item['tipo'] === 'entrada' ? ('color:' . ($isPrevisao ? '#f59e0b' : '#10b981') . ';') : 'color:#ef4444;' }}">
+                                <td style="padding:8px 10px;text-align:right;font-weight:600;{{ $item['tipo'] === 'entrada' ? ('color:' . ($isPrevisao ? '#f59e0b' : '#10b981') . ';') : ('color:' . ($isPrevisao ? '#fb923c' : '#ef4444') . ';') }}">
                                     {{ $item['tipo'] === 'entrada' ? '+' : '-' }}R$ {{ number_format($item['valor'], 2, ',', '.') }}
-                                    @if($isPrevisao)<span style="font-size:9px;color:#f59e0b;margin-left:3px;">PREV</span>@endif
+                                    @if($isPrevisao)<span style="font-size:9px;color:{{ $item['tipo'] === 'entrada' ? '#f59e0b' : '#fb923c' }};margin-left:3px;">PREV</span>@endif
                                 </td>
                                 <td style="padding:4px 8px;text-align:right;white-space:nowrap;width:80px;">
                                     @if(!empty($item['id']) && !$isPrevisao)

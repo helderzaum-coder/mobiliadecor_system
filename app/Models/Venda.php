@@ -63,6 +63,8 @@ class Venda extends Model
         'cancelada',
         'dre_lancado',
         'dre_lancado_em',
+        'cupom_shopee',
+        'cupom_shopee_descricao',
     ];
 
     protected $casts = [
@@ -98,6 +100,7 @@ class Venda extends Model
         'cancelada' => 'boolean',
         'dre_lancado' => 'boolean',
         'dre_lancado_em' => 'datetime',
+        'cupom_shopee' => 'decimal:2',
     ];
 
     public function canal(): BelongsTo
