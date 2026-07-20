@@ -67,7 +67,7 @@
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                 @foreach(array_reverse($this->itensContados, true) as $sku => $item)
-                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                    <tr wire:key="item-{{ $sku }}" class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                         <td class="px-4 py-2 font-mono text-xs text-gray-700 dark:text-gray-200">{{ $item['sku'] }}</td>
                                         <td class="px-4 py-2 font-mono text-xs text-gray-500 dark:text-gray-400">{{ $item['codigo_barras'] ?? '-' }}</td>
                                         <td class="px-4 py-2 text-gray-700 dark:text-gray-200 max-w-xs truncate" title="{{ $item['nome'] }}">{{ $item['nome'] }}</td>
@@ -83,8 +83,7 @@
                                             <input
                                                 type="number"
                                                 min="1"
-                                                value="{{ $item['quantidade'] }}"
-                                                wire:change="ajustarQuantidade('{{ $sku }}', $event.target.value)"
+                                                wire:model.lazy="itensContados.{{ $sku }}.quantidade"
                                                 class="w-16 text-center rounded border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white text-sm"
                                             />
                                         </td>
