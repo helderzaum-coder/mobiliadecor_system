@@ -319,7 +319,8 @@
                         }
                     } else {
                         $cupomShopeeRepasse = (float) ($venda->cupom_shopee ?? 0);
-                        $repasse = $totalProd + $freteCliente - $comissao - $afiliado - $cupomShopeeRepasse;
+                        $cupomPlataformaRepasse = (float) ($venda->cupom_plataforma ?? 0);
+                        $repasse = $totalProd + $freteCliente - $comissao - $afiliado - $cupomShopeeRepasse - $cupomPlataformaRepasse;
                     }
                     $fretePago = (bool) $venda->frete_pago;
                     $freteCotado = (float) ($venda->frete_cotado ?? 0);
