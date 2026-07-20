@@ -128,9 +128,18 @@ class CalculoComissaoService
                 }
 
                 $min = (float) ($regraSelecionada->faixa_valor_min ?? 0);
-                $baseExcedente = $valorItem - $min;
-                $comissaoUnit = ($baseExcedente * $regraSelecionada->percentual / 100) + (float) $regraSelecionada->valor_fixo;
-                $subsidioPixUnit = $baseExcedente * (float) $regraSelecionada->subsidio_pix / 100;
+                $valorFixo = (float) $regraSelecionada->valor_fixo;
+                // Se tem valor_fixo, a faixa é exclusiva (fixo já acumula faixas anteriores)
+                // Aplicar percentual sobre o valor total do item
+                // Se não tem valor_fixo, é progressiva: percentual sobre o excedente
+                if ($valorFixo > 0) {
+                    $comissaoUnit = ($valorItem * $regraSelecionada->percentual / 100) + $valorFixo;
+                    $subsidioPixUnit = $valorItem * (float) $regraSelecionada->subsidio_pix / 100;
+                } else {
+                    $baseExcedente = $valorItem - $min;
+                    $comissaoUnit = ($baseExcedente * $regraSelecionada->percentual / 100);
+                    $subsidioPixUnit = $baseExcedente * (float) $regraSelecionada->subsidio_pix / 100;
+                }
                 $nomeRegra = $regraSelecionada->nome_regra;
             }
 

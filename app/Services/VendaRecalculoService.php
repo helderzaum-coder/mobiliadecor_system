@@ -419,14 +419,11 @@ class VendaRecalculoService
             }
             $venda->refresh();
         } elseif ($temPlanilhaShopee && $cupomShopee > 0 && $canal) {
-            // Shopee com cupom: recalcular comissão sobre base reduzida
-            $staging = PedidoBlingStaging::where('bling_id', $venda->bling_id)->first();
-            $itens = $staging?->itens ?? [];
-            if (!empty($itens)) {
-                $totalItens = array_sum(array_map(fn ($i) => (float)($i['valor'] ?? 0) * (int)($i['quantidade'] ?? 1), $itens));
-                $fator = $totalItens > 0 ? (($totalItens - $cupomShopee) / $totalItens) : 1;
-                $itensComDesconto = array_map(fn ($i) => array_merge($i, ['valor' => round((float)($i['valor'] ?? 0) * $fator, 4)]), $itens);
-                $comissaoData = CalculoComissaoService::calcular($canal->id_canal, $itensComDesconto, null, null, (float) $venda->valor_frete_cliente);
+            // Shopee com cupom: recalcular comissão sobre base real (total_produtos da venda - cupom)
+            $baseComissao = (float) $venda->total_produtos - $cupomShopee;
+            if ($baseComissao > 0) {
+                $itensBase = [['valor' => $baseComissao, 'quantidade' => 1, 'codigo' => 'SHOPEE']];
+                $comissaoData = CalculoComissaoService::calcular($canal->id_canal, $itensBase, null, null, (float) $venda->valor_frete_cliente);
                 if ($comissaoData['comissao_total'] > 0) {
                     $venda->update(['comissao' => $comissaoData['comissao_total']]);
                     $venda->refresh();
