@@ -450,8 +450,8 @@
                     @if($cupomPlataformaCard > 0)
                     <div class="flex items-center px-3 py-2 rounded-lg" style="background:rgba(6,78,59,0.3);border:1px solid rgba(34,197,94,0.5);">
                         <div>
-                            <div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">🎟️ Cupom Shopee (reembolso)</div>
-                            <div class="font-semibold" style="color:#4ade80;">+R$ {{ number_format($cupomPlataformaCard, 2, ',', '.') }}</div>
+                            <div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">🎟️ Cupom Shopee (já na comissão)</div>
+                            <div class="font-semibold" style="color:#4ade80;">R$ {{ number_format($cupomPlataformaCard, 2, ',', '.') }}</div>
                         </div>
                     </div>
                     @endif
