@@ -19,6 +19,11 @@ class VendaResource extends Resource
     protected static ?string $modelLabel = 'Venda';
     protected static ?string $pluralModelLabel = 'Vendas';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('admin') ?? false;
+    }
+
     public static function form(Form $form): Form
     {
         return $form->schema([

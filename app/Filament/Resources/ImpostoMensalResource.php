@@ -18,6 +18,11 @@ class ImpostoMensalResource extends Resource
     protected static ?string $modelLabel = 'Imposto Mensal';
     protected static ?string $pluralModelLabel = 'Impostos Mensais';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('admin') ?? false;
+    }
+
     public static function form(Form $form): Form
     {
         return $form->schema([

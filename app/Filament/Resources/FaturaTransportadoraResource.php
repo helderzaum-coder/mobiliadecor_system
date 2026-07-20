@@ -22,6 +22,11 @@ class FaturaTransportadoraResource extends Resource
     protected static ?string $modelLabel = 'Fatura Transportadora';
     protected static ?string $pluralModelLabel = 'Faturas Transportadoras';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('admin') ?? false;
+    }
+
     public static function form(Form $form): Form
     {
         return $form->schema([

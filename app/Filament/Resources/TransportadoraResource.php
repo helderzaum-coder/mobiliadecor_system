@@ -18,6 +18,11 @@ class TransportadoraResource extends Resource
     protected static ?string $modelLabel = 'Transportadora';
     protected static ?string $pluralModelLabel = 'Transportadoras';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('admin') ?? false;
+    }
+
     private static array $ufs = [
         'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
         'MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN',

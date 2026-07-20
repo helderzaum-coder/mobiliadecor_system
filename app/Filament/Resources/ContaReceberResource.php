@@ -20,6 +20,11 @@ class ContaReceberResource extends Resource
     protected static ?string $modelLabel = 'Conta a Receber';
     protected static ?string $pluralModelLabel = 'Contas a Receber';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('admin') ?? false;
+    }
+
     public static function form(Form $form): Form
     {
         return $form->schema([

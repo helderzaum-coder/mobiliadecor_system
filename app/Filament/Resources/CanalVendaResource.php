@@ -18,6 +18,11 @@ class CanalVendaResource extends Resource
     protected static ?string $modelLabel = 'Canal de Venda';
     protected static ?string $pluralModelLabel = 'Canais de Venda';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('admin') ?? false;
+    }
+
     public static function form(Form $form): Form
     {
         return $form->schema([

@@ -18,6 +18,11 @@ class ExtratoBancarioResource extends Resource
     protected static ?string $modelLabel = 'Extrato Bancário';
     protected static ?string $pluralModelLabel = 'Extratos Bancários';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('admin') ?? false;
+    }
+
     public static function form(Form $form): Form
     {
         return $form->schema([

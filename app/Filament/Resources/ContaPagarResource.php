@@ -21,6 +21,11 @@ class ContaPagarResource extends Resource
     protected static ?string $modelLabel = 'Conta a Pagar';
     protected static ?string $pluralModelLabel = 'Contas a Pagar';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('admin') ?? false;
+    }
+
     public static function form(Form $form): Form
     {
         return $form->schema([

@@ -20,6 +20,11 @@ class LoteRecebimentoResource extends Resource
     protected static ?string $pluralModelLabel = 'Lotes de Recebimento';
     protected static ?string $slug = 'lotes-recebimento';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->hasRole('admin') ?? false;
+    }
+
     public static function form(Form $form): Form
     {
         return $form->schema([
