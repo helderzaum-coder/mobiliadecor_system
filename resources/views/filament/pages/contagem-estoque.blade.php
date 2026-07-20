@@ -102,19 +102,30 @@
             @endif
 
         @else
-            {{-- Resultado da contagem --}}
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                    <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                        Resultado da Contagem
-                        <span class="ml-2 text-xs bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 px-2 py-0.5 rounded">FINALIZADA</span>
-                    </h3>
-                    <x-filament::button wire:click="novaContagem" color="gray" size="sm">
-                        Nova Contagem
-                    </x-filament::button>
+            @php
+                $comAlteracao = array_filter($this->divergencias, fn($d) => $d['diferenca'] !== 0);
+                $semAlteracao = array_filter($this->divergencias, fn($d) => $d['diferenca'] === 0);
+            @endphp
+
+            {{-- Resumo --}}
+            <div class="grid grid-cols-3 gap-4">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow border border-gray-200 dark:border-gray-700 p-4 text-center">
+                    <div class="text-2xl font-bold text-gray-700 dark:text-gray-100">{{ count($this->divergencias) }}</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Total contados</div>
                 </div>
-                <table class="w-full text-sm">
-                    <thead class="bg-gray-50 dark:bg-gray-900">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow border border-red-200 dark:border-red-800 p-4 text-center">
+                    <div class="text-2xl font-bold text-red-600 dark:text-red-400">{{ count($comAlteracao) }}</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Com divergência</div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow border border-green-200 dark:border-green-800 p-4 text-center">
+                    <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ count($semAlteracao) }}</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Sem alteração</div>
+                </div>
+            </div>
+
+            @php
+                $tableHead = '
+                    <thead class="bg-gray-50 dark:bg-gray-900 sticky top-0">
                         <tr>
                             <th class="text-left px-4 py-2 text-gray-600 dark:text-gray-300">SKU</th>
                             <th class="text-left px-4 py-2 text-gray-600 dark:text-gray-300">Produto</th>
@@ -123,29 +134,79 @@
                             <th class="text-center px-4 py-2 text-gray-600 dark:text-gray-300">Contagem</th>
                             <th class="text-center px-4 py-2 text-gray-600 dark:text-gray-300">Diferença</th>
                         </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                        @foreach($this->divergencias as $div)
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                <td class="px-4 py-2 font-mono text-xs text-gray-700 dark:text-gray-200">{{ $div['sku'] }}</td>
-                                <td class="px-4 py-2 text-gray-700 dark:text-gray-200 max-w-xs truncate" title="{{ $div['nome'] }}">{{ $div['nome'] }}</td>
-                                <td class="px-4 py-2">
-                                    @if($div['grupo_tampo'] ?? null)
-                                        <span class="text-xs bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 px-2 py-0.5 rounded">{{ $div['grupo_tampo'] }}</span>
-                                    @endif
-                                </td>
-                                <td class="px-4 py-2 text-center text-gray-500 dark:text-gray-400">{{ $div['saldo_sistema'] }}</td>
-                                <td class="px-4 py-2 text-center font-bold text-gray-700 dark:text-gray-200">{{ $div['contagem'] }}</td>
-                                <td class="px-4 py-2 text-center font-bold {{ $div['diferenca'] > 0 ? 'text-green-600 dark:text-green-400' : ($div['diferenca'] < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-400') }}">
-                                    {{ $div['diferenca'] > 0 ? '+' : '' }}{{ $div['diferenca'] }}
-                                    @if($div['diferenca'] === 0)
-                                        <span class="text-xs">✓</span>
-                                    @endif
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                    </thead>';
+            @endphp
+
+            {{-- Com divergência --}}
+            @if(!empty($comAlteracao))
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow border border-red-200 dark:border-red-800 overflow-hidden">
+                    <div class="px-4 py-3 border-b border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+                        <h3 class="text-sm font-semibold text-red-700 dark:text-red-300">⚠️ Com Divergência ({{ count($comAlteracao) }})</h3>
+                    </div>
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        <table class="w-full text-sm">
+                            {!! $tableHead !!}
+                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                @foreach($comAlteracao as $div)
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                        <td class="px-4 py-2 font-mono text-xs text-gray-700 dark:text-gray-200">{{ $div['sku'] }}</td>
+                                        <td class="px-4 py-2 text-gray-700 dark:text-gray-200 max-w-xs truncate" title="{{ $div['nome'] }}">{{ $div['nome'] }}</td>
+                                        <td class="px-4 py-2">
+                                            @if($div['grupo_tampo'] ?? null)
+                                                <span class="text-xs bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 px-2 py-0.5 rounded">{{ $div['grupo_tampo'] }}</span>
+                                            @else
+                                                <span class="text-xs text-gray-400">—</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-2 text-center text-gray-500 dark:text-gray-400">{{ $div['saldo_sistema'] }}</td>
+                                        <td class="px-4 py-2 text-center font-bold text-gray-700 dark:text-gray-200">{{ $div['contagem'] }}</td>
+                                        <td class="px-4 py-2 text-center font-bold {{ $div['diferenca'] > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
+                                            {{ $div['diferenca'] > 0 ? '+' : '' }}{{ $div['diferenca'] }}
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endif
+
+            {{-- Sem alteração --}}
+            @if(!empty($semAlteracao))
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400">✅ Sem Alteração ({{ count($semAlteracao) }})</h3>
+                    </div>
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        <table class="w-full text-sm">
+                            {!! $tableHead !!}
+                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                @foreach($semAlteracao as $div)
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 opacity-70">
+                                        <td class="px-4 py-2 font-mono text-xs text-gray-700 dark:text-gray-200">{{ $div['sku'] }}</td>
+                                        <td class="px-4 py-2 text-gray-700 dark:text-gray-200 max-w-xs truncate" title="{{ $div['nome'] }}">{{ $div['nome'] }}</td>
+                                        <td class="px-4 py-2">
+                                            @if($div['grupo_tampo'] ?? null)
+                                                <span class="text-xs bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 px-2 py-0.5 rounded">{{ $div['grupo_tampo'] }}</span>
+                                            @else
+                                                <span class="text-xs text-gray-400">—</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-2 text-center text-gray-500 dark:text-gray-400">{{ $div['saldo_sistema'] }}</td>
+                                        <td class="px-4 py-2 text-center font-bold text-gray-700 dark:text-gray-200">{{ $div['contagem'] }}</td>
+                                        <td class="px-4 py-2 text-center text-gray-400">✓ 0</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endif
+
+            <div class="flex justify-end">
+                <x-filament::button wire:click="novaContagem" color="gray">
+                    Nova Contagem
+                </x-filament::button>
             </div>
         @endif
 
