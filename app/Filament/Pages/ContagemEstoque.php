@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Jobs\VariacaoTamposJob;
+use App\Models\ContagemEstoque as ContagemEstoqueModel;
 use App\Models\ProdutoEstoque;
 use App\Models\TrocaTampoConfig;
 use App\Services\EstoqueService;
@@ -189,6 +190,24 @@ class ContagemEstoque extends Page
         }
 
         $this->contagemFinalizada = true;
+
+        // Persistir histórico
+        $registro = ContagemEstoqueModel::create([
+            'user_id' => auth()->id(),
+            'total_itens' => count($this->divergencias),
+            'com_divergencia' => count(array_filter($this->divergencias, fn($d) => $d['diferenca'] !== 0)),
+            'sem_alteracao' => count(array_filter($this->divergencias, fn($d) => $d['diferenca'] === 0)),
+        ]);
+        foreach ($this->divergencias as $div) {
+            $registro->itens()->create([
+                'sku' => $div['sku'],
+                'nome' => $div['nome'],
+                'grupo_tampo' => $div['grupo_tampo'] ?? null,
+                'saldo_sistema' => $div['saldo_sistema'],
+                'contagem' => $div['contagem'],
+                'diferenca' => $div['diferenca'],
+            ]);
+        }
 
         Log::info("ContagemEstoque: finalizada por " . auth()->user()->name, [
             'atualizados' => $atualizados,
