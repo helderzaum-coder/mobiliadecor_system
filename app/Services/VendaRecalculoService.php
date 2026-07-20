@@ -263,12 +263,17 @@ class VendaRecalculoService
         $frete = (float) ($originais['frete'] ?? $dado->taxa_envio);
         $totalProdutos = (float) ($originais['total_produtos'] ?? 0);
         $totalPedido = (float) ($originais['total_pedido'] ?? 0);
+        $cupomVendedor = (float) ($originais['cupom_vendedor'] ?? 0);
 
         $updateData = [
             'comissao' => $comissao,
             'subsidio_pix' => $subsidioPix,
             'planilha_processada' => true,
         ];
+
+        if ($cupomVendedor > 0) {
+            $updateData['cupom_shopee'] = $cupomVendedor;
+        }
 
         // Atualizar valores de produto e frete se vieram da planilha
         if ($totalProdutos > 0) {
@@ -388,6 +393,7 @@ class VendaRecalculoService
         // Recalcular comissão via regras do canal (exceto quando veio da API/planilha ML)
         $temDadosML = (float) ($venda->ml_sale_fee ?? 0) > 0 || (float) ($venda->ml_frete_custo ?? 0) > 0;
         $temPlanilhaShopee = (bool) $venda->planilha_processada && $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'shopee');
+        $cupomShopee = (float) ($venda->cupom_shopee ?? 0);
         $temPlanilhaMagalu = (bool) $venda->planilha_processada && $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'magalu');
         $temPlanilhaMM = (bool) $venda->planilha_processada && $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'madeira');
         $temPlanilhaWC = (bool) $venda->planilha_processada && $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'webcontinental');
@@ -409,11 +415,23 @@ class VendaRecalculoService
                     'valor_frete_transportadora' => 0,
                 ]);
             } else {
-                $venda->update([
-                    'comissao' => $mlSaleFee,
-                ]);
+                $venda->update(['comissao' => $mlSaleFee]);
             }
             $venda->refresh();
+        } elseif ($temPlanilhaShopee && $cupomShopee > 0 && $canal) {
+            // Shopee com cupom: recalcular comissão sobre base reduzida
+            $staging = PedidoBlingStaging::where('bling_id', $venda->bling_id)->first();
+            $itens = $staging?->itens ?? [];
+            if (!empty($itens)) {
+                $totalItens = array_sum(array_map(fn ($i) => (float)($i['valor'] ?? 0) * (int)($i['quantidade'] ?? 1), $itens));
+                $fator = $totalItens > 0 ? (($totalItens - $cupomShopee) / $totalItens) : 1;
+                $itensComDesconto = array_map(fn ($i) => array_merge($i, ['valor' => round((float)($i['valor'] ?? 0) * $fator, 4)]), $itens);
+                $comissaoData = CalculoComissaoService::calcular($canal->id_canal, $itensComDesconto, null, null, (float) $venda->valor_frete_cliente);
+                if ($comissaoData['comissao_total'] > 0) {
+                    $venda->update(['comissao' => $comissaoData['comissao_total']]);
+                    $venda->refresh();
+                }
+            }
         } elseif (!$comissaoVeiaDeFora && $canal) {
             $staging = PedidoBlingStaging::where('bling_id', $venda->bling_id)->first();
             $itens = $staging?->itens ?? [];

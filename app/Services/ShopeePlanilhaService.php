@@ -40,6 +40,7 @@ class ShopeePlanilhaService
         'S'  => 'Preço acordado',
         'T'  => 'Quantidade',
         'V'  => 'Subtotal do produto',
+        'AE' => 'Cupom do Vendedor',
         'AI' => 'Ajuste por pagamento via PIX',
         'AP' => 'Taxa de envio pagas pelo comprador',
         'AQ' => 'Desconto de Frete Aproximado',
@@ -212,6 +213,7 @@ class ShopeePlanilhaService
         $frete = 0;
         $comissao = 0;
         $subsidioPix = 0;
+        $cupomVendedor = 0;
         $freteCalculado = false;
         $comissaoCalculada = false;
         $itens = [];
@@ -223,6 +225,11 @@ class ShopeePlanilhaService
 
             // Subsídio Pix (coluna AI)
             $subsidioPix += abs(self::parseDecimal($row['AI'] ?? 0));
+
+            // Cupom do Vendedor (coluna AE) — pegar apenas uma vez por pedido
+            if ($cupomVendedor == 0) {
+                $cupomVendedor = abs(self::parseDecimal($row['AE'] ?? 0));
+            }
 
             // Quantidade (coluna T)
             $quantidade = (int) (self::parseDecimal($row['T'] ?? 1) ?: 1);
@@ -287,6 +294,7 @@ class ShopeePlanilhaService
             'frete' => round($frete, 2),
             'comissao' => round($comissao, 2),
             'subsidio_pix' => round($subsidioPix, 2),
+            'cupom_vendedor' => round($cupomVendedor, 2),
             'itens' => $itens,
         ];
     }
