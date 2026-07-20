@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ContaPagarResource\Pages;
 
 use App\Filament\Resources\ContaPagarResource;
 use App\Models\ContaPagar;
+use Carbon\Carbon;
 use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -88,9 +89,7 @@ class EditContaPagar extends EditRecord
         if (($data['tipo_juros'] ?? null) === 'fixo' && (float) ($data['juros_atraso'] ?? 0) > 0) {
             $jurosAnterior = (float) ($this->record->juros_atraso ?? 0);
             $tipoAnterior = $this->record->tipo_juros ?? null;
-            // Só soma se o juros mudou ou é novo
             if ($tipoAnterior !== 'fixo' || $jurosAnterior != (float) $data['juros_atraso']) {
-                // Remove juros anterior se já tinha sido aplicado
                 $valorBase = (float) $data['valor_parcela'];
                 if ($tipoAnterior === 'fixo' && $jurosAnterior > 0) {
                     $valorBase = $valorBase - $jurosAnterior;
@@ -101,4 +100,83 @@ class EditContaPagar extends EditRecord
 
         return $data;
     }
-}
+
+    protected function afterSave(): void
+    {
+        $record = $this->record->fresh();
+
+        // Só gerar parcelas se acabou de ativar recorrência (não tinha grupo antes)
+        $eraRecorrente = (bool) $this->record->getOriginal('recorrente');
+        if (!$record->recorrente || $eraRecorrente || empty($record->grupo_recorrencia)) {
+            return;
+        }
+
+        $intervalo = $record->intervalo_recorrencia;
+        if (!$intervalo) return;
+
+        $vencimento = Carbon::parse($record->data_vencimento);
+        $fim = $record->data_fim_recorrencia ? Carbon::parse($record->data_fim_recorrencia) : null;
+
+        $defaultQtd = match ($intervalo) {
+            'semanal' => 52,
+            'quinzenal' => 26,
+            default => 12,
+        };
+
+        $qtd = $fim ? min($defaultQtd, $this->calcularQuantidade($intervalo, $vencimento, $fim)) : $defaultQtd;
+
+        // Atualizar o registro atual como parcela 1
+        $record->update([
+            'numero_parcela' => 1,
+            'total_parcelas' => $qtd,
+        ]);
+
+        // Criar parcelas 2..N
+        for ($i = 1; $i < $qtd; $i++) {
+            $dataVenc = $this->proximaData($vencimento, $intervalo, $i);
+            if ($fim && $dataVenc->gt($fim)) break;
+
+            ContaPagar::create([
+                'descricao' => $record->descricao,
+                'valor_parcela' => $record->valor_parcela,
+                'categoria_id' => $record->categoria_id,
+                'conta_bancaria_id' => $record->conta_bancaria_id,
+                'forma_pagamento' => $record->forma_pagamento,
+                'data_lancamento' => $record->data_lancamento,
+                'data_vencimento' => $dataVenc->toDateString(),
+                'status' => 'pendente',
+                'recorrente' => true,
+                'intervalo_recorrencia' => $intervalo,
+                'data_fim_recorrencia' => $record->data_fim_recorrencia,
+                'grupo_recorrencia' => $record->grupo_recorrencia,
+                'numero_parcela' => $i + 1,
+                'total_parcelas' => $qtd,
+                'juros_atraso' => $record->juros_atraso,
+                'tipo_juros' => $record->tipo_juros,
+                'observacoes' => $record->observacoes,
+            ]);
+        }
+
+        Notification::make()
+            ->title("Recorrência criada: " . ($qtd - 1) . " parcela(s) futura(s) gerada(s).")
+            ->success()
+            ->send();
+    }
+
+    private function proximaData(Carbon $base, string $intervalo, int $multiplicador): Carbon
+    {
+        return match ($intervalo) {
+            'semanal'   => $base->copy()->addWeeks($multiplicador),
+            'quinzenal' => $base->copy()->addDays(15 * $multiplicador),
+            default     => $base->copy()->addMonths($multiplicador),
+        };
+    }
+
+    private function calcularQuantidade(string $intervalo, Carbon $inicio, Carbon $fim): int
+    {
+        return match ($intervalo) {
+            'semanal'   => (int) $inicio->diffInWeeks($fim),
+            'quinzenal' => (int) floor($inicio->diffInDays($fim) / 15),
+            default     => (int) $inicio->diffInMonths($fim),
+        };
+    }
