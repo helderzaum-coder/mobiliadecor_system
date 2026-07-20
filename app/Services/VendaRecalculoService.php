@@ -430,11 +430,12 @@ class VendaRecalculoService
                     ->orderByDesc('faixa_valor_min')
                     ->first();
                 if ($regra) {
-                    $novaComissao = round($baseComissao * (float)$regra->percentual / 100 + (float)$regra->valor_fixo, 2);
+                    $novaComissao = round($baseComissao * (float) $regra->percentual / 100 + (float) $regra->valor_fixo, 2);
                     $venda->update(['comissao' => $novaComissao]);
                     $venda->refresh();
                 }
-            } elseif (!$comissaoVeiaDeFora && $canal) {
+            }
+        } elseif (!$comissaoVeiaDeFora && $canal) {
             $staging = PedidoBlingStaging::where('bling_id', $venda->bling_id)->first();
             $itens = $staging?->itens ?? [];
             if (!empty($itens)) {
