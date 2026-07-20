@@ -274,12 +274,11 @@ class VendaRecalculoService
             'valor_frete_cliente' => $frete,
             'planilha_processada' => true,
         ];
-        // remover nulls
         $updateData = array_filter($updateData, fn($v) => $v !== null);
 
         if ($cupomVendedor > 0) {
-            $updateData['cupom_shopee']            = $cupomVendedor;
-            $updateData['cupom_shopee_descricao']  = 'Cupom do Vendedor';
+            $updateData['cupom_shopee']           = $cupomVendedor;
+            $updateData['cupom_shopee_descricao'] = 'Cupom do Vendedor';
         }
         if ($cupomPlataforma > 0) {
             $updateData['cupom_plataforma'] = $cupomPlataforma;
