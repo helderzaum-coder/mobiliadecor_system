@@ -419,17 +419,22 @@ class VendaRecalculoService
             }
             $venda->refresh();
         } elseif ($temPlanilhaShopee && $cupomShopee > 0 && $canal) {
-            // Shopee com cupom: recalcular comissão sobre base real (total_produtos da venda - cupom)
+            // Shopee com cupom: recalcular pela regra sobre valor total (não excedente)
             $baseComissao = (float) $venda->total_produtos - $cupomShopee;
             if ($baseComissao > 0) {
-                $itensBase = [['valor' => $baseComissao, 'quantidade' => 1, 'codigo' => 'SHOPEE']];
-                $comissaoData = CalculoComissaoService::calcular($canal->id_canal, $itensBase, null, null, (float) $venda->valor_frete_cliente);
-                if ($comissaoData['comissao_total'] > 0) {
-                    $venda->update(['comissao' => $comissaoData['comissao_total']]);
+                $regra = $canal->regrasComissao()
+                    ->where('ativo', true)
+                    ->where('cumulativa', false)
+                    ->where('faixa_valor_min', '<=', $baseComissao)
+                    ->where(fn ($q) => $q->where('faixa_valor_max', '>=', $baseComissao)->orWhere('faixa_valor_max', 0)->orWhereNull('faixa_valor_max'))
+                    ->orderByDesc('faixa_valor_min')
+                    ->first();
+                if ($regra) {
+                    $novaComissao = round($baseComissao * (float)$regra->percentual / 100 + (float)$regra->valor_fixo, 2);
+                    $venda->update(['comissao' => $novaComissao]);
                     $venda->refresh();
                 }
-            }
-        } elseif (!$comissaoVeiaDeFora && $canal) {
+            } elseif (!$comissaoVeiaDeFora && $canal) {
             $staging = PedidoBlingStaging::where('bling_id', $venda->bling_id)->first();
             $itens = $staging?->itens ?? [];
             if (!empty($itens)) {
