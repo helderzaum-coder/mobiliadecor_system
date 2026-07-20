@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\SyncEstoquePedidoJob;
 use App\Models\CanalVenda;
 use App\Models\PedidoBlingStaging;
 use App\Models\Venda;
@@ -217,6 +218,11 @@ class AprovacaoVendaService
             if ($sku) {
                 \App\Jobs\SyncEstoqueTampoJob::dispatch($sku, $qtd, $staging->bling_account, $staging->numero_pedido);
             }
+        }
+
+        // Sincronizar estoque e notificar Telegram (se ainda não foi sincronizado)
+        if (!$staging->estoque_sincronizado) {
+            SyncEstoquePedidoJob::dispatch($staging->id);
         }
 
         Log::info("Pedido {$staging->numero_pedido} aprovado -> Venda #{$venda->id_venda}");

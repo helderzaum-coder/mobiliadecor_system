@@ -47,10 +47,10 @@ class SyncEstoquePedidoJob implements ShouldQueue
         }
 
         // Notificação Telegram com saldo atualizado
-        if ($resultado['success']) {
-            $msg = "📦 <b>Estoque atualizado — Pedido #{$pedido->numero_pedido}</b>\n";
+        if (!empty($resultado['log'])) {
+            $icone = $resultado['success'] ? "\xF0\x9F\x93\xA6" : "\xE2\x9A\xA0\xEF\xB8\x8F";
+            $msg = "{$icone} <b>Estoque — Pedido #{$pedido->numero_pedido}</b>\n";
             foreach ($resultado['log'] as $linha) {
-                // Extrair SKU da linha (formato: "SKU: -X → saldo Y")
                 $skuLog = explode(':', $linha)[0] ?? '';
                 $prod = \App\Models\ProdutoEstoque::where('sku', trim($skuLog))->first();
                 $nomeProd = $prod ? ($prod->observacoes ?? $prod->nome) : '';
