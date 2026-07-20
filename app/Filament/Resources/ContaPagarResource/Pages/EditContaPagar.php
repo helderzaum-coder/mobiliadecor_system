@@ -180,3 +180,4 @@ class EditContaPagar extends EditRecord
             default     => (int) $inicio->diffInMonths($fim),
         };
     }
+}
