@@ -41,6 +41,7 @@ class ShopeePlanilhaService
         'T'  => 'Quantidade',
         'V'  => 'Subtotal do produto',
         'AE' => 'Cupom do Vendedor',
+        'Z'  => 'Ajuste por participação em ação comercial',
         'AI' => 'Ajuste por pagamento via PIX',
         'AP' => 'Taxa de envio pagas pelo comprador',
         'AQ' => 'Desconto de Frete Aproximado',
@@ -214,6 +215,7 @@ class ShopeePlanilhaService
         $comissao = 0;
         $subsidioPix = 0;
         $cupomVendedor = 0;
+        $cupomShopee = 0;
         $freteCalculado = false;
         $comissaoCalculada = false;
         $itens = [];
@@ -229,6 +231,11 @@ class ShopeePlanilhaService
             // Cupom do Vendedor (coluna AE) — pegar apenas uma vez por pedido
             if ($cupomVendedor == 0) {
                 $cupomVendedor = abs(self::parseDecimal($row['AE'] ?? 0));
+            }
+
+            // Cupom da Shopee (coluna Z) — pegar apenas uma vez por pedido
+            if ($cupomShopee == 0) {
+                $cupomShopee = abs(self::parseDecimal($row['Z'] ?? 0));
             }
 
             // Quantidade (coluna T)
@@ -280,12 +287,12 @@ class ShopeePlanilhaService
             }
         }
 
-        // Subtotal real = Preço produto - Subsídio Pix
-        $subtotalReal = $precosProduto - $subsidioPix;
+        // Subtotal real = Preço produto - Subsídio Pix - Cupom Shopee (col Z)
+        // Cupom Shopee é absorvido pela Shopee mas reduz o valor recebido pelo vendedor
+        // Cupom do Vendedor (AE) fica separado em cupom_shopee para descontar da margem
+        $subtotalReal = $precosProduto - $subsidioPix - $cupomShopee;
 
-        // Total do pedido
-        // Frete líquido = AP (taxa envio comprador) — AQ já está somado no frete acima
-        // Total = subtotal + frete (o que o vendedor efetivamente recebe de produto + frete)
+        // Total do pedido = subtotal + frete
         $totalPedido = $subtotalReal + $frete;
 
         return [
@@ -295,6 +302,7 @@ class ShopeePlanilhaService
             'comissao' => round($comissao, 2),
             'subsidio_pix' => round($subsidioPix, 2),
             'cupom_vendedor' => round($cupomVendedor, 2),
+            'cupom_shopee' => round($cupomShopee, 2),
             'itens' => $itens,
         ];
     }

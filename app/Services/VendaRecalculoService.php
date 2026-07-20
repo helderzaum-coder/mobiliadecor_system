@@ -271,8 +271,10 @@ class VendaRecalculoService
             'planilha_processada' => true,
         ];
 
+        // Cupom do vendedor: sai da margem do vendedor
         if ($cupomVendedor > 0) {
             $updateData['cupom_shopee'] = $cupomVendedor;
+            $updateData['cupom_shopee_descricao'] = 'Cupom do Vendedor';
         }
 
         // Atualizar valores de produto e frete se vieram da planilha
