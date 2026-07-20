@@ -440,8 +440,18 @@
                     @if($cupomShopeeCard > 0)
                     <div class="flex items-center px-3 py-2 rounded-lg" style="background:rgba(31,41,55,0.5);border:1px solid rgba(124,58,237,0.6);">
                         <div>
-                            <div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">🎟️ Cupom{{ $venda->cupom_shopee_descricao ? ' · ' . $venda->cupom_shopee_descricao : '' }}</div>
+                            <div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">🎟️ Cupom Vendedor{{ $venda->cupom_shopee_descricao ? ' · ' . $venda->cupom_shopee_descricao : '' }}</div>
                             <div class="font-semibold" style="color:#c084fc;">-R$ {{ number_format($cupomShopeeCard, 2, ',', '.') }}</div>
+                        </div>
+                    </div>
+                    @endif
+
+                    @php $cupomPlataformaCard = (float) ($venda->cupom_plataforma ?? 0); @endphp
+                    @if($cupomPlataformaCard > 0)
+                    <div class="flex items-center px-3 py-2 rounded-lg" style="background:rgba(6,78,59,0.3);border:1px solid rgba(34,197,94,0.5);">
+                        <div>
+                            <div style="color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">🎟️ Cupom Shopee (reembolso)</div>
+                            <div class="font-semibold" style="color:#4ade80;">+R$ {{ number_format($cupomPlataformaCard, 2, ',', '.') }}</div>
                         </div>
                     </div>
                     @endif
@@ -684,12 +694,25 @@
                         <div x-data="{ open: false, valor: '{{ $cupomShopeeVal > 0 ? number_format($cupomShopeeVal, 2, '.', '') : '' }}', desc: '{{ $venda->cupom_shopee_descricao ?? '' }}' }" style="display:inline-block;">
                             <button @click="open = !open" type="button"
                                 style="background:{{ $cupomShopeeVal > 0 ? '#7c3aed' : '#374151' }};color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
-                                🎟️ Cupom{{ $cupomShopeeVal > 0 ? ' R$ ' . number_format($cupomShopeeVal, 2, ',', '.') : '' }}
+                                🎟️ Cupom Vendedor{{ $cupomShopeeVal > 0 ? ' R$ ' . number_format($cupomShopeeVal, 2, ',', '.') : '' }}
                             </button>
                             <span x-show="open" x-cloak style="display:inline-flex;align-items:center;gap:4px;margin-left:4px;">
                                 <input x-model="valor" type="text" placeholder="Valor" style="width:80px;padding:3px 6px;font-size:11px;border-radius:4px;border:1px solid #4b5563;background:#1f2937;color:#fff;">
                                 <input x-model="desc" type="text" placeholder="Descrição (opcional)" style="width:130px;padding:3px 6px;font-size:11px;border-radius:4px;border:1px solid #4b5563;background:#1f2937;color:#fff;">
                                 <button @click="if(valor!=='') { $wire.lancarCupomShopee({{ $venda->id_venda }}, valor, desc); open=false; }" type="button"
+                                    style="background:#059669;color:#fff;padding:3px 8px;font-size:11px;border-radius:4px;border:none;cursor:pointer;">✓</button>
+                                <button @click="open=false" type="button" style="color:#9ca3af;font-size:10px;cursor:pointer;background:none;border:none;">✖</button>
+                            </span>
+                        </div>
+                        @php $cupomPlataformaVal = (float) ($venda->cupom_plataforma ?? 0); @endphp
+                        <div x-data="{ open: false, valor: '{{ $cupomPlataformaVal > 0 ? number_format($cupomPlataformaVal, 2, '.', '') : '' }}' }" style="display:inline-block;">
+                            <button @click="open = !open" type="button"
+                                style="background:{{ $cupomPlataformaVal > 0 ? '#065f46' : '#374151' }};color:#fff;padding:3px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                                🎟️ Cupom Shopee{{ $cupomPlataformaVal > 0 ? ' R$ ' . number_format($cupomPlataformaVal, 2, ',', '.') : '' }}
+                            </button>
+                            <span x-show="open" x-cloak style="display:inline-flex;align-items:center;gap:4px;margin-left:4px;">
+                                <input x-model="valor" type="text" placeholder="Valor (col. Z)" style="width:100px;padding:3px 6px;font-size:11px;border-radius:4px;border:1px solid #4b5563;background:#1f2937;color:#fff;">
+                                <button @click="if(valor!=='') { $wire.lancarCupomPlataforma({{ $venda->id_venda }}, valor); open=false; }" type="button"
                                     style="background:#059669;color:#fff;padding:3px 8px;font-size:11px;border-radius:4px;border:none;cursor:pointer;">✓</button>
                                 <button @click="open=false" type="button" style="color:#9ca3af;font-size:10px;cursor:pointer;background:none;border:none;">✖</button>
                             </span>

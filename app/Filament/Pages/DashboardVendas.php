@@ -199,6 +199,18 @@ class DashboardVendas extends Page implements HasForms
             ->success()->send();
     }
 
+    public function lancarCupomPlataforma(int $vendaId, string $valor): void
+    {
+        $venda = Venda::find($vendaId);
+        if (!$venda) return;
+        $valorCupom = round(abs((float) str_replace(',', '.', $valor)), 2);
+        $venda->update(['cupom_plataforma' => $valorCupom]);
+        \App\Services\VendaRecalculoService::recalcularMargens($venda);
+        \Filament\Notifications\Notification::make()
+            ->title('Cupom Shopee (reembolso) lançado: R$ ' . number_format($valorCupom, 2, ',', '.'))
+            ->success()->send();
+    }
+
     public function buscarCustos(int $vendaId): void
     {
         $venda = Venda::find($vendaId);
