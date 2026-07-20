@@ -44,6 +44,7 @@ class LoteRecebimentos extends Page
 
         $contas = ContaReceber::with('venda.canal')
             ->where('status', 'pendente')
+            ->whereNull('fatura_recebimento_id')
             ->where(function ($q) {
                 $q->whereHas('venda', fn ($q2) => $q2->where('numero_pedido_canal', 'like', '%' . $this->busca . '%'))
                   ->orWhere('observacoes', 'like', '%' . $this->busca . '%');
@@ -205,6 +206,7 @@ class LoteRecebimentos extends Page
         foreach ($pedidos as $numeroPedido) {
             // Buscar todas as contas a receber pendentes do pedido
             $contas = ContaReceber::where('status', 'pendente')
+                ->whereNull('fatura_recebimento_id')
                 ->where(function ($q) use ($numeroPedido) {
                     $q->whereHas('venda', fn ($q2) => $q2->where('numero_pedido_canal', $numeroPedido))
                       ->orWhere('observacoes', 'like', '%' . $numeroPedido . '%');

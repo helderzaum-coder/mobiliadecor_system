@@ -6,6 +6,7 @@ use App\Models\CategoriaFinanceira;
 use App\Models\ContaBancaria;
 use App\Models\ContaPagar;
 use App\Models\ContaReceber;
+use App\Models\FaturaRecebimento;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -36,6 +37,7 @@ class Caixa extends Page implements HasForms
     public ?string $tipo_movimento = null;
     public bool $exibir_saldo_anterior = true;
     public bool $exibir_transferencias = false;
+    public bool $exibir_previsoes = false;
 
     protected $queryString = [
         'periodo' => ['except' => 'este_mes'],
@@ -48,6 +50,7 @@ class Caixa extends Page implements HasForms
         'tipo_movimento' => ['except' => ''],
         'exibir_saldo_anterior' => ['except' => true],
         'exibir_transferencias' => ['except' => false],
+        'exibir_previsoes' => ['except' => false],
     ];
 
     public function mount(): void
@@ -122,6 +125,10 @@ class Caixa extends Page implements HasForms
                     ->reactive(),
                 Forms\Components\Toggle::make('exibir_transferencias')
                     ->label('Exibir transferências')
+                    ->default(false)
+                    ->reactive(),
+                Forms\Components\Toggle::make('exibir_previsoes')
+                    ->label('Exibir previsões')
                     ->default(false)
                     ->reactive(),
             ]),
@@ -257,6 +264,30 @@ class Caixa extends Page implements HasForms
                 'model' => 'receber',
                 'transferencia_id' => $r->transferencia_id,
             ]);
+        }
+
+        // Previsões: faturas de recebimento abertas no período
+        if ($this->exibir_previsoes) {
+            $faturas = FaturaRecebimento::with(['canal', 'contaBancaria'])
+                ->where('status', 'aberta')
+                ->whereBetween('data_prevista', [$inicio, $fim])
+                ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
+                ->get();
+
+            foreach ($faturas as $fatura) {
+                $resultado->push([
+                    'data' => $fatura->data_prevista->format('Y-m-d'),
+                    'tipo' => 'entrada',
+                    'descricao' => '🔮 ' . ($fatura->descricao ?: ($fatura->canal?->nome_canal ?? 'Fatura #' . $fatura->id)),
+                    'categoria' => $fatura->canal?->nome_canal ?? 'Previsto',
+                    'banco' => $fatura->contaBancaria?->nome ?? '-',
+                    'valor' => (float) $fatura->valor_total,
+                    'id' => $fatura->id,
+                    'model' => 'previsao',
+                    'transferencia_id' => null,
+                    'previsao' => true,
+                ]);
+            }
         }
 
         return $resultado;

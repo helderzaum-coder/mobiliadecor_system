@@ -26,6 +26,7 @@ class ContaReceber extends Model
         'categoria_id',
         'lote_recebimento_id',
         'transferencia_id',
+        'fatura_recebimento_id',
     ];
 
     protected static function booted(): void
@@ -63,5 +64,10 @@ class ContaReceber extends Model
     public function loteRecebimento(): BelongsTo
     {
         return $this->belongsTo(LoteRecebimento::class, 'lote_recebimento_id');
+    }
+
+    public function faturaRecebimento(): BelongsTo
+    {
+        return $this->belongsTo(FaturaRecebimento::class, 'fatura_recebimento_id');
     }
 }

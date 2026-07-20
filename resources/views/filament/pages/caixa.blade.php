@@ -48,22 +48,24 @@
                     </thead>
                     <tbody>
                         @foreach($dia['itens'] as $item)
-                            <tr style="border-bottom:1px solid #1f2937;">
+                            @php $isPrevisao = !empty($item['previsao']); @endphp
+                            <tr style="border-bottom:1px solid #1f2937;{{ $isPrevisao ? 'border-left:3px solid #f59e0b;opacity:0.75;' : '' }}">
                                 <td style="padding:8px 10px;width:30px;text-align:center;">
                                     @if($item['tipo'] === 'entrada')
-                                        <span style="color:#10b981;">▲</span>
+                                        <span style="color:{{ $isPrevisao ? '#f59e0b' : '#10b981' }};">{{ $isPrevisao ? '◎' : '▲' }}</span>
                                     @else
                                         <span style="color:#ef4444;">▼</span>
                                     @endif
                                 </td>
-                                <td style="padding:8px 10px;color:#e5e7eb;">{{ $item['descricao'] }}</td>
+                                <td style="padding:8px 10px;color:{{ $isPrevisao ? '#d1d5db' : '#e5e7eb' }};font-style:{{ $isPrevisao ? 'italic' : 'normal' }};">{{ $item['descricao'] }}</td>
                                 <td style="padding:8px 10px;color:#6b7280;font-size:11px;">{{ $item['categoria'] }}</td>
                                 <td style="padding:8px 10px;color:#6b7280;font-size:11px;">{{ $item['banco'] !== '-' ? $item['banco'] : '' }}</td>
-                                <td style="padding:8px 10px;text-align:right;font-weight:600;{{ $item['tipo'] === 'entrada' ? 'color:#10b981;' : 'color:#ef4444;' }}">
+                                <td style="padding:8px 10px;text-align:right;font-weight:600;{{ $item['tipo'] === 'entrada' ? ('color:' . ($isPrevisao ? '#f59e0b' : '#10b981') . ';') : 'color:#ef4444;' }}">
                                     {{ $item['tipo'] === 'entrada' ? '+' : '-' }}R$ {{ number_format($item['valor'], 2, ',', '.') }}
+                                    @if($isPrevisao)<span style="font-size:9px;color:#f59e0b;margin-left:3px;">PREV</span>@endif
                                 </td>
                                 <td style="padding:4px 8px;text-align:right;white-space:nowrap;width:80px;">
-                                    @if(!empty($item['id']))
+                                    @if(!empty($item['id']) && !$isPrevisao)
                                         <button
                                             wire:click="abrirEditModal('{{ $item['model'] }}', {{ $item['id'] }})"
                                             style="background:none;border:none;cursor:pointer;color:#6b7280;font-size:14px;padding:2px 4px;"
