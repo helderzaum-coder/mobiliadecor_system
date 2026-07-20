@@ -264,29 +264,25 @@ class VendaRecalculoService
         $totalProdutos = (float) ($originais['total_produtos'] ?? 0);
         $totalPedido = (float) ($originais['total_pedido'] ?? 0);
         $cupomVendedor = (float) ($originais['cupom_vendedor'] ?? 0);
+        $cupomPlataforma = (float) ($originais['cupom_shopee'] ?? 0);
 
         $updateData = [
-            'comissao' => $comissao,
-            'subsidio_pix' => $subsidioPix,
+            'comissao'            => $comissao,
+            'subsidio_pix'        => $subsidioPix,
+            'total_produtos'      => $totalProdutos > 0 ? $totalProdutos : null,
+            'valor_total_venda'   => $totalProdutos > 0 ? $totalProdutos + $frete : null,
+            'valor_frete_cliente' => $frete,
             'planilha_processada' => true,
         ];
+        // remover nulls
+        $updateData = array_filter($updateData, fn($v) => $v !== null);
 
-        // Cupom do vendedor: sai da margem do vendedor
         if ($cupomVendedor > 0) {
-            $updateData['cupom_shopee'] = $cupomVendedor;
-            $updateData['cupom_shopee_descricao'] = 'Cupom do Vendedor';
+            $updateData['cupom_shopee']            = $cupomVendedor;
+            $updateData['cupom_shopee_descricao']  = 'Cupom do Vendedor';
         }
-
-        // Atualizar valores de produto e frete se vieram da planilha
-        if ($totalProdutos > 0) {
-            $updateData['total_produtos'] = $totalProdutos;
-        }
-        // valor_total_venda = total_produtos + frete (valor bruto que o cliente pagou)
-        if ($totalProdutos > 0) {
-            $updateData['valor_total_venda'] = $totalProdutos + $frete;
-        }
-        if ($frete >= 0) {
-            $updateData['valor_frete_cliente'] = $frete;
+        if ($cupomPlataforma > 0) {
+            $updateData['cupom_plataforma'] = $cupomPlataforma;
         }
 
         $venda->update($updateData);
@@ -421,8 +417,11 @@ class VendaRecalculoService
                 $venda->update(['comissao' => $mlSaleFee]);
             }
             $venda->refresh();
-        } elseif ($isShopeeCanal2 && $cupomShopee > 0 && $canal) {
-            // Shopee com cupom: recalcular pela regra sobre valor total (não excedente)
+        } elseif ($isShopeeCanal2 && $cupomShopee > 0 && !$temPlanilhaShopee && $canal) {
+            // Shopee sem planilha + cupom manual:
+            // base = total_produtos - cupom_vendedor (AE)
+            // comissao = base × % + fixo - cupom_plataforma (Z)
+            $cupomPlataforma = (float) ($venda->cupom_plataforma ?? 0);
             $baseComissao = (float) $venda->total_produtos - $cupomShopee;
             if ($baseComissao > 0) {
                 $regra = $canal->regrasComissao()
@@ -433,8 +432,8 @@ class VendaRecalculoService
                     ->orderByDesc('faixa_valor_min')
                     ->first();
                 if ($regra) {
-                    $novaComissao = round($baseComissao * (float) $regra->percentual / 100 + (float) $regra->valor_fixo, 2);
-                    $venda->update(['comissao' => $novaComissao]);
+                    $novaComissao = round($baseComissao * (float) $regra->percentual / 100 + (float) $regra->valor_fixo - $cupomPlataforma, 2);
+                    $venda->update(['comissao' => max(0, $novaComissao)]);
                     $venda->refresh();
                 }
             }

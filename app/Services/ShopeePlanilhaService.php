@@ -287,16 +287,13 @@ class ShopeePlanilhaService
             }
         }
 
-        // Subtotal real = Preço produto - Subsídio Pix - Cupom Shopee (col Z)
-        // Cupom Shopee é absorvido pela Shopee mas reduz o valor recebido pelo vendedor
-        // Cupom do Vendedor (AE) fica separado em cupom_shopee para descontar da margem
-        $subtotalReal = $precosProduto - $subsidioPix - $cupomShopee;
-
-        // Total do pedido = subtotal + frete
-        $totalPedido = $subtotalReal + $frete;
+        // total_produtos = V bruto (sem descontar cupons)
+        // Cupom vendedor (AE) = base da comissão reduzida, sai da margem do vendedor
+        // Cupom Shopee (Z) = desconta da comissão calculada (Shopee absorve)
+        $totalPedido = $precosProduto - $subsidioPix + $frete;
 
         return [
-            'total_produtos' => round($subtotalReal, 2),
+            'total_produtos' => round($precosProduto - $subsidioPix, 2),
             'total_pedido' => round($totalPedido, 2),
             'frete' => round($frete, 2),
             'comissao' => round($comissao, 2),
