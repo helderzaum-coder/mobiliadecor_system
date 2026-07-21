@@ -283,7 +283,7 @@ class FaturaTransportadoraResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading('Desfazer Fatura')
                     ->modalDescription(fn (FaturaTransportadora $record) =>
-                        "Isso vai: remover a conta a pagar vinculada, desvincular os {$record->ctes()->count()} CT-e(s) desta fatura e excluir a fatura. Os CT-es voltam a ficar disponíveis para fechar em outra fatura."
+                        'Isso vai remover a conta a pagar, desvincular os CT-e(s) desta fatura e exclui-la. Os CT-es voltam disponiveis para nova fatura.'
                     )
                     ->action(function (FaturaTransportadora $record) {
                         // 1. Remover conta a pagar vinculada
