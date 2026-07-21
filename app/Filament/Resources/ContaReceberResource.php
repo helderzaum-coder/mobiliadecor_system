@@ -49,16 +49,13 @@ class ContaReceberResource extends Resource
                     ->prefix('R$'),
                 Forms\Components\Select::make('forma_pagamento')
                     ->label('Forma / Canal')
-                    ->options([
-                        'Pix' => 'Pix',
-                        'Boleto' => 'Boleto',
-                        'Transferência' => 'Transferência',
-                        'Mercadolivre' => 'Mercadolivre',
-                        'Shopee' => 'Shopee',
-                        'Magalu' => 'Magalu',
-                        'Outro' => 'Outro',
-                    ])
+                    ->options(function () {
+                        $canais = \App\Models\CanalVenda::where('ativo', true)->orderBy('nome_canal')->pluck('nome_canal', 'nome_canal')->toArray();
+                        $fixos = ['Pix' => 'Pix', 'Boleto' => 'Boleto', 'Transferência' => 'Transferência', 'Outro' => 'Outro'];
+                        return array_merge($canais, $fixos);
+                    })
                     ->required()
+                    ->searchable()
                     ->placeholder('Selecione...'),
                 Forms\Components\Select::make('conta_bancaria_id')
                     ->label('Banco')
