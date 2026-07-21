@@ -14,6 +14,8 @@ class EditContaPagar extends EditRecord
 {
     protected static string $resource = ContaPagarResource::class;
 
+    private bool $eraRecorrenteAntesSalvar = false;
+
     protected function getHeaderActions(): array
     {
         return [
@@ -28,7 +30,6 @@ class EditContaPagar extends EditRecord
                     $record = $this->record;
                     $data = $this->form->getState();
 
-                    // Salva o registro atual
                     $record->update($data);
 
                     if (empty($record->grupo_recorrencia)) {
@@ -36,21 +37,20 @@ class EditContaPagar extends EditRecord
                         return;
                     }
 
-                    // Atualiza todas as pendentes futuras do mesmo grupo
                     $atualizados = ContaPagar::where('grupo_recorrencia', $record->grupo_recorrencia)
                         ->where('id_conta_pagar', '!=', $record->id_conta_pagar)
                         ->where('status', 'pendente')
                         ->where('data_vencimento', '>=', now()->toDateString())
                         ->update([
-                            'descricao' => $data['descricao'] ?? $record->descricao,
-                            'valor_parcela' => $data['valor_parcela'] ?? $record->valor_parcela,
-                            'categoria_id' => $data['categoria_id'] ?? $record->categoria_id,
-                            'conta_bancaria_id' => $data['conta_bancaria_id'] ?? $record->conta_bancaria_id,
-                            'forma_pagamento' => $data['forma_pagamento'] ?? $record->forma_pagamento,
-                            'juros_atraso' => $data['juros_atraso'] ?? $record->juros_atraso,
-                            'tipo_juros' => $data['tipo_juros'] ?? $record->tipo_juros,
+                            'descricao'             => $data['descricao'] ?? $record->descricao,
+                            'valor_parcela'         => $data['valor_parcela'] ?? $record->valor_parcela,
+                            'categoria_id'          => $data['categoria_id'] ?? $record->categoria_id,
+                            'conta_bancaria_id'     => $data['conta_bancaria_id'] ?? $record->conta_bancaria_id,
+                            'forma_pagamento'       => $data['forma_pagamento'] ?? $record->forma_pagamento,
+                            'juros_atraso'          => $data['juros_atraso'] ?? $record->juros_atraso,
+                            'tipo_juros'            => $data['tipo_juros'] ?? $record->tipo_juros,
                             'intervalo_recorrencia' => $data['intervalo_recorrencia'] ?? $record->intervalo_recorrencia,
-                            'data_fim_recorrencia' => $data['data_fim_recorrencia'] ?? $record->data_fim_recorrencia,
+                            'data_fim_recorrencia'  => $data['data_fim_recorrencia'] ?? $record->data_fim_recorrencia,
                         ]);
 
                     Notification::make()
@@ -67,7 +67,7 @@ class EditContaPagar extends EditRecord
     {
         $data['datas_diferentes'] = (
             ($data['data_vencimento'] ?? null) !== ($data['data_lancamento'] ?? null) ||
-            ($data['data_pagamento'] ?? null) !== ($data['data_lancamento'] ?? null)
+            ($data['data_pagamento']  ?? null) !== ($data['data_lancamento'] ?? null)
         );
 
         return $data;
@@ -75,9 +75,12 @@ class EditContaPagar extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        // Capturar ANTES do save enquanto o modelo ainda tem o valor original
+        $this->eraRecorrenteAntesSalvar = (bool) $this->record->recorrente;
+
         if (empty($data['datas_diferentes'])) {
             $data['data_vencimento'] = $data['data_lancamento'];
-            $data['data_pagamento'] = $data['data_lancamento'];
+            $data['data_pagamento']  = $data['data_lancamento'];
         }
         unset($data['datas_diferentes']);
 
@@ -85,14 +88,13 @@ class EditContaPagar extends EditRecord
             $data['grupo_recorrencia'] = Str::uuid()->toString();
         }
 
-        // Somar juros fixo ao valor_parcela
         if (($data['tipo_juros'] ?? null) === 'fixo' && (float) ($data['juros_atraso'] ?? 0) > 0) {
             $jurosAnterior = (float) ($this->record->juros_atraso ?? 0);
-            $tipoAnterior = $this->record->tipo_juros ?? null;
+            $tipoAnterior  = $this->record->tipo_juros ?? null;
             if ($tipoAnterior !== 'fixo' || $jurosAnterior != (float) $data['juros_atraso']) {
                 $valorBase = (float) $data['valor_parcela'];
                 if ($tipoAnterior === 'fixo' && $jurosAnterior > 0) {
-                    $valorBase = $valorBase - $jurosAnterior;
+                    $valorBase -= $jurosAnterior;
                 }
                 $data['valor_parcela'] = round($valorBase + (float) $data['juros_atraso'], 2);
             }
@@ -105,9 +107,8 @@ class EditContaPagar extends EditRecord
     {
         $record = $this->record->fresh();
 
-        // Só gerar parcelas se acabou de ativar recorrência (não tinha grupo antes)
-        $eraRecorrente = (bool) $this->record->getOriginal('recorrente');
-        if (!$record->recorrente || $eraRecorrente || empty($record->grupo_recorrencia)) {
+        // Só gerar parcelas se recorrência foi ativada agora (não era recorrente antes)
+        if (!$record->recorrente || $this->eraRecorrenteAntesSalvar || empty($record->grupo_recorrencia)) {
             return;
         }
 
@@ -118,42 +119,37 @@ class EditContaPagar extends EditRecord
         $fim = $record->data_fim_recorrencia ? Carbon::parse($record->data_fim_recorrencia) : null;
 
         $defaultQtd = match ($intervalo) {
-            'semanal' => 52,
+            'semanal'   => 52,
             'quinzenal' => 26,
-            default => 12,
+            default     => 12,
         };
 
         $qtd = $fim ? min($defaultQtd, $this->calcularQuantidade($intervalo, $vencimento, $fim)) : $defaultQtd;
 
-        // Atualizar o registro atual como parcela 1
-        $record->update([
-            'numero_parcela' => 1,
-            'total_parcelas' => $qtd,
-        ]);
+        $record->update(['numero_parcela' => 1, 'total_parcelas' => $qtd]);
 
-        // Criar parcelas 2..N
         for ($i = 1; $i < $qtd; $i++) {
             $dataVenc = $this->proximaData($vencimento, $intervalo, $i);
             if ($fim && $dataVenc->gt($fim)) break;
 
             ContaPagar::create([
-                'descricao' => $record->descricao,
-                'valor_parcela' => $record->valor_parcela,
-                'categoria_id' => $record->categoria_id,
-                'conta_bancaria_id' => $record->conta_bancaria_id,
-                'forma_pagamento' => $record->forma_pagamento,
-                'data_lancamento' => $record->data_lancamento,
-                'data_vencimento' => $dataVenc->toDateString(),
-                'status' => 'pendente',
-                'recorrente' => true,
+                'descricao'             => $record->descricao,
+                'valor_parcela'         => $record->valor_parcela,
+                'categoria_id'          => $record->categoria_id,
+                'conta_bancaria_id'     => $record->conta_bancaria_id,
+                'forma_pagamento'       => $record->forma_pagamento,
+                'data_lancamento'       => $record->data_lancamento,
+                'data_vencimento'       => $dataVenc->toDateString(),
+                'status'                => 'pendente',
+                'recorrente'            => true,
                 'intervalo_recorrencia' => $intervalo,
-                'data_fim_recorrencia' => $record->data_fim_recorrencia,
-                'grupo_recorrencia' => $record->grupo_recorrencia,
-                'numero_parcela' => $i + 1,
-                'total_parcelas' => $qtd,
-                'juros_atraso' => $record->juros_atraso,
-                'tipo_juros' => $record->tipo_juros,
-                'observacoes' => $record->observacoes,
+                'data_fim_recorrencia'  => $record->data_fim_recorrencia,
+                'grupo_recorrencia'     => $record->grupo_recorrencia,
+                'numero_parcela'        => $i + 1,
+                'total_parcelas'        => $qtd,
+                'juros_atraso'          => $record->juros_atraso,
+                'tipo_juros'            => $record->tipo_juros,
+                'observacoes'           => $record->observacoes,
             ]);
         }
 
