@@ -56,7 +56,7 @@ class FaturaTransportadoraResource extends Resource
 
     public static function table(Table $table): Table
     {
-         return $table
+        return $table
             ->columns([
                 Tables\Columns\TextColumn::make('transportadora.nome_transportadora')->label('Transportadora')->searchable(),
                 Tables\Columns\TextColumn::make('numero_fatura')->label('Nº Fatura')->searchable(),
@@ -133,7 +133,7 @@ class FaturaTransportadoraResource extends Resource
                                 ->color('info')
                                 ->action(function (Forms\Get $get, Forms\Set $set) {
                                     $state = $get('csv_import');
-                                    $transportadoraId = $get('id_transportadora'); 
+                                    $transportadoraId = $get('id_transportadora');
                                     if (!$state || !$transportadoraId) return;
 
                                     $path = is_array($state) ? collect($state)->first() : $state;
@@ -276,30 +276,7 @@ class FaturaTransportadoraResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('desfazer_fatura')
-                    ->label('Desfazer')
-                    ->icon('heroicon-o-arrow-uturn-left')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->modalHeading('Desfazer Fatura')
-                    ->modalDescription(fn (FaturaTransportadora $record) =>
-                        'Isso vai remover a conta a pagar, desvincular os CT-e(s) desta fatura e exclui-la. Os CT-es voltam disponiveis para nova fatura.'
-                    )
-                    ->action(function (FaturaTransportadora $record) {
-                        // 1. Remover conta a pagar vinculada
-                        ContaPagar::where('id_fatura', $record->id_fatura)->delete();
-
-                        // 2. Desvincular CT-es
-                        Cte::where('id_fatura', $record->id_fatura)->update(['id_fatura' => null]);
-
-                        // 3. Excluir a fatura
-                        $record->delete();
-
-                        Notification::make()
-                            ->title('Fatura desfeita. CT-es liberados e conta a pagar removida.')
-                            ->success()
-                            ->send();
-                    }),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
