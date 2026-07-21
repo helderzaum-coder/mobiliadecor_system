@@ -276,7 +276,30 @@ class FaturaTransportadoraResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\Action::make('desfazer_fatura')
+                    ->label('Desfazer')
+                    ->icon('heroicon-o-arrow-uturn-left')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Desfazer Fatura')
+                    ->modalDescription(fn (FaturaTransportadora $record) =>
+                        "Isso vai: remover a conta a pagar vinculada, desvincular os {$record->ctes()->count()} CT-e(s) desta fatura e excluir a fatura. Os CT-es voltam a ficar disponíveis para fechar em outra fatura."
+                    )
+                    ->action(function (FaturaTransportadora $record) {
+                        // 1. Remover conta a pagar vinculada
+                        ContaPagar::where('id_fatura', $record->id_fatura)->delete();
+
+                        // 2. Desvincular CT-es
+                        Cte::where('id_fatura', $record->id_fatura)->update(['id_fatura' => null]);
+
+                        // 3. Excluir a fatura
+                        $record->delete();
+
+                        Notification::make()
+                            ->title('Fatura desfeita. CT-es liberados e conta a pagar removida.')
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
