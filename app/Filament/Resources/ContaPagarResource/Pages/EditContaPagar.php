@@ -107,6 +107,16 @@ class EditContaPagar extends EditRecord
     {
         $record = $this->record->fresh();
 
+        \Illuminate\Support\Facades\Log::info('EditContaPagar afterSave', [
+            'id'                     => $record->id_conta_pagar,
+            'recorrente'             => $record->recorrente,
+            'eraRecorrente'          => $this->eraRecorrenteAntesSalvar,
+            'grupo_recorrencia'      => $record->grupo_recorrencia,
+            'intervalo_recorrencia'  => $record->intervalo_recorrencia,
+            'data_vencimento'        => $record->data_vencimento,
+            'data_fim_recorrencia'   => $record->data_fim_recorrencia,
+        ]);
+
         // Só gerar parcelas se recorrência foi ativada agora (não era recorrente antes)
         if (!$record->recorrente || $this->eraRecorrenteAntesSalvar || empty($record->grupo_recorrencia)) {
             return;
