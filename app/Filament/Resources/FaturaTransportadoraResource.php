@@ -180,12 +180,29 @@ class FaturaTransportadoraResource extends Resource
 
                                     $ids = Cte::whereNull('id_fatura')
                                         ->whereIn('transportadora', $nomes)
+                                        ->where('data_emissao', '>=', '2026-06-01')
                                         ->whereIn('numero_cte', $numeros)
                                         ->pluck('id')
                                         ->toArray();
 
                                     $set('ctes_selecionados', $ids);
-                                    Notification::make()->title(count($ids) . ' CTe(s) selecionado(s) de ' . count($numeros) . ' no CSV.')->success()->send();
+
+                                    $encontrados = count($ids);
+                                    $total = count($numeros);
+
+                                    if ($encontrados !== $total) {
+                                        Notification::make()
+                                            ->title('⚠️ Divergência no CSV')
+                                            ->body("CSV contém {$total} CT-e(s), mas apenas {$encontrados} foram encontrados no sistema sem fatura. Verifique os CT-es faltantes antes de fechar.")
+                                            ->warning()
+                                            ->persistent()
+                                            ->send();
+                                    } else {
+                                        Notification::make()
+                                            ->title("{$encontrados} CTe(s) selecionado(s) — tudo ok!")
+                                            ->success()
+                                            ->send();
+                                    }
                                 }),
                         ])->visible(fn (Forms\Get $get) => !empty($get('csv_import'))),
                         Forms\Components\CheckboxList::make('ctes_selecionados')
@@ -203,6 +220,7 @@ class FaturaTransportadoraResource extends Resource
 
                                 return Cte::whereNull('id_fatura')
                                     ->whereIn('transportadora', $nomes)
+                                    ->where('data_emissao', '>=', '2026-06-01')
                                     ->orderBy('data_emissao', 'desc')
                                     ->get()
                                     ->mapWithKeys(fn ($cte) => [
