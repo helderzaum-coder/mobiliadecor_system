@@ -139,14 +139,9 @@ class FaturaTransportadoraResource extends Resource
                                     $path = is_array($state) ? collect($state)->first() : $state;
                                     if (!$path) return;
 
-                                    // Buscar o CSV mais recente no livewire-tmp
                                     $fullPath = null;
-                                    $searchPaths = [
-                                        storage_path('app/private/livewire-tmp/' . $path),
-                                        storage_path('app/private/livewire-tmp/'),
-                                    ];
-                                    if (file_exists($searchPaths[0])) {
-                                        $fullPath = $searchPaths[0];
+                                    if (file_exists(storage_path('app/private/livewire-tmp/' . $path))) {
+                                        $fullPath = storage_path('app/private/livewire-tmp/' . $path);
                                     } else {
                                         $files = glob(storage_path('app/private/livewire-tmp/*.csv'));
                                         if (!empty($files)) {
@@ -276,7 +271,25 @@ class FaturaTransportadoraResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\Action::make('desfazer_fatura')
+                    ->label('Desfazer')
+                    ->icon('heroicon-o-arrow-uturn-left')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Desfazer Fatura')
+                    ->modalDescription(fn (FaturaTransportadora $record) =>
+                        'Isso vai remover a conta a pagar, desvincular os CT-e(s) desta fatura e exclui-la. Os CT-es voltam disponiveis para nova fatura.'
+                    )
+                    ->action(function (FaturaTransportadora $record) {
+                        ContaPagar::where('id_fatura', $record->id_fatura)->delete();
+                        Cte::where('id_fatura', $record->id_fatura)->update(['id_fatura' => null]);
+                        $record->delete();
+
+                        Notification::make()
+                            ->title('Fatura desfeita. CT-es liberados e conta a pagar removida.')
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
