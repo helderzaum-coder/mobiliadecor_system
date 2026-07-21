@@ -490,8 +490,18 @@ class PedidoBlingStagingResource extends Resource
                 Tables\Filters\TernaryFilter::make('pronto')
                     ->label('Pronto p/ Aprovar')
                     ->queries(
-                        true: fn ($query) => $query->whereNotNull('nfe_chave_acesso')->where('custo_frete', '>', 0),
-                        false: fn ($query) => $query->where(fn ($q) => $q->whereNull('nfe_chave_acesso')->orWhere('custo_frete', '<=', 0)->orWhereNull('custo_frete')),
+                        true: fn ($query) => $query->whereNotNull('nfe_chave_acesso')->where(fn ($q) => $q
+                            ->where('custo_frete', '>', 0)
+                            ->orWhereRaw("LOWER(canal) LIKE '%mercado%'")
+                            ->orWhereRaw("LOWER(canal) LIKE '%tiktok%'")
+                        ),
+                        false: fn ($query) => $query->where(fn ($q) => $q->whereNull('nfe_chave_acesso')
+                            ->orWhere(fn ($q2) => $q2
+                                ->where(fn ($q3) => $q3->where('custo_frete', '<=', 0)->orWhereNull('custo_frete'))
+                                ->whereRaw("LOWER(canal) NOT LIKE '%mercado%'")
+                                ->whereRaw("LOWER(canal) NOT LIKE '%tiktok%'")
+                            )
+                        ),
                     ),
                 Tables\Filters\Filter::make('periodo')
                     ->form([
@@ -1303,6 +1313,11 @@ class PedidoBlingStagingResource extends Resource
             || str_starts_with($record->numero_loja ?? '', '2000');
     }
 
+    public static function isTiktok(PedidoBlingStaging $record): bool
+    {
+        return str_contains(strtolower($record->canal ?? ''), 'tiktok');
+    }
+
     /**
      * Verifica se um pedido está pronto para aprovação.
      * Retorna array de checks com 'ok' e 'label'.
@@ -1471,8 +1486,9 @@ class PedidoBlingStagingResource extends Resource
             'label' => 'NF-e',
         ];
 
-        // Custo frete — obrigatório exceto ML e Shopee Xpress (frete = 0 após planilha)
-        if (!$isML) {
+        // Custo frete — obrigatório exceto ML, TikTok e Shopee Xpress (frete = 0 após planilha)
+        $isTiktok = self::isTiktok($record);
+        if (!$isML && !$isTiktok) {
             $shopeeXpress = $isShopee && $record->planilha_shopee && (float) ($record->frete ?? 0) == 0;
             if (!$shopeeXpress) {
                 $checks[] = [
