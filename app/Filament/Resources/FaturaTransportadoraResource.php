@@ -56,7 +56,7 @@ class FaturaTransportadoraResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table
+         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('transportadora.nome_transportadora')->label('Transportadora')->searchable(),
                 Tables\Columns\TextColumn::make('numero_fatura')->label('Nº Fatura')->searchable(),
