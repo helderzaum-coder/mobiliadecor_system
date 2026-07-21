@@ -57,7 +57,7 @@ class LoteRecebimentos extends Page
         // Recalcular valor em tempo real apenas se não foi editado manualmente
         foreach ($contas as $conta) {
             if ($conta->venda && !$conta->lancamento_manual && !str_contains($conta->forma_pagamento ?? '', 'Subsídio')) {
-                if ($conta->updated_at->diffInSeconds($conta->created_at) > 5) continue;
+                if (abs($conta->updated_at->diffInSeconds($conta->created_at)) > 5) continue;
                 $repasse = $this->calcularRepasse($conta->venda);
                 if ($repasse !== null && $conta->total_parcelas > 1) {
                     $conta->valor_parcela = round($repasse / $conta->total_parcelas, 2);
@@ -258,7 +258,7 @@ class LoteRecebimentos extends Page
         if (str_contains($conta->forma_pagamento ?? '', 'Subsídio')) return;
 
         // Se foi editado manualmente após criação, não sobrescrever
-        if ($conta->updated_at->diffInSeconds($conta->created_at) > 5) return;
+        if (abs($conta->updated_at->diffInSeconds($conta->created_at)) > 5) return;
 
         $repasse = $this->calcularRepasse($conta->venda);
         if ($repasse === null) return;
