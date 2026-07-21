@@ -133,7 +133,7 @@ class FaturaTransportadoraResource extends Resource
                                 ->color('info')
                                 ->action(function (Forms\Get $get, Forms\Set $set) {
                                     $state = $get('csv_import');
-                                    $transportadoraId = $get('id_transportadora');
+                                    $transportadoraId = $get('id_transportadora'); 
                                     if (!$state || !$transportadoraId) return;
 
                                     $path = is_array($state) ? collect($state)->first() : $state;
