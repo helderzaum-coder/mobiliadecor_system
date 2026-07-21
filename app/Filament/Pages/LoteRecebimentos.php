@@ -54,9 +54,10 @@ class LoteRecebimentos extends Page
             ->limit(20)
             ->get();
 
-        // Recalcular valor em tempo real para exibição
+        // Recalcular valor em tempo real apenas se não foi editado manualmente
         foreach ($contas as $conta) {
             if ($conta->venda && !$conta->lancamento_manual && !str_contains($conta->forma_pagamento ?? '', 'Subsídio')) {
+                if ($conta->updated_at->diffInSeconds($conta->created_at) > 5) continue;
                 $repasse = $this->calcularRepasse($conta->venda);
                 if ($repasse !== null && $conta->total_parcelas > 1) {
                     $conta->valor_parcela = round($repasse / $conta->total_parcelas, 2);
@@ -255,6 +256,9 @@ class LoteRecebimentos extends Page
         $conta = ContaReceber::with('venda.canal')->find($contaId);
         if (!$conta || !$conta->venda || $conta->lancamento_manual) return;
         if (str_contains($conta->forma_pagamento ?? '', 'Subsídio')) return;
+
+        // Se foi editado manualmente após criação, não sobrescrever
+        if ($conta->updated_at->diffInSeconds($conta->created_at) > 5) return;
 
         $repasse = $this->calcularRepasse($conta->venda);
         if ($repasse === null) return;
