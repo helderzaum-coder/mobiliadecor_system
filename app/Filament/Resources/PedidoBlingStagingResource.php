@@ -805,7 +805,7 @@ class PedidoBlingStagingResource extends Resource
                             Notification::make()->title($result['msg'])->warning()->send();
                         }
                     })
-                    ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente' && !empty($record->nfe_chave_acesso) && (float) $record->custo_frete == 0),
+                    ->visible(fn (PedidoBlingStaging $record) => $record->status === 'pendente' && !empty($record->nfe_chave_acesso)),
                 Tables\Actions\Action::make('aplicar_cotacao')
                     ->label('Aplicar Frete e Aprovar')
                     ->icon('heroicon-o-check-circle')
@@ -1177,6 +1177,34 @@ class PedidoBlingStagingResource extends Resource
                         if ($excluidos > 0) {
                             Notification::make()->title("{$excluidos} pedido(s) excluído(s).")->success()->send();
                         }
+                    }),
+                Tables\Actions\BulkAction::make('buscar_cte_massa')
+                    ->label('Buscar CT-e')
+                    ->icon('heroicon-o-truck')
+                    ->color('info')
+                    ->requiresConfirmation()
+                    ->modalHeading('Buscar CT-e em Lote')
+                    ->modalDescription('Vai buscar CT-e no banco para todos os pedidos selecionados que possuem chave NF-e.')
+                    ->action(function ($records) {
+                        $encontrados = 0;
+                        $naoEncontrados = 0;
+                        $semNfe = 0;
+                        foreach ($records as $record) {
+                            if (empty($record->nfe_chave_acesso)) {
+                                $semNfe++;
+                                continue;
+                            }
+                            $result = CteService::processarCte($record);
+                            if ($result['success']) {
+                                $encontrados++;
+                            } else {
+                                $naoEncontrados++;
+                            }
+                        }
+                        $msg = "{$encontrados} CT-e(s) encontrado(s)";
+                        if ($naoEncontrados > 0) $msg .= ", {$naoEncontrados} não encontrado(s)";
+                        if ($semNfe > 0) $msg .= ", {$semNfe} sem NF-e";
+                        Notification::make()->title($msg)->success()->send();
                     }),
                 Tables\Actions\BulkAction::make('desaprovar_reimportar_massa')
                     ->label('Desaprovar e Reimportar')
