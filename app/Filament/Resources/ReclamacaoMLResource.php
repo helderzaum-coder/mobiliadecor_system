@@ -35,14 +35,16 @@ class ReclamacaoMLResource extends Resource
             Forms\Components\Section::make('Pedido')->schema([
                 Forms\Components\Select::make('id_venda')
                     ->label('Venda')
-                    ->options(fn () => Venda::whereNotNull('numero_pedido_canal')
+                    ->getSearchResultsUsing(fn (string $search) => Venda::where('numero_pedido_canal', 'like', "%{$search}%")
+                        ->orWhere('cliente_nome', 'like', "%{$search}%")
                         ->orderByDesc('data_venda')
-                        ->limit(500)
+                        ->limit(20)
                         ->get()
                         ->mapWithKeys(fn ($v) => [$v->id_venda => "{$v->numero_pedido_canal} — {$v->cliente_nome}"])
                         ->toArray())
+                    ->getOptionLabelUsing(fn ($value) => optional(Venda::find($value))->numero_pedido_canal)
                     ->searchable()
-                    ->placeholder('Buscar pedido...')
+                    ->placeholder('Digite o nº do pedido ou nome do cliente...')
                     ->reactive()
                     ->afterStateUpdated(function ($state, Forms\Set $set) {
                         if (!$state) return;
