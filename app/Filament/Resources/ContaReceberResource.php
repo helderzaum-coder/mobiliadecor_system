@@ -209,8 +209,7 @@ class ContaReceberResource extends Resource
                         'recebido' => 'Recebido',
                         'atrasado' => 'Atrasado',
                         'cancelado' => 'Cancelado',
-                    ])
-                    ->default('pendente'),
+                    ]),
                 Tables\Filters\SelectFilter::make('canal')
                     ->label('Canal')
                     ->options(fn () => ContaReceber::distinct()->pluck('forma_pagamento', 'forma_pagamento')->toArray())
@@ -230,10 +229,11 @@ class ContaReceberResource extends Resource
                         Forms\Components\Select::make('filtrar_por')
                             ->label('Filtrar por')
                             ->options([
-                                'data_venda' => '📅 Data da Venda',
-                                'data_recebimento' => '💰 Data do Recebimento',
+                                'data_vencimento'   => '📅 Data de Vencimento',
+                                'data_recebimento'  => '💰 Data do Recebimento',
+                                'data_venda'        => '🛒 Data da Venda',
                             ])
-                            ->default('data_venda')
+                            ->default('data_vencimento')
                             ->reactive(),
                         Forms\Components\Select::make('periodo_rapido')
                             ->label('Período')
@@ -266,7 +266,24 @@ class ContaReceberResource extends Resource
                         $periodo = $data['periodo_rapido'] ?? null;
                         if (!$periodo) return $query;
 
-                        $filtrarPor = $data['filtrar_por'] ?? 'data_venda';
+                        $filtrarPor = $data['filtrar_por'] ?? 'data_vencimento';
+
+                        if ($filtrarPor === 'data_vencimento') {
+                            return match ($periodo) {
+                                'este_mes'      => $query->whereBetween('data_vencimento', [now()->startOfMonth(), now()->endOfMonth()]),
+                                'mes_passado'   => $query->whereBetween('data_vencimento', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()]),
+                                'selecionar_mes' => isset($data['mes_selecionado']) && $data['mes_selecionado']
+                                    ? $query->whereBetween('data_vencimento', [
+                                        now()->createFromFormat('Y-m', $data['mes_selecionado'])->startOfMonth(),
+                                        now()->createFromFormat('Y-m', $data['mes_selecionado'])->endOfMonth(),
+                                    ])
+                                    : $query,
+                                'customizado'   => $query
+                                    ->when($data['data_inicio'] ?? null, fn ($q) => $q->whereDate('data_vencimento', '>=', $data['data_inicio']))
+                                    ->when($data['data_fim'] ?? null, fn ($q) => $q->whereDate('data_vencimento', '<=', $data['data_fim'])),
+                                default => $query,
+                            };
+                        }
 
                         if ($filtrarPor === 'data_recebimento') {
                             return match ($periodo) {
@@ -321,10 +338,14 @@ class ContaReceberResource extends Resource
                         };
                     })
                     ->indicateUsing(function (array $data) {
-                        $filtrarPor = $data['filtrar_por'] ?? 'data_venda';
+                        $filtrarPor = $data['filtrar_por'] ?? 'data_vencimento';
                         $periodo = $data['periodo_rapido'] ?? null;
                         if (!$periodo) return null;
-                        $prefixo = $filtrarPor === 'data_recebimento' ? '💰 Recebimento: ' : '📅 Venda: ';
+                        $prefixo = match($filtrarPor) {
+                            'data_recebimento' => '💰 Recebimento: ',
+                            'data_venda'       => '🛒 Venda: ',
+                            default            => '📅 Vencimento: ',
+                        };
                         return $prefixo . match ($periodo) {
                             'este_mes' => 'Este mês',
                             'mes_passado' => 'Mês passado',
