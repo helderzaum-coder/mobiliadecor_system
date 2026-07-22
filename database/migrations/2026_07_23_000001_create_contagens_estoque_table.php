@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('contagens_estoque', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained('users');
+            $table->unsignedBigInteger('user_id')->nullable();
             $table->integer('total_itens')->default(0);
             $table->integer('com_divergencia')->default(0);
             $table->integer('sem_alteracao')->default(0);
