@@ -23,183 +23,170 @@ class ImportarTransacoesML extends Page implements HasForms
     protected static string $view = 'filament.pages.importar-transacoes-ml';
 
     public ?array $data = [];
+    public array $preview = [];
 
     public function mount(): void
     {
         $this->form->fill([
-            'status' => 'pago',
+            'status'          => 'pago',
             'forma_pagamento' => 'debito_automatico',
-            'numero_parcela' => 1,
-            'total_parcelas' => 1,
         ]);
     }
 
     public function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make('Configurações do Lançamento')->schema([
+            Forms\Components\Section::make('Configurações')->schema([
                 Forms\Components\Select::make('categoria_id')
                     ->label('Categoria')
                     ->options(fn () => CategoriaFinanceira::whereIn('tipo', ['saida', 'ambos'])
-                        ->where('ativo', true)
-                        ->where('sistema', false)
-                        ->orderBy('nome')
-                        ->pluck('nome', 'id')
-                        ->toArray())
-                    ->searchable()
-                    ->required()
-                    ->placeholder('Selecione a categoria'),
+                        ->where('ativo', true)->where('sistema', false)
+                        ->orderBy('nome')->pluck('nome', 'id')->toArray())
+                    ->searchable()->required()->placeholder('Selecione a categoria'),
 
                 Forms\Components\Select::make('conta_bancaria_id')
                     ->label('Banco')
                     ->options(fn () => ContaBancaria::where('ativo', true)->orderBy('nome')->pluck('nome', 'id')->toArray())
-                    ->searchable()
-                    ->required()
-                    ->placeholder('Selecione o banco'),
+                    ->searchable()->required()->placeholder('Selecione o banco'),
 
                 Forms\Components\Select::make('forma_pagamento')
                     ->label('Forma de Pagamento')
                     ->options([
-                        'pix' => 'Pix',
-                        'boleto' => 'Boleto',
-                        'cartao' => 'Cartão',
-                        'transferencia' => 'Transferência',
-                        'dinheiro' => 'Dinheiro',
+                        'pix'               => 'Pix',
+                        'boleto'            => 'Boleto',
+                        'cartao'            => 'Cartão',
+                        'transferencia'     => 'Transferência',
+                        'dinheiro'          => 'Dinheiro',
                         'debito_automatico' => 'Débito Automático',
                     ])
-                    ->required()
-                    ->default('debito_automatico'),
+                    ->required()->default('debito_automatico'),
 
                 Forms\Components\Select::make('status')
                     ->label('Status')
-                    ->options([
-                        'pago' => 'Pago',
-                        'pendente' => 'Pendente',
-                    ])
-                    ->required()
-                    ->default('pago'),
+                    ->options(['pago' => 'Pago', 'pendente' => 'Pendente'])
+                    ->required()->default('pago'),
             ])->columns(2),
 
-            Forms\Components\Section::make('Arquivo CSV')->schema([
-                Forms\Components\FileUpload::make('arquivo')
-                    ->label('Arquivo CSV')
-                    ->helperText('Formato: data;valor;descricao — Ex: 01/07/2026;25.94;Antecipação ML')
-                    ->acceptedFileTypes(['text/csv', 'text/plain', 'application/octet-stream', '.csv'])
-                    ->required()
-                    ->disk('local')
-                    ->directory('temp-imports'),
-            ]),
+            Forms\Components\Section::make('Dados — cole cada coluna do Excel')->schema([
+                Forms\Components\Textarea::make('col_datas')
+                    ->label('📅 Datas (coluna A)')
+                    ->helperText('Ex: 01/07/2026 08:27')
+                    ->rows(10)->required(),
+
+                Forms\Components\Textarea::make('col_descricoes')
+                    ->label('📝 Descrições (coluna F)')
+                    ->helperText('Ex: fee_release_in_advance')
+                    ->rows(10)->required(),
+
+                Forms\Components\Textarea::make('col_valores')
+                    ->label('💰 Valores Debitados (coluna H)')
+                    ->helperText('Ex: R$ -22,58')
+                    ->rows(10)->required(),
+            ])->columns(3),
         ])->statePath('data');
+    }
+
+    private function parseLinhas(): array
+    {
+        $data = $this->form->getState();
+
+        $datas      = array_values(array_filter(explode("\n", str_replace("\r", '', $data['col_datas'])),      fn ($l) => trim($l) !== ''));
+        $descricoes = array_values(array_filter(explode("\n", str_replace("\r", '', $data['col_descricoes'])), fn ($l) => trim($l) !== ''));
+        $valores    = array_values(array_filter(explode("\n", str_replace("\r", '', $data['col_valores'])),    fn ($l) => trim($l) !== ''));
+
+        $total = max(count($datas), count($descricoes), count($valores));
+        $linhas = [];
+
+        for ($i = 0; $i < $total; $i++) {
+            $dataStr = trim($datas[$i] ?? '');
+            $descricao = trim($descricoes[$i] ?? 'Transação ML');
+            $valorStr = trim($valores[$i] ?? '');
+
+            // Parsear data: aceita "01/07/2026 08:27" ou "01/07/2026" ou "2026-07-01"
+            $dataParsed = null;
+            if (preg_match('/(\d{2})\/(\d{2})\/(\d{4})/', $dataStr, $m)) {
+                $dataParsed = "{$m[3]}-{$m[2]}-{$m[1]}";
+            } elseif (preg_match('/(\d{4})-(\d{2})-(\d{2})/', $dataStr, $m)) {
+                $dataParsed = $m[0];
+            }
+
+            // Parsear valor: aceita "R$ -22,58", "-22,58", "22.58", "R$ 0,00"
+            $valorLimpo = preg_replace('/[^\d,.-]/', '', $valorStr);
+            if (preg_match('/,\d{1,2}$/', $valorLimpo)) {
+                $valorLimpo = str_replace('.', '', $valorLimpo);
+                $valorLimpo = str_replace(',', '.', $valorLimpo);
+            }
+            $valor = round(abs((float) $valorLimpo), 2);
+
+            $linhas[] = [
+                'data'      => $dataParsed,
+                'descricao' => $descricao,
+                'valor'     => $valor,
+                'data_raw'  => $dataStr,
+                'valor_raw' => $valorStr,
+                'linha'     => $i + 1,
+            ];
+        }
+
+        return [$data, $linhas];
+    }
+
+    public function visualizar(): void
+    {
+        try {
+            [, $linhas] = $this->parseLinhas();
+        } catch (\Exception $e) {
+            Notification::make()->title('Erro ao processar: ' . $e->getMessage())->danger()->send();
+            return;
+        }
+
+        $this->preview = $linhas;
     }
 
     public function processar(): void
     {
         try {
-            $data = $this->form->getState();
+            [$data, $linhas] = $this->parseLinhas();
         } catch (\Exception $e) {
-            $this->form->fill();
-            Notification::make()->title('Arquivo expirou. Faça o upload novamente.')->danger()->send();
+            Notification::make()->title('Erro ao processar: ' . $e->getMessage())->danger()->send();
             return;
         }
 
-        $relativePath = is_array($data['arquivo']) ? reset($data['arquivo']) : $data['arquivo'];
-        $path = null;
-
-        foreach ([
-            storage_path('app/' . $relativePath),
-            storage_path('app/private/' . $relativePath),
-        ] as $p) {
-            if (file_exists($p)) { $path = $p; break; }
-        }
-
-        if (!$path) {
-            Notification::make()->title('Arquivo não encontrado.')->danger()->send();
-            return;
-        }
-
-        $linhas = array_filter(explode("\n", str_replace("\r", '', file_get_contents($path))));
         $importados = 0;
-        $erros = [];
+        $ignorados  = 0;
 
-        foreach ($linhas as $i => $linha) {
-            $num = $i + 1;
-            $linha = trim($linha);
-            if (empty($linha)) continue;
-
-            // Pular cabeçalho
-            if ($num === 1 && preg_match('/[a-zA-Z]{3,}/', explode(';', $linha)[0] ?? '')) {
-                continue;
-            }
-
-            $cols = str_getcsv($linha, ';');
-            if (count($cols) < 3) {
-                $erros[] = "Linha {$num}: menos de 3 colunas";
-                continue;
-            }
-
-            [$dataStr, $valorStr, $descricao] = [trim($cols[0]), trim($cols[1]), trim($cols[2])];
-
-            // Parsear data dd/mm/aaaa ou aaaa-mm-dd
-            $dataParsed = null;
-            if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $dataStr, $m)) {
-                $dataParsed = "{$m[3]}-{$m[2]}-{$m[1]}";
-            } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataStr)) {
-                $dataParsed = $dataStr;
-            }
-
-            if (!$dataParsed) {
-                $erros[] = "Linha {$num}: data inválida '{$dataStr}'";
-                continue;
-            }
-
-            $valor = round((float) str_replace(['.', ','], ['', '.'], $valorStr), 2);
-            if ($valor <= 0) {
-                $erros[] = "Linha {$num}: valor inválido '{$valorStr}'";
-                continue;
-            }
-
-            if (empty($descricao)) {
-                $erros[] = "Linha {$num}: descrição vazia";
+        foreach ($linhas as $linha) {
+            if (!$linha['data'] || $linha['valor'] <= 0) {
+                $ignorados++;
                 continue;
             }
 
             ContaPagar::create([
-                'descricao'        => $descricao,
-                'valor_parcela'    => $valor,
-                'data_lancamento'  => $dataParsed,
-                'data_vencimento'  => $dataParsed,
-                'data_pagamento'   => $data['status'] === 'pago' ? $dataParsed : null,
-                'status'           => $data['status'],
-                'forma_pagamento'  => $data['forma_pagamento'],
+                'descricao'         => $linha['descricao'],
+                'valor_parcela'     => $linha['valor'],
+                'data_lancamento'   => $linha['data'],
+                'data_vencimento'   => $linha['data'],
+                'data_pagamento'    => $data['status'] === 'pago' ? $linha['data'] : null,
+                'status'            => $data['status'],
+                'forma_pagamento'   => $data['forma_pagamento'],
                 'conta_bancaria_id' => $data['conta_bancaria_id'],
-                'categoria_id'     => $data['categoria_id'],
-                'numero_parcela'   => 1,
-                'total_parcelas'   => 1,
+                'categoria_id'      => $data['categoria_id'],
+                'numero_parcela'    => 1,
+                'total_parcelas'    => 1,
                 'lancamento_manual' => true,
             ]);
 
             $importados++;
         }
 
-        @unlink($path);
-
         $msg = "{$importados} lançamento(s) importado(s).";
-        if (!empty($erros)) {
-            $msg .= ' ' . count($erros) . ' erro(s): ' . implode(' | ', array_slice($erros, 0, 5));
-        }
+        if ($ignorados > 0) $msg .= " {$ignorados} ignorado(s) (data ou valor inválido).";
 
-        Notification::make()
-            ->title($msg)
-            ->{$importados > 0 ? 'success' : 'warning'}()
-            ->send();
+        Notification::make()->title($msg)->{$importados > 0 ? 'success' : 'warning'}()->send();
 
-        $this->data = [];
-        $this->form->fill([
-            'status' => 'pago',
-            'forma_pagamento' => 'debito_automatico',
-            'numero_parcela' => 1,
-            'total_parcelas' => 1,
-        ]);
+        $this->preview = [];
+        $this->data    = [];
+        $this->form->fill(['status' => 'pago', 'forma_pagamento' => 'debito_automatico']);
     }
 
     public static function canAccess(): bool
