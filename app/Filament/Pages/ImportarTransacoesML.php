@@ -102,10 +102,11 @@ class ImportarTransacoesML extends Page implements HasForms
             $descricao = trim($descricoes[$i] ?? 'Transação ML');
             $valorStr = trim($valores[$i] ?? '');
 
-            // Parsear data: aceita "01/07/2026 08:27" ou "01/07/2026" ou "2026-07-01"
+            // Parsear data: aceita "01/07/2026 08:27", "01/07/26", "2026-07-01"
             $dataParsed = null;
-            if (preg_match('/(\d{2})\/(\d{2})\/(\d{4})/', $dataStr, $m)) {
-                $dataParsed = "{$m[3]}-{$m[2]}-{$m[1]}";
+            if (preg_match('/(\d{2})\/(\d{2})\/(\d{2,4})/', $dataStr, $m)) {
+                $ano = strlen($m[3]) === 2 ? '20' . $m[3] : $m[3];
+                $dataParsed = "{$ano}-{$m[2]}-{$m[1]}";
             } elseif (preg_match('/(\d{4})-(\d{2})-(\d{2})/', $dataStr, $m)) {
                 $dataParsed = $m[0];
             }
