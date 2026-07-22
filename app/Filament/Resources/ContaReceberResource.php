@@ -121,6 +121,11 @@ class ContaReceberResource extends Resource
                     ->label('Pedido')
                     ->searchable()
                     ->copyable(),
+                Tables\Columns\TextColumn::make('observacoes_search')
+                    ->label('')
+                    ->getStateUsing(fn () => null)
+                    ->searchable(query: fn ($query, $search) => $query->orWhere('observacoes', 'like', "%{$search}%"))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('forma_pagamento')
                     ->label('Canal')
                     ->badge()
@@ -131,7 +136,9 @@ class ContaReceberResource extends Resource
                 Tables\Columns\TextColumn::make('venda.cliente_nome')
                     ->label('Cliente')
                     ->limit(25)
-                    ->searchable(),
+                    ->searchable([
+                        'venda.cliente_nome',
+                    ]),
                 Tables\Columns\TextColumn::make('valor_parcela')
                     ->label('Valor')
                     ->money('BRL')
