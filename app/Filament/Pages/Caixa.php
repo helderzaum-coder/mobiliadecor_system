@@ -566,9 +566,21 @@ class Caixa extends Page implements HasForms
     public function excluirMovimentacao(string $model, int $id): void
     {
         if ($model === 'pagar') {
-            ContaPagar::find($id)?->delete();
+            $registro = ContaPagar::find($id);
+            if ($registro?->transferencia_id) {
+                ContaPagar::where('transferencia_id', $registro->transferencia_id)->delete();
+                ContaReceber::where('transferencia_id', $registro->transferencia_id)->delete();
+            } else {
+                $registro?->delete();
+            }
         } else {
-            ContaReceber::find($id)?->delete();
+            $registro = ContaReceber::find($id);
+            if ($registro?->transferencia_id) {
+                ContaPagar::where('transferencia_id', $registro->transferencia_id)->delete();
+                ContaReceber::where('transferencia_id', $registro->transferencia_id)->delete();
+            } else {
+                $registro?->delete();
+            }
         }
 
         Notification::make()->title('Movimentação excluída.')->success()->send();

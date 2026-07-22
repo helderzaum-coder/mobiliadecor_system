@@ -73,7 +73,7 @@
                                         >✏️</button>
                                         <button
                                             x-data=""
-                                            x-on:click="if(confirm('Excluir esta movimentação?')) $wire.excluirMovimentacao('{{ $item['model'] }}', {{ $item['id'] }})"
+                                            x-on:click="if(confirm('{{ !empty($item['transferencia_id']) ? 'Excluir esta transferência? Ambos os lados (entrada e saída) serão removidos.' : 'Excluir esta movimentação?' }}')) $wire.excluirMovimentacao('{{ $item['model'] }}', {{ $item['id'] }})"
                                             style="background:none;border:none;cursor:pointer;color:#6b7280;font-size:14px;padding:2px 4px;"
                                             title="Excluir"
                                         >🗑️</button>
