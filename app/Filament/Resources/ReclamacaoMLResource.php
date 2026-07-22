@@ -160,13 +160,19 @@ class ReclamacaoMLResource extends Resource
                     ->label('Liberar')
                     ->icon('heroicon-o-lock-open')
                     ->color('success')
-                    ->requiresConfirmation()
+                    ->form([
+                        Forms\Components\DatePicker::make('data_resolucao')
+                            ->label('Data de Liberação')
+                            ->helperText('Data em que o valor voltou a ficar disponível na conta')
+                            ->default(now())
+                            ->required(),
+                    ])
                     ->modalHeading('Confirmar Liberação')
                     ->modalDescription('O ML liberou o valor? Isso indica que a reclamação foi resolvida a seu favor.')
-                    ->action(function (ReclamacaoML $record) {
+                    ->action(function (ReclamacaoML $record, array $data) {
                         $record->update([
-                            'status'          => 'liberada',
-                            'data_resolucao'  => now()->toDateString(),
+                            'status'         => 'liberada',
+                            'data_resolucao' => $data['data_resolucao'],
                         ]);
                         Notification::make()->title('Reclamação liberada. Valor disponível novamente.')->success()->send();
                     })
