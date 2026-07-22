@@ -136,9 +136,9 @@ class ContaReceberResource extends Resource
                 Tables\Columns\TextColumn::make('venda.cliente_nome')
                     ->label('Cliente')
                     ->limit(25)
-                    ->searchable([
-                        'venda.cliente_nome',
-                    ]),
+                    ->searchable(query: fn ($query, $search) => $query
+                        ->orWhereHas('venda', fn ($q) => $q->where('cliente_nome', 'like', "%{$search}%"))
+                    ),
                 Tables\Columns\TextColumn::make('valor_parcela')
                     ->label('Valor')
                     ->money('BRL')
