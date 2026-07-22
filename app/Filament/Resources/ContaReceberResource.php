@@ -461,6 +461,72 @@ class ContaReceberResource extends Resource
                             ->send();
                     })
                     ->visible(fn (ContaReceber $record) => $record->status === 'pendente'),
+                Tables\Actions\Action::make('duplicar')
+                    ->label('Duplicar')
+                    ->icon('heroicon-o-document-duplicate')
+                    ->color('info')
+                    ->form(fn (ContaReceber $record) => [
+                        Forms\Components\TextInput::make('observacoes')
+                            ->label('Descrição')
+                            ->default($record->observacoes)
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('valor_parcela')
+                            ->label('Valor')
+                            ->numeric()
+                            ->prefix('R$')
+                            ->default($record->valor_parcela)
+                            ->required(),
+                        Forms\Components\Select::make('forma_pagamento')
+                            ->label('Forma / Canal')
+                            ->options(function () {
+                                $canais = \App\Models\CanalVenda::where('ativo', true)->orderBy('nome_canal')->pluck('nome_canal', 'nome_canal')->toArray();
+                                $fixos = ['Pix' => 'Pix', 'Boleto' => 'Boleto', 'Transferência' => 'Transferência', 'Outro' => 'Outro'];
+                                return array_merge($canais, $fixos);
+                            })
+                            ->default($record->forma_pagamento)
+                            ->searchable(),
+                        Forms\Components\Select::make('categoria_id')
+                            ->label('Categoria')
+                            ->options(fn () => \App\Models\CategoriaFinanceira::whereIn('tipo', ['entrada', 'ambos'])->where('ativo', true)->where('sistema', false)->orderBy('nome')->pluck('nome', 'id')->toArray())
+                            ->default($record->categoria_id)
+                            ->searchable(),
+                        Forms\Components\Select::make('conta_bancaria_id')
+                            ->label('Banco')
+                            ->options(fn () => \App\Models\ContaBancaria::where('ativo', true)->orderBy('nome')->pluck('nome', 'id')->toArray())
+                            ->default($record->conta_bancaria_id)
+                            ->searchable(),
+                        Forms\Components\Select::make('status')
+                            ->label('Status')
+                            ->options(['pendente' => 'Pendente', 'recebido' => 'Recebido'])
+                            ->default('pendente')
+                            ->required()
+                            ->reactive(),
+                        Forms\Components\DatePicker::make('data_vencimento')
+                            ->label('Data de Vencimento')
+                            ->default($record->data_vencimento)
+                            ->required(),
+                        Forms\Components\DatePicker::make('data_recebimento')
+                            ->label('Data do Recebimento')
+                            ->default(null)
+                            ->visible(fn ($get) => $get('status') === 'recebido'),
+                    ])
+                    ->action(function (ContaReceber $record, array $data) {
+                        $novo = $record->replicate();
+                        $novo->observacoes       = $data['observacoes'] ?? $record->observacoes;
+                        $novo->valor_parcela     = $data['valor_parcela'];
+                        $novo->forma_pagamento   = $data['forma_pagamento'] ?? $record->forma_pagamento;
+                        $novo->categoria_id      = $data['categoria_id'] ?? $record->categoria_id;
+                        $novo->conta_bancaria_id = $data['conta_bancaria_id'] ?? $record->conta_bancaria_id;
+                        $novo->status            = $data['status'];
+                        $novo->data_vencimento   = $data['data_vencimento'];
+                        $novo->data_recebimento  = $data['status'] === 'recebido' ? ($data['data_recebimento'] ?? null) : null;
+                        $novo->lote_recebimento_id = null;
+                        $novo->numero_parcela    = 1;
+                        $novo->total_parcelas    = 1;
+                        $novo->lancamento_manual = true;
+                        $novo->save();
+                        Notification::make()->title('Conta duplicada com sucesso.')->success()->send();
+                    }),
                 Tables\Actions\Action::make('desfazer')
                     ->label('Desfazer')
                     ->icon('heroicon-o-arrow-uturn-left')
