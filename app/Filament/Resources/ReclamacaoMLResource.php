@@ -35,7 +35,7 @@ class ReclamacaoMLResource extends Resource
             Forms\Components\Section::make('Pedido')->schema([
                 Forms\Components\Select::make('id_venda')
                     ->label('Venda')
-                    ->getSearchResultsUsing(fn (string $search) => Venda::where('numero_pedido_canal', 'like', "%{$search}%")
+                    ->getSearchResultsUsing(fn (string $search) => strlen($search) < 2 ? [] : Venda::where('numero_pedido_canal', 'like', "%{$search}%")
                         ->orWhere('cliente_nome', 'like', "%{$search}%")
                         ->orderByDesc('data_venda')
                         ->limit(20)
@@ -44,7 +44,9 @@ class ReclamacaoMLResource extends Resource
                         ->toArray())
                     ->getOptionLabelUsing(fn ($value) => optional(Venda::find($value))->numero_pedido_canal)
                     ->searchable()
-                    ->placeholder('Digite o nº do pedido ou nome do cliente...')
+                    ->noSearchResultsMessage('Nenhuma venda encontrada.')
+                    ->searchPrompt('Digite o nº do pedido ou nome do cliente...')
+                    ->placeholder('Digite para buscar...')
                     ->reactive()
                     ->afterStateUpdated(function ($state, Forms\Set $set) {
                         if (!$state) return;
