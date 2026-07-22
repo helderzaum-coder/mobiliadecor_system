@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class SyncEstoquePedidoJob implements ShouldQueue
@@ -47,7 +48,9 @@ class SyncEstoquePedidoJob implements ShouldQueue
         }
 
         // Notificação Telegram com saldo atualizado
-        if (!empty($resultado['log'])) {
+        $cacheKey = "telegram_estoque_pedido_{$pedido->numero_pedido}";
+        if (!empty($resultado['log']) && !Cache::has($cacheKey)) {
+            Cache::put($cacheKey, true, now()->addHours(48));
             $icone = $resultado['success'] ? "\xF0\x9F\x93\xA6" : "\xE2\x9A\xA0\xEF\xB8\x8F";
             $msg = "{$icone} <b>Estoque — Pedido #{$pedido->numero_pedido}</b>\n";
             foreach ($resultado['log'] as $linha) {
