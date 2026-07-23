@@ -37,14 +37,17 @@ class CreateContaPagar extends CreateRecord
     private function criarParcelas(array $data): ContaPagar
     {
         $total = (int) $data['total_parcelas'];
+        $inicio = (int) ($data['numero_parcela'] ?? 1);
         $vencimento = Carbon::parse($data['data_vencimento']);
         $primeiro = null;
 
-        for ($i = 1; $i <= $total; $i++) {
+        for ($i = $inicio; $i <= $total; $i++) {
             $parcela = array_merge($data, [
                 'numero_parcela' => $i,
                 'total_parcelas' => $total,
-                'data_vencimento' => $vencimento->copy()->addMonths($i - 1)->toDateString(),
+                'data_vencimento' => $vencimento->copy()->addMonths($i - $inicio)->toDateString(),
+                'status' => $i === $inicio ? ($data['status'] ?? 'pendente') : 'pendente',
+                'data_pagamento' => $i === $inicio ? ($data['data_pagamento'] ?? null) : null,
             ]);
             $record = ContaPagar::create($parcela);
             $primeiro = $primeiro ?? $record;
