@@ -389,12 +389,11 @@ class DashboardVendas extends Page implements HasForms
             $mlSaleFee = (float) $venda->ml_sale_fee;
             $mlFreteCusto = (float) ($venda->ml_frete_custo ?? 0);
             $mlFreteReceita = (float) ($venda->ml_frete_receita ?? 0);
-            $mlRebate = (float) ($venda->ml_valor_rebate ?? 0);
             if (in_array($venda->ml_tipo_frete, ['ME2', 'FULL'])) {
                 $freteLiq = $mlFreteCusto > 0 ? $mlFreteCusto - $mlFreteReceita : 0;
                 $repasse = (float) $venda->total_produtos - $mlSaleFee - $freteLiq - $afiliado;
             } else {
-                $repasse = (float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee + $mlRebate - $afiliado;
+                $repasse = (float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee - $afiliado;
             }
         } else {
             $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - $afiliado;
@@ -467,12 +466,11 @@ class DashboardVendas extends Page implements HasForms
             $mlSaleFee = (float) $venda->ml_sale_fee;
             $mlFreteCusto = (float) ($venda->ml_frete_custo ?? 0);
             $mlFreteReceita = (float) ($venda->ml_frete_receita ?? 0);
-            $mlRebate = (float) ($venda->ml_valor_rebate ?? 0);
             if (in_array($venda->ml_tipo_frete, ['ME2', 'FULL'])) {
                 $freteLiq = $mlFreteCusto > 0 ? $mlFreteCusto - $mlFreteReceita : 0;
                 $repasse = (float) $venda->total_produtos - $mlSaleFee - $freteLiq - $afiliado;
             } else {
-                $repasse = (float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee + $mlRebate - $afiliado;
+                $repasse = (float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee - $afiliado;
             }
         } else {
             $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - $afiliado;

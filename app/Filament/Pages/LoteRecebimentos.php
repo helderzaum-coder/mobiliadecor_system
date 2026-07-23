@@ -287,12 +287,11 @@ class LoteRecebimentos extends Page
             $mlSaleFee = (float) $venda->ml_sale_fee;
             $mlFreteCusto = (float) ($venda->ml_frete_custo ?? 0);
             $mlFreteReceita = (float) ($venda->ml_frete_receita ?? 0);
-            $mlRebate = (float) ($venda->ml_valor_rebate ?? 0);
             if (in_array($venda->ml_tipo_frete, ['ME2', 'FULL'])) {
                 $freteLiquido = $mlFreteCusto > 0 ? $mlFreteCusto - $mlFreteReceita : 0;
                 $repasse = (float) $venda->total_produtos - $mlSaleFee - $freteLiquido - (float) ($venda->comissao_afiliado ?? 0);
             } else {
-                $repasse = (float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee + $mlRebate - (float) ($venda->comissao_afiliado ?? 0);
+                $repasse = (float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee - (float) ($venda->comissao_afiliado ?? 0);
             }
         } else {
             $cupomShopeeR = $isShopee ? (float) ($venda->cupom_shopee ?? 0) : 0;
