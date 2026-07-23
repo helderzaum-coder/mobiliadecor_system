@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BlingAuthController;
+use App\Http\Controllers\CaixaExportController;
 use App\Http\Controllers\MercadoLivreAuthController;
 use Illuminate\Support\Facades\Route;
 
@@ -17,6 +18,9 @@ Route::get('/bling/status', [BlingAuthController::class, 'status'])->name('bling
 Route::get('/ml/authorize/{account}', [MercadoLivreAuthController::class, 'authorize'])->name('ml.authorize');
 Route::get('/ml/callback', [MercadoLivreAuthController::class, 'callback'])->name('ml.callback');
 Route::get('/ml/status', [MercadoLivreAuthController::class, 'status'])->name('ml.status');
+
+// Exportações
+Route::get('/caixa/exportar', [CaixaExportController::class, 'export'])->name('caixa.exportar')->middleware('auth');
 
 // Shopee OAuth
 Route::get('/shopee/authorize', [\App\Http\Controllers\ShopeeAuthController::class, 'authorize'])->name('shopee.authorize');

@@ -638,6 +638,23 @@ class Caixa extends Page implements HasForms
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('exportar_excel')
+                ->label('Exportar Excel')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('success')
+                ->url(fn () => route('caixa.exportar', array_filter([
+                    'periodo'               => $this->periodo,
+                    'mes_selecionado'       => $this->mes_selecionado,
+                    'data_inicio'           => $this->data_inicio,
+                    'data_fim'              => $this->data_fim,
+                    'conta_bancaria_id'     => $this->conta_bancaria_id,
+                    'categoria_id'          => $this->categoria_id,
+                    'visao'                 => $this->visao,
+                    'tipo_movimento'        => $this->tipo_movimento,
+                    'exibir_transferencias' => $this->exibir_transferencias ? '1' : null,
+                    'exibir_previsoes'      => $this->exibir_previsoes ? '1' : null,
+                ])))
+                ->openUrlInNewTab(),
             Actions\Action::make('transferencia')
                 ->label('Transferência')
                 ->icon('heroicon-o-arrows-right-left')
