@@ -179,7 +179,7 @@ class ContaPagarResource extends Resource
     {
         return $table
             ->defaultPaginationPageOption(25)
-            ->header(view('filament.components.filtro-periodo-contas-pagar'))
+         
             ->columns([
                 Tables\Columns\TextColumn::make('descricao')
                     ->label('Descrição')
@@ -261,6 +261,37 @@ class ContaPagarResource extends Resource
                 Tables\Filters\SelectFilter::make('conta_bancaria_id')
                     ->label('Banco')
                     ->relationship('contaBancaria', 'nome'),
+                    Tables\Filters\Filter::make('periodo')
+                    ->form([
+                        Forms\Components\Select::make('periodo_rapido')
+                            ->label('Período')
+                            ->options([
+                                'este_mes' => 'Este mês',
+                                'mes_passado' => 'Mês passado',
+                                'proximo_mes' => 'Próximo mês',
+                                'customizado' => 'Customizado',
+                            ])
+                            ->reactive(),
+                        Forms\Components\DatePicker::make('data_inicio')
+                            ->label('De')
+                            ->visible(fn ($get) => $get('periodo_rapido') === 'customizado'),
+                        Forms\Components\DatePicker::make('data_fim')
+                            ->label('Até')
+                            ->visible(fn ($get) => $get('periodo_rapido') === 'customizado'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        $periodo = $data['periodo_rapido'] ?? null;
+                        if (!$periodo) return $query;
+                        return match ($periodo) {
+                            'este_mes' => $query->whereBetween('data_vencimento', [now()->startOfMonth(), now()->endOfMonth()]),
+                            'mes_passado' => $query->whereBetween('data_vencimento', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()]),
+                            'proximo_mes' => $query->whereBetween('data_vencimento', [now()->addMonth()->startOfMonth(), now()->addMonth()->endOfMonth()]),
+                            'customizado' => $query
+                                ->when($data['data_inicio'] ?? null, fn ($q) => $q->whereDate('data_vencimento', '>=', $data['data_inicio']))
+                                ->when($data['data_fim'] ?? null, fn ($q) => $q->whereDate('data_vencimento', '<=', $data['data_fim'])),
+                            default => $query,
+                        };
+                    }),
             ])
             ->filtersFormColumns(4)
             ->actions([
