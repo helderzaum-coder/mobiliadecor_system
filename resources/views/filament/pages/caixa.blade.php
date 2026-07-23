@@ -65,7 +65,7 @@
                                     @if($isPrevisao)<span style="font-size:9px;color:{{ $item['tipo'] === 'entrada' ? '#f59e0b' : '#fb923c' }};margin-left:3px;">PREV</span>@endif
                                 </td>
                                 <td style="padding:4px 8px;text-align:right;white-space:nowrap;width:80px;">
-                                    @if(!empty($item['id']) && !$isPrevisao)
+                                    @if(!empty($item['id']) && !$isPrevisao && !str_starts_with($item['model'], 'reclamacao'))
                                         <button
                                             wire:click="abrirEditModal('{{ $item['model'] }}', {{ $item['id'] }})"
                                             style="background:none;border:none;cursor:pointer;color:#6b7280;font-size:14px;padding:2px 4px;"

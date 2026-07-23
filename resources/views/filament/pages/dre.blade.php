@@ -174,6 +174,40 @@
                         <th style="padding:14px;text-align:right;font-size:18px;font-weight:800;color:{{ $dre['resultado_operacional'] >= 0 ? '#10b981' : '#ef4444' }};">R$ {{ number_format($dre['resultado_operacional'], 2, ',', '.') }} <span style="font-size:12px;font-weight:400;">({{ $dre['resultado_pct'] }}%)</span></th>
                     </tr>
                 </thead>
+
+                {{-- RECLAMAÇÕES ML --}}
+                @if($dre['reclamacoes_bloqueios'] > 0 || $dre['reclamacoes_liberacoes'] > 0)
+                <thead>
+                    <tr style="background:#111827;border-bottom:2px solid #374151;">
+                        <th style="padding:12px;text-align:left;color:#e5e7eb;font-size:14px;" colspan="2">⚖️ Reclamações ML</th>
+                        <th style="padding:12px;text-align:right;font-size:16px;font-weight:700;color:{{ $dre['saldo_reclamacoes'] >= 0 ? '#10b981' : '#ef4444' }};">{{ $dre['saldo_reclamacoes'] >= 0 ? '+' : '' }}R$ {{ number_format($dre['saldo_reclamacoes'], 2, ',', '.') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if($dre['reclamacoes_bloqueios'] > 0)
+                    <tr style="border-bottom:1px solid #1f2937;">
+                        <td style="padding:8px 12px;color:#9ca3af;">-</td>
+                        <td style="padding:8px 12px;color:#e5e7eb;">🔒 Bloqueios ({{ $dre['qtd_bloqueios'] }} reclamação(ões) abertas)</td>
+                        <td style="padding:8px 12px;text-align:right;color:#ef4444;">-R$ {{ number_format($dre['reclamacoes_bloqueios'], 2, ',', '.') }}</td>
+                    </tr>
+                    @endif
+                    @if($dre['reclamacoes_liberacoes'] > 0)
+                    <tr style="border-bottom:1px solid #1f2937;">
+                        <td style="padding:8px 12px;color:#9ca3af;">+</td>
+                        <td style="padding:8px 12px;color:#e5e7eb;">✅ Liberações ({{ $dre['qtd_liberacoes'] }} reclamação(ões) resolvidas)</td>
+                        <td style="padding:8px 12px;text-align:right;color:#10b981;">+R$ {{ number_format($dre['reclamacoes_liberacoes'], 2, ',', '.') }}</td>
+                    </tr>
+                    @endif
+                </tbody>
+
+                {{-- RESULTADO FINAL --}}
+                <thead>
+                    <tr style="background:#0f172a;border-top:2px solid #374151;">
+                        <th style="padding:14px;text-align:left;font-size:15px;color:{{ $dre['resultado_final'] >= 0 ? '#10b981' : '#ef4444' }};" colspan="2">(=) RESULTADO FINAL</th>
+                        <th style="padding:14px;text-align:right;font-size:18px;font-weight:800;color:{{ $dre['resultado_final'] >= 0 ? '#10b981' : '#ef4444' }};">R$ {{ number_format($dre['resultado_final'], 2, ',', '.') }} <span style="font-size:12px;font-weight:400;">({{ $dre['resultado_final_pct'] }}%)</span></th>
+                    </tr>
+                </thead>
+                @endif
             </table>
         </div>
 
@@ -239,6 +273,16 @@
                         <td style="padding:8px 10px;color:#9ca3af;position:sticky;left:0;background:#1f2937;">Qtd Vendas</td>
                         @foreach($dias as $dia)
                             <td style="padding:8px 10px;text-align:right;color:#9ca3af;">{{ $dia['dre']['qtd_vendas'] ?: '-' }}</td>
+                        @endforeach
+                    </tr>
+                    {{-- Reclamações ML --}}
+                    <tr style="border-bottom:1px solid #1f2937;">
+                        <td style="padding:8px 10px;color:#f59e0b;position:sticky;left:0;background:#1f2937;">⚖️ Reclamações ML</td>
+                        @foreach($dias as $dia)
+                            @php $saldo = $dia['dre']['saldo_reclamacoes'] ?? 0; @endphp
+                            <td style="padding:8px 10px;text-align:right;color:{{ $saldo > 0 ? '#10b981' : ($saldo < 0 ? '#ef4444' : '#6b7280') }};">
+                                {{ $saldo != 0 ? ($saldo > 0 ? '+' : '') . number_format($saldo, 0, ',', '.') : '-' }}
+                            </td>
                         @endforeach
                     </tr>
                     {{-- Margem % --}}

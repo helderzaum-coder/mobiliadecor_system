@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ContaPagar;
 use App\Models\ImpostoMensal;
+use App\Models\ReclamacaoML;
 use App\Models\Venda;
 use Carbon\Carbon;
 
@@ -111,6 +112,22 @@ class DreService
         // === RESULTADO OPERACIONAL ===
         $resultadoOperacional = $margemContribuicao - $totalDespesasFixas;
 
+        // === RECLAMAÇÕES ML ===
+        // Bloqueios: valor sai do saldo no dia da abertura
+        $reclamacoesBloqueadas = ReclamacaoML::whereBetween('data_abertura', [$dataInicio, $dataFim])->get();
+        $totalBloqueios = (float) $reclamacoesBloqueadas->sum('valor');
+
+        // Liberações: valor volta no dia da resolução (status = liberada)
+        $reclamacoesLiberadas = ReclamacaoML::where('status', 'liberada')
+            ->whereBetween('data_resolucao', [$dataInicio, $dataFim])->get();
+        $totalLiberacoes = (float) $reclamacoesLiberadas->sum('valor');
+
+        // Saldo líquido de reclamações no período
+        $saldoReclamacoes = $totalLiberacoes - $totalBloqueios;
+
+        // Resultado final considerando reclamações
+        $resultadoFinal = $resultadoOperacional + $saldoReclamacoes;
+
         return [
             'periodo' => ['inicio' => $dataInicio, 'fim' => $dataFim],
             'qtd_vendas' => $vendas->count(),
@@ -143,6 +160,15 @@ class DreService
 
             'resultado_operacional' => $resultadoOperacional,
             'resultado_pct' => $receitaBruta > 0 ? round(($resultadoOperacional / $receitaBruta) * 100, 1) : 0,
+
+            'reclamacoes_bloqueios' => $totalBloqueios,
+            'reclamacoes_liberacoes' => $totalLiberacoes,
+            'saldo_reclamacoes' => $saldoReclamacoes,
+            'qtd_bloqueios' => $reclamacoesBloqueadas->count(),
+            'qtd_liberacoes' => $reclamacoesLiberadas->count(),
+
+            'resultado_final' => $resultadoFinal,
+            'resultado_final_pct' => $receitaBruta > 0 ? round(($resultadoFinal / $receitaBruta) * 100, 1) : 0,
         ];
     }
 

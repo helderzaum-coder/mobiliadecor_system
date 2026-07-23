@@ -7,6 +7,7 @@ use App\Models\ContaBancaria;
 use App\Models\ContaPagar;
 use App\Models\ContaReceber;
 use App\Models\FaturaRecebimento;
+use App\Models\ReclamacaoML;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -290,6 +291,29 @@ class Caixa extends Page implements HasForms
             }
         }
 
+        // Reclamações liberadas no período = entrada (valor voltou)
+        if (!$this->categoria_id) {
+            $liberadas = ReclamacaoML::where('status', 'liberada')
+                ->whereBetween('data_resolucao', [$inicio, $fim])
+                ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
+                ->get();
+
+            foreach ($liberadas as $r) {
+                $pedido = $r->numero_pedido ?? $r->venda?->numero_pedido_canal ?? "#{$r->id}";
+                $resultado->push([
+                    'data'             => $r->data_resolucao->format('Y-m-d'),
+                    'tipo'             => 'entrada',
+                    'descricao'        => "✅ Reclamação liberada — Pedido {$pedido}",
+                    'categoria'        => 'Reclamação ML',
+                    'banco'            => $r->contaBancaria?->nome ?? '-',
+                    'valor'            => (float) $r->valor,
+                    'id'               => $r->id,
+                    'model'            => 'reclamacao_liberada',
+                    'transferencia_id' => null,
+                ]);
+            }
+        }
+
         return $resultado;
     }
 
@@ -354,6 +378,29 @@ class Caixa extends Page implements HasForms
                     'model' => 'pagar',
                     'transferencia_id' => null,
                     'previsao' => true,
+                ]);
+            }
+        }
+
+        // Reclamações abertas no período = saída (valor bloqueado)
+        if (!$this->categoria_id) {
+            $bloqueadas = ReclamacaoML::where('status', '!=', 'estornada') // estorno já gera ContaPagar
+                ->whereBetween('data_abertura', [$inicio, $fim])
+                ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
+                ->get();
+
+            foreach ($bloqueadas as $r) {
+                $pedido = $r->numero_pedido ?? $r->venda?->numero_pedido_canal ?? "#{$r->id}";
+                $resultado->push([
+                    'data'             => $r->data_abertura->format('Y-m-d'),
+                    'tipo'             => 'saida',
+                    'descricao'        => "🔒 Reclamação bloqueada — Pedido {$pedido}",
+                    'categoria'        => 'Reclamação ML',
+                    'banco'            => $r->contaBancaria?->nome ?? '-',
+                    'valor'            => (float) $r->valor,
+                    'id'               => $r->id,
+                    'model'            => 'reclamacao_bloqueada',
+                    'transferencia_id' => null,
                 ]);
             }
         }
@@ -565,6 +612,8 @@ class Caixa extends Page implements HasForms
 
     public function excluirMovimentacao(string $model, int $id): void
     {
+        if (str_starts_with($model, 'reclamacao')) return;
+
         if ($model === 'pagar') {
             $registro = ContaPagar::find($id);
             if ($registro?->transferencia_id) {
