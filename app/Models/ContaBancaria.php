@@ -15,10 +15,12 @@ class ContaBancaria extends Model
         'conta',
         'saldo_inicial',
         'ativo',
+        'ocultar_caixa',
     ];
 
     protected $casts = [
         'saldo_inicial' => 'decimal:2',
         'ativo' => 'boolean',
+        'ocultar_caixa' => 'boolean',
     ];
 }

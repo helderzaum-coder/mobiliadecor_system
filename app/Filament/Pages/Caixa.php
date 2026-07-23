@@ -178,6 +178,8 @@ class Caixa extends Page implements HasForms
 
         if ($this->conta_bancaria_id) {
             $query->where('conta_bancaria_id', $this->conta_bancaria_id);
+        } else {
+            $query->whereHas('contaBancaria', fn ($q) => $q->where('ocultar_caixa', false));
         }
 
         // Se filtrando por categoria Transferência, buscar por categoria_id OU forma_pagamento (registros antigos)
@@ -335,6 +337,8 @@ class Caixa extends Page implements HasForms
 
         if ($this->conta_bancaria_id) {
             $query->where('conta_bancaria_id', $this->conta_bancaria_id);
+        } else {
+            $query->whereHas('contaBancaria', fn ($q) => $q->where('ocultar_caixa', false));
         }
 
         // Se filtrando por categoria Transferência, buscar por categoria_id OU forma_pagamento (registros antigos)
@@ -419,6 +423,7 @@ class Caixa extends Page implements HasForms
             ->where('data_recebimento', '<', $inicio)
             ->when(!$this->exibir_transferencias && !$this->conta_bancaria_id, fn ($q) => $q->where('forma_pagamento', '!=', 'Transferência'))
             ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
+            ->when(!$this->conta_bancaria_id, fn ($q) => $q->whereHas('contaBancaria', fn ($q2) => $q2->where('ocultar_caixa', false)))
             ->sum('valor_parcela');
 
         // Descontos vinculados a lotes já estão abatidos das entradas, excluir das saídas
@@ -428,6 +433,7 @@ class Caixa extends Page implements HasForms
             ->whereNull('lote_recebimento_id')
             ->when(!$this->exibir_transferencias && !$this->conta_bancaria_id, fn ($q) => $q->where('forma_pagamento', '!=', 'Transferência'))
             ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
+            ->when(!$this->conta_bancaria_id, fn ($q) => $q->whereHas('contaBancaria', fn ($q2) => $q2->where('ocultar_caixa', false)))
             ->sum('valor_parcela');
 
         // Descontos de lotes (abatidos das entradas)
@@ -436,6 +442,7 @@ class Caixa extends Page implements HasForms
             ->where('data_pagamento', '<', $inicio)
             ->whereNotNull('lote_recebimento_id')
             ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
+            ->when(!$this->conta_bancaria_id, fn ($q) => $q->whereHas('contaBancaria', fn ($q2) => $q2->where('ocultar_caixa', false)))
             ->sum('valor_parcela');
 
         $saldoInicialBanco = 0;
@@ -443,7 +450,7 @@ class Caixa extends Page implements HasForms
             $banco = ContaBancaria::find($this->conta_bancaria_id);
             $saldoInicialBanco = (float) ($banco->saldo_inicial ?? 0);
         } else {
-            $saldoInicialBanco = (float) ContaBancaria::where('ativo', true)->sum('saldo_inicial');
+            $saldoInicialBanco = (float) ContaBancaria::where('ativo', true)->where('ocultar_caixa', false)->sum('saldo_inicial');
         }
 
         return $saldoInicialBanco + (float) $entradasAntes - (float) $descontosLotesAntes - (float) $saidasAntes;

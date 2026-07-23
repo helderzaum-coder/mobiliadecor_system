@@ -30,6 +30,8 @@ class ContaBancariaResource extends Resource
             Forms\Components\TextInput::make('conta')->label('Conta')->maxLength(30),
             Forms\Components\TextInput::make('saldo_inicial')->label('Saldo Inicial')->numeric()->prefix('R$')->default(0),
             Forms\Components\Toggle::make('ativo')->label('Ativo')->default(true),
+            Forms\Components\Toggle::make('ocultar_caixa')->label('Ocultar no Fluxo de Caixa')->default(false)
+                ->helperText('Use para contas intermediárias (ex: Shopee, Madeira Madeira) que não representam saldo real'),
         ]);
     }
 
@@ -43,6 +45,7 @@ class ContaBancariaResource extends Resource
                 Tables\Columns\TextColumn::make('conta')->label('Conta'),
                 Tables\Columns\TextColumn::make('saldo_inicial')->label('Saldo Inicial')->money('BRL'),
                 Tables\Columns\IconColumn::make('ativo')->boolean(),
+                Tables\Columns\IconColumn::make('ocultar_caixa')->label('Oculto Caixa')->boolean(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
