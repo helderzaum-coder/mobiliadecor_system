@@ -337,11 +337,17 @@ class ContaPagarResource extends Resource
                             ->label('Data do Pagamento')
                             ->default(fn (ContaPagar $record) => $record->data_vencimento ?? now())
                             ->required(),
+                        Forms\Components\Select::make('conta_bancaria_id')
+                            ->label('Banco')
+                            ->options(fn () => \App\Models\ContaBancaria::where('ativo', true)->orderBy('nome')->pluck('nome', 'id')->toArray())
+                            ->default(fn (ContaPagar $record) => $record->conta_bancaria_id)
+                            ->placeholder('Selecione o banco'),
                     ])
                     ->action(function (ContaPagar $record, array $data) {
                         $record->update([
                             'status' => 'pago',
                             'data_pagamento' => $data['data_pagamento'],
+                            'conta_bancaria_id' => $data['conta_bancaria_id'] ?? $record->conta_bancaria_id,
                         ]);
                         Notification::make()->title('Pagamento confirmado.')->success()->send();
                     })
