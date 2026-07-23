@@ -179,7 +179,6 @@ class ContaPagarResource extends Resource
     {
         return $table
             ->defaultPaginationPageOption(25)
-            ->header(view('filament.components.filtro-periodo-contas-pagar'))
             ->columns([
                 Tables\Columns\TextColumn::make('descricao')
                     ->label('Descrição')
@@ -261,6 +260,71 @@ class ContaPagarResource extends Resource
                 Tables\Filters\SelectFilter::make('conta_bancaria_id')
                     ->label('Banco')
                     ->relationship('contaBancaria', 'nome'),
+                Tables\Filters\Filter::make('periodo')
+                    ->label('Data de Vencimento')
+                    ->form([
+                        Forms\Components\Select::make('periodo_rapido')
+                            ->label('Período')
+                            ->options([
+                                'hoje'           => 'Hoje',
+                                'dia_especifico' => 'Dia específico',
+                                'esta_semana'    => 'Esta semana',
+                                'este_mes'       => 'Este mês',
+                                'mes_passado'    => 'Mês passado',
+                                'selecionar_mes' => 'Selecionar mês',
+                                'customizado'    => 'Período customizado',
+                            ])
+                            ->reactive(),
+                        Forms\Components\DatePicker::make('dia_especifico')
+                            ->label('Dia')
+                            ->visible(fn ($get) => $get('periodo_rapido') === 'dia_especifico'),
+                        Forms\Components\Select::make('mes_selecionado')
+                            ->label('Mês')
+                            ->options(function () {
+                                $options = [];
+                                for ($i = 0; $i < 24; $i++) {
+                                    $d = now()->subMonths($i)->startOfMonth();
+                                    $options[$d->format('Y-m')] = ucfirst($d->locale('pt_BR')->isoFormat('MMMM [de] YYYY'));
+                                }
+                                return $options;
+                            })
+                            ->visible(fn ($get) => $get('periodo_rapido') === 'selecionar_mes'),
+                        Forms\Components\DatePicker::make('data_inicio')
+                            ->label('De')
+                            ->visible(fn ($get) => $get('periodo_rapido') === 'customizado'),
+                        Forms\Components\DatePicker::make('data_fim')
+                            ->label('Até')
+                            ->visible(fn ($get) => $get('periodo_rapido') === 'customizado'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return match ($data['periodo_rapido'] ?? null) {
+                            'hoje'           => $query->whereDate('data_vencimento', today()),
+                            'dia_especifico' => $query->when($data['dia_especifico'] ?? null, fn ($q) => $q->whereDate('data_vencimento', $data['dia_especifico'])),
+                            'esta_semana'    => $query->whereBetween('data_vencimento', [now()->startOfWeek(), now()->endOfWeek()]),
+                            'este_mes'       => $query->whereBetween('data_vencimento', [now()->startOfMonth(), now()->endOfMonth()]),
+                            'mes_passado'    => $query->whereBetween('data_vencimento', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()]),
+                            'selecionar_mes' => $query->when($data['mes_selecionado'] ?? null, fn ($q) => $q->whereBetween('data_vencimento', [
+                                Carbon::createFromFormat('Y-m', $data['mes_selecionado'])->startOfMonth(),
+                                Carbon::createFromFormat('Y-m', $data['mes_selecionado'])->endOfMonth(),
+                            ])),
+                            'customizado'    => $query
+                                ->when($data['data_inicio'] ?? null, fn ($q) => $q->whereDate('data_vencimento', '>=', $data['data_inicio']))
+                                ->when($data['data_fim'] ?? null, fn ($q) => $q->whereDate('data_vencimento', '<=', $data['data_fim'])),
+                            default => $query,
+                        };
+                    })
+                    ->indicateUsing(function (array $data): ?string {
+                        return match ($data['periodo_rapido'] ?? null) {
+                            'hoje'           => 'Vencimento: Hoje',
+                            'dia_especifico' => 'Vencimento: ' . ($data['dia_especifico'] ? Carbon::parse($data['dia_especifico'])->format('d/m/Y') : '-'),
+                            'esta_semana'    => 'Vencimento: Esta semana',
+                            'este_mes'       => 'Vencimento: Este mês',
+                            'mes_passado'    => 'Vencimento: Mês passado',
+                            'selecionar_mes' => 'Vencimento: ' . ($data['mes_selecionado'] ?? '-'),
+                            'customizado'    => 'Vencimento: ' . ($data['data_inicio'] ?? '?') . ' até ' . ($data['data_fim'] ?? '?'),
+                            default => null,
+                        };
+                    }),
             ])
             ->filtersFormColumns(4)
             ->actions([
