@@ -47,6 +47,9 @@ class LancamentosEmLote extends Page implements HasForms
                     ])
                     ->required()
                     ->default('saida')
+                    ->afterStateUpdated(fn ($state, Forms\Set $set) =>
+                        $set('status', $state === 'entrada' ? 'recebido' : 'pago')
+                    )
                     ->reactive(),
 
                 Forms\Components\Select::make('categoria_id')
