@@ -106,11 +106,19 @@ class Recebimentos extends Page implements HasForms
 
     public function confirmarRecebimento(int $vendaId): void
     {
+        $emFatura = \App\Models\ContaReceber::where('id_venda', $vendaId)
+            ->whereNotNull('fatura_recebimento_id')
+            ->exists();
+
+        if ($emFatura) {
+            \Filament\Notifications\Notification::make()->title('Este pedido está vinculado a uma fatura. Confirme pela fatura.')->warning()->send();
+            return;
+        }
+
         Venda::where('id_venda', $vendaId)->update([
             'repasse_recebido' => true,
             'data_recebimento' => now()->toDateString(),
         ]);
-        // Atualizar conta a receber vinculada
         \App\Models\ContaReceber::where('id_venda', $vendaId)
             ->where('status', 'pendente')
             ->update(['status' => 'recebido', 'data_recebimento' => now()->toDateString()]);
@@ -119,11 +127,19 @@ class Recebimentos extends Page implements HasForms
 
     public function confirmarRecebimentoData(int $vendaId, string $data): void
     {
+        $emFatura = \App\Models\ContaReceber::where('id_venda', $vendaId)
+            ->whereNotNull('fatura_recebimento_id')
+            ->exists();
+
+        if ($emFatura) {
+            \Filament\Notifications\Notification::make()->title('Este pedido está vinculado a uma fatura. Confirme pela fatura.')->warning()->send();
+            return;
+        }
+
         Venda::where('id_venda', $vendaId)->update([
             'repasse_recebido' => true,
             'data_recebimento' => $data,
         ]);
-        // Atualizar conta a receber vinculada
         \App\Models\ContaReceber::where('id_venda', $vendaId)
             ->where('status', 'pendente')
             ->update(['status' => 'recebido', 'data_recebimento' => $data]);
@@ -191,10 +207,23 @@ class Recebimentos extends Page implements HasForms
 
     public function getVendasProperty()
     {
-        return $this->buildQuery()
+        $vendas = $this->buildQuery()
             ->skip(($this->pagina - 1) * $this->porPagina)
             ->take($this->porPagina)
             ->get();
+
+        // Carregar fatura_recebimento_id das contas a receber
+        $vendaIds = $vendas->pluck('id_venda')->filter()->toArray();
+        if (!empty($vendaIds)) {
+            $faturas = \App\Models\ContaReceber::whereIn('id_venda', $vendaIds)
+                ->whereNotNull('fatura_recebimento_id')
+                ->pluck('fatura_recebimento_id', 'id_venda');
+            foreach ($vendas as $venda) {
+                $venda->em_fatura_id = $faturas->get($venda->id_venda);
+            }
+        }
+
+        return $vendas;
     }
 
     public function getTotaisProperty(): array

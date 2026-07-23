@@ -76,10 +76,16 @@
                         </td>
                         <td style="padding:8px 10px;text-align:center;">
                             @if(!$venda->repasse_recebido)
-                                <button wire:click="confirmarRecebimento({{ $venda->id_venda }})"
-                                    style="background:#10b981;color:#fff;padding:4px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
-                                    ✅ Recebido
-                                </button>
+                                @if(!empty($venda->em_fatura_id))
+                                    <span style="background:#4f46e5;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;" title="Fatura #{{ $venda->em_fatura_id }}">
+                                        🧾 Fatura #{{ $venda->em_fatura_id }}
+                                    </span>
+                                @else
+                                    <button wire:click="confirmarRecebimento({{ $venda->id_venda }})"
+                                        style="background:#10b981;color:#fff;padding:4px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
+                                        ✅ Recebido
+                                    </button>
+                                @endif
                             @else
                                 <button wire:click="desfazerRecebimento({{ $venda->id_venda }})"
                                     style="background:#374151;color:#9ca3af;padding:4px 10px;font-size:11px;border-radius:5px;border:none;cursor:pointer;">
