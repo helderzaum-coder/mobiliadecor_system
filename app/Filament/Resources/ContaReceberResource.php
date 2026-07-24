@@ -10,6 +10,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Notifications\Notification;
 
 class ContaReceberResource extends Resource
@@ -249,42 +250,45 @@ class ContaReceberResource extends Resource
                     ))
                     ->indicateUsing(fn (array $data) => filled($data['lote_id'] ?? null) ? 'Lote #' . $data['lote_id'] : null),
                 Tables\Filters\Filter::make('periodo')
+                    ->columnSpan(3)
                     ->form([
-                        Forms\Components\Select::make('filtrar_por')
-                            ->label('Filtrar por')
-                            ->options([
-                                'data_vencimento'   => '📅 Data de Vencimento',
-                                'data_recebimento'  => '💰 Data do Recebimento',
-                                'data_venda'        => '🛒 Data da Venda',
-                            ])
-                            ->default('data_vencimento')
-                            ->reactive(),
-                        Forms\Components\Select::make('periodo_rapido')
-                            ->label('Período')
-                            ->options([
-                                'este_mes' => 'Este mês',
-                                'mes_passado' => 'Mês passado',
-                                'selecionar_mes' => 'Selecionar mês',
-                                'customizado' => 'Customizado',
-                            ])
-                            ->reactive(),
-                        Forms\Components\Select::make('mes_selecionado')
-                            ->label('Mês')
-                            ->options(function () {
-                                $options = [];
-                                for ($i = 0; $i < 12; $i++) {
-                                    $d = now()->subMonths($i)->startOfMonth();
-                                    $options[$d->format('Y-m')] = ucfirst($d->locale('pt_BR')->isoFormat('MMMM [de] YYYY'));
-                                }
-                                return $options;
-                            })
-                            ->visible(fn ($get) => $get('periodo_rapido') === 'selecionar_mes'),
-                        Forms\Components\DatePicker::make('data_inicio')
-                            ->label('De')
-                            ->visible(fn ($get) => $get('periodo_rapido') === 'customizado'),
-                        Forms\Components\DatePicker::make('data_fim')
-                            ->label('Até')
-                            ->visible(fn ($get) => $get('periodo_rapido') === 'customizado'),
+                        Forms\Components\Grid::make(5)->schema([
+                            Forms\Components\Select::make('filtrar_por')
+                                ->label('Filtrar por')
+                                ->options([
+                                    'data_vencimento'   => '📅 Vencimento',
+                                    'data_recebimento'  => '💰 Recebimento',
+                                    'data_venda'        => '🛒 Venda',
+                                ])
+                                ->default('data_vencimento')
+                                ->reactive(),
+                            Forms\Components\Select::make('periodo_rapido')
+                                ->label('Período')
+                                ->options([
+                                    'este_mes'       => 'Este mês',
+                                    'mes_passado'    => 'Mês passado',
+                                    'selecionar_mes' => 'Selecionar mês',
+                                    'customizado'    => 'Customizado',
+                                ])
+                                ->reactive(),
+                            Forms\Components\Select::make('mes_selecionado')
+                                ->label('Mês')
+                                ->options(function () {
+                                    $options = [];
+                                    for ($i = 0; $i < 12; $i++) {
+                                        $d = now()->subMonths($i)->startOfMonth();
+                                        $options[$d->format('Y-m')] = ucfirst($d->locale('pt_BR')->isoFormat('MMMM [de] YYYY'));
+                                    }
+                                    return $options;
+                                })
+                                ->visible(fn ($get) => $get('periodo_rapido') === 'selecionar_mes'),
+                            Forms\Components\DatePicker::make('data_inicio')
+                                ->label('De')
+                                ->visible(fn ($get) => $get('periodo_rapido') === 'customizado'),
+                            Forms\Components\DatePicker::make('data_fim')
+                                ->label('Até')
+                                ->visible(fn ($get) => $get('periodo_rapido') === 'customizado'),
+                        ]),
                     ])
                     ->query(function ($query, array $data) {
                         $periodo = $data['periodo_rapido'] ?? null;
@@ -379,7 +383,8 @@ class ContaReceberResource extends Resource
                         };
                     }),
             ])
-            ->filtersFormColumns(5)
+            ->filtersLayout(FiltersLayout::AboveContent)
+            ->filtersFormColumns(7)
             ->actions([
                 Tables\Actions\Action::make('marcar_ajuste')
                     ->label('Ajuste')

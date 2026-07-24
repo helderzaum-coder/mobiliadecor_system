@@ -40,6 +40,21 @@ class Caixa extends Page implements HasForms
     public bool $exibir_transferencias = false;
     public bool $exibir_previsoes = false;
 
+    public function updatedExibirTransferencias($value): void
+    {
+        $this->exibir_transferencias = (bool) $value;
+    }
+
+    public function updatedExibirPrevisoes($value): void
+    {
+        $this->exibir_previsoes = (bool) $value;
+    }
+
+    public function updatedExibirSaldoAnterior($value): void
+    {
+        $this->exibir_saldo_anterior = (bool) $value;
+    }
+
     protected $queryString = [
         'periodo' => ['except' => 'este_mes'],
         'mes_selecionado' => ['except' => ''],
@@ -59,6 +74,11 @@ class Caixa extends Page implements HasForms
         if (!$this->mes_selecionado) {
             $this->mes_selecionado = now()->format('Y-m');
         }
+
+        // Garantir cast correto ao vir da URL (queryString serializa bool como string)
+        $this->exibir_transferencias = filter_var($this->exibir_transferencias, FILTER_VALIDATE_BOOLEAN);
+        $this->exibir_previsoes      = filter_var($this->exibir_previsoes, FILTER_VALIDATE_BOOLEAN);
+        $this->exibir_saldo_anterior = filter_var($this->exibir_saldo_anterior, FILTER_VALIDATE_BOOLEAN);
     }
 
     public function form(Forms\Form $form): Forms\Form
