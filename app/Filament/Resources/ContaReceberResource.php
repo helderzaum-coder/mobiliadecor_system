@@ -235,16 +235,19 @@ class ContaReceberResource extends Resource
                 Tables\Filters\SelectFilter::make('conta_bancaria_id')
                     ->label('Banco')
                     ->relationship('contaBancaria', 'nome'),
-                Tables\Filters\SelectFilter::make('lote_recebimento_id')
+                Tables\Filters\Filter::make('lote_recebimento_id')
                     ->label('Lote')
-                    ->placeholder('Todos')
-                    ->options(fn () => LoteRecebimento::orderBy('id', 'desc')
-                        ->limit(100)
-                        ->get()
-                        ->mapWithKeys(fn ($l) => [$l->id => "#{$l->id} — {$l->descricao}"])
-                        ->toArray()
-                    )
-                    ->searchable(),
+                    ->form([
+                        Forms\Components\TextInput::make('lote_id')
+                            ->label('Nº do Lote')
+                            ->placeholder('Ex: 42')
+                            ->numeric(),
+                    ])
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['lote_id'] ?? null,
+                        fn ($q, $v) => $q->where('lote_recebimento_id', $v)
+                    ))
+                    ->indicateUsing(fn (array $data) => filled($data['lote_id'] ?? null) ? 'Lote #' . $data['lote_id'] : null),
                 Tables\Filters\Filter::make('periodo')
                     ->form([
                         Forms\Components\Select::make('filtrar_por')
