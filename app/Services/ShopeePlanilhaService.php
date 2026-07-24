@@ -278,13 +278,13 @@ class ShopeePlanilhaService
             }
         }
 
-        // total_produtos = V - cupom Shopee (Z) - subsidio_pix (AI)
-        // Cupom Shopee reduz o subtotal que o vendedor recebe
-        // Cupom vendedor (AE) fica separado — sai da margem mas nao do subtotal
-        $totalPedido = ($precosProduto - $cupomShopee - $subsidioPix) + $frete;
+        // total_produtos = preco bruto - cupom Shopee (AG)
+        // subsidio_pix fica no campo separado e NAO reduz total_produtos
+        // cupom_vendedor fica separado — sai da margem mas nao do subtotal
+        $totalPedido = ($precosProduto - $cupomShopee) + $frete;
 
         return [
-            'total_produtos' => round($precosProduto - $cupomShopee - $subsidioPix, 2),
+            'total_produtos' => round($precosProduto - $cupomShopee, 2),
             'total_pedido'   => round($totalPedido, 2),
             'frete' => round($frete, 2),
             'comissao' => round($comissao, 2),
