@@ -26,7 +26,8 @@ class ShopeeAfiliadosService
     {
         $mapa = [];
         foreach ($header as $idx => $valor) {
-            $normalizado = mb_strtolower(trim((string) $valor));
+            // Remove BOM UTF-8 que pode aparecer na primeira coluna
+            $normalizado = mb_strtolower(trim(preg_replace('/^\xEF\xBB\xBF/', '', (string) $valor)));
             foreach (self::COLUNAS_REQUERIDAS as $chave => $variantes) {
                 foreach ((array) $variantes as $nomeEsperado) {
                     if ($normalizado === mb_strtolower($nomeEsperado)) {
@@ -57,6 +58,9 @@ class ShopeeAfiliadosService
             if (!$handle) {
                 return ['valido' => false, 'divergencias' => ['Erro ao abrir arquivo']];
             }
+            // Remover BOM UTF-8 se presente
+            $bom = fread($handle, 3);
+            if ($bom !== "\xEF\xBB\xBF") rewind($handle);
             $header = fgetcsv($handle);
             fclose($handle);
             if (!$header) {
@@ -90,6 +94,10 @@ class ShopeeAfiliadosService
             if (!$handle) {
                 return ['atualizados' => 0, 'nao_encontrados' => 0, 'sem_valor' => 0, 'erros' => 1, 'detalhes' => ['Erro ao abrir arquivo']];
             }
+
+            // Remover BOM UTF-8 se presente
+            $bom = fread($handle, 3);
+            if ($bom !== "\xEF\xBB\xBF") rewind($handle);
 
             $header = fgetcsv($handle);
             if (!$header) {
