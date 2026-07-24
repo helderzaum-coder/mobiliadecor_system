@@ -235,6 +235,16 @@ class ContaReceberResource extends Resource
                 Tables\Filters\SelectFilter::make('conta_bancaria_id')
                     ->label('Banco')
                     ->relationship('contaBancaria', 'nome'),
+                Tables\Filters\SelectFilter::make('lote_recebimento_id')
+                    ->label('Lote')
+                    ->placeholder('Todos')
+                    ->options(fn () => LoteRecebimento::orderBy('id', 'desc')
+                        ->limit(100)
+                        ->get()
+                        ->mapWithKeys(fn ($l) => [$l->id => "#{$l->id} — {$l->descricao}"])
+                        ->toArray()
+                    )
+                    ->searchable(),
                 Tables\Filters\Filter::make('periodo')
                     ->form([
                         Forms\Components\Select::make('filtrar_por')
@@ -366,7 +376,7 @@ class ContaReceberResource extends Resource
                         };
                     }),
             ])
-            ->filtersFormColumns(4)
+            ->filtersFormColumns(5)
             ->actions([
                 Tables\Actions\Action::make('marcar_ajuste')
                     ->label('Ajuste')
