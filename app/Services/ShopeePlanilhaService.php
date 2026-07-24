@@ -39,7 +39,7 @@ class ShopeePlanilhaService
         'quantidade'       => 'Quantidade',
         'subtotal_produto' => 'Subtotal do produto',
         'cupom_vendedor'   => 'Cupom do vendedor',
-        'ajuste_acao'      => 'Ajuste por participação em ação comercial',
+        'cupom_shopee_col' => 'Cupom',
         'ajuste_pix'       => 'Ajuste por pagamento via PIX',
         'taxa_envio'       => 'Taxa de envio pagas pelo comprador',
         'desconto_frete'   => 'Desconto de Frete Aproximado',
@@ -242,7 +242,7 @@ class ShopeePlanilhaService
             }
 
             if ($cupomShopee == 0) {
-                $cupomShopee = abs(self::parseDecimal($val('ajuste_acao', $row)));
+                $cupomShopee = abs(self::parseDecimal($val('cupom_shopee_col', $row)));
             }
 
             $quantidade = (int) (self::parseDecimal($val('quantidade', $row)) ?: 1);
