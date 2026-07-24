@@ -280,9 +280,8 @@ class VendaRecalculoService
             $updateData['cupom_shopee']           = $cupomVendedor;
             $updateData['cupom_shopee_descricao'] = 'Cupom do Vendedor';
         }
-        if ($cupomPlataforma > 0) {
-            $updateData['cupom_plataforma'] = $cupomPlataforma;
-        }
+        // cupom_plataforma NÃO é salvo separado pois já está descontado do total_produtos
+        $updateData['cupom_plataforma'] = 0;
 
         $venda->update($updateData);
 
