@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Models\PlanilhaShopeeDado;
-use App\Models\PlanilhaShopeeDado;
 use App\Models\Venda;
 use App\Services\VendaRecalculoService;
 use Illuminate\Console\Command;
