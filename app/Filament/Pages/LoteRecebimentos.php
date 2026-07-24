@@ -349,6 +349,20 @@ class LoteRecebimentos extends Page
         $count = 0;
         $valorTotal = 0;
 
+        // Criar lote primeiro para poder vincular no mesmo update
+        $descricaoLote = LoteRecebimento::gerarDescricao(
+            $this->conta_bancaria_id ? optional(\App\Models\ContaBancaria::find($this->conta_bancaria_id))->nome : null,
+            $this->data_recebimento,
+            $this->identificador_lote ?: null,
+        );
+
+        $lote = LoteRecebimento::create([
+            'data_recebimento' => $this->data_recebimento,
+            'descricao' => $descricaoLote,
+            'valor_total' => 0,
+            'quantidade_contas' => 0,
+        ]);
+
         foreach ($this->lote as $id) {
             $conta = ContaReceber::find($id);
             if (!$conta || $conta->status !== 'pendente') continue;
@@ -358,13 +372,14 @@ class LoteRecebimentos extends Page
                 'data_recebimento' => $this->data_recebimento,
                 'observacoes' => $this->identificador_lote ?: $conta->observacoes,
                 'conta_bancaria_id' => $this->conta_bancaria_id ?: null,
+                'lote_recebimento_id' => $lote->id,
             ]);
 
-            if ($conta->venda) {
+            if ($conta->id_venda) {
                 $pendentes = ContaReceber::where('id_venda', $conta->id_venda)
                     ->where('status', 'pendente')->count();
                 if ($pendentes === 0) {
-                    $conta->venda->update([
+                    $conta->venda?->update([
                         'repasse_recebido' => true,
                         'data_recebimento' => $this->data_recebimento,
                     ]);
@@ -374,24 +389,11 @@ class LoteRecebimentos extends Page
             $count++;
         }
 
-        $descricaoLote = LoteRecebimento::gerarDescricao(
-            $this->conta_bancaria_id ? optional(\App\Models\ContaBancaria::find($this->conta_bancaria_id))->nome : null,
-            $this->data_recebimento,
-            $this->identificador_lote ?: null,
-        );
-
-        // Criar lote
-        $lote = LoteRecebimento::create([
-            'data_recebimento' => $this->data_recebimento,
-            'descricao' => $descricaoLote,
+        // Atualizar totais do lote
+        $lote->update([
             'valor_total' => round($valorTotal - collect($this->descontos)->sum('valor'), 2),
             'quantidade_contas' => $count,
         ]);
-
-        // Vincular contas ao lote
-        ContaReceber::whereIn('id_conta_receber', $this->lote)
-            ->where('status', 'recebido')
-            ->update(['lote_recebimento_id' => $lote->id]);
 
         // Lançar descontos como contas a pagar (já pagas) vinculadas ao lote
         foreach ($this->descontos as $desconto) {
