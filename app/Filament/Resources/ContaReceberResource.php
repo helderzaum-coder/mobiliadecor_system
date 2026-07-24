@@ -10,7 +10,6 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Tables\Enums\FiltersLayout;
 use Filament\Notifications\Notification;
 
 class ContaReceberResource extends Resource
@@ -383,7 +382,6 @@ class ContaReceberResource extends Resource
                         };
                     }),
             ])
-            ->filtersLayout(FiltersLayout::AboveContent)
             ->filtersFormColumns(7)
             ->actions([
                 Tables\Actions\Action::make('marcar_ajuste')
