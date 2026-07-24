@@ -58,6 +58,17 @@ class ReprocessarPlanilhaShopee extends Command
             $resultado = VendaRecalculoService::aplicarPlanilhaShopee($venda);
             if ($resultado['success']) {
                 $corrigidos++;
+                // Corrigir conta a receber pendente
+                $repasse = $venda->fresh()->total_produtos
+                    + $venda->fresh()->valor_frete_cliente
+                    - $venda->fresh()->comissao
+                    - (float) ($venda->fresh()->comissao_afiliado ?? 0)
+                    - (float) ($venda->fresh()->cupom_shopee ?? 0)
+                    - (float) ($venda->fresh()->cupom_plataforma ?? 0);
+                \App\Models\ContaReceber::where('id_venda', $venda->id_venda)
+                    ->where('status', 'pendente')
+                    ->where('lancamento_manual', false)
+                    ->update(['valor_parcela' => round($repasse, 2)]);
             } else {
                 $semPlanilha++;
             }
