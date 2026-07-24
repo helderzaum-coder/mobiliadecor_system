@@ -65,6 +65,46 @@ class ViewLoteRecebimento extends Page implements HasTable
             ]);
     }
 
+    public function corrigirPendentesAction(): Action
+    {
+        return Action::make('corrigirPendentes')
+            ->label('Corrigir Pendentes')
+            ->icon('heroicon-o-wrench-screwdriver')
+            ->color('warning')
+            ->requiresConfirmation()
+            ->modalHeading('Corrigir contas pendentes neste lote')
+            ->modalDescription('Vai marcar como recebido todas as contas deste lote que ainda estão pendentes. Continuar?')
+            ->visible(fn () => ContaReceber::where('lote_recebimento_id', $this->record->id)->where('status', 'pendente')->exists())
+            ->action(function () {
+                $contas = ContaReceber::where('lote_recebimento_id', $this->record->id)
+                    ->where('status', 'pendente')
+                    ->get();
+
+                foreach ($contas as $conta) {
+                    $conta->update([
+                        'status' => 'recebido',
+                        'data_recebimento' => $this->record->data_recebimento,
+                    ]);
+
+                    if ($conta->id_venda) {
+                        $pendentes = ContaReceber::where('id_venda', $conta->id_venda)
+                            ->where('status', 'pendente')->count();
+                        if ($pendentes === 0) {
+                            $conta->venda?->update([
+                                'repasse_recebido' => true,
+                                'data_recebimento' => $this->record->data_recebimento,
+                            ]);
+                        }
+                    }
+                }
+
+                Notification::make()
+                    ->title($contas->count() . ' conta(s) corrigida(s) para recebido.')
+                    ->success()
+                    ->send();
+            });
+    }
+
     public function desfazerLoteAction(): Action
     {
         return Action::make('desfazerLote')

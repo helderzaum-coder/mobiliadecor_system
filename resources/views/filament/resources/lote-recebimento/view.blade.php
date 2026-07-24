@@ -44,7 +44,8 @@
 
     {{ $this->table }}
 
-    <div class="mt-4">
+    <div class="mt-4 flex gap-3">
+        {{ $this->corrigirPendentesAction }}
         {{ $this->desfazerLoteAction }}
     </div>
 </x-filament-panels::page>
