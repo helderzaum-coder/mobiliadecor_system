@@ -374,9 +374,13 @@ class ContaReceberResource extends Resource
                     ->color('info')
                     ->requiresConfirmation()
                     ->modalHeading('Marcar como Ajuste')
-                    ->modalDescription('O registro ficará como quitado mas NÃO aparecerá no fluxo de caixa nem afetará saldos.')
+                    ->modalDescription('O registro será marcado como recebido mas NÃO aparecerá no fluxo de caixa nem afetará saldos.')
                     ->action(function (ContaReceber $record) {
-                        $record->update(['status' => 'ajuste', 'data_recebimento' => $record->data_recebimento ?? now()]);
+                        $record->update([
+                            'status' => 'recebido',
+                            'data_recebimento' => $record->data_recebimento ?? now(),
+                            'conta_bancaria_id' => null,
+                        ]);
                         if ($record->id_venda) {
                             $pendentes = ContaReceber::where('id_venda', $record->id_venda)
                                 ->where('status', 'pendente')->count();
@@ -384,7 +388,7 @@ class ContaReceberResource extends Resource
                                 $record->venda?->update(['repasse_recebido' => true, 'data_recebimento' => $record->data_recebimento ?? now()]);
                             }
                         }
-                        Notification::make()->title('Marcado como ajuste.')->success()->send();
+                        Notification::make()->title('Marcado como recebido (ajuste).')->success()->send();
                     })
                     ->visible(fn (ContaReceber $record) => $record->status === 'pendente'),
                 Tables\Actions\Action::make('confirmar_recebimento')
@@ -717,13 +721,17 @@ class ContaReceberResource extends Resource
                     ->color('info')
                     ->requiresConfirmation()
                     ->modalHeading('Marcar como Ajuste em Lote')
-                    ->modalDescription('Os registros selecionados ficarão como quitados mas NÃO aparecerão no fluxo de caixa.')
+                    ->modalDescription('Os registros serão marcados como recebidos mas NÃO aparecerão no fluxo de caixa.')
                     ->deselectRecordsAfterCompletion()
                     ->action(function ($records) {
                         $count = 0;
                         foreach ($records as $record) {
                             if ($record->status !== 'pendente') continue;
-                            $record->update(['status' => 'ajuste', 'data_recebimento' => $record->data_recebimento ?? now()]);
+                            $record->update([
+                                'status' => 'recebido',
+                                'data_recebimento' => $record->data_recebimento ?? now(),
+                                'conta_bancaria_id' => null,
+                            ]);
                             if ($record->id_venda) {
                                 $pendentes = ContaReceber::where('id_venda', $record->id_venda)
                                     ->where('status', 'pendente')->count();
@@ -733,7 +741,7 @@ class ContaReceberResource extends Resource
                             }
                             $count++;
                         }
-                        Notification::make()->title("{$count} registro(s) marcado(s) como ajuste.")->success()->send();
+                        Notification::make()->title("{$count} registro(s) marcado(s) como recebido (ajuste).")->success()->send();
                     }),
                 Tables\Actions\BulkAction::make('cancelar_massa')
                     ->label('Cancelar')
