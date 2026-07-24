@@ -187,15 +187,22 @@ class ContaReceberService
         $valorParcela = round($repasse / $totalParcelas, 2);
 
         if ($contasExistentes->isNotEmpty()) {
-            // Se quantidade de parcelas mudou, deletar e recriar
+            // Contas já recebidas ou em lote: NÃO alterar (valor travado)
+            $travadas = $contasExistentes->filter(
+                fn ($c) => $c->status === 'recebido' || $c->lote_recebimento_id || $c->fatura_recebimento_id
+            );
+            if ($travadas->count() === $contasExistentes->count()) {
+                // Todas travadas, nada a fazer
+                return false;
+            }
+
+            $pendentes = $contasExistentes->filter(
+                fn ($c) => $c->status === 'pendente' && !$c->lote_recebimento_id && !$c->fatura_recebimento_id
+            );
+
+            // Se quantidade de parcelas mudou, deletar apenas as pendentes e recriar
             if ($contasExistentes->count() !== $totalParcelas) {
-                // Só deletar as que não estão em lote
-                $contasExistentes->each(function ($conta) {
-                    if (!$conta->lote_recebimento_id) {
-                        $conta->delete();
-                    }
-                });
-                // Recriar as que faltam
+                $pendentes->each(fn ($conta) => $conta->delete());
                 $existentesRestantes = ContaReceber::where('id_venda', $venda->id_venda)
                     ->where('forma_pagamento', 'not like', '%Subsídio%')
                     ->where('lancamento_manual', false)
@@ -214,8 +221,8 @@ class ContaReceberService
                     ]);
                 }
             } else {
-                // Mesma quantidade, só atualizar valores
-                foreach ($contasExistentes as $idx => $conta) {
+                // Só atualizar as pendentes (não travadas)
+                foreach ($pendentes as $idx => $conta) {
                     $obs = $totalParcelas > 1
                         ? "Repasse #{$venda->numero_pedido_canal} " . ($idx + 1) . "/{$totalParcelas}"
                         : "Repasse #{$venda->numero_pedido_canal}";
