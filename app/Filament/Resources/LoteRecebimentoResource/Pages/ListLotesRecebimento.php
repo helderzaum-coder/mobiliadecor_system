@@ -8,4 +8,9 @@ use Filament\Resources\Pages\ListRecords;
 class ListLotesRecebimento extends ListRecords
 {
     protected static string $resource = LoteRecebimentoResource::class;
+
+    protected function getTableFiltersFormStateQueryStringKey(): ?string
+    {
+        return 'filtros';
+    }
 }

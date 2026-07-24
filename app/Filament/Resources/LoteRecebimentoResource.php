@@ -9,6 +9,11 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Filters\Filter;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\DatePicker;
+use Illuminate\Database\Eloquent\Builder;
+use Carbon\Carbon;
 
 class LoteRecebimentoResource extends Resource
 {
@@ -63,6 +68,75 @@ class LoteRecebimentoResource extends Resource
                     ->label('Criado em')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
+            ])
+            ->filters([
+                Filter::make('periodo')
+                    ->form([
+                        Select::make('periodo')
+                            ->label('Período')
+                            ->options([
+                                'hoje'          => 'Hoje',
+                                'dia_especifico' => 'Dia específico',
+                                'esta_semana'   => 'Esta semana',
+                                'este_mes'      => 'Este mês',
+                                'mes_passado'   => 'Mês passado',
+                                'selecionar_mes' => 'Selecionar mês',
+                                'customizado'   => 'Período customizado',
+                            ])
+                            ->reactive(),
+                        DatePicker::make('dia_especifico')
+                            ->label('Dia')
+                            ->visible(fn ($get) => $get('periodo') === 'dia_especifico'),
+                        Select::make('mes_selecionado')
+                            ->label('Mês')
+                            ->options(function () {
+                                $options = [];
+                                for ($i = 0; $i < 24; $i++) {
+                                    $d = now()->subMonths($i)->startOfMonth();
+                                    $options[$d->format('Y-m')] = ucfirst($d->locale('pt_BR')->isoFormat('MMMM [de] YYYY'));
+                                }
+                                return $options;
+                            })
+                            ->visible(fn ($get) => $get('periodo') === 'selecionar_mes'),
+                        DatePicker::make('data_inicio')
+                            ->label('De')
+                            ->visible(fn ($get) => $get('periodo') === 'customizado'),
+                        DatePicker::make('data_fim')
+                            ->label('Até')
+                            ->visible(fn ($get) => $get('periodo') === 'customizado'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        $periodo = $data['periodo'] ?? null;
+                        return match ($periodo) {
+                            'hoje'           => $query->whereDate('data_recebimento', today()),
+                            'dia_especifico' => $query->when($data['dia_especifico'] ?? null, fn ($q, $v) => $q->whereDate('data_recebimento', $v)),
+                            'esta_semana'    => $query->whereBetween('data_recebimento', [now()->startOfWeek(), now()->endOfWeek()]),
+                            'este_mes'       => $query->whereBetween('data_recebimento', [now()->startOfMonth(), now()->endOfMonth()]),
+                            'mes_passado'    => $query->whereBetween('data_recebimento', [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()]),
+                            'selecionar_mes' => isset($data['mes_selecionado'])
+                                ? $query->whereBetween('data_recebimento', [
+                                    Carbon::createFromFormat('Y-m', $data['mes_selecionado'])->startOfMonth(),
+                                    Carbon::createFromFormat('Y-m', $data['mes_selecionado'])->endOfMonth(),
+                                ])
+                                : $query,
+                            'customizado'    => $query
+                                ->when($data['data_inicio'] ?? null, fn ($q, $v) => $q->whereDate('data_recebimento', '>=', $v))
+                                ->when($data['data_fim'] ?? null, fn ($q, $v) => $q->whereDate('data_recebimento', '<=', $v)),
+                            default => $query,
+                        };
+                    })
+                    ->indicateUsing(function (array $data): ?string {
+                        return match ($data['periodo'] ?? null) {
+                            'hoje'           => 'Hoje',
+                            'dia_especifico' => 'Dia: ' . ($data['dia_especifico'] ?? ''),
+                            'esta_semana'    => 'Esta semana',
+                            'este_mes'       => 'Este mês',
+                            'mes_passado'    => 'Mês passado',
+                            'selecionar_mes' => 'Mês: ' . ($data['mes_selecionado'] ?? ''),
+                            'customizado'    => 'De ' . ($data['data_inicio'] ?? '') . ' até ' . ($data['data_fim'] ?? ''),
+                            default => null,
+                        };
+                    }),
             ])
             ->actions([
                 Tables\Actions\Action::make('ver_contas')
