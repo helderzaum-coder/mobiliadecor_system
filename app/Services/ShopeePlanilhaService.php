@@ -28,32 +28,46 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 class ShopeePlanilhaService
 {
     /**
-     * Colunas esperadas no cabeçalho (coluna Excel => nome esperado).
-     * Usado para validar se a planilha está no formato correto antes de processar.
+     * Nomes de colunas requeridas (chave interna => nome exato no cabeçalho).
+     * O mapeamento é feito dinamicamente por nome, não por posição.
      */
-    public const COLUNAS_ESPERADAS = [
-        'A'  => 'ID do pedido',
-        'B'  => 'Status do pedido',
-        'I'  => 'Opção de envio',
-        'P'  => 'Nome do Produto',
-        'Q'  => 'Número de referência SKU',
-        'T'  => 'Preço acordado',
-        'U'  => 'Quantidade',
-        'W'  => 'Subtotal do produto',
-        'AF' => 'Cupom do vendedor',
-        'AA' => 'Ajuste por participação em ação comercial',
-        'AJ' => 'Ajuste por pagamento via PIX',
-        'AQ' => 'Taxa de envio pagas pelo comprador',
-        'AR' => 'Desconto de Frete Aproximado',
-        'AV' => 'Taxa de comissão líquida',
-        'AX' => 'Taxa de serviço líquida',
-        'BB' => 'Nome do destinatário',
-        'BD' => 'CPF do Comprador',
+    public const COLUNAS_REQUERIDAS = [
+        'id_pedido'        => 'ID do pedido',
+        'opcao_envio'      => 'Opção de envio',
+        'nome_produto'     => 'Nome do Produto',
+        'sku'              => 'Número de referência SKU',
+        'quantidade'       => 'Quantidade',
+        'subtotal_produto' => 'Subtotal do produto',
+        'cupom_vendedor'   => 'Cupom do vendedor',
+        'ajuste_acao'      => 'Ajuste por participação em ação comercial',
+        'ajuste_pix'       => 'Ajuste por pagamento via PIX',
+        'taxa_envio'       => 'Taxa de envio pagas pelo comprador',
+        'desconto_frete'   => 'Desconto de Frete Aproximado',
+        'comissao_liquida' => 'Taxa de comissão líquida',
+        'servico_liquido'  => 'Taxa de serviço líquida',
+        'nome_destinatario'=> 'Nome do destinatário',
+        'cpf_comprador'    => 'CPF do Comprador',
     ];
 
     /**
-     * Valida se o cabeçalho da planilha corresponde ao mapeamento esperado.
-     * Retorna array com 'valido' => bool e 'divergencias' => [...]
+     * Constrói mapa chave => coluna_excel a partir do cabeçalho real.
+     */
+    public static function mapearColunas(array $header): array
+    {
+        $mapa = [];
+        foreach ($header as $col => $valor) {
+            $normalizado = mb_strtolower(trim((string) $valor));
+            foreach (self::COLUNAS_REQUERIDAS as $chave => $nomeEsperado) {
+                if ($normalizado === mb_strtolower($nomeEsperado)) {
+                    $mapa[$chave] = $col;
+                }
+            }
+        }
+        return $mapa;
+    }
+
+    /**
+     * Valida se o cabeçalho contém todas as colunas requeridas (por nome).
      */
     public static function validarCabecalho(string $filePath): array
     {
@@ -75,13 +89,12 @@ class ShopeePlanilhaService
             return ['valido' => false, 'divergencias' => ['Planilha vazia ou sem cabeçalho']];
         }
 
+        $mapa = self::mapearColunas($header);
         $divergencias = [];
-        foreach (self::COLUNAS_ESPERADAS as $coluna => $nomeEsperado) {
-            $valorReal = mb_strtolower(trim($header[$coluna] ?? ''));
-            $esperado = mb_strtolower($nomeEsperado);
 
-            if ($valorReal !== $esperado) {
-                $divergencias[] = "Coluna {$coluna}: esperado \"{$nomeEsperado}\" → encontrado \"" . trim($header[$coluna] ?? '(vazio)') . "\"";
+        foreach (self::COLUNAS_REQUERIDAS as $chave => $nomeEsperado) {
+            if (!isset($mapa[$chave])) {
+                $divergencias[] = "Coluna não encontrada: \"{$nomeEsperado}\"";
             }
         }
 
@@ -118,17 +131,20 @@ class ShopeePlanilhaService
             return ['processados' => 0, 'nao_encontrados' => 0, 'erros' => 1, 'detalhes' => ["Erro ao ler arquivo: {$e->getMessage()}"]];
         }
 
-        // Agrupar linhas por ID do pedido (coluna A)
+        // Agrupar linhas por ID do pedido (busca dinâmica por nome de coluna)
         $pedidosAgrupados = [];
         $header = null;
+        $mapa = [];
 
         foreach ($rows as $row) {
             if (!$header) {
                 $header = $row;
+                $mapa = self::mapearColunas($header);
                 continue;
             }
 
-            $pedidoId = trim($row['A'] ?? '');
+            $colId = $mapa['id_pedido'] ?? 'A';
+            $pedidoId = trim($row[$colId] ?? '');
             if (empty($pedidoId)) {
                 continue;
             }
@@ -147,7 +163,7 @@ class ShopeePlanilhaService
         // Processar cada pedido agrupado
         foreach ($pedidosAgrupados as $pedidoId => $linhas) {
             try {
-                $dados = self::calcularPedido($linhas);
+                $dados = self::calcularPedido($linhas, $mapa);
 
                 // Salvar/atualizar no banco para reprocessamento futuro
                 PlanilhaShopeeDado::updateOrCreate(
@@ -198,17 +214,9 @@ class ShopeePlanilhaService
 
     /**
      * Calcula valores consolidados de um pedido a partir de suas linhas.
-     *
-     * ⚠️ MAPEAMENTO (planilha Shopee atualizada — novo formato com coluna extra na posição B):
-     *  - T = Preço acordado, U = Quantidade
-     *  - W = Subtotal do produto
-     *  - AJ = Ajuste por pagamento via PIX (subsídio pix)
-     *  - I = Opção de envio (Xpress → frete = 0)
-     *  - AQ = Taxa envio comprador, AR = Desconto de Frete Aproximado
-     *  - AV = Taxa de comissão líquida, AX = Taxa de serviço líquida
-     *  - AF = Cupom do vendedor, AA = Ajuste por participação em ação comercial
+     * Usa mapa dinâmico de colunas (por nome) para ser resiliente a mudanças de layout.
      */
-    private static function calcularPedido(array $linhas): array
+    private static function calcularPedido(array $linhas, array $mapa): array
     {
         $precosProduto = 0;
         $frete = 0;
@@ -220,68 +228,51 @@ class ShopeePlanilhaService
         $comissaoCalculada = false;
         $itens = [];
 
+        $val = fn(string $k, array $r) => $r[$mapa[$k] ?? ''] ?? 0;
+        $str = fn(string $k, array $r) => trim((string) ($r[$mapa[$k] ?? ''] ?? ''));
+
         foreach ($linhas as $row) {
-            // Subtotal do produto (coluna W)
-            $precoProduto = self::parseDecimal($row['W'] ?? 0);
+            $precoProduto = self::parseDecimal($val('subtotal_produto', $row));
             $precosProduto += $precoProduto;
 
-            // Subsídio Pix (coluna AJ)
-            $subsidioPix += abs(self::parseDecimal($row['AJ'] ?? 0));
+            $subsidioPix += abs(self::parseDecimal($val('ajuste_pix', $row)));
 
-            // Cupom do Vendedor (coluna AF) — pegar apenas uma vez por pedido
             if ($cupomVendedor == 0) {
-                $cupomVendedor = abs(self::parseDecimal($row['AF'] ?? 0));
+                $cupomVendedor = abs(self::parseDecimal($val('cupom_vendedor', $row)));
             }
 
-            // Cupom da Shopee (coluna AA) — pegar apenas uma vez por pedido
             if ($cupomShopee == 0) {
-                $cupomShopee = abs(self::parseDecimal($row['AA'] ?? 0));
+                $cupomShopee = abs(self::parseDecimal($val('ajuste_acao', $row)));
             }
 
-            // Quantidade (coluna U)
-            $quantidade = (int) (self::parseDecimal($row['U'] ?? 1) ?: 1);
+            $quantidade = (int) (self::parseDecimal($val('quantidade', $row)) ?: 1);
 
-            // SKU (coluna Q) e Descrição (coluna P)
-            $skuRaw = trim($row['Q'] ?? '');
-            $descRaw = trim($row['P'] ?? '');
+            $skuRaw  = $str('sku', $row);
+            $descRaw = $str('nome_produto', $row);
             if (preg_match('/^\d+$/', $skuRaw)) {
-                $sku = $skuRaw;
-                $desc = $descRaw;
+                $sku = $skuRaw; $desc = $descRaw;
             } elseif (preg_match('/^\d+$/', $descRaw)) {
-                $sku = $descRaw;
-                $desc = $skuRaw;
+                $sku = $descRaw; $desc = $skuRaw;
             } else {
-                $sku = $skuRaw;
-                $desc = $descRaw;
+                $sku = $skuRaw; $desc = $descRaw;
             }
-            $itens[] = [
-                'codigo' => $sku,
-                'descricao' => $desc,
-                'quantidade' => $quantidade,
-                'valor' => round($precoProduto, 2),
-            ];
+            $itens[] = ['codigo' => $sku, 'descricao' => $desc, 'quantidade' => $quantidade, 'valor' => round($precoProduto, 2)];
 
-            // Taxa de comissão líquida (AV) + Taxa de serviço líquida (AX)
-            // Shopee repete o valor TOTAL do pedido em cada linha — pegar apenas uma vez
             if (!$comissaoCalculada) {
-                $comissao = abs(self::parseDecimal($row['AV'] ?? 0))
-                          + abs(self::parseDecimal($row['AX'] ?? 0));
+                $comissao = abs(self::parseDecimal($val('comissao_liquida', $row)))
+                          + abs(self::parseDecimal($val('servico_liquido', $row)));
                 $comissaoCalculada = true;
             }
 
-            // Frete: calcular apenas uma vez (por pedido)
             if (!$freteCalculado) {
-                // Verificar se é Shopee Xpress (coluna I)
-                $opcaoEnvio = strtolower(trim($row['I'] ?? ''));
+                $opcaoEnvio = strtolower($str('opcao_envio', $row));
                 $isXpress = str_contains($opcaoEnvio, 'xpress') || str_contains($opcaoEnvio, 'express');
 
                 if ($isXpress) {
                     $frete = 0;
                 } else {
-                    // Frete = Taxa envio comprador (AQ) + Desconto frete (AR)
-                    $taxaEnvioComprador = self::parseDecimal($row['AQ'] ?? 0);
-                    $descontoFrete = self::parseDecimal($row['AR'] ?? 0);
-                    $frete = $taxaEnvioComprador + abs($descontoFrete);
+                    $frete = self::parseDecimal($val('taxa_envio', $row))
+                           + abs(self::parseDecimal($val('desconto_frete', $row)));
                 }
                 $freteCalculado = true;
             }

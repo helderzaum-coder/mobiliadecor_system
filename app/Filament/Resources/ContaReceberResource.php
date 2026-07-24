@@ -76,8 +76,9 @@ class ContaReceberResource extends Resource
                 Forms\Components\Select::make('status')
                     ->label('Status')
                     ->options([
-                        'pendente' => 'Pendente',
-                        'recebido' => 'Recebido',
+                        'pendente'  => 'Pendente',
+                        'recebido'  => 'Recebido',
+                        'ajuste'    => 'Ajuste (não afeta caixa)',
                         'cancelado' => 'Cancelado',
                     ])
                     ->required()
@@ -177,14 +178,16 @@ class ContaReceberResource extends Resource
                     ->label('Status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'recebido' => 'success',
-                        'pendente' => 'warning',
-                        'atrasado' => 'danger',
+                        'recebido'  => 'success',
+                        'pendente'  => 'warning',
+                        'atrasado'  => 'danger',
+                        'ajuste'    => 'info',
                         'cancelado' => 'gray',
-                        default => 'gray',
+                        default     => 'gray',
                     })
                     ->formatStateUsing(function ($state, $record) {
                         if ($record->estorno_pendente) return $state . ' ⚠️ Estorno';
+                        if ($state === 'ajuste') return '🔧 Ajuste';
                         if ($state === 'pendente' && $record->total_parcelas > 1) {
                             return "pendente ({$record->numero_parcela}/{$record->total_parcelas})";
                         }
@@ -212,9 +215,10 @@ class ContaReceberResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
-                        'pendente' => 'Pendente',
-                        'recebido' => 'Recebido',
-                        'atrasado' => 'Atrasado',
+                        'pendente'  => 'Pendente',
+                        'recebido'  => 'Recebido',
+                        'atrasado'  => 'Atrasado',
+                        'ajuste'    => 'Ajuste',
                         'cancelado' => 'Cancelado',
                     ]),
                 Tables\Filters\SelectFilter::make('canal')
@@ -364,6 +368,18 @@ class ContaReceberResource extends Resource
             ])
             ->filtersFormColumns(4)
             ->actions([
+                Tables\Actions\Action::make('marcar_ajuste')
+                    ->label('Ajuste')
+                    ->icon('heroicon-o-wrench-screwdriver')
+                    ->color('info')
+                    ->requiresConfirmation()
+                    ->modalHeading('Marcar como Ajuste')
+                    ->modalDescription('O registro ficará como quitado mas NÃO aparecerá no fluxo de caixa nem afetará saldos.')
+                    ->action(function (ContaReceber $record) {
+                        $record->update(['status' => 'ajuste', 'data_recebimento' => $record->data_recebimento ?? now()]);
+                        Notification::make()->title('Marcado como ajuste.')->success()->send();
+                    })
+                    ->visible(fn (ContaReceber $record) => $record->status === 'pendente'),
                 Tables\Actions\Action::make('confirmar_recebimento')
                     ->label('Recebido')
                     ->icon('heroicon-o-check-circle')

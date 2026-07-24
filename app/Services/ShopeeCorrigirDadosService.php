@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\PedidoBlingStaging;
 use App\Services\Bling\BlingClient;
+use App\Services\ShopeePlanilhaService;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -28,13 +29,16 @@ class ShopeeCorrigirDadosService
 
         $pedidos = [];
         $header = null;
+        $mapa = [];
         foreach ($rows as $row) {
             if (!$header) {
                 $header = $row;
+                $mapa = ShopeePlanilhaService::mapearColunas($header);
                 continue;
             }
 
-            $pedidoId = trim($row['A'] ?? '');
+            $colId = $mapa['id_pedido'] ?? 'A';
+            $pedidoId = trim($row[$colId] ?? '');
             if (empty($pedidoId) || isset($pedidos[$pedidoId])) {
                 continue;
             }
@@ -67,11 +71,11 @@ class ShopeeCorrigirDadosService
                 continue;
             }
 
-            $nome = trim($row['BB'] ?? '');
+            $nome = trim($row[$mapa['nome_destinatario'] ?? 'BB'] ?? '');
             if (empty($nome)) {
                 $resultado['erros']++;
-                $resultado['detalhes'][] = "{$pedidoId}: nome vazio na coluna BB";
-                Log::warning("ShopeeCorrigir: pedido {$pedidoId} com nome vazio na coluna BB");
+                $resultado['detalhes'][] = "{$pedidoId}: nome vazio na coluna Nome do destinatário";
+                Log::warning("ShopeeCorrigir: pedido {$pedidoId} com nome vazio");
                 continue;
             }
 
@@ -82,6 +86,9 @@ class ShopeeCorrigirDadosService
                 Log::warning("ShopeeCorrigir: pedido {$pedidoId} com nome mascarado: {$nome}");
                 continue;
             }
+
+            // Passar mapa para os métodos auxiliares
+            $row['__mapa'] = $mapa;
 
             try {
                 $client = new BlingClient($staging->bling_account);
@@ -113,7 +120,8 @@ class ShopeeCorrigirDadosService
                 self::atualizarObservacoesPedido($client, $staging, $pedidoId, $row, $pedidoData);
 
                 // ── PASSO 4: Atualiza banco local ────────────────────────────────────
-                $cpf = preg_replace('/\D/', '', trim($row['BD'] ?? ''));
+                $colCpf = $mapa['cpf_comprador'] ?? 'BD';
+                $cpf = preg_replace('/\D/', '', trim($row[$colCpf] ?? ''));
 
                 $staging->update([
                     'cliente_nome' => $nome,
@@ -146,14 +154,23 @@ class ShopeeCorrigirDadosService
     // ════════════════════════════════════════════════════════════════════════
     private static function atualizarContato(BlingClient $client, string $pedidoId, int $contatoId, array $row): void
     {
-        $nome = trim($row['BB'] ?? '');
-        $telefone = trim($row['BC'] ?? '');
-        $cpf = preg_replace('/\D/', '', trim($row['BD'] ?? ''));
-        $endereco = trim($row['BE'] ?? '');
-        $bairro = trim($row['BG'] ?? '');
-        $cidade = trim($row['BF'] ?? '') ?: trim($row['BH'] ?? '');
-        $uf = trim($row['BI'] ?? '');
-        $cep = preg_replace('/\D/', '', trim($row['BK'] ?? ''));
+        $mapa = $row['__mapa'] ?? [];
+        $colNome = $mapa['nome_destinatario'] ?? 'BB';
+        $colCpf  = $mapa['cpf_comprador'] ?? 'BD';
+
+        // Colunas de endereço ficam logo após CPF — posições relativas estáveis
+        $cols = array_keys($row);
+        $idxCpf = array_search($colCpf, $cols);
+        $colAt  = fn(int $offset) => $cols[$idxCpf + $offset] ?? null;
+
+        $nome     = trim((string) ($row[$colNome] ?? ''));
+        $telefone = trim((string) ($row[$colAt(- 1)] ?? ''));
+        $cpf      = preg_replace('/\D/', '', trim((string) ($row[$colCpf] ?? '')));
+        $endereco = trim((string) ($row[$colAt(1)] ?? ''));
+        $cidade   = trim((string) ($row[$colAt(2)] ?? ''));
+        $bairro   = trim((string) ($row[$colAt(3)] ?? ''));
+        $uf       = trim((string) ($row[$colAt(5)] ?? ''));
+        $cep      = preg_replace('/\D/', '', trim((string) ($row[$colAt(7)] ?? '')));
 
         $tipoPessoa = strlen($cpf) > 11 ? 'J' : 'F';
 
@@ -188,10 +205,9 @@ class ShopeeCorrigirDadosService
             $payload['numeroDocumento'] = $cpf;
         }
 
-        // Monta texto do endereço completo para observação - usa coluna BA diretamente
-        $enderecoCompletoBA = trim($row['BE'] ?? '');
+        // Monta texto do endereço completo para observação
         $ufSigla = self::ufParaSigla($uf);
-        $obsTexto = $enderecoCompletoBA ?: (implode(', ', array_filter([$endereco, $bairro, $cidade, $ufSigla, $cep])));
+        $obsTexto = implode(', ', array_filter([$endereco, $bairro, $cidade, $ufSigla, $cep]));
 
         if ($endereco || $cidade || $uf || $cep) {
             $partes = array_map('trim', explode(',', $endereco));
@@ -264,11 +280,14 @@ class ShopeeCorrigirDadosService
         array $pedidoData
     ): void {
         try {
-            $precoU = self::parseDecimalValue($row['W'] ?? 0);
-            $subsidioY = abs(self::parseDecimalValue($row['AJ'] ?? 0));
-            $subtotal = $precoU - $subsidioY;
-            $taxaEnvio = self::parseDecimalValue($row['AQ'] ?? 0);
-            $descontoFrete = abs(self::parseDecimalValue($row['AR'] ?? 0));
+            $mapa = $row['__mapa'] ?? [];
+            $val = fn(string $k) => $row[$mapa[$k] ?? ''] ?? 0;
+
+            $precoU    = self::parseDecimalValue($val('subtotal_produto'));
+            $subsidioY = abs(self::parseDecimalValue($val('ajuste_pix')));
+            $subtotal  = $precoU - $subsidioY;
+            $taxaEnvio = self::parseDecimalValue($val('taxa_envio'));
+            $descontoFrete = abs(self::parseDecimalValue($val('desconto_frete')));
             $frete = $taxaEnvio + $descontoFrete;
             $faturar = round($subtotal / 2, 2);
 
