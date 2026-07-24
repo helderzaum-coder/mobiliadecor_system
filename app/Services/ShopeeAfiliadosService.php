@@ -8,24 +8,36 @@ use Illuminate\Support\Facades\Log;
 /**
  * Processa planilha de comissão de afiliados da Shopee (SellerConversionReport).
  * Soma o valor de "Despesas(R$)" na comissão da venda.
- *
- * Colunas relevantes:
- * A = ID do Pedido (posição 1, índice 0)
- * AI (posição 35, índice 34) = Despesas(R$) — valor da comissão de afiliados
  */
 class ShopeeAfiliadosService
 {
     /**
-     * Colunas esperadas no cabeçalho para validação.
-     * Índice (base 0) => substring que deve conter (case-insensitive).
+     * Colunas requeridas — mapeamento por nome (igual ao ShopeePlanilhaService).
      */
-    public const COLUNAS_ESPERADAS = [
-        0 => ['id do pedido', 'order id'],
-        34 => ['despesas', 'expense'],
+    public const COLUNAS_REQUERIDAS = [
+        'id_pedido' => 'ID do Pedido',
+        'despesas'  => 'Despesas(R$)',
     ];
 
     /**
-     * Valida se o cabeçalho da planilha corresponde ao mapeamento esperado.
+     * Constrói mapa chave => índice a partir do cabeçalho real.
+     */
+    public static function mapearColunas(array $header): array
+    {
+        $mapa = [];
+        foreach ($header as $idx => $valor) {
+            $normalizado = mb_strtolower(trim((string) $valor));
+            foreach (self::COLUNAS_REQUERIDAS as $chave => $nomeEsperado) {
+                if ($normalizado === mb_strtolower($nomeEsperado)) {
+                    $mapa[$chave] = $idx;
+                }
+            }
+        }
+        return $mapa;
+    }
+
+    /**
+     * Valida se o cabeçalho contém todas as colunas requeridas (por nome).
      */
     public static function validarCabecalho(string $filePath): array
     {
@@ -34,10 +46,8 @@ class ShopeeAfiliadosService
             if (!$handle) {
                 return ['valido' => false, 'divergencias' => ['Erro ao abrir arquivo']];
             }
-
             $header = fgetcsv($handle);
             fclose($handle);
-
             if (!$header) {
                 return ['valido' => false, 'divergencias' => ['Arquivo vazio ou sem cabeçalho']];
             }
@@ -45,20 +55,12 @@ class ShopeeAfiliadosService
             return ['valido' => false, 'divergencias' => ["Erro ao ler arquivo: {$e->getMessage()}"]];
         }
 
+        $mapa = self::mapearColunas($header);
         $divergencias = [];
-        foreach (self::COLUNAS_ESPERADAS as $idx => $variantes) {
-            $valorReal = mb_strtolower(trim($header[$idx] ?? ''));
-            $encontrou = false;
-            foreach ((array) $variantes as $substringEsperada) {
-                if (str_contains($valorReal, $substringEsperada)) {
-                    $encontrou = true;
-                    break;
-                }
-            }
-            if (!$encontrou) {
-                $colLetra = self::idxParaLetra($idx);
-                $esperados = implode('" ou "', (array) $variantes);
-                $divergencias[] = "Coluna {$colLetra} (pos {$idx}): esperado conter \"{$esperados}\" → encontrado \"" . trim($header[$idx] ?? '(vazio)') . "\"";
+
+        foreach (self::COLUNAS_REQUERIDAS as $chave => $nomeEsperado) {
+            if (!isset($mapa[$chave])) {
+                $divergencias[] = "Coluna não encontrada: \"{$nomeEsperado}\"";
             }
         }
 
@@ -66,18 +68,6 @@ class ShopeeAfiliadosService
             'valido' => empty($divergencias),
             'divergencias' => $divergencias,
         ];
-    }
-
-    private static function idxParaLetra(int $idx): string
-    {
-        $letra = '';
-        $idx++;
-        while ($idx > 0) {
-            $idx--;
-            $letra = chr(65 + ($idx % 26)) . $letra;
-            $idx = intdiv($idx, 26);
-        }
-        return $letra;
     }
 
     public static function processar(string $filePath): array
@@ -96,24 +86,17 @@ class ShopeeAfiliadosService
                 return ['atualizados' => 0, 'nao_encontrados' => 0, 'sem_valor' => 0, 'erros' => 1, 'detalhes' => ['Arquivo vazio']];
             }
 
-            // Encontrar índice da coluna de despesas e pedido
-            $idxPedido = 0; // Coluna A
-            $idxDespesas = null;
+            $mapa = self::mapearColunas($header);
+            $idxPedido   = $mapa['id_pedido'] ?? null;
+            $idxDespesas = $mapa['despesas'] ?? null;
 
-            foreach ($header as $i => $col) {
-                $colLimpa = mb_strtolower(trim($col));
-                if (str_contains($colLimpa, 'despesas') || str_contains($colLimpa, 'expenses')) {
-                    $idxDespesas = $i;
-                    break;
-                }
+            if ($idxPedido === null || $idxDespesas === null) {
+                fclose($handle);
+                return ['atualizados' => 0, 'nao_encontrados' => 0, 'sem_valor' => 0, 'erros' => 1,
+                    'detalhes' => ['Colunas obrigatórias não encontradas no cabeçalho.']];
             }
 
-            if ($idxDespesas === null) {
-                // Fallback: posição 34 (AJ = índice 34 em base 0)
-                $idxDespesas = 34;
-            }
-
-            Log::info("Shopee Afiliados: coluna despesas idx={$idxDespesas}");
+            Log::info("Shopee Afiliados: coluna id_pedido idx={$idxPedido}, despesas idx={$idxDespesas}");
 
             // Agrupar por pedido (pode ter múltiplas linhas por pedido)
             $pedidosDespesas = [];
