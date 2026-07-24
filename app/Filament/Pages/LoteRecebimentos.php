@@ -257,9 +257,6 @@ class LoteRecebimentos extends Page
         if (!$conta || !$conta->venda || $conta->lancamento_manual) return;
         if (str_contains($conta->forma_pagamento ?? '', 'Subsídio')) return;
 
-        // Se foi editado manualmente após criação, não sobrescrever
-        if (abs($conta->updated_at->diffInSeconds($conta->created_at)) > 5) return;
-
         $repasse = $this->calcularRepasse($conta->venda);
         if ($repasse === null) return;
 
