@@ -15,8 +15,8 @@ class ShopeeAfiliadosService
      * Colunas requeridas — mapeamento por nome (igual ao ShopeePlanilhaService).
      */
     public const COLUNAS_REQUERIDAS = [
-        'id_pedido' => 'ID do Pedido',
-        'despesas'  => 'Despesas(R$)',
+        'id_pedido' => ['ID do Pedido', 'Order id', 'Order ID'],
+        'despesas'  => ['Despesas(R$)', 'Expense(R$)'],
     ];
 
     /**
@@ -27,13 +27,24 @@ class ShopeeAfiliadosService
         $mapa = [];
         foreach ($header as $idx => $valor) {
             $normalizado = mb_strtolower(trim((string) $valor));
-            foreach (self::COLUNAS_REQUERIDAS as $chave => $nomeEsperado) {
-                if ($normalizado === mb_strtolower($nomeEsperado)) {
-                    $mapa[$chave] = $idx;
+            foreach (self::COLUNAS_REQUERIDAS as $chave => $variantes) {
+                foreach ((array) $variantes as $nomeEsperado) {
+                    if ($normalizado === mb_strtolower($nomeEsperado)) {
+                        $mapa[$chave] = $idx;
+                        break;
+                    }
                 }
             }
         }
         return $mapa;
+    }
+
+    /**
+     * Retorna o primeiro nome da lista para exibição em erros.
+     */
+    private static function nomesParaExibir(array|string $variantes): string
+    {
+        return implode('" ou "', (array) $variantes);
     }
 
     /**
@@ -58,9 +69,9 @@ class ShopeeAfiliadosService
         $mapa = self::mapearColunas($header);
         $divergencias = [];
 
-        foreach (self::COLUNAS_REQUERIDAS as $chave => $nomeEsperado) {
+        foreach (self::COLUNAS_REQUERIDAS as $chave => $variantes) {
             if (!isset($mapa[$chave])) {
-                $divergencias[] = "Coluna não encontrada: \"{$nomeEsperado}\"";
+                $divergencias[] = "Coluna não encontrada: \"" . self::nomesParaExibir($variantes) . "\"";
             }
         }
 
