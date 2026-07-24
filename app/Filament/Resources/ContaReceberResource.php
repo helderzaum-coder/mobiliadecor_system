@@ -704,6 +704,23 @@ class ContaReceberResource extends Resource
                         }
                         Notification::make()->title("{$count} data(s) corrigida(s).")->success()->send();
                     }),
+                Tables\Actions\BulkAction::make('marcar_ajuste_massa')
+                    ->label('Marcar como Ajuste')
+                    ->icon('heroicon-o-wrench-screwdriver')
+                    ->color('info')
+                    ->requiresConfirmation()
+                    ->modalHeading('Marcar como Ajuste em Lote')
+                    ->modalDescription('Os registros selecionados ficarão como quitados mas NÃO aparecerão no fluxo de caixa.')
+                    ->deselectRecordsAfterCompletion()
+                    ->action(function ($records) {
+                        $count = 0;
+                        foreach ($records as $record) {
+                            if ($record->status !== 'pendente') continue;
+                            $record->update(['status' => 'ajuste', 'data_recebimento' => $record->data_recebimento ?? now()]);
+                            $count++;
+                        }
+                        Notification::make()->title("{$count} registro(s) marcado(s) como ajuste.")->success()->send();
+                    }),
                 Tables\Actions\BulkAction::make('cancelar_massa')
                     ->label('Cancelar')
                     ->icon('heroicon-o-x-circle')
