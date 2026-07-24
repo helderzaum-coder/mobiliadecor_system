@@ -197,7 +197,8 @@ class Recebimentos extends Page implements HasForms
             $query->where('bling_account', $this->conta);
         }
         if ($this->filtro_status === 'pendente') {
-            $query->where('repasse_recebido', false);
+            $query->where('repasse_recebido', false)
+                ->whereHas('contasReceber', fn ($q) => $q->where('status', 'pendente'));
         } elseif ($this->filtro_status === 'recebido') {
             $query->where('repasse_recebido', true);
         }

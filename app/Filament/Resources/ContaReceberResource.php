@@ -377,6 +377,13 @@ class ContaReceberResource extends Resource
                     ->modalDescription('O registro ficará como quitado mas NÃO aparecerá no fluxo de caixa nem afetará saldos.')
                     ->action(function (ContaReceber $record) {
                         $record->update(['status' => 'ajuste', 'data_recebimento' => $record->data_recebimento ?? now()]);
+                        if ($record->id_venda) {
+                            $pendentes = ContaReceber::where('id_venda', $record->id_venda)
+                                ->where('status', 'pendente')->count();
+                            if ($pendentes === 0) {
+                                $record->venda?->update(['repasse_recebido' => true, 'data_recebimento' => $record->data_recebimento ?? now()]);
+                            }
+                        }
                         Notification::make()->title('Marcado como ajuste.')->success()->send();
                     })
                     ->visible(fn (ContaReceber $record) => $record->status === 'pendente'),
@@ -717,6 +724,13 @@ class ContaReceberResource extends Resource
                         foreach ($records as $record) {
                             if ($record->status !== 'pendente') continue;
                             $record->update(['status' => 'ajuste', 'data_recebimento' => $record->data_recebimento ?? now()]);
+                            if ($record->id_venda) {
+                                $pendentes = ContaReceber::where('id_venda', $record->id_venda)
+                                    ->where('status', 'pendente')->count();
+                                if ($pendentes === 0) {
+                                    $record->venda?->update(['repasse_recebido' => true, 'data_recebimento' => $record->data_recebimento ?? now()]);
+                                }
+                            }
                             $count++;
                         }
                         Notification::make()->title("{$count} registro(s) marcado(s) como ajuste.")->success()->send();
