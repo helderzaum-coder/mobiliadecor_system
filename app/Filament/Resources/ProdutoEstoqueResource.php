@@ -270,6 +270,32 @@ class ProdutoEstoqueResource extends Resource
                         $record->update(['saldo_carcaca' => (int) $data['quantidade']]);
                         Notification::make()->title("Carcaças de {$record->sku} atualizadas para {$data['quantidade']}")->success()->send();
                     }),
+                Tables\Actions\Action::make('reimportar_bling')
+                    ->label('Reimportar Bling')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('info')
+                    ->requiresConfirmation()
+                    ->modalHeading(fn ($record) => "Reimportar: {$record->sku}")
+                    ->modalDescription('Atualiza nome, código de barras, observações e formato buscando diretamente no Bling. O saldo NÃO será alterado.')
+                    ->action(function ($record) {
+                        $client = new \App\Services\Bling\BlingClient('primary');
+                        $produto = $client->getProductBySku($record->sku);
+
+                        if (!$produto) {
+                            Notification::make()->title("SKU {$record->sku} não encontrado no Bling.")->danger()->send();
+                            return;
+                        }
+
+                        $detalhe = $client->getProductById((int) $produto['id']);
+                        $record->update([
+                            'nome'          => $produto['nome'] ?? $record->nome,
+                            'formato'       => strtoupper($produto['formato'] ?? $record->formato),
+                            'codigo_barras' => ($detalhe['gtin'] ?? $detalhe['codigoBarras'] ?? null) ?? $record->codigo_barras,
+                            'observacoes'   => ($detalhe['observacoes'] ?? null) ?? $record->observacoes,
+                        ]);
+
+                        Notification::make()->title("Produto {$record->sku} reimportado com sucesso.")->success()->send();
+                    }),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([

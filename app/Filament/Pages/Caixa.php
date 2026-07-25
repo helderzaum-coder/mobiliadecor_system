@@ -36,24 +36,9 @@ class Caixa extends Page implements HasForms
     public ?string $categoria_id = null;
     public ?string $visao = 'diaria';
     public ?string $tipo_movimento = null;
-    public bool $exibir_saldo_anterior = true;
-    public bool $exibir_transferencias = false;
-    public bool $exibir_previsoes = false;
-
-    public function updatedExibirTransferencias($value): void
-    {
-        $this->exibir_transferencias = (bool) $value;
-    }
-
-    public function updatedExibirPrevisoes($value): void
-    {
-        $this->exibir_previsoes = (bool) $value;
-    }
-
-    public function updatedExibirSaldoAnterior($value): void
-    {
-        $this->exibir_saldo_anterior = (bool) $value;
-    }
+    public string $exibir_saldo_anterior = '1';
+    public string $exibir_transferencias = '0';
+    public string $exibir_previsoes = '0';
 
     protected $queryString = [
         'periodo' => ['except' => 'este_mes'],
@@ -64,9 +49,9 @@ class Caixa extends Page implements HasForms
         'categoria_id' => ['except' => ''],
         'visao' => ['except' => 'diaria'],
         'tipo_movimento' => ['except' => ''],
-        'exibir_saldo_anterior' => ['except' => true],
-        'exibir_transferencias' => ['except' => false],
-        'exibir_previsoes' => ['except' => false],
+        'exibir_saldo_anterior' => ['except' => '1'],
+        'exibir_transferencias' => ['except' => '0'],
+        'exibir_previsoes' => ['except' => '0'],
     ];
 
     public function mount(): void
@@ -74,11 +59,6 @@ class Caixa extends Page implements HasForms
         if (!$this->mes_selecionado) {
             $this->mes_selecionado = now()->format('Y-m');
         }
-
-        // Garantir cast correto ao vir da URL (queryString serializa bool como string)
-        $this->exibir_transferencias = filter_var($this->exibir_transferencias, FILTER_VALIDATE_BOOLEAN);
-        $this->exibir_previsoes      = filter_var($this->exibir_previsoes, FILTER_VALIDATE_BOOLEAN);
-        $this->exibir_saldo_anterior = filter_var($this->exibir_saldo_anterior, FILTER_VALIDATE_BOOLEAN);
     }
 
     public function form(Forms\Form $form): Forms\Form
@@ -140,17 +120,20 @@ class Caixa extends Page implements HasForms
                     ])
                     ->placeholder('Todas')
                     ->reactive(),
-                Forms\Components\Toggle::make('exibir_saldo_anterior')
-                    ->label('Exibir saldo anterior')
-                    ->default(true)
+                Forms\Components\Select::make('exibir_saldo_anterior')
+                    ->label('Saldo anterior')
+                    ->options(['1' => 'Exibir', '0' => 'Ocultar'])
+                    ->default('1')
                     ->reactive(),
-                Forms\Components\Toggle::make('exibir_transferencias')
-                    ->label('Exibir transferências')
-                    ->default(false)
+                Forms\Components\Select::make('exibir_transferencias')
+                    ->label('Transferências')
+                    ->options(['1' => 'Exibir', '0' => 'Ocultar'])
+                    ->default('0')
                     ->reactive(),
-                Forms\Components\Toggle::make('exibir_previsoes')
-                    ->label('Exibir previsões')
-                    ->default(false)
+                Forms\Components\Select::make('exibir_previsoes')
+                    ->label('Previsões')
+                    ->options(['1' => 'Exibir', '0' => 'Ocultar'])
+                    ->default('0')
                     ->reactive(),
             ]),
         ]);
@@ -191,8 +174,7 @@ class Caixa extends Page implements HasForms
             ->whereNotNull('data_recebimento')
             ->whereBetween('data_recebimento', [$inicio, $fim]);
 
-        // Ocultar transferências se toggle desligado, sem filtro de banco e sem filtro de categoria transferência
-        if (!$this->exibir_transferencias && !$this->conta_bancaria_id && !$filtrandoTransferencia) {
+        if ($this->exibir_transferencias !== '1' && !$this->conta_bancaria_id && !$filtrandoTransferencia) {
             $query->where('forma_pagamento', '!=', 'Transferência');
         }
 
@@ -202,7 +184,6 @@ class Caixa extends Page implements HasForms
             $query->whereHas('contaBancaria', fn ($q) => $q->where('ocultar_caixa', false));
         }
 
-        // Se filtrando por categoria Transferência, buscar por categoria_id OU forma_pagamento (registros antigos)
         if ($filtrandoTransferencia) {
             $query->where(fn ($q) => $q->where('categoria_id', $this->categoria_id)->orWhere('forma_pagamento', 'Transferência'));
         } elseif ($this->categoria_id) {
@@ -290,7 +271,7 @@ class Caixa extends Page implements HasForms
         }
 
         // Previsões: faturas de recebimento abertas no período
-        if ($this->exibir_previsoes) {
+        if ($this->exibir_previsoes === '1') {
             $faturas = FaturaRecebimento::with(['canal', 'contaBancaria'])
                 ->where('status', 'aberta')
                 ->whereBetween('data_prevista', [$inicio, $fim])
@@ -350,8 +331,7 @@ class Caixa extends Page implements HasForms
             ->whereBetween('data_pagamento', [$inicio, $fim])
             ->whereNull('lote_recebimento_id'); // Descontos de lote já estão abatidos na entrada
 
-        // Ocultar transferências se toggle desligado, sem filtro de banco e sem filtro de categoria transferência
-        if (!$this->exibir_transferencias && !$this->conta_bancaria_id && !$filtrandoTransferencia) {
+        if ($this->exibir_transferencias !== '1' && !$this->conta_bancaria_id && !$filtrandoTransferencia) {
             $query->where('forma_pagamento', '!=', 'Transferência');
         }
 
@@ -361,7 +341,6 @@ class Caixa extends Page implements HasForms
             $query->whereHas('contaBancaria', fn ($q) => $q->where('ocultar_caixa', false));
         }
 
-        // Se filtrando por categoria Transferência, buscar por categoria_id OU forma_pagamento (registros antigos)
         if ($filtrandoTransferencia) {
             $query->where(fn ($q) => $q->where('categoria_id', $this->categoria_id)->orWhere('forma_pagamento', 'Transferência'));
         } elseif ($this->categoria_id) {
@@ -381,7 +360,7 @@ class Caixa extends Page implements HasForms
         ]);
 
         // Previsões: contas a pagar abertas/pendentes no período
-        if ($this->exibir_previsoes) {
+        if ($this->exibir_previsoes === '1') {
             $previsoes = ContaPagar::with(['contaBancaria', 'categoria'])
                 ->whereIn('status', ['aberto', 'pendente'])
                 ->whereBetween('data_vencimento', [$inicio, $fim])
@@ -434,14 +413,14 @@ class Caixa extends Page implements HasForms
 
     public function getSaldoAnteriorProperty(): float
     {
-        if (!$this->exibir_saldo_anterior) return 0;
+        if ($this->exibir_saldo_anterior !== '1') return 0;
 
         [$inicio] = $this->getDataRange();
 
         $entradasAntes = ContaReceber::where('status', 'recebido')
             ->whereNotNull('data_recebimento')
             ->where('data_recebimento', '<', $inicio)
-            ->when(!$this->exibir_transferencias && !$this->conta_bancaria_id, fn ($q) => $q->where('forma_pagamento', '!=', 'Transferência'))
+            ->when($this->exibir_transferencias !== '1' && !$this->conta_bancaria_id, fn ($q) => $q->where('forma_pagamento', '!=', 'Transferência'))
             ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
             ->when(!$this->conta_bancaria_id, fn ($q) => $q->whereHas('contaBancaria', fn ($q2) => $q2->where('ocultar_caixa', false)))
             ->sum('valor_parcela');
@@ -451,7 +430,7 @@ class Caixa extends Page implements HasForms
             ->whereNotNull('data_pagamento')
             ->where('data_pagamento', '<', $inicio)
             ->whereNull('lote_recebimento_id')
-            ->when(!$this->exibir_transferencias && !$this->conta_bancaria_id, fn ($q) => $q->where('forma_pagamento', '!=', 'Transferência'))
+            ->when($this->exibir_transferencias !== '1' && !$this->conta_bancaria_id, fn ($q) => $q->where('forma_pagamento', '!=', 'Transferência'))
             ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
             ->when(!$this->conta_bancaria_id, fn ($q) => $q->whereHas('contaBancaria', fn ($q2) => $q2->where('ocultar_caixa', false)))
             ->sum('valor_parcela');
@@ -678,8 +657,8 @@ class Caixa extends Page implements HasForms
                     'categoria_id'          => $this->categoria_id,
                     'visao'                 => $this->visao,
                     'tipo_movimento'        => $this->tipo_movimento,
-                    'exibir_transferencias' => $this->exibir_transferencias ? '1' : null,
-                    'exibir_previsoes'      => $this->exibir_previsoes ? '1' : null,
+                    'exibir_transferencias' => $this->exibir_transferencias === '1' ? '1' : null,
+                    'exibir_previsoes'      => $this->exibir_previsoes === '1' ? '1' : null,
                 ])))
                 ->openUrlInNewTab(),
             Actions\Action::make('transferencia')
