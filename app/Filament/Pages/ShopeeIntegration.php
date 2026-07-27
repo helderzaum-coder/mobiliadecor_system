@@ -2,10 +2,10 @@
 
 namespace App\Filament\Pages;
 
+use App\Services\Shopee\ShopeeClient;
 use App\Services\Shopee\ShopeeService;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Laraditz\Shopee\Facades\Shopee;
 
 class ShopeeIntegration extends Page
 {
@@ -28,7 +28,7 @@ class ShopeeIntegration extends Page
 
     public function conectar(): void
     {
-        $url = Shopee::shop()->generateAuthorizationURL();
+        $url = (new ShopeeClient())->getAuthUrl();
         $this->redirect($url);
     }
 
