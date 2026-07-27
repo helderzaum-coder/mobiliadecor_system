@@ -7,10 +7,13 @@ return [
     'redirect_url' => env('SHOPEE_REDIRECT_URL', null),
     'redirect_uri' => env('SHOPEE_REDIRECT_URL', null),
     'home_url'     => env('SHOPEE_HOME_URL', null),
-    'sandbox'       => env('SHOPEE_SANDBOX_MODE', false),
-    'host_sandbox'  => 'https://partner.test-stable.shopeemobile.com',
+    'sandbox' => [
+        'mode'     => env('SHOPEE_SANDBOX_MODE', false),
+        'base_url' => 'https://openplatform.sandbox.test-stable.shopee.sg',
+    ],
+    'host_sandbox'  => 'https://openplatform.sandbox.test-stable.shopee.sg',
     'host_live'     => 'https://partner.shopeemobile.com',
-    'base_url'      => 'https://partner.shopeemobile.com',
+    'base_url'      => env('SHOPEE_SANDBOX_MODE', false) ? 'https://openplatform.sandbox.test-stable.shopee.sg' : 'https://partner.shopeemobile.com',
     'routes' => [
         'prefix' => 'shopee',
         'auth' => [
