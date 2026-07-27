@@ -111,7 +111,7 @@ class CalculadoraML extends Page
             'madeiramadeira_1' => ['label' => 'Madeira Madeira', 'cor' => '#16a34a', 'icone' => '🌳', 'comissao_pct' => $mm['pct'], 'fixo' => $mm['fixo'], 'tipo_nota' => $nota($mmDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($mmDB), 'antecipacao_pct' => $antecipacao($mmDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
             'amazon_1'         => ['label' => 'Amazon', 'cor' => '#f59e0b', 'icone' => '📦', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => $nota($amazonDB, 'produto'), 'imposto_sobre_frete' => $impFrete($amazonDB), 'antecipacao_pct' => $antecipacao($amazonDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'amazon'],
             'via_1'            => ['label' => 'Via (Cnova)', 'cor' => '#dc2626', 'icone' => '🔴', 'comissao_pct' => $via['pct'], 'fixo' => $via['fixo'], 'tipo_nota' => $nota($viaDB, 'produto'), 'imposto_sobre_frete' => $impFrete($viaDB), 'antecipacao_pct' => $antecipacao($viaDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
-            'tiktok_1'         => ['label' => 'Tiktokshop', 'cor' => '#000000', 'icone' => '🎵', 'comissao_pct' => $tiktok['pct'], 'fixo' => $tiktok['fixo'], 'tipo_nota' => $nota($tiktokDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($tiktokDB), 'antecipacao_pct' => $antecipacao($tiktokDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
+            'tiktok_1'         => ['label' => 'Tiktokshop', 'cor' => '#000000', 'icone' => '🎵', 'comissao_pct' => 0, 'fixo' => 0, 'tipo_nota' => $nota($tiktokDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($tiktokDB), 'antecipacao_pct' => $antecipacao($tiktokDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'tiktok'],
             'leroy_1'          => ['label' => 'LeroyMerlin', 'cor' => '#65a30d', 'icone' => '🏠', 'comissao_pct' => $leroy['pct'], 'fixo' => $leroy['fixo'], 'tipo_nota' => $nota($leroyDB, 'produto'), 'imposto_sobre_frete' => $impFrete($leroyDB), 'antecipacao_pct' => $antecipacao($leroyDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
             'site_cartao_1'    => ['label' => 'Site (Cartão 6x)', 'cor' => '#7c3aed', 'icone' => '💳', 'comissao_pct' => $siteCartao['pct'], 'fixo' => $siteCartao['fixo'], 'tipo_nota' => $nota($siteDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($siteDB), 'antecipacao_pct' => $antecipacao($siteDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'fixo'],
             'site_pix_1'       => ['label' => 'Site (Pix -15%)', 'cor' => '#059669', 'icone' => '💲', 'comissao_pct' => 0, 'fixo' => $sitePixFixo, 'tipo_nota' => $nota($siteDB, 'cheia'), 'imposto_sobre_frete' => $impFrete($siteDB), 'antecipacao_pct' => $antecipacao($siteDB), 'id_cnpj' => 1, 'cnpj_label' => 'HES Decor', 'tipo' => 'site_pix'],
@@ -282,6 +282,28 @@ class CalculadoraML extends Page
         return end($valores);
     }
 
+    private function calcularComissaoTiktok(float $preco, float $frete, int $quantidade = 1): array
+    {
+        if ($preco < 50) {
+            $pct = 10;
+            $fixoPorItem = 4;
+        } else {
+            $pct = 6;
+            $fixoPorItem = 6;
+        }
+        $comissaoBase = round($preco * $pct / 100 + $fixoPorItem * $quantidade, 2);
+        $comissaoFrete = round($frete * 0.06, 2);
+        $afiliado = round($preco * 0.08, 2);
+        return [
+            'comissao' => $comissaoBase + $comissaoFrete + $afiliado,
+            'comissao_base' => $comissaoBase,
+            'comissao_frete' => $comissaoFrete,
+            'afiliado' => $afiliado,
+            'pct' => $pct,
+            'fixo_item' => $fixoPorItem,
+        ];
+    }
+
     private function calcularComissaoShopee(float $preco): array
     {
         foreach (self::$tabelaShopee as [$min, $max, $pct, $fixo]) {
@@ -359,6 +381,33 @@ class CalculadoraML extends Page
                 $comissaoFixa = $a['fixo'];
                 $comissaoCumulativa = $a['cumulativa'] ?? 0;
                 $frete = 0;
+            } elseif ($cfg['tipo'] === 'tiktok') {
+                $t = $this->calcularComissaoTiktok($preco, 0, $this->quantidade);
+                $comissao = $t['comissao'];
+                $comissaoPct = $t['pct'];
+                $comissaoFixa = $t['fixo_item'];
+                $frete = 0;
+                $imposto = $this->calcularImposto($preco, 0, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete']);
+                $antecipacao = round($preco * ($cfg['antecipacao_pct'] ?? 0) / 100, 2);
+                $recebe = round($preco - $comissao - $antecipacao, 2);
+                $margem = round($recebe - $custoTotal - $imposto + $rebateTotal, 2);
+                $canais[] = [
+                    'key' => $key,
+                    'canal' => $cfg['label'], 'cor' => $cfg['cor'], 'icone' => $cfg['icone'],
+                    'cnpj_label' => $cfg['cnpj_label'], 'id_cnpj' => $cfg['id_cnpj'],
+                    'comissao_pct' => $t['pct'], 'comissao' => $comissao,
+                    'comissao_fixa' => $t['fixo_item'],
+                    'tiktok_comissao_frete' => $t['comissao_frete'],
+                    'tiktok_afiliado' => $t['afiliado'],
+                    'antecipacao_pct' => $cfg['antecipacao_pct'] ?? 0, 'antecipacao' => $antecipacao,
+                    'frete' => 0, 'recebe' => $recebe,
+                    'imposto_pct' => $impostoPct, 'imposto' => $imposto,
+                    'tipo_nota' => $cfg['tipo_nota'],
+                    'rebate' => $rebateTotal,
+                    'margem' => $margem,
+                    'margem_pct' => $preco > 0 ? round(($margem / $preco) * 100, 1) : 0,
+                ];
+                continue;
             } elseif ($cfg['tipo'] === 'site_pix') {
                 // Pix: preço é o de venda com 15% de desconto
                 $precoPix = round($preco * 0.85, 2);
@@ -497,6 +546,12 @@ class CalculadoraML extends Page
                     $comissaoFixa = $a['fixo'];
                     $comissaoCumulativa = $a['cumulativa'] ?? 0;
                     $frete = 0;
+                } elseif ($cfg['tipo'] === 'tiktok') {
+                    $t = $this->calcularComissaoTiktok($preco, 0, $this->quantidade);
+                    $comissao = $t['comissao'];
+                    $comissaoPct = $t['pct'];
+                    $comissaoFixa = $t['fixo_item'];
+                    $frete = 0;
                 } else {
                     $comissao = round($preco * $cfg['comissao_pct'] / 100 + $cfg['fixo'], 2);
                     $comissaoPct = $cfg['comissao_pct'];
@@ -509,7 +564,15 @@ class CalculadoraML extends Page
                 $recebe = round($preco - $comissao - $frete - $antecipacao, 2);
                 $margem = round($recebe - $custoLiquido - $imposto, 2);
 
-                $canais[$key][$tipo] = [
+                $tiktokExtra = [];
+                if ($cfg['tipo'] === 'tiktok') {
+                    $tiktokExtra = [
+                        'tiktok_comissao_frete' => $t['comissao_frete'] ?? 0,
+                        'tiktok_afiliado' => $t['afiliado'] ?? 0,
+                    ];
+                }
+
+                $canais[$key][$tipo] = array_merge([
                     'preco_venda' => $preco,
                     'comissao_pct' => $comissaoPct, 'comissao' => $comissao,
                     'comissao_fixa' => $comissaoFixa,
@@ -520,7 +583,7 @@ class CalculadoraML extends Page
                     'tipo_nota' => $cfg['tipo_nota'],
                     'margem' => $margem,
                     'margem_pct' => $preco > 0 ? round(($margem / $preco) * 100, 1) : 0,
-                ];
+                ], $tiktokExtra);
             }
         }
 
@@ -592,6 +655,19 @@ class CalculadoraML extends Page
                 $imposto = $this->calcularImposto($preco, 0, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete'] ?? false);
                 $comissaoTotal = $a['comissao']; // já inclui cumulativa
                 $novoPreco = round(($custoTotal + $imposto + $comissaoTotal) / (1 - ($antecipacaoPct / 100) - ($margemPct / 100)), 2);
+                if (abs($novoPreco - $preco) < 0.01) break;
+                $preco = $novoPreco;
+            }
+            return $preco;
+
+        } elseif ($cfg['tipo'] === 'tiktok') {
+            // Iteração: comissão depende do preço (< ou >= 50)
+            $preco = $custoTotal * 2;
+            for ($i = 0; $i < 30; $i++) {
+                $t = $this->calcularComissaoTiktok($preco, 0, $this->quantidade);
+                $imposto = $this->calcularImposto($preco, 0, $cfg['tipo_nota'], $impostoPct, $cfg['imposto_sobre_frete'] ?? false);
+                $antecipacao = $preco * $antecipacaoPct / 100;
+                $novoPreco = round(($custoTotal + $t['comissao'] + $imposto + $antecipacao) / (1 - ($margemPct / 100)), 2);
                 if (abs($novoPreco - $preco) < 0.01) break;
                 $preco = $novoPreco;
             }
