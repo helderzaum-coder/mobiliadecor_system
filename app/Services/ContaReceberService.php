@@ -14,8 +14,8 @@ class ContaReceberService
      */
     public static function gerarSeCompleta(Venda $venda): bool
     {
-        // Já tem conta a receber?
-        if (ContaReceber::where('id_venda', $venda->id_venda)->exists()) {
+        // Já tem conta a receber (ignorando subsídios)?
+        if (ContaReceber::where('id_venda', $venda->id_venda)->where('forma_pagamento', 'not like', '%Subsídio%')->exists()) {
             return false;
         }
 
