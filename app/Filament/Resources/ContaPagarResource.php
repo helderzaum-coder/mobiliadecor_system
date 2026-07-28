@@ -418,7 +418,7 @@ class ContaPagarResource extends Resource
                         $novo->data_lancamento = $data['data_lancamento'];
                         $novo->data_vencimento = !empty($data['datas_diferentes']) ? $data['data_vencimento'] : $data['data_lancamento'];
                         $novo->data_pagamento = !empty($data['datas_diferentes']) ? ($data['data_pagamento'] ?? null) : $data['data_lancamento'];
-                        $novo->status = $novo->data_pagamento ? 'pago' : 'pendente';
+                        $novo->status = $novo->data_pagamento ? 'pago' : ((!empty($novo->data_vencimento) && \Carbon\Carbon::parse($novo->data_vencimento)->isPast()) ? 'atrasado' : 'pendente');
                         $novo->numero_parcela = 1;
                         $novo->total_parcelas = 1;
                         $novo->recorrente = false;
