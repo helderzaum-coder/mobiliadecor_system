@@ -101,9 +101,11 @@ class ContaReceberService
             return false;
         }
 
-        // Frete OK? (ML ME2/FULL não precisa, outros precisam de frete_pago)
+        // Frete OK? (ML ME2/FULL e TikTok não precisam, outros precisam de frete_pago)
         $isMlMe2Full = in_array($venda->ml_tipo_frete, ['ME2', 'FULL']);
-        if (!$isMlMe2Full && !$venda->frete_pago) {
+        $canal = $venda->canal;
+        $isTiktok = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'tiktok');
+        if (!$isMlMe2Full && !$isTiktok && !$venda->frete_pago) {
             return false;
         }
 
