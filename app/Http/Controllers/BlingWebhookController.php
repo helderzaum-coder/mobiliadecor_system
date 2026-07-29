@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\Bling\BlingImportService;
+use App\Jobs\ProcessarWebhookPedidoBlingJob;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -51,33 +51,13 @@ class BlingWebhookController extends Controller
 
         $debounceKey = "bling_pedido_debounce_{$account}_{$pedidoId}";
         if (Cache::has($debounceKey)) {
-            $logResult = ['estoque' => ['skipped' => 'debounce']];
-            try {
-                $importService = new BlingImportService($account);
-                $importResult = $importService->importarPedidoPorId((int) $pedidoId);
-                $logResult['staging'] = $importResult;
-            } catch (\Throwable $e) {
-                $logResult['staging'] = ['status' => 'erro', 'motivo' => $e->getMessage()];
-            }
-            return response()->json(['status' => 'ok', 'pedido' => $pedidoId, 'log' => $logResult]);
+            return response()->json(['status' => 'debounce', 'pedido' => $pedidoId]);
         }
         Cache::put($debounceKey, true, now()->addMinutes(5));
 
-        $logResult = [];
+        ProcessarWebhookPedidoBlingJob::dispatch($account, (int) $pedidoId);
 
-        // Importar pedido para o staging
-        try {
-            $importService = new BlingImportService($account);
-            $importResult = $importService->importarPedidoPorId((int) $pedidoId);
-            $logResult['staging'] = $importResult;
-        } catch (\Throwable $e) {
-            $logResult['staging'] = ['status' => 'erro', 'motivo' => $e->getMessage()];
-            Log::warning("BlingWebhook [{$account}]: erro ao importar pedido #{$pedidoId} para staging", [
-                'error' => $e->getMessage(),
-            ]);
-        }
-
-        return response()->json(['status' => 'ok', 'pedido' => $pedidoId, 'log' => $logResult]);
+        return response()->json(['status' => 'queued', 'pedido' => $pedidoId]);
     }
 
     private function validarAssinatura(Request $request, string $account): bool
