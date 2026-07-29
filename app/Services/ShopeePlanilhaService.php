@@ -190,6 +190,7 @@ class ShopeePlanilhaService
                     'frete' => $dados['frete'],
                     'comissao_calculada' => $dados['comissao'],
                     'subsidio_pix' => $dados['subsidio_pix'],
+                    'cupom_vendedor' => $dados['cupom_vendedor'] ?? 0,
                     'planilha_shopee' => true,
                 ];
 
@@ -334,6 +335,7 @@ class ShopeePlanilhaService
             'frete' => $dados['frete'] ?? $staging->frete,
             'comissao_calculada' => $dados['comissao'] ?? $staging->comissao_calculada,
             'subsidio_pix' => $dados['subsidio_pix'] ?? $staging->subsidio_pix,
+            'cupom_vendedor' => $dados['cupom_vendedor'] ?? 0,
             'planilha_shopee' => true,
         ];
 

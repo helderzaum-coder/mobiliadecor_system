@@ -318,9 +318,8 @@
                             $repasse = $totalProd + $mlFreteReceitaR - $mlSaleFeeR - $afiliado;
                         }
                     } else {
-                        $cupomShopeeRepasse = (float) ($venda->cupom_shopee ?? 0);
-                        $cupomPlataformaRepasse = (float) ($venda->cupom_plataforma ?? 0);
-                        $repasse = $totalProd + $freteCliente - $comissao - $afiliado - $cupomShopeeRepasse - $cupomPlataformaRepasse;
+                        $cupomVendedorRepasse = $isShopee ? (float) ($venda->cupom_vendedor ?? 0) : 0;
+                        $repasse = $totalProd + $freteCliente - $comissao - $afiliado - $cupomVendedorRepasse;
                     }
                     $fretePago = (bool) $venda->frete_pago;
                     $freteCotado = (float) ($venda->frete_cotado ?? 0);

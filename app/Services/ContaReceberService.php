@@ -48,7 +48,8 @@ class ContaReceberService
                 $repasse = (float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee - (float) ($venda->comissao_afiliado ?? 0);
             }
         } else {
-            $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0);
+            $cupomVendedor = $isShopee ? (float) ($venda->cupom_vendedor ?? 0) : 0;
+            $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0) - $cupomVendedor;
         }
 
         // Subsídio pix: para canais onde o marketplace repassa o subsídio ao vendedor (exceto Shopee e Magalu)
@@ -167,8 +168,9 @@ class ContaReceberService
                 $repasse = round((float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee - $afiliado, 2);
             }
         } else {
+            $cupomVendedor = $isShopee ? (float) ($venda->cupom_vendedor ?? 0) : 0;
             $repasseBase = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao;
-            $repasse = round($repasseBase - $afiliado, 2);
+            $repasse = round($repasseBase - $afiliado - $cupomVendedor, 2);
         }
 
         // Subsídio pix: para canais onde o marketplace repassa ao vendedor (exceto Shopee e Magalu)

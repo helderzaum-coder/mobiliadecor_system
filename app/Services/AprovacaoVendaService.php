@@ -190,13 +190,17 @@ class AprovacaoVendaService
             'planilha_processada' => (float) ($staging->ml_sale_fee ?? 0) > 0,
         ];
 
-        // Cupom plataforma Shopee (coluna Z — reembolsado pela Shopee)
+        // Cupom plataforma e cupom vendedor Shopee
         $isShopeeAprov = str_contains(strtolower($staging->canal ?? ''), 'shopee');
         if ($isShopeeAprov && $staging->planilha_shopee) {
             $dadoShopee = \App\Models\PlanilhaShopeeDado::where('numero_pedido', $staging->numero_loja ?? $staging->numero_pedido)->first();
             $cupomPlataforma = (float) ($dadoShopee?->dados_originais['cupom_shopee'] ?? 0);
+            $cupomVendedor = (float) ($dadoShopee?->dados_originais['cupom_vendedor'] ?? 0);
             if ($cupomPlataforma > 0) {
                 $dadosVenda['cupom_plataforma'] = $cupomPlataforma;
+            }
+            if ($cupomVendedor > 0) {
+                $dadosVenda['cupom_vendedor'] = $cupomVendedor;
             }
         }
 

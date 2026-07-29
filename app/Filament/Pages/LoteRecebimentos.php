@@ -291,9 +291,10 @@ class LoteRecebimentos extends Page
                 $repasse = (float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee - (float) ($venda->comissao_afiliado ?? 0);
             }
         } else {
-            $cupomShopeeR = $isShopee ? (float) ($venda->cupom_shopee ?? 0) : 0;
-            $cupomPlataformaR = $isShopee ? (float) ($venda->cupom_plataforma ?? 0) : 0;
-            $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0) - $cupomShopeeR - $cupomPlataformaR;
+            $cupomShopeeR = 0;
+            $cupomPlataformaR = 0;
+            $cupomVendedorR = $isShopee ? (float) ($venda->cupom_vendedor ?? 0) : 0;
+            $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0) - $cupomVendedorR;
         }
 
         $subsidioPix = (float) ($venda->subsidio_pix ?? 0);
