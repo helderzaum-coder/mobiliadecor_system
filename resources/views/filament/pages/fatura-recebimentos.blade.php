@@ -35,6 +35,12 @@
                             color:#fff;">
                             {{ ucfirst($fatura->status) }}
                         </span>
+                        @if($fatura->status === 'aberta' && $fatura->contas_problema->isNotEmpty())
+                            <span title="Pedidos com problema: {{ $fatura->contas_problema->map(fn($c) => $c->venda?->numero_pedido_canal ?? 'Conta #'.$c->id_conta_receber)->implode(', ') }}"
+                                style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#7f1d1d;color:#fca5a5;cursor:help;">
+                                ⚠️ {{ $fatura->contas_problema->count() }} pedido(s) com problema
+                            </span>
+                        @endif
                     </div>
                     <div class="flex gap-4 mt-1 text-xs text-gray-500 flex-wrap">
                         <span>📅 Previsto: <strong class="text-gray-300">{{ $fatura->data_prevista->format('d/m/Y') }}</strong></span>

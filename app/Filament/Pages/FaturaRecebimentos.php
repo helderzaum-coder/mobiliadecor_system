@@ -52,11 +52,18 @@ class FaturaRecebimentos extends Page
 
     public function getFaturasProperty()
     {
-        return FaturaRecebimento::with(['canal', 'contaBancaria'])
+        return FaturaRecebimento::with(['canal', 'contaBancaria', 'contasReceber.venda'])
             ->where('status', $this->filtro_status)
             ->withCount('contasReceber')
             ->orderByDesc('data_prevista')
-            ->get();
+            ->get()
+            ->each(function ($fatura) {
+                $fatura->contas_problema = $fatura->contasReceber->filter(fn ($c) =>
+                    $c->status === 'recebido'
+                    || $c->lote_recebimento_id !== null
+                    || ($c->fatura_recebimento_id !== null && $c->fatura_recebimento_id !== $fatura->id)
+                );
+            });
     }
 
     public function getCanaisProperty()
@@ -285,6 +292,29 @@ class FaturaRecebimentos extends Page
 
         if ($fatura->status !== 'aberta') {
             Notification::make()->title('Fatura já foi confirmada ou cancelada.')->warning()->send();
+            return;
+        }
+
+        // Verificar contas com problema: já recebidas ou vinculadas a outro lote/fatura
+        $problemas = $fatura->contasReceber->filter(function ($conta) use ($fatura) {
+            return $conta->status === 'recebido'
+                || ($conta->lote_recebimento_id !== null)
+                || ($conta->fatura_recebimento_id !== null && $conta->fatura_recebimento_id !== $fatura->id);
+        });
+
+        if ($problemas->isNotEmpty()) {
+            $pedidos = $problemas->map(function ($conta) {
+                $pedido = $conta->venda?->numero_pedido_canal ?? "Conta #{$conta->id_conta_receber}";
+                $motivo = $conta->status === 'recebido' ? 'já recebido' : 'em outro lote/fatura';
+                return "{$pedido} ({$motivo})";
+            })->implode(', ');
+
+            Notification::make()
+                ->title('⚠️ Confirmação bloqueada — pedidos com problema')
+                ->body("Verifique antes de confirmar: {$pedidos}")
+                ->danger()
+                ->persistent()
+                ->send();
             return;
         }
 
