@@ -325,7 +325,7 @@ class FaturaRecebimentos extends Page
             $conta->update([
                 'status' => 'recebido',
                 'data_recebimento' => $dataRecebimento,
-                'conta_bancaria_id' => $fatura->conta_bancaria_id,
+                'conta_bancaria_id' => $fatura->conta_bancaria_id ?? $conta->conta_bancaria_id,
             ]);
 
             if ($conta->venda) {

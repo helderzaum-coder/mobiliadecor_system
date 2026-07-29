@@ -199,9 +199,15 @@ class Caixa extends Page implements HasForms
         $resultado = collect();
 
         // Lotes: uma única linha por lote com valor líquido (entradas - descontos)
+        // Busca todas as contas do lote diretamente para não perder contas sem banco definido
+        $loteIds = $comLote->pluck('lote_recebimento_id')->unique()->values();
+        $todasContasPorLote = ContaReceber::whereIn('lote_recebimento_id', $loteIds)
+            ->get()
+            ->groupBy('lote_recebimento_id');
+
         foreach ($comLote->groupBy('lote_recebimento_id') as $loteId => $itensLote) {
             $lote = $itensLote->first()->loteRecebimento;
-            $totalEntradas = (float) $itensLote->sum('valor_parcela');
+            $totalEntradas = (float) ($todasContasPorLote[$loteId] ?? $itensLote)->sum('valor_parcela');
 
             // Buscar descontos vinculados ao mesmo lote
             $descontosLote = ContaPagar::where('lote_recebimento_id', $loteId)->sum('valor_parcela');
