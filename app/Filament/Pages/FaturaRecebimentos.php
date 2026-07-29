@@ -319,12 +319,9 @@ class FaturaRecebimentos extends Page
         }
 
         $dataRecebimento = $fatura->data_prevista->format('Y-m-d');
-        $count = 0;
-        $valorTotal = 0;
+        $count = $fatura->contasReceber->count();
 
         foreach ($fatura->contasReceber as $conta) {
-            if ($conta->status !== 'pendente') continue;
-
             $conta->update([
                 'status' => 'recebido',
                 'data_recebimento' => $dataRecebimento,
@@ -341,12 +338,11 @@ class FaturaRecebimentos extends Page
                     ]);
                 }
             }
-
-            $valorTotal += (float) $conta->valor_parcela;
-            $count++;
         }
 
-        // Criar LoteRecebimento
+        // Criar LoteRecebimento — soma direto do banco para garantir valor correto
+        $somaContas = (float) ContaReceber::whereIn('id_conta_receber', $fatura->contasReceber->pluck('id_conta_receber'))->sum('valor_parcela');
+
         $descricao = $fatura->descricao
             ?: LoteRecebimento::gerarDescricao(
                 $fatura->contaBancaria?->nome,
@@ -362,7 +358,7 @@ class FaturaRecebimentos extends Page
         $lote = LoteRecebimento::create([
             'data_recebimento' => $dataRecebimento,
             'descricao' => $descricao,
-            'valor_total' => round($valorTotal + $totalEntradas - $totalDescontos, 2),
+            'valor_total' => round($somaContas + $totalEntradas - $totalDescontos, 2),
             'quantidade_contas' => $count,
         ]);
 
@@ -418,7 +414,7 @@ class FaturaRecebimentos extends Page
             'lote_recebimento_id' => $lote->id,
         ]);
 
-        Notification::make()->title("{$count} recebimento(s) confirmados. Lote #{$lote->id} criado.")->success()->send();
+        Notification::make()->title("{$count} recebimento(s) confirmados. Lote #{$lote->id} — R$ " . number_format($lote->valor_total, 2, ',', '.') . " criado.")->success()->send();
     }
 
     public function cancelarFatura(int $id): void
