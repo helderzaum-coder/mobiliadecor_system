@@ -423,12 +423,15 @@ class ContaReceberResource extends Resource
                             ->placeholder('Selecione o banco'),
                     ])
                     ->action(function (ContaReceber $record, array $data) {
+                        if ($faturaId = $record->faturaAberta()) {
+                            Notification::make()->title("⚠️ Bloqueado — pedido está na Fatura #{$faturaId} (agendada). Confirme por lá ou cancele a fatura primeiro.")->danger()->persistent()->send();
+                            return;
+                        }
                         $record->update([
                             'status' => 'recebido',
                             'data_recebimento' => $data['data_recebimento'],
                             'conta_bancaria_id' => $data['conta_bancaria_id'] ?? $record->conta_bancaria_id,
                         ]);
-                        // Marcar venda como recebida somente se todas as contas estão recebidas
                         if ($record->venda) {
                             $pendentes = ContaReceber::where('id_venda', $record->id_venda)
                                 ->where('status', 'pendente')->count();
@@ -609,6 +612,17 @@ class ContaReceberResource extends Resource
                     ->modalSubmitActionLabel('Confirmar Recebimento')
                     ->deselectRecordsAfterCompletion()
                     ->action(function ($records, array $data) {
+                        $bloqueados = [];
+                        foreach ($records as $record) {
+                            if ($faturaId = $record->faturaAberta()) {
+                                $pedido = $record->venda?->numero_pedido_canal ?? "#{$record->id_conta_receber}";
+                                $bloqueados[] = "{$pedido} (Fatura #{$faturaId})";
+                            }
+                        }
+                        if (!empty($bloqueados)) {
+                            Notification::make()->title('⚠️ Recebimento bloqueado')->body('Pedidos em fatura agendada: ' . implode(', ', $bloqueados))->danger()->persistent()->send();
+                            return;
+                        }
                         $count = 0;
                         $valorTotal = 0;
                         $processedIds = [];
@@ -679,6 +693,17 @@ class ContaReceberResource extends Resource
                     ->action(function ($records, array $data) {
                         if ($records->isEmpty()) {
                             Notification::make()->title('Nenhum registro selecionado.')->warning()->send();
+                            return;
+                        }
+                        $bloqueados = [];
+                        foreach ($records as $record) {
+                            if ($faturaId = $record->faturaAberta()) {
+                                $pedido = $record->venda?->numero_pedido_canal ?? "#{$record->id_conta_receber}";
+                                $bloqueados[] = "{$pedido} (Fatura #{$faturaId})";
+                            }
+                        }
+                        if (!empty($bloqueados)) {
+                            Notification::make()->title('⚠️ Agrupamento bloqueado')->body('Pedidos em fatura agendada: ' . implode(', ', $bloqueados))->danger()->persistent()->send();
                             return;
                         }
 

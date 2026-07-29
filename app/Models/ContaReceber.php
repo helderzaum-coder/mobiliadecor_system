@@ -46,6 +46,16 @@ class ContaReceber extends Model
         'estorno_pendente' => 'boolean',
     ];
 
+    /**
+     * Retorna o número da fatura aberta vinculada a esta conta, ou null se livre.
+     */
+    public function faturaAberta(): ?int
+    {
+        if (!$this->fatura_recebimento_id) return null;
+        $fatura = \App\Models\FaturaRecebimento::find($this->fatura_recebimento_id);
+        return ($fatura && $fatura->status === 'aberta') ? $fatura->id : null;
+    }
+
     public function venda(): BelongsTo
     {
         return $this->belongsTo(Venda::class, 'id_venda', 'id_venda');

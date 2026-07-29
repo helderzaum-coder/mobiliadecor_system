@@ -343,6 +343,25 @@ class LoteRecebimentos extends Page
             return;
         }
 
+        // Bloquear se alguma conta está em fatura agendada
+        $bloqueados = [];
+        foreach ($this->lote as $id) {
+            $conta = ContaReceber::with('venda')->find($id);
+            if ($conta && ($faturaId = $conta->faturaAberta())) {
+                $pedido = $conta->venda?->numero_pedido_canal ?? "#{$id}";
+                $bloqueados[] = "{$pedido} (Fatura #{$faturaId})";
+            }
+        }
+        if (!empty($bloqueados)) {
+            Notification::make()
+                ->title('⚠️ Lote bloqueado — pedidos em fatura agendada')
+                ->body('Remova ou cancele a fatura antes de confirmar: ' . implode(', ', $bloqueados))
+                ->danger()
+                ->persistent()
+                ->send();
+            return;
+        }
+
         $count = 0;
         $valorTotal = 0;
 
