@@ -32,21 +32,23 @@ class ShopeePlanilhaService
      * O mapeamento é feito dinamicamente por nome, não por posição.
      */
     public const COLUNAS_REQUERIDAS = [
-        'id_pedido'        => 'ID do pedido',
-        'opcao_envio'      => 'Opção de envio',
-        'nome_produto'     => 'Nome do Produto',
-        'sku'              => 'Número de referência SKU',
-        'quantidade'       => 'Quantidade',
-        'subtotal_produto' => 'Subtotal do produto',
-        'cupom_vendedor'   => 'Cupom do vendedor',
-        'cupom_shopee_col' => 'Cupom',
-        'ajuste_pix'       => 'Ajuste por pagamento via PIX',
-        'taxa_envio'       => 'Taxa de envio pagas pelo comprador',
-        'desconto_frete'   => 'Desconto de Frete Aproximado',
-        'comissao_liquida' => 'Taxa de comissão líquida',
-        'servico_liquido'  => 'Taxa de serviço líquida',
-        'nome_destinatario'=> 'Nome do destinatário',
-        'cpf_comprador'    => 'CPF do Comprador',
+        'id_pedido'              => 'ID do pedido',
+        'opcao_envio'            => 'Opção de envio',
+        'nome_produto'           => 'Nome do Produto',
+        'sku'                    => 'Número de referência SKU',
+        'quantidade'             => 'Quantidade',
+        'subtotal_produto'       => 'Subtotal do produto',
+        'cupom_vendedor'         => 'Cupom do vendedor',
+        'cupom_shopee_col'       => 'Cupom',
+        'ajuste_pix'             => 'Ajuste por pagamento via PIX',
+        'taxa_envio'             => 'Taxa de envio pagas pelo comprador',
+        'desconto_frete'         => 'Desconto de Frete Aproximado',
+        'comissao_liquida'       => 'Taxa de comissão líquida',
+        'servico_liquido'        => 'Taxa de serviço líquida',
+        'comissao_afiliado'      => 'Taxa de comissão Afiliados do Vendedor',
+        'servico_afiliado'       => 'Taxa de Serviço Afiliados do Vendedor',
+        'nome_destinatario'      => 'Nome do destinatário',
+        'cpf_comprador'          => 'CPF do Comprador',
     ];
 
     /**
@@ -92,7 +94,9 @@ class ShopeePlanilhaService
         $mapa = self::mapearColunas($header);
         $divergencias = [];
 
-        foreach (self::COLUNAS_REQUERIDAS as $chave => $nomeEsperado) {
+        $colunasObrigatorias = array_diff_key(self::COLUNAS_REQUERIDAS, array_flip(['comissao_afiliado', 'servico_afiliado']));
+
+        foreach ($colunasObrigatorias as $chave => $nomeEsperado) {
             if (!isset($mapa[$chave])) {
                 $divergencias[] = "Coluna não encontrada: \"{$nomeEsperado}\"";
             }
@@ -261,7 +265,9 @@ class ShopeePlanilhaService
 
             if (!$comissaoCalculada) {
                 $comissao = abs(self::parseDecimal($val('comissao_liquida', $row)))
-                          + abs(self::parseDecimal($val('servico_liquido', $row)));
+                          + abs(self::parseDecimal($val('servico_liquido', $row)))
+                          + abs(self::parseDecimal($val('comissao_afiliado', $row)))
+                          + abs(self::parseDecimal($val('servico_afiliado', $row)));
                 $comissaoCalculada = true;
             }
 

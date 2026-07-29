@@ -318,7 +318,7 @@
                             $repasse = $totalProd + $mlFreteReceitaR - $mlSaleFeeR - $afiliado;
                         }
                     } else {
-                        $cupomVendedorRepasse = $isShopee ? (float) ($venda->cupom_vendedor ?? 0) : 0;
+                        $cupomVendedorRepasse = $isShopee ? (float) ($venda->cupom_shopee ?? 0) : 0;
                         $repasse = $totalProd + $freteCliente - $comissao - $afiliado - $cupomVendedorRepasse;
                     }
                     $fretePago = (bool) $venda->frete_pago;

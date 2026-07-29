@@ -48,7 +48,7 @@ class ContaReceberService
                 $repasse = (float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee - (float) ($venda->comissao_afiliado ?? 0);
             }
         } else {
-            $cupomVendedor = $isShopee ? (float) ($venda->cupom_vendedor ?? 0) : 0;
+            $cupomVendedor = $isShopee ? (float) ($venda->cupom_shopee ?? 0) : 0;
             $repasse = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao - (float) ($venda->comissao_afiliado ?? 0) - $cupomVendedor;
         }
 
@@ -168,7 +168,7 @@ class ContaReceberService
                 $repasse = round((float) $venda->total_produtos + $mlFreteReceita - $mlSaleFee - $afiliado, 2);
             }
         } else {
-            $cupomVendedor = $isShopee ? (float) ($venda->cupom_vendedor ?? 0) : 0;
+            $cupomVendedor = $isShopee ? (float) ($venda->cupom_shopee ?? 0) : 0;
             $repasseBase = (float) $venda->total_produtos + (float) $venda->valor_frete_cliente - (float) $venda->comissao;
             $repasse = round($repasseBase - $afiliado - $cupomVendedor, 2);
         }
