@@ -132,7 +132,11 @@ class Caixa extends Page implements HasForms
                     ->reactive(),
                 Forms\Components\Select::make('exibir_previsoes')
                     ->label('Previsões')
-                    ->options(['1' => 'Exibir', '0' => 'Ocultar'])
+                    ->options([
+                        '0'       => 'Ocultar',
+                        'futuras' => 'Somente futuras',
+                        '1'       => 'Todas (incl. não consolidadas)',
+                    ])
                     ->default('0')
                     ->reactive(),
             ]),
@@ -277,10 +281,11 @@ class Caixa extends Page implements HasForms
         }
 
         // Previsões: faturas de recebimento abertas no período
-        if ($this->exibir_previsoes === '1') {
+        if ($this->exibir_previsoes !== '0') {
             $faturas = FaturaRecebimento::with(['canal', 'contaBancaria'])
                 ->where('status', 'aberta')
                 ->whereBetween('data_prevista', [$inicio, $fim])
+                ->when($this->exibir_previsoes === 'futuras', fn ($q) => $q->where('data_prevista', '>', now()->toDateString()))
                 ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
                 ->get();
 
@@ -366,10 +371,11 @@ class Caixa extends Page implements HasForms
         ]);
 
         // Previsões: contas a pagar abertas/pendentes no período
-        if ($this->exibir_previsoes === '1') {
+        if ($this->exibir_previsoes !== '0') {
             $previsoes = ContaPagar::with(['contaBancaria', 'categoria'])
                 ->whereIn('status', ['aberto', 'pendente'])
                 ->whereBetween('data_vencimento', [$inicio, $fim])
+                ->when($this->exibir_previsoes === 'futuras', fn ($q) => $q->where('data_vencimento', '>', now()->toDateString()))
                 ->whereNull('lote_recebimento_id')
                 ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
                 ->when($this->categoria_id, fn ($q) => $q->where('categoria_id', $this->categoria_id))
