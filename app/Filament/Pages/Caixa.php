@@ -321,7 +321,7 @@ class Caixa extends Page implements HasForms
                     'descricao'        => "✅ Reclamação liberada — Pedido {$pedido}",
                     'categoria'        => 'Reclamação ML',
                     'banco'            => $r->contaBancaria?->nome ?? '-',
-                    'valor'            => (float) $r->valor,
+                    'valor'            => abs((float) $r->valor),
                     'id'               => $r->id,
                     'model'            => 'reclamacao_liberada',
                     'transferencia_id' => null,
@@ -407,13 +407,15 @@ class Caixa extends Page implements HasForms
 
             foreach ($bloqueadas as $r) {
                 $pedido = $r->numero_pedido ?? $r->venda?->numero_pedido_canal ?? "#{$r->id}";
+                $valor = abs((float) $r->valor);
+                if ($valor <= 0) continue;
                 $resultado->push([
                     'data'             => $r->data_abertura->format('Y-m-d'),
                     'tipo'             => 'saida',
                     'descricao'        => "🔒 Reclamação bloqueada — Pedido {$pedido}",
                     'categoria'        => 'Reclamação ML',
                     'banco'            => $r->contaBancaria?->nome ?? '-',
-                    'valor'            => (float) $r->valor,
+                    'valor'            => $valor,
                     'id'               => $r->id,
                     'model'            => 'reclamacao_bloqueada',
                     'transferencia_id' => null,
@@ -664,6 +666,8 @@ class Caixa extends Page implements HasForms
                 'data_vencimento' => $this->editData,
                 'descricao' => $this->editDescricao,
             ]);
+            // Sincronizar valor na reclamação ML vinculada
+            ReclamacaoML::where('conta_pagar_id', $this->editId)->update(['valor' => $valorFloat]);
         } else {
             ContaReceber::where('id_conta_receber', $this->editId)->update([
                 'valor_parcela' => $valorFloat,
