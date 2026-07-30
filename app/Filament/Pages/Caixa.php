@@ -572,7 +572,7 @@ class Caixa extends Page implements HasForms
             'entradas' => $entradas,
             'saidas' => $saidas,
             'resultado' => $entradas - $saidas,
-            'saldo_final' => $this->saldoAnterior + $entradas - $saidas,
+            'saldo_final' => $this->getSaldoBase() + $entradas - $saidas,
         ];
     }
 

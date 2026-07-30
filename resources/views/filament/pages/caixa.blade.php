@@ -9,7 +9,7 @@
         @if($this->exibir_saldo_anterior !== '0')
         <div style="flex:1;min-width:200px;padding:16px;border-radius:12px;background:#1f2937;border-top:4px solid #06b6d4;">
             <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;">{{ $this->exibir_saldo_anterior === '2' ? 'Saldo Final' : 'Saldo Anterior' }}</div>
-            <div style="font-size:24px;font-weight:800;color:#e5e7eb;">R$ {{ number_format($this->saldoAnterior, 2, ',', '.') }}</div>
+            <div style="font-size:24px;font-weight:800;color:#e5e7eb;">R$ {{ number_format($this->exibir_saldo_anterior === '2' ? $totais['saldo_final'] : $this->saldoAnterior, 2, ',', '.') }}</div>
         </div>
         @endif
         <div style="flex:1;min-width:200px;padding:16px;border-radius:12px;background:#1f2937;border-top:4px solid #10b981;">
@@ -20,10 +20,12 @@
             <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;">Saídas</div>
             <div style="font-size:24px;font-weight:800;color:#ef4444;">R$ {{ number_format($totais['saidas'], 2, ',', '.') }}</div>
         </div>
+        @if($this->exibir_saldo_anterior !== '2')
         <div style="flex:1;min-width:200px;padding:16px;border-radius:12px;background:#1f2937;border-top:4px solid #f59e0b;">
             <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;">{{ $this->exibir_saldo_anterior !== '0' ? 'Resultado do Período' : 'Resultado' }}</div>
             <div style="font-size:24px;font-weight:800;color:#f59e0b;">R$ {{ number_format($this->exibir_saldo_anterior !== '0' ? $totais['saldo_final'] : $totais['resultado'], 2, ',', '.') }}</div>
         </div>
+        @endif
     </div>
 
     {{-- Travamento --}}
