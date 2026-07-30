@@ -8,21 +8,27 @@ use Illuminate\Console\Command;
 
 class GerarContasReceberML extends Command
 {
-    protected $signature = 'ml:gerar-contas-receber {--dry-run : Simular sem criar}';
+    protected $signature = 'ml:gerar-contas-receber {--dry-run : Simular sem criar} {--desde= : Data início no formato Y-m-d (ex: 2026-07-19)}';
 
     protected $description = 'Gera contas a receber para vendas ML que ainda não têm (custo preenchido)';
 
     public function handle(): int
     {
         $dryRun = $this->option('dry-run');
+        $desde = $this->option('desde');
 
-        $vendas = Venda::with('canal')
+        $query = Venda::with('canal')
             ->whereHas('canal', fn ($q) => $q->where('nome_canal', 'like', '%ercado%'))
             ->where('custo_produtos', '>', 0)
             ->where('cancelada', false)
             ->whereDoesntHave('contasReceber')
-            ->orderBy('data_venda')
-            ->get();
+            ->orderBy('data_venda');
+
+        if ($desde) {
+            $query->where('data_venda', '>=', $desde);
+        }
+
+        $vendas = $query->get();
 
         $this->info("Vendas ML sem conta a receber e com custo: {$vendas->count()}");
 
