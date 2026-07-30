@@ -95,7 +95,6 @@
                             <th style="padding:10px;text-align:right;color:#9ca3af;font-size:12px;font-weight:400;">
                                 @if($this->exibir_saldo_anterior !== '0')
                                     <div style="color:#6b7280;font-size:11px;">Início: R$ {{ number_format($dia['saldo_inicio_dia'], 2, ',', '.') }}</div>
-                                    <div style="color:#e5e7eb;font-size:12px;font-weight:600;">Final: R$ {{ number_format($dia['saldo_acumulado'], 2, ',', '.') }}</div>
                                 @endif
                             </th>
                         </tr>
@@ -136,6 +135,16 @@
                             </tr>
                         @endforeach
                     </tbody>
+                    @if($this->exibir_saldo_anterior !== '0')
+                    <tfoot>
+                        <tr style="border-top:2px solid #374151;background:#111827;">
+                            <td colspan="5" style="padding:8px 10px;text-align:right;color:#6b7280;font-size:11px;">Saldo final do dia</td>
+                            <td style="padding:8px 10px;text-align:right;font-weight:700;font-size:13px;color:{{ $dia['saldo_acumulado'] >= 0 ? '#10b981' : '#ef4444' }};">
+                                R$ {{ number_format($dia['saldo_acumulado'], 2, ',', '.') }}
+                            </td>
+                        </tr>
+                    </tfoot>
+                    @endif
                 </table>
             @empty
                 <div style="padding:40px;text-align:center;color:#6b7280;">Nenhuma movimentação no período.</div>
