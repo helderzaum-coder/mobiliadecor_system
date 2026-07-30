@@ -185,7 +185,8 @@ class ReclamacaoMLResource extends Resource
                     ->form([
                         Forms\Components\DatePicker::make('data_estorno')
                             ->label('Data do Estorno')
-                            ->default(now())
+                            ->helperText('Data em que o dinheiro efetivamente saiu da conta (normalmente a data de abertura da reclamação)')
+                            ->default(fn (ReclamacaoML $record) => $record->data_abertura)
                             ->required(),
                         Forms\Components\Select::make('categoria_id')
                             ->label('Categoria')
