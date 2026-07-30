@@ -467,35 +467,9 @@ class Caixa extends Page implements HasForms
         if ($this->exibir_saldo_anterior === '0') return 0;
 
         if ($this->exibir_saldo_anterior === '2') {
-            // Saldo final = saldo base + tudo do período
-            [$inicio, $fim] = $this->getDataRange();
-
-            $entradas = ContaReceber::where('status', 'recebido')
-                ->whereNotNull('data_recebimento')
-                ->whereBetween('data_recebimento', [$inicio, $fim])
-                ->when($this->exibir_transferencias !== '1' && !$this->conta_bancaria_id, fn ($q) => $q->where('forma_pagamento', '!=', 'Transferência'))
-                ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
-                ->when(!$this->conta_bancaria_id, fn ($q) => $q->whereHas('contaBancaria', fn ($q2) => $q2->where('ocultar_caixa', false)))
-                ->sum('valor_parcela');
-
-            $saidas = ContaPagar::where('status', 'pago')
-                ->whereNotNull('data_pagamento')
-                ->whereBetween('data_pagamento', [$inicio, $fim])
-                ->whereNull('lote_recebimento_id')
-                ->when($this->exibir_transferencias !== '1' && !$this->conta_bancaria_id, fn ($q) => $q->where('forma_pagamento', '!=', 'Transferência'))
-                ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
-                ->when(!$this->conta_bancaria_id, fn ($q) => $q->whereHas('contaBancaria', fn ($q2) => $q2->where('ocultar_caixa', false)))
-                ->sum('valor_parcela');
-
-            $descontos = ContaPagar::where('status', 'pago')
-                ->whereNotNull('data_pagamento')
-                ->whereBetween('data_pagamento', [$inicio, $fim])
-                ->whereNotNull('lote_recebimento_id')
-                ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
-                ->when(!$this->conta_bancaria_id, fn ($q) => $q->whereHas('contaBancaria', fn ($q2) => $q2->where('ocultar_caixa', false)))
-                ->sum('valor_parcela');
-
-            return $this->getSaldoBase() + (float) $entradas - (float) $descontos - (float) $saidas;
+            // Saldo final = delegado para getTotaisProperty['saldo_final']
+            // Retorna 0 aqui pois o card usa $totais['saldo_final'] diretamente
+            return 0;
         }
 
         // '1' = saldo anterior ao período
