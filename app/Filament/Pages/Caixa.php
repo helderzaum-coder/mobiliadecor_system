@@ -426,52 +426,80 @@ class Caixa extends Page implements HasForms
         return $resultado;
     }
 
-    public function getSaldoAnteriorProperty(): float
+    private function getSaldoBase(): float
     {
-        if ($this->exibir_saldo_anterior === '0') return 0;
+        [$inicio] = $this->getDataRange();
 
-        [$inicio, $fim] = $this->getDataRange();
-
-        // '1' = saldo anterior ao período (< inicio)
-        // '2' = saldo final do período (<= fim)
-        $dataCorte = $this->exibir_saldo_anterior === '2' ? $fim : null;
-        $operadorData = $dataCorte ? '<=' : '<';
-        $dataRef = $dataCorte ?? $inicio;
-
-        $entradasAntes = ContaReceber::where('status', 'recebido')
+        $entradas = ContaReceber::where('status', 'recebido')
             ->whereNotNull('data_recebimento')
-            ->where('data_recebimento', $operadorData, $dataRef)
+            ->where('data_recebimento', '<', $inicio)
             ->when($this->exibir_transferencias !== '1' && !$this->conta_bancaria_id, fn ($q) => $q->where('forma_pagamento', '!=', 'Transferência'))
             ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
             ->when(!$this->conta_bancaria_id, fn ($q) => $q->whereHas('contaBancaria', fn ($q2) => $q2->where('ocultar_caixa', false)))
             ->sum('valor_parcela');
 
-        $saidasAntes = ContaPagar::where('status', 'pago')
+        $saidas = ContaPagar::where('status', 'pago')
             ->whereNotNull('data_pagamento')
-            ->where('data_pagamento', $operadorData, $dataRef)
+            ->where('data_pagamento', '<', $inicio)
             ->whereNull('lote_recebimento_id')
             ->when($this->exibir_transferencias !== '1' && !$this->conta_bancaria_id, fn ($q) => $q->where('forma_pagamento', '!=', 'Transferência'))
             ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
             ->when(!$this->conta_bancaria_id, fn ($q) => $q->whereHas('contaBancaria', fn ($q2) => $q2->where('ocultar_caixa', false)))
             ->sum('valor_parcela');
 
-        $descontosLotesAntes = ContaPagar::where('status', 'pago')
+        $descontos = ContaPagar::where('status', 'pago')
             ->whereNotNull('data_pagamento')
-            ->where('data_pagamento', $operadorData, $dataRef)
+            ->where('data_pagamento', '<', $inicio)
             ->whereNotNull('lote_recebimento_id')
             ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
             ->when(!$this->conta_bancaria_id, fn ($q) => $q->whereHas('contaBancaria', fn ($q2) => $q2->where('ocultar_caixa', false)))
             ->sum('valor_parcela');
 
-        $saldoInicialBanco = 0;
-        if ($this->conta_bancaria_id) {
-            $banco = ContaBancaria::find($this->conta_bancaria_id);
-            $saldoInicialBanco = (float) ($banco->saldo_inicial ?? 0);
-        } else {
-            $saldoInicialBanco = (float) ContaBancaria::where('ativo', true)->where('ocultar_caixa', false)->sum('saldo_inicial');
+        $saldoInicial = $this->conta_bancaria_id
+            ? (float) (ContaBancaria::find($this->conta_bancaria_id)?->saldo_inicial ?? 0)
+            : (float) ContaBancaria::where('ativo', true)->where('ocultar_caixa', false)->sum('saldo_inicial');
+
+        return $saldoInicial + (float) $entradas - (float) $descontos - (float) $saidas;
+    }
+
+    public function getSaldoAnteriorProperty(): float
+    {
+        if ($this->exibir_saldo_anterior === '0') return 0;
+
+        if ($this->exibir_saldo_anterior === '2') {
+            // Saldo final = saldo base + tudo do período
+            [$inicio, $fim] = $this->getDataRange();
+
+            $entradas = ContaReceber::where('status', 'recebido')
+                ->whereNotNull('data_recebimento')
+                ->whereBetween('data_recebimento', [$inicio, $fim])
+                ->when($this->exibir_transferencias !== '1' && !$this->conta_bancaria_id, fn ($q) => $q->where('forma_pagamento', '!=', 'Transferência'))
+                ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
+                ->when(!$this->conta_bancaria_id, fn ($q) => $q->whereHas('contaBancaria', fn ($q2) => $q2->where('ocultar_caixa', false)))
+                ->sum('valor_parcela');
+
+            $saidas = ContaPagar::where('status', 'pago')
+                ->whereNotNull('data_pagamento')
+                ->whereBetween('data_pagamento', [$inicio, $fim])
+                ->whereNull('lote_recebimento_id')
+                ->when($this->exibir_transferencias !== '1' && !$this->conta_bancaria_id, fn ($q) => $q->where('forma_pagamento', '!=', 'Transferência'))
+                ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
+                ->when(!$this->conta_bancaria_id, fn ($q) => $q->whereHas('contaBancaria', fn ($q2) => $q2->where('ocultar_caixa', false)))
+                ->sum('valor_parcela');
+
+            $descontos = ContaPagar::where('status', 'pago')
+                ->whereNotNull('data_pagamento')
+                ->whereBetween('data_pagamento', [$inicio, $fim])
+                ->whereNotNull('lote_recebimento_id')
+                ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
+                ->when(!$this->conta_bancaria_id, fn ($q) => $q->whereHas('contaBancaria', fn ($q2) => $q2->where('ocultar_caixa', false)))
+                ->sum('valor_parcela');
+
+            return $this->getSaldoBase() + (float) $entradas - (float) $descontos - (float) $saidas;
         }
 
-        return $saldoInicialBanco + (float) $entradasAntes - (float) $descontosLotesAntes - (float) $saidasAntes;
+        // '1' = saldo anterior ao período
+        return $this->getSaldoBase();
     }
 
     public function getMovimentacoesProperty(): array
@@ -491,7 +519,7 @@ class Caixa extends Page implements HasForms
     private function agruparPorDia(Collection $movimentacoes): array
     {
         $dias = [];
-        $saldoAcumulado = $this->saldoAnterior;
+        $saldoAcumulado = $this->getSaldoBase();
 
         foreach ($movimentacoes->groupBy('data') as $data => $itens) {
             $entradasDia = $itens->where('tipo', 'entrada')->sum('valor');
