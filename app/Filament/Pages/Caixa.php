@@ -428,11 +428,19 @@ class Caixa extends Page implements HasForms
 
     private function getSaldoBase(): float
     {
+        // Saldo real acumulado até antes do início do filtro
+        // Usado apenas como ponto de partida para o agruparPorDia
         [$inicio] = $this->getDataRange();
+        return $this->calcularSaldoAte($inicio, false);
+    }
+
+    private function calcularSaldoAte(string $data, bool $inclusive = true): float
+    {
+        $operador = $inclusive ? '<=' : '<';
 
         $entradas = ContaReceber::where('status', 'recebido')
             ->whereNotNull('data_recebimento')
-            ->where('data_recebimento', '<', $inicio)
+            ->where('data_recebimento', $operador, $data)
             ->when($this->exibir_transferencias !== '1' && !$this->conta_bancaria_id, fn ($q) => $q->where('forma_pagamento', '!=', 'Transferência'))
             ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
             ->when(!$this->conta_bancaria_id, fn ($q) => $q->whereHas('contaBancaria', fn ($q2) => $q2->where('ocultar_caixa', false)))
@@ -440,7 +448,7 @@ class Caixa extends Page implements HasForms
 
         $saidas = ContaPagar::where('status', 'pago')
             ->whereNotNull('data_pagamento')
-            ->where('data_pagamento', '<', $inicio)
+            ->where('data_pagamento', $operador, $data)
             ->whereNull('lote_recebimento_id')
             ->when($this->exibir_transferencias !== '1' && !$this->conta_bancaria_id, fn ($q) => $q->where('forma_pagamento', '!=', 'Transferência'))
             ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
@@ -449,7 +457,7 @@ class Caixa extends Page implements HasForms
 
         $descontos = ContaPagar::where('status', 'pago')
             ->whereNotNull('data_pagamento')
-            ->where('data_pagamento', '<', $inicio)
+            ->where('data_pagamento', $operador, $data)
             ->whereNotNull('lote_recebimento_id')
             ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
             ->when(!$this->conta_bancaria_id, fn ($q) => $q->whereHas('contaBancaria', fn ($q2) => $q2->where('ocultar_caixa', false)))
@@ -493,11 +501,11 @@ class Caixa extends Page implements HasForms
     private function agruparPorDia(Collection $movimentacoes): array
     {
         $dias = [];
-        $saldoAcumulado = $this->getSaldoBase();
 
         foreach ($movimentacoes->groupBy('data') as $data => $itens) {
             $entradasDia = $itens->where('tipo', 'entrada')->sum('valor');
             $saidasDia = $itens->where('tipo', 'saida')->sum('valor');
+            $saldoInicioDia = $this->calcularSaldoAte($data, false);
 
             $dias[] = [
                 'data' => $data,
@@ -505,11 +513,9 @@ class Caixa extends Page implements HasForms
                 'entradas' => $entradasDia,
                 'saidas' => $saidasDia,
                 'saldo_dia' => $entradasDia - $saidasDia,
-                'saldo_inicio_dia' => $saldoAcumulado,
-                'saldo_acumulado' => $saldoAcumulado + $entradasDia - $saidasDia,
+                'saldo_inicio_dia' => $saldoInicioDia,
+                'saldo_acumulado' => $saldoInicioDia + $entradasDia - $saidasDia,
             ];
-
-            $saldoAcumulado += $entradasDia - $saidasDia;
         }
 
         return $dias;
