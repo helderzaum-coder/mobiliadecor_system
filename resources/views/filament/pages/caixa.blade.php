@@ -6,9 +6,9 @@
     {{-- Totais --}}
     @php $totais = $this->totais; @endphp
     <div style="display:flex;gap:16px;margin-top:16px;flex-wrap:wrap;">
-        @if($this->exibir_saldo_anterior)
+        @if($this->exibir_saldo_anterior !== '0')
         <div style="flex:1;min-width:200px;padding:16px;border-radius:12px;background:#1f2937;border-top:4px solid #06b6d4;">
-            <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;">Saldo Anterior</div>
+            <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;">{{ $this->exibir_saldo_anterior === '2' ? 'Saldo Final' : 'Saldo Anterior' }}</div>
             <div style="font-size:24px;font-weight:800;color:#e5e7eb;">R$ {{ number_format($this->saldoAnterior, 2, ',', '.') }}</div>
         </div>
         @endif
@@ -21,8 +21,8 @@
             <div style="font-size:24px;font-weight:800;color:#ef4444;">R$ {{ number_format($totais['saidas'], 2, ',', '.') }}</div>
         </div>
         <div style="flex:1;min-width:200px;padding:16px;border-radius:12px;background:#1f2937;border-top:4px solid #f59e0b;">
-            <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;">{{ $this->exibir_saldo_anterior ? 'Saldo Final' : 'Resultado' }}</div>
-            <div style="font-size:24px;font-weight:800;color:#f59e0b;">R$ {{ number_format($this->exibir_saldo_anterior ? $totais['saldo_final'] : $totais['resultado'], 2, ',', '.') }}</div>
+            <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;">{{ $this->exibir_saldo_anterior !== '0' ? 'Resultado do Período' : 'Resultado' }}</div>
+            <div style="font-size:24px;font-weight:800;color:#f59e0b;">R$ {{ number_format($this->exibir_saldo_anterior !== '0' ? $totais['saldo_final'] : $totais['resultado'], 2, ',', '.') }}</div>
         </div>
     </div>
 
@@ -44,37 +44,37 @@
                 >Destravar</button>
             </div>
         @endif
-        <button
-            x-data="{ open: false, data: '{{ now()->toDateString() }}', obs: '' }"
-            x-on:click="open = true"
-            style="padding:7px 14px;border-radius:8px;background:#1f2937;border:1px solid #374151;color:#9ca3af;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;"
-        >🔒 Travar período
-            <template x-if="open">
-                <div
-                    style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);"
-                    x-on:click.self="open = false"
-                >
-                    <div style="background:#1f2937;border-radius:12px;padding:24px;width:100%;max-width:400px;" x-on:click.stop>
-                        <h3 style="color:#e5e7eb;font-size:15px;font-weight:600;margin-bottom:16px;">🔒 Travar período — {{ $contaNome }}</h3>
-                        <p style="color:#9ca3af;font-size:12px;margin-bottom:12px;">Movimentações até a data selecionada não poderão ser editadas ou excluídas.</p>
-                        <div style="display:flex;flex-direction:column;gap:10px;">
-                            <div>
-                                <label style="color:#9ca3af;font-size:12px;">Travar até</label>
-                                <input type="date" x-model="data" style="width:100%;padding:8px 12px;border-radius:8px;background:#111827;border:1px solid #374151;color:#e5e7eb;">
-                            </div>
-                            <div>
-                                <label style="color:#9ca3af;font-size:12px;">Observação (opcional)</label>
-                                <input type="text" x-model="obs" placeholder="Ex: Conciliação Mercado Pago" style="width:100%;padding:8px 12px;border-radius:8px;background:#111827;border:1px solid #374151;color:#e5e7eb;">
-                            </div>
+        <div x-data="{ open: false, data: '{{ now()->toDateString() }}', obs: '' }">
+            <button
+                x-on:click="open = true"
+                style="padding:7px 14px;border-radius:8px;background:#1f2937;border:1px solid #374151;color:#9ca3af;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;"
+            >🔒 Travar período</button>
+            <div
+                x-show="open"
+                x-on:keydown.escape.window="open = false"
+                style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);"
+                x-on:click.self="open = false"
+            >
+                <div style="background:#1f2937;border-radius:12px;padding:24px;width:100%;max-width:400px;">
+                    <h3 style="color:#e5e7eb;font-size:15px;font-weight:600;margin-bottom:16px;">🔒 Travar período — {{ $contaNome }}</h3>
+                    <p style="color:#9ca3af;font-size:12px;margin-bottom:12px;">Movimentações até a data selecionada não poderão ser editadas ou excluídas.</p>
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+                        <div>
+                            <label style="color:#9ca3af;font-size:12px;">Travar até</label>
+                            <input type="date" x-model="data" style="width:100%;padding:8px 12px;border-radius:8px;background:#111827;border:1px solid #374151;color:#e5e7eb;">
                         </div>
-                        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px;">
-                            <button x-on:click="open = false" style="padding:8px 16px;border-radius:8px;background:#374151;color:#e5e7eb;border:none;cursor:pointer;">Cancelar</button>
-                            <button x-on:click="$wire.travarPeriodo(data, obs); open = false" style="padding:8px 16px;border-radius:8px;background:#f59e0b;color:#111;border:none;cursor:pointer;font-weight:600;">Travar</button>
+                        <div>
+                            <label style="color:#9ca3af;font-size:12px;">Observação (opcional)</label>
+                            <input type="text" x-model="obs" placeholder="Ex: Conciliação Mercado Pago" style="width:100%;padding:8px 12px;border-radius:8px;background:#111827;border:1px solid #374151;color:#e5e7eb;">
                         </div>
                     </div>
+                    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px;">
+                        <button x-on:click="open = false" style="padding:8px 16px;border-radius:8px;background:#374151;color:#e5e7eb;border:none;cursor:pointer;">Cancelar</button>
+                        <button x-on:click="$wire.travarPeriodo(data, obs); open = false" style="padding:8px 16px;border-radius:8px;background:#f59e0b;color:#111;border:none;cursor:pointer;font-weight:600;">Travar</button>
+                    </div>
                 </div>
-            </template>
-        </button>
+            </div>
+        </div>
     </div>
 
     {{-- Movimentações --}}

@@ -123,7 +123,7 @@ class Caixa extends Page implements HasForms
                     ->reactive(),
                 Forms\Components\Select::make('exibir_saldo_anterior')
                     ->label('Saldo anterior')
-                    ->options(['1' => 'Exibir', '0' => 'Ocultar'])
+                    ->options(['1' => 'Exibir anterior', '2' => 'Exibir saldo final', '0' => 'Ocultar'])
                     ->default('1')
                     ->reactive(),
                 Forms\Components\Select::make('exibir_transferencias')
@@ -428,32 +428,36 @@ class Caixa extends Page implements HasForms
 
     public function getSaldoAnteriorProperty(): float
     {
-        if ($this->exibir_saldo_anterior !== '1') return 0;
+        if ($this->exibir_saldo_anterior === '0') return 0;
 
-        [$inicio] = $this->getDataRange();
+        [$inicio, $fim] = $this->getDataRange();
+
+        // '1' = saldo anterior ao período (< inicio)
+        // '2' = saldo final do período (<= fim)
+        $dataCorte = $this->exibir_saldo_anterior === '2' ? $fim : null;
+        $operadorData = $dataCorte ? '<=' : '<';
+        $dataRef = $dataCorte ?? $inicio;
 
         $entradasAntes = ContaReceber::where('status', 'recebido')
             ->whereNotNull('data_recebimento')
-            ->where('data_recebimento', '<', $inicio)
+            ->where('data_recebimento', $operadorData, $dataRef)
             ->when($this->exibir_transferencias !== '1' && !$this->conta_bancaria_id, fn ($q) => $q->where('forma_pagamento', '!=', 'Transferência'))
             ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
             ->when(!$this->conta_bancaria_id, fn ($q) => $q->whereHas('contaBancaria', fn ($q2) => $q2->where('ocultar_caixa', false)))
             ->sum('valor_parcela');
 
-        // Descontos vinculados a lotes já estão abatidos das entradas, excluir das saídas
         $saidasAntes = ContaPagar::where('status', 'pago')
             ->whereNotNull('data_pagamento')
-            ->where('data_pagamento', '<', $inicio)
+            ->where('data_pagamento', $operadorData, $dataRef)
             ->whereNull('lote_recebimento_id')
             ->when($this->exibir_transferencias !== '1' && !$this->conta_bancaria_id, fn ($q) => $q->where('forma_pagamento', '!=', 'Transferência'))
             ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
             ->when(!$this->conta_bancaria_id, fn ($q) => $q->whereHas('contaBancaria', fn ($q2) => $q2->where('ocultar_caixa', false)))
             ->sum('valor_parcela');
 
-        // Descontos de lotes (abatidos das entradas)
         $descontosLotesAntes = ContaPagar::where('status', 'pago')
             ->whereNotNull('data_pagamento')
-            ->where('data_pagamento', '<', $inicio)
+            ->where('data_pagamento', $operadorData, $dataRef)
             ->whereNotNull('lote_recebimento_id')
             ->when($this->conta_bancaria_id, fn ($q) => $q->where('conta_bancaria_id', $this->conta_bancaria_id))
             ->when(!$this->conta_bancaria_id, fn ($q) => $q->whereHas('contaBancaria', fn ($q2) => $q2->where('ocultar_caixa', false)))
