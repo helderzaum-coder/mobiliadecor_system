@@ -94,7 +94,8 @@
                             <th style="padding:10px;text-align:right;color:#ef4444;font-size:12px;font-weight:400;">-R$ {{ number_format($dia['saidas'], 2, ',', '.') }}</th>
                             <th style="padding:10px;text-align:right;color:#9ca3af;font-size:12px;font-weight:400;">
                                 @if($this->exibir_saldo_anterior !== '0')
-                                    Saldo: R$ {{ number_format($dia['saldo_acumulado'], 2, ',', '.') }}
+                                    <div style="color:#6b7280;font-size:11px;">Início: R$ {{ number_format($dia['saldo_inicio_dia'], 2, ',', '.') }}</div>
+                                    <div style="color:#e5e7eb;font-size:12px;font-weight:600;">Final: R$ {{ number_format($dia['saldo_acumulado'], 2, ',', '.') }}</div>
                                 @endif
                             </th>
                         </tr>
