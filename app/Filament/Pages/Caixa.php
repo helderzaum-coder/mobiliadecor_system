@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\CaixaTravamento;
 use App\Models\CategoriaFinanceira;
 use App\Models\ContaBancaria;
 use App\Models\ContaPagar;
@@ -588,9 +589,57 @@ class Caixa extends Page implements HasForms
         $this->showEditModal = true;
     }
 
+    public function getTravamentoProperty(): ?string
+    {
+        return CaixaTravamento::dataTravamento($this->conta_bancaria_id ? (int) $this->conta_bancaria_id : null);
+    }
+
+    public function travarPeriodo(string $data, ?string $observacao = null): void
+    {
+        $contaId = $this->conta_bancaria_id ? (int) $this->conta_bancaria_id : null;
+
+        // Atualizar ou criar travamento para esta conta
+        CaixaTravamento::updateOrCreate(
+            ['conta_bancaria_id' => $contaId],
+            [
+                'data_travamento' => $data,
+                'observacao' => $observacao,
+                'criado_por' => auth()->id(),
+            ]
+        );
+
+        $banco = $contaId ? ContaBancaria::find($contaId)?->nome : 'Todas as contas';
+        Notification::make()
+            ->title("Período travado até " . \Carbon\Carbon::parse($data)->format('d/m/Y'))
+            ->body($banco)
+            ->success()
+            ->send();
+    }
+
+    public function destravaPeriodo(): void
+    {
+        $contaId = $this->conta_bancaria_id ? (int) $this->conta_bancaria_id : null;
+        CaixaTravamento::where('conta_bancaria_id', $contaId)->delete();
+
+        Notification::make()->title('Travamento removido.')->success()->send();
+    }
+
+    private function verificarTravamento(string $data, ?int $contaBancariaId): bool
+    {
+        return CaixaTravamento::estaTravado($contaBancariaId, $data);
+    }
+
     public function salvarEdicao(): void
     {
         $valorFloat = round((float) str_replace(['.', ','], ['', '.'], $this->editValor), 2);
+
+        // Verificar travamento
+        $dataMovimentacao = $this->editData;
+        $contaId = (int) ($this->editModel === 'pagar' ? $this->editContaOrigemId : $this->editContaDestinoId);
+        if ($dataMovimentacao && $this->verificarTravamento($dataMovimentacao, $contaId ?: null)) {
+            Notification::make()->title('Período travado')->body('Esta data está travada e não pode ser alterada.')->danger()->send();
+            return;
+        }
 
         if ($this->editTransferenciaId) {
             // Atualizar ambos os lados da transferência
@@ -634,6 +683,11 @@ class Caixa extends Page implements HasForms
 
         if ($model === 'pagar') {
             $registro = ContaPagar::find($id);
+            $dataRef = $registro?->data_pagamento?->format('Y-m-d');
+            if ($dataRef && $this->verificarTravamento($dataRef, $registro->conta_bancaria_id)) {
+                Notification::make()->title('Período travado')->body('Esta movimentação está em período travado.')->danger()->send();
+                return;
+            }
             if ($registro?->transferencia_id) {
                 ContaPagar::where('transferencia_id', $registro->transferencia_id)->delete();
                 ContaReceber::where('transferencia_id', $registro->transferencia_id)->delete();
@@ -642,6 +696,11 @@ class Caixa extends Page implements HasForms
             }
         } else {
             $registro = ContaReceber::find($id);
+            $dataRef = $registro?->data_recebimento?->format('Y-m-d');
+            if ($dataRef && $this->verificarTravamento($dataRef, $registro->conta_bancaria_id)) {
+                Notification::make()->title('Período travado')->body('Esta movimentação está em período travado.')->danger()->send();
+                return;
+            }
             if ($registro?->transferencia_id) {
                 ContaPagar::where('transferencia_id', $registro->transferencia_id)->delete();
                 ContaReceber::where('transferencia_id', $registro->transferencia_id)->delete();
