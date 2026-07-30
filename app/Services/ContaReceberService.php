@@ -19,8 +19,8 @@ class ContaReceberService
             return false;
         }
 
-        // Verificar se está completa OU aguardando envio com custo
-        if (!self::vendaCompleta($venda) && !self::vendaAguardandoEnvio($venda)) {
+        // Verificar se está completa OU aguardando envio com custo OU é ML com custo
+        if (!self::vendaCompleta($venda) && !self::vendaAguardandoEnvio($venda) && !self::vendaMlComCusto($venda)) {
             return false;
         }
 
@@ -110,11 +110,10 @@ class ContaReceberService
             return false;
         }
 
-        // Planilha processada? (ML e Shopee precisam)
+        // Planilha processada? (Shopee precisa; ML não precisa mais)
         $canal = $venda->canal;
-        $isML = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'mercado');
         $isShopee = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'shopee');
-        if (($isML || $isShopee) && !$venda->planilha_processada) {
+        if ($isShopee && !$venda->planilha_processada) {
             return false;
         }
 
@@ -124,6 +123,17 @@ class ContaReceberService
         }
 
         return true;
+    }
+
+    /**
+     * Verifica se a venda é ML com custo preenchido.
+     * Permite gerar conta a receber imediatamente na aprovação do pedido.
+     */
+    private static function vendaMlComCusto(Venda $venda): bool
+    {
+        $canal = $venda->canal;
+        $isML = $canal && (str_contains(strtolower($canal->nome_canal ?? ''), 'mercado') || str_starts_with($venda->numero_pedido_canal ?? '', '2000'));
+        return $isML && (float) $venda->custo_produtos > 0;
     }
 
     /**
