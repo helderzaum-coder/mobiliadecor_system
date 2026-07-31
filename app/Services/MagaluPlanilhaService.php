@@ -232,7 +232,7 @@ class MagaluPlanilhaService
 
                 $venda->update(['subsidio_magalu' => $subsidioMagalu]);
 
-                // Gerar conta a receber separada
+                // Gerar conta a receber separada para o subsídio
                 $jaExiste = \App\Models\ContaReceber::where('id_venda', $venda->id_venda)
                     ->where('observacoes', 'like', '%Subsídio Magalu%')
                     ->exists();
@@ -247,6 +247,26 @@ class MagaluPlanilhaService
                         'total_parcelas' => 1,
                         'forma_pagamento' => 'Magalu - Subsídio',
                         'observacoes' => "Subsídio Magalu (desconto à vista/promo/cupom) — Pedido #{$venda->numero_pedido_canal}",
+                        'lancamento_manual' => false,
+                    ]);
+                }
+
+                // Gerar conta principal se não existir
+                $temPrincipal = \App\Models\ContaReceber::where('id_venda', $venda->id_venda)
+                    ->where('forma_pagamento', 'not like', '%Subsídio%')
+                    ->exists();
+
+                if (!$temPrincipal) {
+                    $repasseCalc = (float) $venda->valor_total_venda - (float) ($venda->comissao ?? 0) - (float) ($venda->comissao_afiliado ?? 0);
+                    \App\Models\ContaReceber::create([
+                        'id_venda' => $venda->id_venda,
+                        'valor_parcela' => round($repasseCalc, 2),
+                        'data_vencimento' => $venda->data_venda,
+                        'status' => 'pendente',
+                        'numero_parcela' => 1,
+                        'total_parcelas' => 1,
+                        'forma_pagamento' => $venda->canal?->nome_canal ?? 'Magalu',
+                        'observacoes' => "Repasse #{$venda->numero_pedido_canal}",
                         'lancamento_manual' => false,
                     ]);
                 }
