@@ -6,6 +6,7 @@ use App\Filament\Resources\ContaPagarResource;
 use App\Models\ContaPagar;
 use Carbon\Carbon;
 use Filament\Actions;
+use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Str;
@@ -20,42 +21,112 @@ class EditContaPagar extends EditRecord
     {
         return [
             Actions\Action::make('salvar_recorrencia')
-                ->label('Salvar para toda recorrência')
-                ->icon('heroicon-o-arrow-path')
-                ->color('warning')
-                ->requiresConfirmation()
-                ->modalHeading('Aplicar alterações para toda a recorrência')
-                ->modalDescription('Isso vai atualizar valor, categoria, banco, forma de pagamento e juros de todas as parcelas PENDENTES futuras deste grupo.')
-                ->action(function () {
+                ->label('Salvar')
+                ->icon('heroicon-o-check')
+                ->color('primary')
+                ->modalHeading('Como deseja salvar?')
+                ->modalDescription(null)
+                ->form([
+                    Forms\Components\Radio::make('modo')
+                        ->label('')
+                        ->options([
+                            'somente_esta'   => '✏️  Editar somente esta',
+                            'a_partir_desta' => '🔄  Atualizar esta e todas as futuras pendentes',
+                            'recriar'        => '🆕  Recriar parcelas futuras a partir desta (apaga pendentes futuras e gera novas)',
+                        ])
+                        ->default('somente_esta')
+                        ->required(),
+                ])
+                ->action(function (array $data) {
                     $record = $this->record;
-                    $data = $this->form->getState();
+                    $formData = $this->form->getState();
+                    $formData = $this->mutateFormDataBeforeSave($formData);
 
-                    $record->update($data);
+                    $record->update($formData);
+                    $record->refresh();
 
-                    if (empty($record->grupo_recorrencia)) {
-                        Notification::make()->title('Esta conta não pertence a um grupo recorrente.')->warning()->send();
+                    if ($data['modo'] === 'somente_esta') {
+                        Notification::make()->title('Alteração salva somente nesta parcela.')->success()->send();
+                        $this->redirect(static::getResource()::getUrl('index'));
                         return;
                     }
 
-                    $atualizados = ContaPagar::where('grupo_recorrencia', $record->grupo_recorrencia)
-                        ->where('id_conta_pagar', '!=', $record->id_conta_pagar)
-                        ->where('status', 'pendente')
-                        ->where('data_vencimento', '>=', now()->toDateString())
-                        ->update([
-                            'descricao'             => $data['descricao'] ?? $record->descricao,
-                            'valor_parcela'         => $data['valor_parcela'] ?? $record->valor_parcela,
-                            'categoria_id'          => $data['categoria_id'] ?? $record->categoria_id,
-                            'conta_bancaria_id'     => $data['conta_bancaria_id'] ?? $record->conta_bancaria_id,
-                            'forma_pagamento'       => $data['forma_pagamento'] ?? $record->forma_pagamento,
-                            'juros_atraso'          => $data['juros_atraso'] ?? $record->juros_atraso,
-                            'tipo_juros'            => $data['tipo_juros'] ?? $record->tipo_juros,
-                            'intervalo_recorrencia' => $data['intervalo_recorrencia'] ?? $record->intervalo_recorrencia,
-                            'data_fim_recorrencia'  => $data['data_fim_recorrencia'] ?? $record->data_fim_recorrencia,
-                        ]);
+                    if (empty($record->grupo_recorrencia)) {
+                        Notification::make()->title('Esta conta não pertence a um grupo recorrente.')->warning()->send();
+                        $this->redirect(static::getResource()::getUrl('index'));
+                        return;
+                    }
 
-                    Notification::make()
-                        ->title("Recorrência atualizada: {$atualizados} parcela(s) futura(s) alterada(s).")
-                        ->success()->send();
+                    if ($data['modo'] === 'a_partir_desta') {
+                        $atualizados = ContaPagar::where('grupo_recorrencia', $record->grupo_recorrencia)
+                            ->where('id_conta_pagar', '!=', $record->id_conta_pagar)
+                            ->where('status', 'pendente')
+                            ->where('data_vencimento', '>=', $record->data_vencimento)
+                            ->update([
+                                'descricao'             => $record->descricao,
+                                'valor_parcela'         => $record->valor_parcela,
+                                'categoria_id'          => $record->categoria_id,
+                                'conta_bancaria_id'     => $record->conta_bancaria_id,
+                                'forma_pagamento'       => $record->forma_pagamento,
+                                'juros_atraso'          => $record->juros_atraso,
+                                'tipo_juros'            => $record->tipo_juros,
+                                'intervalo_recorrencia' => $record->intervalo_recorrencia,
+                                'data_fim_recorrencia'  => $record->data_fim_recorrencia,
+                            ]);
+                        Notification::make()->title("Esta e {$atualizados} parcela(s) futura(s) atualizadas.")->success()->send();
+                        $this->redirect(static::getResource()::getUrl('index'));
+                        return;
+                    }
+
+                    if ($data['modo'] === 'recriar') {
+                        // Apagar pendentes futuras do grupo
+                        $deletados = ContaPagar::where('grupo_recorrencia', $record->grupo_recorrencia)
+                            ->where('id_conta_pagar', '!=', $record->id_conta_pagar)
+                            ->where('status', 'pendente')
+                            ->where('data_vencimento', '>', $record->data_vencimento)
+                            ->delete();
+
+                        // Recriar a partir desta
+                        $intervalo = $record->intervalo_recorrencia;
+                        $fim = $record->data_fim_recorrencia ? Carbon::parse($record->data_fim_recorrencia) : null;
+                        $vencimento = Carbon::parse($record->data_vencimento);
+
+                        $defaultQtd = match ($intervalo) {
+                            'semanal'   => 52,
+                            'quinzenal' => 26,
+                            default     => 12,
+                        };
+                        $qtd = $fim ? min($defaultQtd, $this->calcularQuantidade($intervalo, $vencimento, $fim)) : $defaultQtd;
+
+                        $criados = 0;
+                        for ($i = 1; $i < $qtd; $i++) {
+                            $dataVenc = $this->proximaData($vencimento, $intervalo, $i);
+                            if ($fim && $dataVenc->gt($fim)) break;
+                            ContaPagar::create([
+                                'descricao'             => $record->descricao,
+                                'valor_parcela'         => $record->valor_parcela,
+                                'categoria_id'          => $record->categoria_id,
+                                'conta_bancaria_id'     => $record->conta_bancaria_id,
+                                'forma_pagamento'       => $record->forma_pagamento,
+                                'data_lancamento'       => $record->data_lancamento,
+                                'data_vencimento'       => $dataVenc->toDateString(),
+                                'status'                => 'pendente',
+                                'recorrente'            => true,
+                                'intervalo_recorrencia' => $intervalo,
+                                'data_fim_recorrencia'  => $record->data_fim_recorrencia,
+                                'grupo_recorrencia'     => $record->grupo_recorrencia,
+                                'numero_parcela'        => $i + 1,
+                                'total_parcelas'        => $qtd,
+                                'juros_atraso'          => $record->juros_atraso,
+                                'tipo_juros'            => $record->tipo_juros,
+                                'observacoes'           => $record->observacoes,
+                            ]);
+                            $criados++;
+                        }
+
+                        Notification::make()->title("{$deletados} parcela(s) removida(s) e {$criados} nova(s) gerada(s) a partir desta.")->success()->send();
+                        $this->redirect(static::getResource()::getUrl('index'));
+                    }
                 })
                 ->visible(fn () => $this->record->recorrente && $this->record->grupo_recorrencia),
 
