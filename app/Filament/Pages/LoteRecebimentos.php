@@ -317,8 +317,11 @@ class LoteRecebimentos extends Page
             return $existente;
         }
 
-        // Se existe alguma conta mas nenhuma pendente, não criar duplicata
-        if (ContaReceber::where('id_venda', $venda->id_venda)->exists()) {
+        // Só bloqueia criação se já existe conta de repasse (não-subsídio) para a venda
+        $temRepasse = ContaReceber::where('id_venda', $venda->id_venda)
+            ->where('forma_pagamento', 'not like', '%Subsídio%')
+            ->exists();
+        if ($temRepasse) {
             return null;
         }
 
@@ -400,7 +403,9 @@ class LoteRecebimentos extends Page
 
             if ($conta->id_venda) {
                 $pendentes = ContaReceber::where('id_venda', $conta->id_venda)
-                    ->where('status', 'pendente')->count();
+                    ->where('status', 'pendente')
+                    ->where('forma_pagamento', 'not like', '%Subsídio%')
+                    ->count();
                 if ($pendentes === 0) {
                     $conta->venda?->update([
                         'repasse_recebido' => true,

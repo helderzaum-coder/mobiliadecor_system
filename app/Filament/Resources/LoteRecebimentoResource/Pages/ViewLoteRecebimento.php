@@ -88,7 +88,9 @@ class ViewLoteRecebimento extends Page implements HasTable
 
                     if ($conta->id_venda) {
                         $pendentes = ContaReceber::where('id_venda', $conta->id_venda)
-                            ->where('status', 'pendente')->count();
+                            ->where('status', 'pendente')
+                            ->where('forma_pagamento', 'not like', '%Subsídio%')
+                            ->count();
                         if ($pendentes === 0) {
                             $conta->venda?->update([
                                 'repasse_recebido' => true,
