@@ -308,10 +308,18 @@ class LoteRecebimentos extends Page
      */
     private function criarContaReceber(\App\Models\Venda $venda): ?ContaReceber
     {
-        // Verificar se já existe (qualquer status)
-        $existente = ContaReceber::where('id_venda', $venda->id_venda)->first();
+        // Verificar se já existe conta pendente (ignora contas já recebidas como subsídio)
+        $existente = ContaReceber::where('id_venda', $venda->id_venda)
+            ->where('status', 'pendente')
+            ->whereNull('fatura_recebimento_id')
+            ->first();
         if ($existente) {
-            return $existente->status === 'pendente' ? $existente : null;
+            return $existente;
+        }
+
+        // Se existe alguma conta mas nenhuma pendente, não criar duplicata
+        if (ContaReceber::where('id_venda', $venda->id_venda)->exists()) {
+            return null;
         }
 
         $canal = $venda->canal;
