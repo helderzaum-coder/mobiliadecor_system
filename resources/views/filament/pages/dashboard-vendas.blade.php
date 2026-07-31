@@ -68,6 +68,14 @@
             <div style="font-size:28px;font-weight:800;color:var(--kpi-text,#1f2937);">R$ {{ number_format($totais['total'], 2, ',', '.') }}</div>
             <div style="font-size:11px;color:#9ca3af;margin-top:4px;">vendas + frete</div>
         </div>
+        <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid #14b8a6;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <span style="font-size:11px;font-weight:700;color:#14b8a6;text-transform:uppercase;letter-spacing:.5px;">Repasse Esperado</span>
+                <span style="width:32px;height:32px;border-radius:8px;background:rgba(20,184,166,.15);display:flex;align-items:center;justify-content:center;font-size:16px;">🏦</span>
+            </div>
+            <div style="font-size:28px;font-weight:800;color:#0d9488;">R$ {{ number_format($totais['repasse'] ?? 0, 2, ',', '.') }}</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px;">líquido contas a receber</div>
+        </div>
         <div style="flex:1;min-width:170px;background:var(--kpi-bg,#fff);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-top:4px solid {{ $totais['lucro'] >= 0 ? '#10b981' : '#ef4444' }};">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
                 <span style="font-size:11px;font-weight:700;color:{{ $totais['lucro'] >= 0 ? '#10b981' : '#ef4444' }};text-transform:uppercase;letter-spacing:.5px;">Lucro Total</span>

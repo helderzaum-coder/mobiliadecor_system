@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CanalVenda extends Model
@@ -36,5 +37,10 @@ class CanalVenda extends Model
     public function regrasComissao(): HasMany
     {
         return $this->hasMany(RegraComissao::class, 'id_canal', 'id_canal');
+    }
+
+    public function cnpjs(): BelongsToMany
+    {
+        return $this->belongsToMany(Cnpj::class, 'canal_cnpj', 'id_canal', 'cnpj_id');
     }
 }

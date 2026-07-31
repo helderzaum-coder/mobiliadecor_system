@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\ContaReceber;
 use App\Models\Venda;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -753,7 +754,7 @@ class DashboardVendas extends Page implements HasForms
     public function updatedDiaSelecionado(): void { $this->pagina = 1; }
     public function updatedMesSelecionado(): void { $this->pagina = 1; }
     public function updatedCanal(): void { $this->pagina = 1; }
-    public function updatedConta(): void { $this->pagina = 1; }
+    public function updatedConta(): void { $this->canal = null; $this->pagina = 1; }
     public function updatedStatusFiltro(): void { $this->pagina = 1; }
     public function updatedBuscaPedido(): void { $this->pagina = 1; }
     public function updatedBuscaCpf(): void { $this->pagina = 1; }
@@ -817,7 +818,47 @@ class DashboardVendas extends Page implements HasForms
                     ->reactive(),
                 Forms\Components\Select::make('canal')
                     ->label('Canal')
-                    ->options(fn () => \App\Models\CanalVenda::orderBy('nome_canal')->pluck('nome_canal', 'nome_canal')->toArray())
+                    ->options(function () {
+                        $conta = $this->conta;
+
+                        // When no conta selected (null/"Todas"): return all active canais
+                        if (empty($conta)) {
+                            return \App\Models\CanalVenda::where('ativo', true)
+                                ->orderBy('nome_canal')
+                                ->pluck('nome_canal', 'nome_canal')
+                                ->toArray();
+                        }
+
+                        // When conta is selected: get cnpj_id from config
+                        $cnpjId = config("bling.accounts.{$conta}.cnpj_id");
+
+                        if ($cnpjId) {
+                            // Query canais that have relationship in canal_cnpj with that cnpj_id
+                            $canais = \App\Models\CanalVenda::where('ativo', true)
+                                ->whereHas('cnpjs', function ($query) use ($cnpjId) {
+                                    $query->where('cnpjs.id_cnpj', $cnpjId);
+                                })
+                                ->orderBy('nome_canal')
+                                ->pluck('nome_canal', 'nome_canal')
+                                ->toArray();
+
+                            // Fallback: if no canais configured for that CNPJ, return all active canais
+                            if (empty($canais)) {
+                                return \App\Models\CanalVenda::where('ativo', true)
+                                    ->orderBy('nome_canal')
+                                    ->pluck('nome_canal', 'nome_canal')
+                                    ->toArray();
+                            }
+
+                            return $canais;
+                        }
+
+                        // Fallback: return all active canais
+                        return \App\Models\CanalVenda::where('ativo', true)
+                            ->orderBy('nome_canal')
+                            ->pluck('nome_canal', 'nome_canal')
+                            ->toArray();
+                    })
                     ->placeholder('Todos')
                     ->reactive(),
                 Forms\Components\Select::make('conta')
@@ -1048,6 +1089,9 @@ class DashboardVendas extends Page implements HasForms
         $lucroTotal = (float) (clone $query)->sum('margem_venda_total');
         $total = (float) (clone $query)->sum('valor_total_venda');
 
+        $vendaIds = (clone $query)->pluck('id_venda');
+        $repasse = (float) ContaReceber::whereIn('id_venda', $vendaIds)->sum('valor_parcela');
+
         return [
             'qtd' => $count,
             'total' => $total,
@@ -1060,6 +1104,7 @@ class DashboardVendas extends Page implements HasForms
             'ticket_medio' => $count > 0 ? round($total / $count, 2) : 0,
             'lucro' => $lucroTotal,
             'margem' => $total > 0 ? round(($lucroTotal / $total) * 100, 1) : 0,
+            'repasse' => $repasse,
         ];
     }
 
