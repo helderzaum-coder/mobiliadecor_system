@@ -137,7 +137,11 @@ class AprovacaoVendaService
         $margemProduto = $totalProdutos - $custoProdutos - $comissaoProduto - $impostoProduto + $valorRebate;
 
         // Margem Venda Total (Lucro Final) = Margem Produto + Margem Frete + Subsídio Pix
-        $margemVendaTotal = $margemProduto + $margemFrete + $subsidioPix;
+        // Shopee: PIX já descontado do total_produtos, não somar novamente
+        $isShopeeAprovacao = str_contains(strtolower($staging->canal ?? ''), 'shopee');
+        $isMagaluAprovacao = str_contains(strtolower($staging->canal ?? ''), 'magalu');
+        $subsidioNoLucro = ($isShopeeAprovacao || $isMagaluAprovacao) ? 0 : $subsidioPix;
+        $margemVendaTotal = $margemProduto + $margemFrete + $subsidioNoLucro;
 
         // Margem Contribuição % = Lucro Final / Total Pedido × 100
         $margemContribuicao = $totalPedido > 0
