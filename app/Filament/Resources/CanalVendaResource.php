@@ -63,6 +63,14 @@ class CanalVendaResource extends Resource
                     ->default(false),
             ])->columns(2),
 
+            Forms\Components\Section::make('Empresas (CNPJs)')->schema([
+                Forms\Components\CheckboxList::make('cnpjs')
+                    ->relationship('cnpjs', 'razao_social')
+                    ->label('Quais empresas utilizam este canal?')
+                    ->helperText('Selecione as empresas que vendem por este canal. No Dashboard, o dropdown de canais será filtrado com base nesta configuração.')
+                    ->columns(2),
+            ]),
+
             Forms\Components\Section::make('Regras de Comissão')->schema([
                 Forms\Components\Repeater::make('regrasComissao')
                     ->relationship()
