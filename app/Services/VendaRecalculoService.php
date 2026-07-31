@@ -456,6 +456,23 @@ class VendaRecalculoService
         $comissao = (float) $venda->comissao;
         $subsidioPix = (float) $venda->subsidio_pix;
 
+        // Shopee: se total_produtos ainda inclui o subsidio_pix (aprovado antes da correcao),
+        // subtrair para evitar dupla contagem no calculo de margem e repasse
+        $isShopeeRecalc = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'shopee');
+        if ($isShopeeRecalc && $subsidioPix > 0 && $totalProdutos > 0) {
+            $totalProdutosSemPix = round($totalProdutos - $subsidioPix, 2);
+            if ($totalProdutosSemPix > 0) {
+                $totalProdutos = $totalProdutosSemPix;
+                $venda->update([
+                    'total_produtos' => $totalProdutos,
+                    'valor_total_venda' => round($totalProdutos + $frete, 2),
+                    'subsidio_pix' => 0,
+                ]);
+                $subsidioPix = 0;
+                $venda->refresh();
+            }
+        }
+
         // TikTokShop: marketplace paga o frete (igual ML ME2/FULL)
         $isTiktok = $canal && str_contains(strtolower($canal->nome_canal ?? ''), 'tiktok');
         if ($isTiktok && ($frete > 0 || $custoFrete > 0)) {
