@@ -140,7 +140,7 @@ This plan fixes two inter-related bugs in the financial system: (1) Dashboard de
       - Empty canal_cnpj falls back to all canais
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
-- [-] 4. Checkpoint - Ensure all tests pass
+- [x] 4. Checkpoint - Ensure all tests pass
   - Run full test suite: `php artisan test`
   - Ensure bug condition exploration test (task 1) PASSES after fix
   - Ensure preservation property tests (task 2) still PASS after fix
