@@ -59,6 +59,6 @@ class ShopeeIntegration extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->hasRole('admin') ?? false;
+        return auth()->user()?->hasAnyRole(['admin', 'shopee_reviewer']) ?? false;
     }
 }
