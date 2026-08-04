@@ -709,7 +709,13 @@ class DashboardVendas extends Page implements HasForms
                 $cte = $ctes->first();
 
                 $itens = $stagingItens[$v->bling_id]?->itens ?? [];
-                $produtosStr = collect($itens)->map(fn ($i) => ($i['codigo'] ?? $i['descricao'] ?? '?') . ' x' . ($i['quantidade'] ?? 1))->implode(' | ');
+                $produtosStr = collect($itens)->map(function ($i) {
+                    $sku = $i['codigo'] ?? '';
+                    $desc = $i['descricao'] ?? '';
+                    $qtd = $i['quantidade'] ?? 1;
+                    $label = $sku ? ($desc ? "{$sku} - {$desc}" : $sku) : ($desc ?: '?');
+                    return "{$label} x{$qtd}";
+                })->implode(' | ');
                 $qtdTotal = collect($itens)->sum(fn ($i) => (int) ($i['quantidade'] ?? 1));
 
                 fputcsv($out, [
