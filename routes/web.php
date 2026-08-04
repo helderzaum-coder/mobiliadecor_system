@@ -24,7 +24,7 @@ Route::get('/caixa/exportar', [CaixaExportController::class, 'export'])->name('c
 
 // Shopee OAuth
 Route::get('/shopee/authorize', [\App\Http\Controllers\ShopeeAuthController::class, 'authorize'])->name('shopee.authorize');
-Route::get('/shopee/callback', [\App\Http\Controllers\ShopeeAuthController::class, 'callback'])->name('shopee.callback');
+Route::get('/shopee/callback', [\App\Http\Controllers\ShopeeAuthController::class, 'callback'])->name('shopee.callback')->withoutMiddleware(['auth', 'auth:sanctum']);
 Route::get('/shopee/status', [\App\Http\Controllers\ShopeeAuthController::class, 'status'])->name('shopee.status');
 
 
