@@ -21,8 +21,9 @@ class ShopeeIntegration extends Page
 
     public function mount(): void
     {
-        $this->authorized = ShopeeService::isAuthorized();
-        $this->shopId     = ShopeeService::getShopId();
+        $client = new ShopeeClient();
+        $this->authorized = $client->isAuthorized();
+        $this->shopId     = $client->getShopId();
         $this->sandbox    = config('shopee.sandbox.mode', true);
     }
 
