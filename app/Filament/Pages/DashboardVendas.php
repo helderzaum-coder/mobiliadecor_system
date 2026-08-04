@@ -651,18 +651,26 @@ class DashboardVendas extends Page implements HasForms
             ->get()
             ->groupBy('chave_nfe');
 
+        // Carregar itens do staging
+        $blingIds = $vendas->pluck('bling_id')->filter()->toArray();
+        $stagingItens = \App\Models\PedidoBlingStaging::whereIn('bling_id', $blingIds)
+            ->select('bling_id', 'itens')
+            ->get()
+            ->keyBy('bling_id');
+
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="pedidos_' . now()->format('Y-m-d_His') . '.csv"',
         ];
 
-        return response()->streamDownload(function () use ($vendas, $ctesPorChave) {
+        return response()->streamDownload(function () use ($vendas, $ctesPorChave, $stagingItens) {
             $out = fopen('php://output', 'w');
             // BOM UTF-8 para Excel
             fputs($out, "\xEF\xBB\xBF");
 
             fputcsv($out, [
                 'Pedido', 'Data', 'Canal', 'Conta', 'Cliente',
+                'Produtos', 'Qtd Total',
                 'Total Pedido', 'Subtotal Produtos', 'Custo Produtos',
                 'Comissão', 'Imposto', 'Frete Cobrado', 'Frete Pago',
                 'Lucro Final', 'Margem %',
@@ -700,12 +708,18 @@ class DashboardVendas extends Page implements HasForms
                 $ctes = $temNfe ? ($ctesPorChave[$v->nfe_chave_acesso] ?? collect()) : collect();
                 $cte = $ctes->first();
 
+                $itens = $stagingItens[$v->bling_id]?->itens ?? [];
+                $produtosStr = collect($itens)->map(fn ($i) => ($i['codigo'] ?? $i['descricao'] ?? '?') . ' x' . ($i['quantidade'] ?? 1))->implode(' | ');
+                $qtdTotal = collect($itens)->sum(fn ($i) => (int) ($i['quantidade'] ?? 1));
+
                 fputcsv($out, [
                     $v->numero_pedido_canal,
                     $v->data_venda?->format('d/m/Y'),
                     $canal,
                     $v->bling_account === 'primary' ? 'Mobilia Decor' : 'HES Móveis',
                     $v->cliente_nome,
+                    $produtosStr,
+                    $qtdTotal ?: '',
                     number_format((float) $v->valor_total_venda, 2, ',', '.'),
                     number_format((float) $v->total_produtos, 2, ',', '.'),
                     number_format((float) $v->custo_produtos, 2, ',', '.'),
