@@ -658,6 +658,10 @@ class DashboardVendas extends Page implements HasForms
             ->get()
             ->keyBy('bling_id');
 
+        // Pré-carregar nomes dos produtos pelo SKU
+        $todosSkus = $stagingItens->flatMap(fn ($s) => collect($s->itens ?? [])->pluck('codigo'))->filter()->unique()->values()->toArray();
+        $nomesPorSku = \App\Models\ProdutoEstoque::whereIn('sku', $todosSkus)->pluck('nome', 'sku');
+
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="pedidos_' . now()->format('Y-m-d_His') . '.csv"',
@@ -709,11 +713,11 @@ class DashboardVendas extends Page implements HasForms
                 $cte = $ctes->first();
 
                 $itens = $stagingItens[$v->bling_id]?->itens ?? [];
-                $produtosStr = collect($itens)->map(function ($i) {
+                $produtosStr = collect($itens)->map(function ($i) use ($nomesPorSku) {
                     $sku = $i['codigo'] ?? '';
-                    $desc = $i['descricao'] ?? '';
+                    $nome = $nomesPorSku[$sku] ?? ($i['descricao'] ?? '');
                     $qtd = $i['quantidade'] ?? 1;
-                    $label = $sku ? ($desc ? "{$sku} - {$desc}" : $sku) : ($desc ?: '?');
+                    $label = $sku ? ($nome ? "{$sku} - {$nome}" : $sku) : ($nome ?: '?');
                     return "{$label} x{$qtd}";
                 })->implode(' | ');
                 $qtdTotal = collect($itens)->sum(fn ($i) => (int) ($i['quantidade'] ?? 1));
