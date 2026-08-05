@@ -667,7 +667,7 @@ class DashboardVendas extends Page implements HasForms
             'Content-Disposition' => 'attachment; filename="pedidos_' . now()->format('Y-m-d_His') . '.csv"',
         ];
 
-        return response()->streamDownload(function () use ($vendas, $ctesPorChave, $stagingItens) {
+        return response()->streamDownload(function () use ($vendas, $ctesPorChave, $stagingItens, $nomesPorSku) {
             $out = fopen('php://output', 'w');
             // BOM UTF-8 para Excel
             fputs($out, "\xEF\xBB\xBF");
